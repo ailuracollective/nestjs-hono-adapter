@@ -4,13 +4,19 @@ on:
   push:
     branches: [main]
 
-# semantic-release pushes the release commit/tag and creates the GitHub
-# release, so it needs write access to contents and pull requests. The
-# id-token scope enables npm provenance for the published package.
+# Publishing authenticates through OIDC trusted publishing, not a stored npm
+# token: the job mints a short-lived ID token and exchanges it at the registry
+# for a publish token scoped to this workflow. There is no long-lived secret to
+# leak or rotate, and provenance is attached automatically.
+#
+# The exchange only succeeds when the package settings on npmjs.com carry a
+# trusted publisher naming this repository and this exact workflow filename.
 permissions:
   contents: write
   issues: write
   pull-requests: write
+  # Required for OIDC. Without it the token request fails and the release job
+  # cannot authenticate at all.
   id-token: write
 
 jobs:
@@ -25,8 +31,10 @@ jobs:
           # The @semantic-release/git plugin pushes using GITHUB_TOKEN, so the
           # checkout must not persist its own credentials in .git/config.
           persist-credentials: false
-      # semantic-release requires Node ^22.14.0 || >= 24.10.0; Bun alone is
-      # not enough, so Node is installed alongside it.
+      # semantic-release requires Node ^22.14.0 || >= 24.10.0, and OIDC trusted
+      # publishing requires npm CLI >= 11.5.1, which this Node ships with.
+      # registry-url is deliberately not set: @semantic-release/npm resolves the
+      # official registry on its own and only exchanges the OIDC token for it.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -35,4 +43,3 @@ jobs:
       - run: bunx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
