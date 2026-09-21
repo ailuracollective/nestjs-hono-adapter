@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# semantic-release pushes the release commit/tag and creates the GitHub
+# release, so it needs write access to contents and pull requests. The
+# id-token scope enables npm provenance for the published package.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # semantic-release reads the full tag history to find the last
+          # release, so a shallow clone is not enough.
+          fetch-depth: 0
+          # The @semantic-release/git plugin pushes using GITHUB_TOKEN, so the
+          # checkout must not persist its own credentials in .git/config.
+          persist-credentials: false
+      # semantic-release requires Node ^22.14.0 || >= 24.10.0; Bun alone is
+      # not enough, so Node is installed alongside it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
