@@ -9,15 +9,15 @@
     "nestjs",
     "node"
   ],
-  "homepage": "https://github.com/ailura/nestjs-hono-adapter#readme",
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
   "bugs": {
-    "url": "https://github.com/ailura/nestjs-hono-adapter/issues"
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
   },
   "license": "MIT",
   "author": "Ailura Code",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ailura/nestjs-hono-adapter.git"
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
   },
   "files": [
     "dist",
