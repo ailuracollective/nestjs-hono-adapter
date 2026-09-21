@@ -1,6 +1,6 @@
 {
   "name": "@ailura/nestjs-hono-adapter",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "NestJS HTTP adapter that runs an application on Hono.",
   "keywords": [
     "adapter",
@@ -9,15 +9,15 @@
     "nestjs",
     "node"
   ],
-  "homepage": "https://github.com/ailura/nestjs-hono-adapter#readme",
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
   "bugs": {
-    "url": "https://github.com/ailura/nestjs-hono-adapter/issues"
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
   },
   "license": "MIT",
   "author": "Ailura Code",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ailura/nestjs-hono-adapter.git"
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
   },
   "files": [
     "dist",
@@ -50,6 +50,8 @@
     "lint:fix": "oxlint --fix .",
     "prepack": "rm -rf dist *.tsbuildinfo && tsc -p tsconfig.json",
     "prepare": "tsc -p tsconfig.json",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json"
   },
@@ -60,15 +62,19 @@
     "@nestjs/core": "^12.0.3",
     "@nestjs/microservices": "^12.0.3",
     "@nestjs/websockets": "^12.0.3",
+    "@semantic-release/changelog": "^7",
+    "@semantic-release/git": "^11",
     "@types/bun": "^1.4.2",
     "@types/node": "^22.20.3",
     "@types/ws": "^8.18.1",
+    "conventional-changelog-conventionalcommits": "^10",
     "hono": "^4.13.8",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",
     "oxlint-tsgolint": "^7.0.2002",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "semantic-release": "^25",
     "typescript": "^7.0.2"
   },
   "peerDependencies": {
