@@ -21,6 +21,7 @@
     "**/.vite/**",
     "**/*.tsbuildinfo",
     "bun.lock",
+    "CHANGELOG.md",
     "examples/**"
   ]
 }
