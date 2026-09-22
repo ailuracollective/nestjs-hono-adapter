@@ -171,6 +171,7 @@
     "**/.turbo/**",
     "**/.vite/**",
     "**/*.tsbuildinfo",
-    "bun.lock"
+    "bun.lock",
+    "examples/**"
   ]
 }

@@ -1,0 +1,19 @@
+{
+  "name": "adapter-workers-validation",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-08-04",
+  "compatibility_flags": [
+    "enable_nodejs_http_server_modules"
+  ],
+  "alias": {
+    "@nestjs/platform-express": "./src/stub-platform-express.ts",
+    "@nestjs/platform-socket.io": "./src/stub-platform-express.ts",
+    "@nats-io/transport-node": "./src/stub-platform-express.ts",
+    "amqp-connection-manager": "./src/stub-platform-express.ts",
+    "class-transformer": "./src/stub-platform-express.ts",
+    "class-validator": "./src/stub-platform-express.ts",
+    "ioredis": "./src/stub-platform-express.ts",
+    "kafkajs": "./src/stub-platform-express.ts",
+    "mqtt": "./src/stub-platform-express.ts"
+  }
+}
