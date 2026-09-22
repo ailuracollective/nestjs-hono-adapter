@@ -15,5 +15,8 @@
     "ioredis": "./src/stub-platform-express.ts",
     "kafkajs": "./src/stub-platform-express.ts",
     "mqtt": "./src/stub-platform-express.ts"
-  }
+  },
+  // Worker Previews require the block. It can be empty: this
+  // harness has no Preview-specific settings.
+  "previews": {}
 }
