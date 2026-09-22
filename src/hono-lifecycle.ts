@@ -161,13 +161,17 @@ abstract class HonoLifecycle extends RouteAdapter {
     const certificate = options.httpsOptions;
     if (certificate === undefined) {
       this.setHttpServer(
-        createAdaptorServer({ fetch: this.hono.fetch }),
+        createAdaptorServer({
+          fetch: this.hono.fetch,
+          overrideGlobalObjects: false,
+        }),
       );
       return;
     }
     const adaptorOptions: AdaptorOptions = {
       createServer: createHttpsServer,
       fetch: this.hono.fetch,
+      overrideGlobalObjects: false,
       serverOptions: certificate,
     };
     this.setHttpServer(createAdaptorServer(adaptorOptions));

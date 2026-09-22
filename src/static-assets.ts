@@ -1,11 +1,7 @@
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { MiddlewareHandler } from 'hono';
 
-import type {
-  NestContext,
-  NestHono,
-  NodeEnv,
-} from './context.ts';
+import type { NestHono, NodeEnv } from './context.ts';
 
 /**
  * The options Nest accepts for static assets. They are declared
@@ -161,14 +157,14 @@ function cacheControl(options: StaticAssetsOptions): string {
 
 /** Writes the cache lifetime a deployment asked for. */
 function setCacheControl(
-  context: NestContext,
+  response: Response,
   options: StaticAssetsOptions,
 ): void {
   if (options.maxAge === undefined) {
     return;
   }
 
-  context.header(CACHE_CONTROL, cacheControl(options));
+  response.headers.set(CACHE_CONTROL, cacheControl(options));
 }
 
 /** The index file a directory request is answered with. */
@@ -208,15 +204,22 @@ function directoryHandler(
   directory: string,
   options: StaticAssetsOptions,
 ): MiddlewareHandler<NodeEnv> {
-  return serveStatic({
+  const serve = serveStatic({
     index: indexOf(options),
-    onFound: (_file: string, context: NestContext) => {
-      setCacheControl(context, options);
-    },
     rewriteRequestPath: (path: string) =>
       withoutPrefix(path, options.prefix),
     root: directory,
   });
+
+  return async (context, next) => {
+    const found = await serve(context, next);
+    if (found === undefined) {
+      return found;
+    }
+    setCacheControl(found, options);
+
+    return found;
+  };
 }
 
 /**
