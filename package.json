@@ -1,6 +1,6 @@
 {
   "name": "@ailura/nestjs-hono-adapter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "NestJS HTTP adapter that runs an application on Hono.",
   "keywords": [
     "adapter",
