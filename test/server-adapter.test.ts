@@ -1,7 +1,13 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { jsonRequest, request, startProbe } from './support.ts';
+import { ServerAdapter } from '../src/index.ts';
+import {
+  jsonRequest,
+  request,
+  startAdapter,
+  startProbe,
+} from './support.ts';
 
 test('a route answers with the value it returned', async () => {
   const probe = await startProbe();
@@ -64,6 +70,46 @@ test('an unrouted path reaches the not-found handler', async () => {
     expect(response.body).toMatchObject({
       statusCode: HttpStatus.NOT_FOUND,
     });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a QUERY request reaches the handler registered for it', async () => {
+  const probe = await startProbe();
+  try {
+    const response = await request(probe, '/lookup', {
+      method: 'QUERY',
+    });
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.body).toStrictEqual({ method: 'QUERY' });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a QUERY route is only answered for that method', async () => {
+  const probe = await startProbe();
+  try {
+    const response = await request(probe, '/lookup');
+    expect(response.status).toBe(HttpStatus.NOT_FOUND);
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a route registered on the adapter directly answers QUERY', async () => {
+  const adapter = new ServerAdapter();
+  adapter.query('/direct', (_request, response) => {
+    response.res = Response.json({ direct: true });
+  });
+  const probe = await startAdapter(adapter);
+  try {
+    const response = await request(probe, '/direct', {
+      method: 'QUERY',
+    });
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.body).toStrictEqual({ direct: true });
   } finally {
     await probe.close();
   }
