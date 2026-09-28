@@ -42,4 +42,17 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx semantic-release
         env:
+          # semantic-release hardcodes semantic-release-bot as the CI author
+          # and committer (see its index.js, which assigns GIT_AUTHOR_* before
+          # spreading the environment). Because the environment is spread last,
+          # anything set here wins: the tag and any release commit are
+          # attributed to this account instead. The name is the login because
+          # the visible name of a user account is free text and the login is
+          # the identity; the address is GitHub's id-qualified noreply form,
+          # which is what actually links the author to the account. This does
+          # not touch publishing, which authenticates through OIDC.
+          GIT_AUTHOR_NAME: AiluraKitty
+          GIT_AUTHOR_EMAIL: 334750167+AiluraKitty@users.noreply.github.com
+          GIT_COMMITTER_NAME: AiluraKitty
+          GIT_COMMITTER_EMAIL: 334750167+AiluraKitty@users.noreply.github.com
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
