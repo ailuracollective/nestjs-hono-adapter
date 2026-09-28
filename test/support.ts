@@ -14,6 +14,7 @@ import {
   Module,
   Post,
   Query,
+  QueryMethod,
   Redirect,
   Render,
   Req,
@@ -69,6 +70,11 @@ class ProbeController {
   @Get('query')
   public query(@Query() query: unknown): unknown {
     return query;
+  }
+
+  @QueryMethod('lookup')
+  public lookup(@Req() source: NestRequest): unknown {
+    return { method: source.method };
   }
 
   @Get('boom')
