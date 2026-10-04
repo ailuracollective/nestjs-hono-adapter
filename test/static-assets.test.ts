@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { expect, test } from 'bun:test';
+import { expect, test } from 'vitest';
 import { HttpStatus } from '@nestjs/common';
 
 import { ServerAdapter } from '../src/index.ts';
@@ -8,7 +8,7 @@ import { request, startProbe } from './support.ts';
 
 /** The files the static asset cases serve. */
 const FIXTURES = path.join(
-  import.meta.dir,
+  import.meta.dirname,
   'fixtures',
   'public',
 );
@@ -92,8 +92,8 @@ test('a file that does not exist reaches the routes', async () => {
 
 /**
  * A case that checks a refusal calls the adapter rather than
- * the application: Bun ends a run when a Nest application
- * method throws, which Nest's own `app.get('nope')` shows too.
+ * the application: a Nest application method that throws ends
+ * the run, which Nest's own `app.get('nope')` shows too.
  */
 test('an option the handler cannot honour is refused', () => {
   const adapter = new ServerAdapter();

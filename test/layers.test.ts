@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { expect, test } from 'bun:test';
+import { expect, test } from 'vitest';
 
 /**
  * The rules that keep `src/` layered, read off the source graph
@@ -26,7 +26,7 @@ interface Edge {
 /** The layers of the tree, and the root is not one of them. */
 type Layer = 'core' | 'features' | 'ws';
 
-const ROOT = path.resolve(import.meta.dir, '..');
+const ROOT = path.resolve(import.meta.dirname, '..');
 const SOURCE = path.join(ROOT, 'src');
 
 /**

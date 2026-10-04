@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { expect, test } from 'bun:test';
+import { expect, test } from 'vitest';
 import {
   Controller,
   ForbiddenException,

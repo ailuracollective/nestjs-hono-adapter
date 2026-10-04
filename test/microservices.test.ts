@@ -2,7 +2,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 
-import { expect, test } from 'bun:test';
+import { expect, test } from 'vitest';
 import {
   Controller,
   Get,

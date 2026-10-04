@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { Server as HttpServer } from 'node:http';
 import { promisify } from 'node:util';
 
-import { expect, test } from 'bun:test';
+import { expect, test } from 'vitest';
 import { HttpStatus } from '@nestjs/common';
 import type { NestApplicationOptions } from '@nestjs/common';
 
@@ -23,14 +23,13 @@ const FORWARDED_FOR = '203.0.113.7, 10.0.0.1';
 const FORWARDED_HOST = 'api.example.com';
 
 /** Where the adapter lives, for the check Node runs. */
-const SOURCE = `${import.meta.dir}/../src/core/server-adapter.ts`;
+const SOURCE = `${import.meta.dirname}/../src/core/server-adapter.ts`;
 
 /**
- * A check only Node can answer: Bun gives `node:https` and
- * `node:http` the same `Server` class, so `instanceof` cannot
- * tell the two apart there. Running the check on Node also
- * shows that the adapter runs on the runtime a deployment
- * uses.
+ * A check the runtime itself answers: the server class is read
+ * with `instanceof`, so the check runs in a plain Node process
+ * rather than inside the test runner, which also shows that the
+ * adapter runs on the runtime a deployment uses.
  */
 const TLS_CHECK = `
 const { ServerAdapter } = await import(${JSON.stringify(SOURCE)});
