@@ -1,7 +1,7 @@
 import { serveStatic } from '@hono/node-server/serve-static';
 import type { MiddlewareHandler } from 'hono';
 
-import type { NestHono, NodeEnv } from './context.ts';
+import type { NestHono, NodeEnv } from '../core/context.ts';
 
 /**
  * The options Nest accepts for static assets. They are declared

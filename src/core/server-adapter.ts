@@ -1,7 +1,7 @@
 import { toByteLimit } from './body.ts';
 import type { NestHandler, NestRequest } from './bridge.ts';
 import type { NestContext } from './context.ts';
-import type { CorsOptions } from './cors-middleware.ts';
+import type { CorsOptions } from '../features/cors-middleware.ts';
 import {
   createExceptionRunner,
   createRouteHandler,
@@ -16,10 +16,10 @@ import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
-import { mountStaticAssets } from './static-assets.ts';
-import type { StaticAssetsOptions } from './static-assets.ts';
-import { ViewRenderer } from './views.ts';
-import type { ViewOptions } from './views.ts';
+import { mountStaticAssets } from '../features/static-assets.ts';
+import type { StaticAssetsOptions } from '../features/static-assets.ts';
+import { ViewRenderer } from '../features/views.ts';
+import type { ViewOptions } from '../features/views.ts';
 
 /** The options the adapter itself reads. */
 interface ServerAdapterOptions extends TransportOptions {

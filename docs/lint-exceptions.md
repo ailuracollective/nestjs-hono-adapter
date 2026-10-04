@@ -60,6 +60,17 @@ contract, which makes two rules false positives:
   decides whether to continue, which is the transport's contract
   rather than a promise the adapter could await.
 
+## Scoped to `src/core/**/*.ts` and `src/features/**/*.ts`
+
+- `import/no-relative-parent-imports` — a layer imports the
+  capability it composes onto, or the contract it shares, by
+  naming the directory beside it. `core/` holds the Nest to Hono
+  contract and `features/` the optional capabilities, so
+  `core/server-adapter.ts` reaching CORS is `../features/` and a
+  feature reaching the context is `../core/`. The rule forbids
+  exactly the crossing the layered tree is for, and no file
+  outside those two directories needs it.
+
 ## Scoped to `test/**/*.ts`
 
 A case builds the application it exercises, which is not a slice
@@ -89,22 +100,24 @@ and does not follow a slice's rules:
 ## Scoped to one file
 
 - `typescript/no-unsafe-type-assertion` — for
-  `src/versioned-route.ts` and `src/response-helpers.ts`. The
-  first narrows a type Nest declares too widely and cannot
-  narrow itself: a versioned route resolves to `Function`, which
-  no handler answering with a response satisfies. The second
-  replaces Hono's own context helpers, which Hono types as
-  methods on its class rather than as the own properties they
-  are, so the wrapper is installed behind one asserted
-  assignment. Both assertions sit one line behind a function
-  that names what it is doing, and both files say so.
+  `src/core/versioned-route.ts` and
+  `src/core/response-helpers.ts`. The first narrows a type Nest
+  declares too widely and cannot narrow itself: a versioned
+  route resolves to `Function`, which no handler answering with
+  a response satisfies. The second replaces Hono's own context
+  helpers, which Hono types as methods on its class rather than
+  as the own properties they are, so the wrapper is installed
+  behind one asserted assignment. Both assertions sit one line
+  behind a function that names what it is doing, and both files
+  say so.
 
-- `import/max-dependencies` at 12 — for `src/server-adapter.ts`.
-  It is the composition root of the adapter: the response
-  writer, the Nest bridge, the path dialect, CORS, static assets
-  and views are each their own module, and it binds all of them.
-  Folding two of those together to satisfy a count would hide a
-  boundary the rest of the package keeps.
+- `import/max-dependencies` at 12 — for
+  `src/core/server-adapter.ts`. It is the composition root of
+  the adapter: the response writer, the Nest bridge, the path
+  dialect, CORS, static assets and views are each their own
+  module, and it binds all of them. Folding two of those
+  together to satisfy a count would hide a boundary the rest of
+  the package keeps.
 
 ## Pinned to an option
 

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { parseQuery } from '../src/query.ts';
+import { parseQuery } from '../src/core/query.ts';
 
 test('a repeated name becomes a list', () => {
   expect(parseQuery('ids=1&ids=2')).toStrictEqual({

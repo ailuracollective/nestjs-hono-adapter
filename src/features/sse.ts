@@ -3,7 +3,7 @@ import { Writable } from 'node:stream';
 
 import { Logger } from '@nestjs/common';
 
-import type { NestContext } from './context.ts';
+import type { NestContext } from '../core/context.ts';
 
 /** The callback every Node stream write and finalizer takes. */
 type StreamCallback = (error?: Error | null) => void;

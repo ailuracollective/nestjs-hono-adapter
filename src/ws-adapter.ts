@@ -17,7 +17,7 @@ import {
 } from 'rxjs';
 import type { Observable } from 'rxjs';
 
-import type { ServerAdapter } from './server-adapter.ts';
+import type { ServerAdapter } from './core/server-adapter.ts';
 import {
   CLOSE_EVENT,
   HonoSocket,
