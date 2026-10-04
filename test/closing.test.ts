@@ -3,7 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import { Hono } from 'hono';
 
 import type { NodeEnv } from '../src/index.ts';
-import { closingBridge } from '../src/closing.ts';
+import { closingBridge } from '../src/core/closing.ts';
 
 /** The answer a request gets once the server is closing. */
 const REFUSED = {

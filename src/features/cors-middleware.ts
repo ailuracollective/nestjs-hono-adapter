@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 
-import type { NestContext, NodeEnv } from './context.ts';
+import type { NestContext, NodeEnv } from '../core/context.ts';
 
 /** The origins a deployment may allow. */
 type AllowedOrigins =

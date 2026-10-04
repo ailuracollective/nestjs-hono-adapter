@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
 
-import type { NestContext } from './context.ts';
+import type { NestContext } from '../core/context.ts';
 import { toDirectories } from './static-assets.ts';
 
 /** The data a template is rendered with. */

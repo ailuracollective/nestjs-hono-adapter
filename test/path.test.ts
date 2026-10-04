@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { toHonoPath } from '../src/path.ts';
+import { toHonoPath } from '../src/core/path.ts';
 
 test('a plain path is left alone', () => {
   expect(toHonoPath('/users')).toBe('/users');

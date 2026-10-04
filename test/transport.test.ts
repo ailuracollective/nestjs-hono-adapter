@@ -23,7 +23,7 @@ const FORWARDED_FOR = '203.0.113.7, 10.0.0.1';
 const FORWARDED_HOST = 'api.example.com';
 
 /** Where the adapter lives, for the check Node runs. */
-const SOURCE = `${import.meta.dir}/../src/server-adapter.ts`;
+const SOURCE = `${import.meta.dir}/../src/core/server-adapter.ts`;
 
 /**
  * A check only Node can answer: Bun gives `node:https` and

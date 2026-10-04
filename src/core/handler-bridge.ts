@@ -11,7 +11,7 @@ import type {
 } from './bridge.ts';
 import type { NestContext } from './context.ts';
 import { finalizeOnResponse } from './response-helpers.ts';
-import { mountSse } from './sse.ts';
+import { mountSse } from '../features/sse.ts';
 
 /**
  * Called when a handler runs outside a Hono pipeline, where

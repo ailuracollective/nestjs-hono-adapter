@@ -137,15 +137,15 @@
     },
     {
       "files": [
-        "src/response-helpers.ts",
-        "src/versioned-route.ts"
+        "src/core/response-helpers.ts",
+        "src/core/versioned-route.ts"
       ],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
     },
     {
-      "files": ["src/server-adapter.ts"],
+      "files": ["src/core/server-adapter.ts"],
       "rules": {
         "import/max-dependencies": [
           "error",
@@ -159,6 +159,12 @@
       "files": ["src/ws-client.ts", "src/ws-server.ts"],
       "rules": {
         "unicorn/prefer-event-target": "off"
+      }
+    },
+    {
+      "files": ["src/core/**/*.ts", "src/features/**/*.ts"],
+      "rules": {
+        "import/no-relative-parent-imports": "off"
       }
     }
   ],

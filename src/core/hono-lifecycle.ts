@@ -9,8 +9,8 @@ import { secureHeaders } from 'hono/secure-headers';
 
 import { closingBridge } from './closing.ts';
 import type { NestHono, NodeEnv } from './context.ts';
-import { corsBridge } from './cors-middleware.ts';
-import type { CorsOptions } from './cors-middleware.ts';
+import { corsBridge } from '../features/cors-middleware.ts';
+import type { CorsOptions } from '../features/cors-middleware.ts';
 import { RouteAdapter } from './route-adapter.ts';
 
 /**
