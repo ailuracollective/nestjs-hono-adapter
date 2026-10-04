@@ -2,6 +2,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import type { MiddlewareHandler } from 'hono';
 
 import type { NestHono, NodeEnv } from '../core/context.ts';
+import { toDirectories } from '../core/directories.ts';
 
 /**
  * The options Nest accepts for static assets. They are declared
@@ -63,17 +64,6 @@ function unsupported(name: string): TypeError {
     'The Hono adapter cannot honour the static asset ' +
       `option ${name}.`,
   );
-}
-
-/** The directories a call named, as a list. */
-function toDirectories(
-  path: string | readonly string[],
-): readonly string[] {
-  if (typeof path === 'string') {
-    return [path];
-  }
-
-  return path;
 }
 
 /** Refuses the options that hook into another server. */
@@ -246,5 +236,5 @@ function mountStaticAssets(
   }
 }
 
-export { mountStaticAssets, toDirectories };
+export { mountStaticAssets };
 export type { StaticAssetsOptions };
