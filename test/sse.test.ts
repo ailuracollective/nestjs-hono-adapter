@@ -19,7 +19,7 @@ import {
   timeout,
 } from 'rxjs';
 
-import { startProbe } from './support.ts';
+import { mountStream, startProbe } from './support.ts';
 
 /** How long the second frame of the slow route waits. */
 const SECOND_FRAME_DELAY = 300;
@@ -377,4 +377,23 @@ test('closing the application while a stream is open settles', async () => {
   }
   // A second close must settle the same way the first one did.
   await probe.close();
+});
+
+test('the bridge opens the interceptor given it', async () => {
+  const reads: number[] = [];
+  const probe = await startProbe({ module: SseModule });
+  const answer = await mountStream(probe, (context, status) => {
+    reads.push(status() ?? 0);
+    context.res = new Response('mounted', {
+      status: HttpStatus.CREATED,
+    });
+    return Promise.resolve();
+  });
+  try {
+    expect(reads).toStrictEqual([HttpStatus.ACCEPTED]);
+    expect(answer.status).toBe(HttpStatus.CREATED);
+    expect(answer.text).toBe('mounted');
+  } finally {
+    await probe.close();
+  }
 });

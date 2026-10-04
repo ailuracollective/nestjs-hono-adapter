@@ -16,6 +16,7 @@ import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
+import { mountSse } from '../features/sse.ts';
 import { mountStaticAssets } from '../features/static-assets.ts';
 import type { StaticAssetsOptions } from '../features/static-assets.ts';
 import { ViewRenderer } from '../features/views.ts';
@@ -231,6 +232,7 @@ class ServerAdapter extends HonoLifecycle {
     const honoHandler = createRouteHandler(
       handler,
       this.bridgeOptions,
+      mountSse,
     );
     if (method === ALL_METHOD) {
       this.hono.all(honoPath, honoHandler);

@@ -36,6 +36,8 @@ import type {
   ServerAdapterOptions,
 } from '../src/index.ts';
 import { ServerAdapter } from '../src/index.ts';
+import { createRouteHandler } from '../src/core/handler-bridge.ts';
+import type { StreamInterceptor } from '../src/core/handler-bridge.ts';
 
 /** The port a probe asks the system to pick for it. */
 const ANY_PORT = 0;
@@ -346,10 +348,49 @@ function startProbe(
   );
 }
 
+/** The route a probe serves a case's own bridge on. */
+const BRIDGE_ROUTE = '/bridge/probe';
+
+/** The status a probe's bridge reports to an interceptor. */
+const PENDING_STATUS = HttpStatus.ACCEPTED;
+
+/** What one request through a case's own bridge answered. */
+interface BridgeAnswer {
+  readonly status: number;
+  readonly text: string;
+}
+
+/**
+ * Serves one route through a bridge whose stream interceptor is
+ * the caller's, so a case can prove which one was opened. The
+ * route is registered before the first request, because Hono's
+ * router is already built once a probe has answered anything.
+ */
+async function mountStream(
+  probe: Probe,
+  interceptor: StreamInterceptor,
+): Promise<BridgeAnswer> {
+  const bridge = createRouteHandler(
+    (): Promise<unknown> => Promise.resolve(),
+    {
+      bodyLimit: () => 0,
+      bodyParsingEnabled: () => false,
+      pendingStatus: () => PENDING_STATUS,
+      rawBody: () => false,
+      trustProxy: () => false,
+    },
+    interceptor,
+  );
+  probe.adapter.getHono().on('GET', BRIDGE_ROUTE, bridge);
+  const answer = await fetch(`${probe.origin}${BRIDGE_ROUTE}`);
+  return { status: answer.status, text: await answer.text() };
+}
+
 export {
   MarkerFilter,
   ProbeModule,
   jsonRequest,
+  mountStream,
   request,
   startAdapter,
   startProbe,
