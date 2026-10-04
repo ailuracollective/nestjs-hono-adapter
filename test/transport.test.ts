@@ -7,11 +7,7 @@ import { HttpStatus } from '@nestjs/common';
 import type { NestApplicationOptions } from '@nestjs/common';
 
 import { ServerAdapter } from '../src/index.ts';
-import {
-  request,
-  startAdapter,
-  startProbe,
-} from './support.ts';
+import { request, startAdapter, startProbe } from './probe.ts';
 
 /** What a security header carries when it is sent. */
 const NOSNIFF = 'nosniff';

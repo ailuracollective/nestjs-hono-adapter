@@ -2,12 +2,8 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import { toByteLimit } from '../src/core/body.ts';
-import {
-  MarkerFilter,
-  jsonRequest,
-  request,
-  startProbe,
-} from './support.ts';
+import { jsonRequest, request, startProbe } from './probe.ts';
+import { MarkerFilter } from './support.ts';
 
 /** A limit small enough that one longer body crosses it. */
 const BODY_LIMIT = 16;
