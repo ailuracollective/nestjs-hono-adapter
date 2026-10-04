@@ -11,7 +11,6 @@ import type {
 } from './bridge.ts';
 import type { NestContext } from './context.ts';
 import { finalizeOnResponse } from './response-helpers.ts';
-import { mountSse } from '../features/sse.ts';
 
 /**
  * Called when a handler runs outside a Hono pipeline, where
@@ -38,6 +37,17 @@ type HonoRouteHandler = (
   context: NestContext,
   next: Next,
 ) => Promise<Response>;
+
+/**
+ * Opens a stream on the response Nest reads, and says when it
+ * started. This is all the bridge asks of one: `core` names the
+ * shape, and the capability that mounts an event stream
+ * satisfies it structurally rather than being imported for it.
+ */
+type StreamInterceptor = (
+  context: NestContext,
+  status: () => number | undefined,
+) => Promise<unknown>;
 
 /**
  * The handler Nest installs as its global exception layer. It
@@ -149,14 +159,19 @@ async function watchFailure(
  * stream commits its headers the response goes out, and the
  * handler is left writing into it — with a late failure logged
  * instead of escaping.
+ *
+ * The interceptor is handed in rather than imported: which
+ * streams exist is a deployment's business, and a composition
+ * root decides it by passing the one to use.
  */
 function createRouteHandler(
   handler: NestHandler,
   options: BridgeOptions,
+  interceptor: StreamInterceptor,
 ): HonoRouteHandler {
   return async (context, next) => {
     const request = await prepareRequest(context, options);
-    const started = mountSse(context, () =>
+    const started = interceptor(context, () =>
       options.pendingStatus(context),
     );
     const handled = Promise.resolve(
@@ -213,4 +228,5 @@ export type {
   BridgeOptions,
   ExceptionRunner,
   NestExceptionHandler,
+  StreamInterceptor,
 };
