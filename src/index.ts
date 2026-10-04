@@ -10,7 +10,7 @@ export type {
   NestHandler,
   NestRequest,
   NextHandler,
-} from './core/bridge.ts';
+} from './core/request.ts';
 export type {
   NestContext,
   NestHono,
