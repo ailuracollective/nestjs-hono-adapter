@@ -166,6 +166,19 @@
       "rules": {
         "import/no-relative-parent-imports": "off"
       }
+    },
+    {
+      "files": ["test/**/*.ts"],
+      "rules": {
+        "max-lines": [
+          "error",
+          {
+            "max": 600,
+            "skipBlankLines": false,
+            "skipComments": false
+          }
+        ]
+      }
     }
   ],
   "ignorePatterns": [
