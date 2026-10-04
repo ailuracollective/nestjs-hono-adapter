@@ -42,7 +42,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run size",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build && bun run size",
     "clean": "rm -rf dist *.tsbuildinfo",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
@@ -52,8 +52,8 @@
     "prepare": "tsc -p tsconfig.json",
     "release": "semantic-release",
     "release:dry": "semantic-release --dry-run",
-    "size": "pnpm run build && size-limit",
-    "test": "vitest run",
+    "size": "bun run build && size-limit",
+    "test": "bun test",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json"
   },
   "devDependencies": {
@@ -67,6 +67,7 @@
     "@semantic-release/changelog": "^7",
     "@semantic-release/git": "^11",
     "@size-limit/preset-small-lib": "^14.1.0",
+    "@types/bun": "^1.4.2",
     "@types/node": "^22.20.3",
     "@types/ws": "^8.18.1",
     "hono": "^4.13.8",
@@ -78,8 +79,6 @@
     "semantic-release": "^25",
     "size-limit": "^14.1.0",
     "typescript": "^7.0.2",
-    "unplugin-swc": "^2.0.0",
-    "vitest": "^5.0.3",
     "wrangler": "4.136.2"
   },
   "peerDependencies": {

@@ -1,3 +1,6 @@
+# Bun is the package manager for this repository.
+
+[install]
 # A library is verified against exact versions, so a later
 # install cannot quietly change what was tested.
-save-exact=true
+exact = true
