@@ -166,12 +166,6 @@
       "rules": {
         "import/no-relative-parent-imports": "off"
       }
-    },
-    {
-      "files": ["vitest.config.ts"],
-      "rules": {
-        "import/no-default-export": "off"
-      }
     }
   ],
   "ignorePatterns": [
@@ -183,7 +177,7 @@
     "**/.turbo/**",
     "**/.vite/**",
     "**/*.tsbuildinfo",
-    "pnpm-lock.yaml",
+    "bun.lock",
     "examples/**"
   ]
 }

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { expect, test } from 'vitest';
+import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import type { ViewEngine } from '../src/index.ts';
@@ -9,7 +9,7 @@ import { request, startProbe } from './support.ts';
 
 /** The templates the view cases render. */
 const FIXTURES = path.join(
-  import.meta.dirname,
+  import.meta.dir,
   'fixtures',
   'views',
 );
@@ -72,8 +72,8 @@ test('a view that does not exist is a not-found answer', async () => {
 
 /**
  * A case that checks a refusal calls the adapter rather than
- * the application: a Nest application method that throws ends
- * the run, which Nest's own `app.get('nope')` shows too.
+ * the application: Bun ends a run when a Nest application
+ * method throws, which Nest's own `app.get('nope')` shows too.
  */
 test('naming an engine without one configured is refused', () => {
   const adapter = new ServerAdapter();

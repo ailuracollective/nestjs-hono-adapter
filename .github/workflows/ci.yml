@@ -13,11 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.9.1
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run check
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
 
   # The bundle size is the product constraint, so it is a gate and
   # not a report: each public entrypoint is bundled the way a
@@ -35,14 +33,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.9.1
+      - uses: oven-sh/setup-bun@v2
       # The ceilings are exact bytes with no headroom, so what gets
       # measured has to be the tree the lockfile describes. An
       # unresolved one can move the number with no source change.
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run size
+      - run: bun install --frozen-lockfile
+      - run: bun run size
 
   # Every Nest package moves together: a mixed install is what a
   # WebSocket or microservice case would fail on, not the adapter.
@@ -54,17 +50,14 @@ jobs:
         node: ['22', '24']
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.9.1
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
       - run:
-          pnpm add --save-exact @nestjs/common@${{ matrix.nest
-          }}.x @nestjs/core@${{ matrix.nest }}.x
+          bun add --exact @nestjs/common@${{ matrix.nest }}.x
+          @nestjs/core@${{ matrix.nest }}.x
           @nestjs/websockets@${{ matrix.nest }}.x
           @nestjs/microservices@${{ matrix.nest }}.x
-      - run:
-          pnpm run typecheck && pnpm run test && pnpm run build
+      - run: bun run typecheck && bun test && bun run build

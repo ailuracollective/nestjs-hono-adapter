@@ -38,11 +38,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.9.1
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec semantic-release
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx semantic-release
         env:
           # semantic-release hardcodes semantic-release-bot as the CI author
           # and committer (see its index.js, which assigns GIT_AUTHOR_* before
