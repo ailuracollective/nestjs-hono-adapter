@@ -3,7 +3,7 @@ import { RequestMethod } from '@nestjs/common';
 import type { VersioningOptions } from '@nestjs/common';
 import { AbstractHttpAdapter } from '@nestjs/core';
 
-import type { NestHandler, NestRequest } from './bridge.ts';
+import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
 import { createVersionFilter } from './version-filter.ts';
 import type { VersionValue } from './version-filter.ts';

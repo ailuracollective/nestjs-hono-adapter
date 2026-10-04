@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 
-import { buildResponse } from './bridge.ts';
+import { buildResponse } from './response.ts';
 import type { NestContext } from './context.ts';
 
 /**

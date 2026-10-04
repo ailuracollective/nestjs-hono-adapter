@@ -2,13 +2,13 @@ import { Logger } from '@nestjs/common';
 import type { Next } from 'hono';
 
 import { readBody } from './body.ts';
-import { toNestRequest } from './bridge.ts';
+import { toNestRequest } from './request.ts';
 import type {
   NestHandler,
   NestRequest,
   NextHandler,
   RequestOptions,
-} from './bridge.ts';
+} from './request.ts';
 import type { NestContext } from './context.ts';
 import { finalizeOnResponse } from './response-helpers.ts';
 

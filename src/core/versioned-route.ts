@@ -1,6 +1,6 @@
 import type { AbstractHttpAdapter } from '@nestjs/core';
 
-import type { NestHandler } from './bridge.ts';
+import type { NestHandler } from './request.ts';
 
 /**
  * A versioned route as the adapter contract declares it. It is

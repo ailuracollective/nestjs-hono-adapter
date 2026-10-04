@@ -1,5 +1,5 @@
 import { toByteLimit } from './body.ts';
-import type { NestHandler, NestRequest } from './bridge.ts';
+import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
 import type { CorsOptions } from '../features/cors-middleware.ts';
 import {

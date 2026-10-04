@@ -3,7 +3,7 @@ import {
   VersioningType,
 } from '@nestjs/common';
 import type { VersioningOptions } from '@nestjs/common';
-import type { NestHandler, NestRequest } from './bridge.ts';
+import type { NestHandler, NestRequest } from './request.ts';
 
 /**
  * Mirrors VersionValue in version-options.interface, which
