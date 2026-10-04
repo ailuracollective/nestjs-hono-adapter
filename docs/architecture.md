@@ -129,10 +129,18 @@ point, and `bun run size` is what measures them. It is a gate
 rather than a report: CI fails when a ceiling is exceeded, so a
 bundle that grows has to be argued for.
 
-`ws` carries no headroom at all. `index` carries a few bytes,
-put there deliberately when the layer work needed them, so a
-change that grows the bundle is still a decision rather than an
-accident.
+`ws` carries no headroom at all.
+
+`index` carries an envelope rather than a margin. The feature
+series is buying capability with bytes — a wildcard that
+resolves, middleware that reaches the paths under it, an
+`Accept` header read by parameter name rather than by position —
+and 7800 B is what that series is allowed to spend, declared
+once so each change reports its cost against a number instead of
+against the last one. It is not a ratchet: inside the series the
+ceiling does not move, and a change that would cross it is the
+discussion rather than the budget. Issue #46 carries the review
+that decides what the number is once the series closes.
 
 The numbers move with every dependency bump, so read them from
 the measurement and not from here. What is worth knowing is what
