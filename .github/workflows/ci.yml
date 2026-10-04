@@ -34,9 +34,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      # The ceilings are exact bytes with no headroom, so what gets
-      # measured has to be the tree the lockfile describes. An
-      # unresolved one can move the number with no source change.
+      # The ceilings are exact bytes. `ws` has none; `index` carries
+      # a few, put there when the layer work needed them, so growth
+      # stays a decision rather than an accident. What gets measured
+      # also has to be the tree the lockfile describes: an unresolved
+      # one can move the number with no source change.
       - run: bun install --frozen-lockfile
       - run: bun run size
 

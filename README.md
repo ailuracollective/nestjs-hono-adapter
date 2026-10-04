@@ -12,6 +12,10 @@ Nest 11 and answer incorrectly — one returns a success status to
 a handler that threw, the other writes every response twice — so
 owning the adapter is the smaller cost.
 
+The layout of `src/`, the import rules it enforces and the
+bundle ceilings are written down in
+[docs/architecture.md](docs/architecture.md).
+
 ## Install
 
 ```sh
