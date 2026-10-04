@@ -15,7 +15,7 @@ owning the adapter is the smaller cost.
 ## Install
 
 ```sh
-bun add @ailura/nestjs-hono-adapter hono @hono/node-server
+pnpm add @ailura/nestjs-hono-adapter hono @hono/node-server
 ```
 
 ```sh
@@ -366,24 +366,23 @@ the library.
 
 ## Development
 
-Bun installs and runs the workspace; the gates are oxlint,
-oxfmt, `tsc` and `bun test`.
+pnpm installs and runs the workspace; the gates are oxlint,
+oxfmt, `tsc` and vitest.
 
 ```sh
-bun install
-bun run check
+pnpm install
+pnpm run check
 ```
 
-`bun run check` is exactly what CI runs: lint, format,
-typecheck, test, build.
+`pnpm run check` is exactly what CI runs: lint, format,
+typecheck, test, build, size.
 
 The cases start a real application on an ephemeral port and talk
 to it over `fetch`, so they cover the path and query dialects,
 every body type, the response forms, event streams, CORS, views,
 static assets, TLS selection, proxy headers and shutdown. The
-TLS case runs its check in a child Node process, because Bun
-gives `node:http` and `node:https` the same `Server` class and
-`instanceof` cannot tell them apart there.
+TLS case runs its check in a child Node process, so the check
+reads the server class the way a deployment does.
 
 The adapter builds against two Nest majors. The suite runs
 against the version the lockfile pins, and the CI compatibility
@@ -394,17 +393,20 @@ the adapter. To run it locally, move the four packages in one
 call and put them back afterwards:
 
 ```sh
-bun add --exact @nestjs/common@11.x @nestjs/core@11.x \
+pnpm add --save-exact @nestjs/common@11.x @nestjs/core@11.x \
   @nestjs/websockets@11.x @nestjs/microservices@11.x
-bun run check
-bun install
+pnpm run check
+pnpm install
 ```
 
-Bun transpiles the tests from the root `tsconfig.json`, and the
-fixtures are Nest controllers whose decorators are the legacy
-kind, which is why that file turns `experimentalDecorators` and
-`emitDecoratorMetadata` on. The library declares no decorator,
-so neither flag changes what `bun run build` emits.
+The fixtures are Nest controllers whose decorators are the
+legacy kind, which is why `tsconfig.json` turns
+`experimentalDecorators` and `emitDecoratorMetadata` on. The
+runner honours both through swc (`vitest.config.ts`): vitest's
+default transform reads the first and drops the second, which
+would leave a declared flag with nothing implementing it. The
+library declares no decorator, so neither flag changes what
+`pnpm run build` emits.
 
 ## License
 
