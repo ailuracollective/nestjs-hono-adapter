@@ -13,6 +13,8 @@
  */
 import type { IncomingMessage } from 'node:http';
 
+import { routePath } from 'hono/route';
+
 import type { NestContext } from './context.ts';
 import { parseQuery } from './query.ts';
 import type { ParsedQuery } from './query.ts';
@@ -25,6 +27,15 @@ const FORWARDED_HOST = 'x-forwarded-host';
 
 /** The header a proxy sets with the address it received from. */
 const FORWARDED_FOR = 'x-forwarded-for';
+
+/**
+ * The segment a wildcard is written as in a route path, which
+ * is also the key it is read back under.
+ */
+const WILDCARD = '*';
+
+/** What an index reads as when there is none. */
+const MISSING = -1;
 
 /**
  * The request properties Nest's core reads. Every property is
@@ -138,6 +149,58 @@ function forwardedValues(
   };
 }
 
+/** Decodes a wildcard as the router decodes any parameter. */
+function decoded(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * The wildcard is the one parameter the router matches and then
+ * forgets, so this reads it back off the registered path.
+ */
+function wildcard(
+  context: NestContext,
+  path: string,
+): string | undefined {
+  // An empty path is what Hono reports for a request that
+  // reached no route, and it holds no wildcard to read.
+  const route = routePath(context).split('/');
+  const at = route.indexOf(WILDCARD);
+  if (at === MISSING) {
+    return undefined;
+  }
+  const asked = path.split('/');
+  if (at === route.length - 1) {
+    return decoded(asked.slice(at).join('/'));
+  }
+  // One between siblings takes the single segment in front of
+  // the next one, which is what the router matched there.
+  return decoded(asked[at] ?? '');
+}
+
+/**
+ * The parameters one request carries, with the wildcard the
+ * router dropped put back. A route with no wildcard in it gains
+ * no key: what it matched is all it is given.
+ */
+function capturedParams(
+  context: NestContext,
+  path: string,
+): Record<string, string> {
+  // Hono builds a fresh bag per call, so the wildcard is
+  // written into it rather than into one of its own.
+  const params = context.req.param();
+  const rest = wildcard(context, path);
+  if (rest !== undefined) {
+    params[WILDCARD] = rest;
+  }
+  return params;
+}
+
 /**
  * Maps a Hono context onto the request object Nest expects.
  *
@@ -168,7 +231,7 @@ function toNestRequest(
     ips: values.addresses,
     method: context.req.method,
     originalUrl: route,
-    params: context.req.param(),
+    params: capturedParams(context, target.pathname),
     path: target.pathname,
     protocol: scheme,
     query: parseQuery(target.search),
