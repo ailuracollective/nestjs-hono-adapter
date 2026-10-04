@@ -73,6 +73,23 @@ contract, which makes two rules false positives:
 
 ## Scoped to `test/**/*.ts`
 
+- `max-lines` at 600, against 400 for source. A source file that
+  outgrows the bound is a file that should have been split; a
+  case file that outgrows it is usually a file that has
+  collected a second subject. The bound that actually matters
+  there is one subject per file, which a line count cannot
+  express, so the number is set high enough to be a ceiling
+  rather than a quota and left to review to catch the real
+  failure.
+
+  Three test files sat within two lines of the source bound,
+  which made any issue that added a case to a large file fail on
+  a number rather than on a reason. That is the failure this
+  fixes: a guard that fires for a reason nobody can act on
+  trains people to raise the bound without reading it.
+
+## Scoped to `test/**/*.ts`
+
 A case builds the application it exercises, which is not a slice
 and does not follow a slice's rules:
 
