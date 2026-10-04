@@ -30,24 +30,33 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v5
-      # The action picks its package manager from the lockfile and
-      # has no input to change that, so it will shell out to pnpm
-      # whatever this repository's scripts say. `ubuntu-latest`
-      # ships node, not pnpm, so pnpm has to be here first.
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.9.1
+      - uses: oven-sh/setup-bun@v2
       # The ceilings in `.size-limit.json` are exact bytes with no
       # headroom, and a tree resolved outside the lockfile can move
       # that number without a single source change. Install from the
       # lockfile here and tell the action to skip its own install,
       # so what gets measured is the tree the lockfile describes.
-      - run: pnpm install --frozen-lockfile
-      - uses: andresz1/size-limit-action@v1
+      - run: bun install --frozen-lockfile
+      # Pinned to the release, not to `@v1`: that tag still points at
+      # the 2020 build, which runs on node12 and declares a smaller set
+      # of inputs than the one documented here.
+      - uses: andresz1/size-limit-action@v1.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Two lockfiles are tracked while the toolchain migration is
+          # in flight, and auto-detection reads `pnpm-lock.yaml` and
+          # picks pnpm. This job measures a bun install, so the manager
+          # is named instead of inferred.
+          package_manager: bun
           build_script: build
           skip_step: install
+          # The default is `npx size-limit --json`, and npm resolves
+          # that against its own view of the tree: it does not find the
+          # binary this job installed, fetches a bare copy, and that
+          # copy cannot see the preset, so it prints help where the
+          # action expects JSON. Asking the same manager that built
+          # the tree to run it avoids the second resolution entirely.
+          script: bunx size-limit --json
 
   # Every Nest package moves together: a mixed install is what a
   # WebSocket or microservice case would fail on, not the adapter.
