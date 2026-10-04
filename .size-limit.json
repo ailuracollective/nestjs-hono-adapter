@@ -1,0 +1,50 @@
+[
+  {
+    "name": "index",
+    "path": "dist/index.js",
+    "limit": 7036,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "@hono/node-server",
+      "@hono/node-ws",
+      "rxjs",
+      "node:buffer",
+      "node:http",
+      "node:stream",
+      "node:events",
+      "node:util",
+      "node:https",
+      "node:fs",
+      "node:path"
+    ]
+  },
+  {
+    "name": "ws",
+    "path": "dist/ws.js",
+    "limit": 1345,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "@hono/node-server",
+      "@hono/node-ws",
+      "rxjs",
+      "node:buffer",
+      "node:http",
+      "node:stream",
+      "node:events",
+      "node:util",
+      "node:https",
+      "node:fs",
+      "node:path"
+    ]
+  }
+]
