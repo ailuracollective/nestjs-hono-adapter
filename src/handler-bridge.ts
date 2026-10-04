@@ -20,10 +20,7 @@ import { mountSse } from './sse.ts';
 const NOOP_NEXT: NextHandler = () => Promise.resolve();
 
 /** Which of the two things a route handler races settled first. */
-const HANDLED = 'handled';
-const STREAMING = 'streaming';
-
-type Outcome = typeof HANDLED | typeof STREAMING;
+type Outcome = 'handled' | 'streaming';
 
 /** Says a handler failed after the stream it started was sent. */
 const logger = new Logger('SseRoute');
@@ -124,16 +121,6 @@ async function settledAs(
   return outcome;
 }
 
-function firstOutcome(
-  handled: Promise<unknown>,
-  streaming: Promise<unknown>,
-): Promise<Outcome> {
-  return Promise.race([
-    settledAs(handled, HANDLED),
-    settledAs(streaming, STREAMING),
-  ]);
-}
-
 /**
  * Reports a failure that arrived after the stream it opened was
  * answered: the client already has its `200`, so there is
@@ -175,8 +162,11 @@ function createRouteHandler(
     const handled = Promise.resolve(
       handler(request, context, next),
     );
-    const outcome = await firstOutcome(handled, started);
-    if (outcome === STREAMING) {
+    const outcome = await Promise.race([
+      settledAs(handled, 'handled'),
+      settledAs(started, 'streaming'),
+    ]);
+    if (outcome === 'streaming') {
       void watchFailure(handled);
     }
     return context.res;
