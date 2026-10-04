@@ -60,18 +60,52 @@ function matchesVersion(
 }
 
 /**
- * Reads the version parameter out of the `Accept` header, which
- * looks like `application/json;v=1`.
+ * Reads the version out of the `Accept` header, which names it
+ * in a parameter of one of its media ranges:
+ * `application/json;q=0.8;v=2`.
+ *
+ * The header is read as ranges and their parameters rather than
+ * indexed, because the parameter carrying the version is
+ * neither always the first parameter of its range nor always in
+ * the first range, and indexing the header reads whichever
+ * parameter happens to come first whatever its name.
+ *
+ * The name looked for is the part of the configured key before
+ * its equals sign, which is what Nest documents for `key`, and
+ * a trailing `+` is dropped so a key written `v+=` names the
+ * same parameter as one written `v=`.
+ *
+ * When several ranges name a version, the first one in the
+ * header wins. A client ranks the ranges it sends in preference
+ * order, so the earliest one is the one it asked for first, and
+ * this is the order Nest's own adapter settles it in rather
+ * than an arbitrary pick.
  */
-function readMediaTypeParameter(
+function readMediaTypeVersion(
   request: NestRequest,
+  key: string,
 ): string | undefined {
   const accept = readHeader(request, 'accept');
   if (accept === undefined) {
     return undefined;
   }
-  const [, parameter] = accept.split(';');
-  return parameter;
+  // A key written without its equals sign names the whole of
+  // itself, so the name is whatever precedes one.
+  const [written = key] = key.split('=');
+  const name = `${written.replace('+', '')}=`;
+  // The first part of a range is its media type, and a media
+  // type carries no equals sign, so it never matches a name.
+  const parameters = accept
+    .split(',')
+    .flatMap((range) => range.split(';'))
+    .map((parameter) => parameter.trim());
+  const found = parameters.find((parameter) =>
+    parameter.startsWith(name),
+  );
+  if (found === undefined) {
+    return undefined;
+  }
+  return found.slice(name.length);
 }
 
 /**
@@ -97,14 +131,13 @@ function createMediaTypeFilter(
   key: string,
 ): NestHandler {
   return (request, response, next) => {
-    const parameter = readMediaTypeParameter(request);
-    if (parameter === undefined) {
+    const supplied = readMediaTypeVersion(request, key);
+    if (supplied === undefined) {
       if (isNeutral(version)) {
         return handler(request, response, next);
       }
       return next();
     }
-    const [, supplied] = parameter.split(key);
     if (matchesVersion(version, supplied)) {
       return handler(request, response, next);
     }
