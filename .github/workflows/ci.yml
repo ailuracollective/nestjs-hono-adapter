@@ -17,6 +17,38 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
 
+  # The bundle size is the product constraint, so it is a gate
+  # and not a report. The action bundles each public entrypoint
+  # the way a consumer would, and fails when a ceiling in
+  # `.size-limit.json` is exceeded.
+  size:
+    runs-on: ubuntu-latest
+    # The delta comment on the pull request is the part the action
+    # adds over a plain run, and it is why this job asks for a
+    # permission the rest of the workflow does not.
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+      # The action picks its package manager from the lockfile and
+      # has no input to change that, so it will shell out to pnpm
+      # whatever this repository's scripts say. `ubuntu-latest`
+      # ships node, not pnpm, so pnpm has to be here first.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      # The ceilings in `.size-limit.json` are exact bytes with no
+      # headroom, and a tree resolved outside the lockfile can move
+      # that number without a single source change. Install from the
+      # lockfile here and tell the action to skip its own install,
+      # so what gets measured is the tree the lockfile describes.
+      - run: pnpm install --frozen-lockfile
+      - uses: andresz1/size-limit-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          build_script: build
+          skip_step: install
+
   # Every Nest package moves together: a mixed install is what a
   # WebSocket or microservice case would fail on, not the adapter.
   compat:
