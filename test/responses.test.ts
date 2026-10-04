@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { request, startProbe } from './support.ts';
+import { request, startProbe } from './probe.ts';
 
 test('a handler that answers through @Res() writes its response', async () => {
   const probe = await startProbe();

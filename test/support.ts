@@ -1,3 +1,8 @@
+/**
+ * The fixtures every probe serves: the controllers whose routes
+ * a case asks for, and the filter that marks an exception it
+ * saw. The probe that serves them lives in `probe.ts`.
+ */
 import 'reflect-metadata';
 
 import { Readable } from 'node:stream';
@@ -24,26 +29,9 @@ import {
 import type {
   ArgumentsHost,
   ExceptionFilter,
-  INestApplication,
-  NestApplicationOptions,
-  Type,
 } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
 
-import type {
-  NestContext,
-  NestRequest,
-  ServerAdapterOptions,
-} from '../src/index.ts';
-import { ServerAdapter } from '../src/index.ts';
-import { createRouteHandler } from '../src/core/handler-bridge.ts';
-import type { StreamInterceptor } from '../src/core/handler-bridge.ts';
-
-/** The port a probe asks the system to pick for it. */
-const ANY_PORT = 0;
-
-/** The interface a probe listens on. */
-const LOCALHOST = '127.0.0.1';
+import type { NestContext, NestRequest } from '../src/index.ts';
 
 /** What a body that is not binary is reported as. */
 const NOT_BINARY = -1;
@@ -216,183 +204,4 @@ class MarkerFilter implements ExceptionFilter {
   }
 }
 
-/** What one request through a running application saw. */
-interface ProbeResult {
-  readonly body: unknown;
-  readonly contentType: string;
-  readonly headers: Headers;
-  readonly status: number;
-  readonly text: string;
-}
-
-/** A running application a test talks to. */
-interface Probe {
-  readonly adapter: ServerAdapter;
-  readonly app: INestApplication;
-  readonly origin: string;
-  close: () => Promise<void>;
-}
-
-/** How a probe is built, when the defaults are not enough. */
-interface ProbeOptions {
-  readonly adapter?: ServerAdapterOptions;
-  readonly application?: NestApplicationOptions;
-  readonly configure?: (app: INestApplication) => void;
-  /**
-   * The module the application is built from, when the probe
-   * module is not the one a case needs.
-   */
-  readonly module?: Type<unknown>;
-}
-
-/**
- * The Nest options for a probe, quiet unless a case asks
- * otherwise.
- */
-function applicationOptions(
-  given: NestApplicationOptions | undefined,
-): NestApplicationOptions {
-  const merged: NestApplicationOptions = { logger: false };
-  if (given === undefined) {
-    return merged;
-  }
-  Object.assign(merged, given);
-  merged.logger = given.logger ?? false;
-  return merged;
-}
-
-function parseJson(text: string): unknown {
-  return JSON.parse(text) as unknown;
-}
-
-function bodyOf(text: string, contentType: string): unknown {
-  if (!contentType.includes('json') || text === '') {
-    return text;
-  }
-  return parseJson(text);
-}
-
-/**
- * Starts an application of its own on an ephemeral port.
- *
- * Every case gets its own application, so no case can pass
- * because another one left a server, a filter or a route
- * behind.
- */
-/**
- * Starts an application on an adapter the caller already built,
- * which is what a case that configures Hono itself needs: a
- * middleware only runs if it is registered before the
- * application listens.
- */
-async function startAdapter(
-  adapter: ServerAdapter,
-  options: ProbeOptions = {},
-): Promise<Probe> {
-  const app = await NestFactory.create(
-    options.module ?? ProbeModule,
-    adapter,
-    applicationOptions(options.application),
-  );
-  if (options.configure !== undefined) {
-    options.configure(app);
-  }
-  await app.listen(ANY_PORT, LOCALHOST);
-  const address = adapter.getHttpServer().address();
-  if (address === null || typeof address === 'string') {
-    throw new TypeError(
-      'the adapter is not listening on a port',
-    );
-  }
-  return {
-    adapter,
-    app,
-    close: () => app.close(),
-    origin: `http://${LOCALHOST}:${address.port}`,
-  };
-}
-
-async function request(
-  probe: Probe,
-  path: string,
-  init?: RequestInit,
-): Promise<ProbeResult> {
-  const response = await fetch(`${probe.origin}${path}`, init);
-  const text = await response.text();
-  const contentType =
-    response.headers.get('content-type') ?? '';
-  return {
-    body: bodyOf(text, contentType),
-    contentType,
-    headers: response.headers,
-    status: response.status,
-    text,
-  };
-}
-
-/** The body of a JSON request, with the headers it needs. */
-function jsonRequest(body: unknown): RequestInit {
-  return {
-    body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  };
-}
-
-function startProbe(
-  options: ProbeOptions = {},
-): Promise<Probe> {
-  return startAdapter(
-    new ServerAdapter(options.adapter),
-    options,
-  );
-}
-
-/** The route a probe serves a case's own bridge on. */
-const BRIDGE_ROUTE = '/bridge/probe';
-
-/** The status a probe's bridge reports to an interceptor. */
-const PENDING_STATUS = HttpStatus.ACCEPTED;
-
-/** What one request through a case's own bridge answered. */
-interface BridgeAnswer {
-  readonly status: number;
-  readonly text: string;
-}
-
-/**
- * Serves one route through a bridge whose stream interceptor is
- * the caller's, so a case can prove which one was opened. The
- * route is registered before the first request, because Hono's
- * router is already built once a probe has answered anything.
- */
-async function mountStream(
-  probe: Probe,
-  interceptor: StreamInterceptor,
-): Promise<BridgeAnswer> {
-  const bridge = createRouteHandler(
-    (): Promise<unknown> => Promise.resolve(),
-    {
-      bodyLimit: () => 0,
-      bodyParsingEnabled: () => false,
-      pendingStatus: () => PENDING_STATUS,
-      rawBody: () => false,
-      trustProxy: () => false,
-    },
-    interceptor,
-  );
-  probe.adapter.getHono().on('GET', BRIDGE_ROUTE, bridge);
-  const answer = await fetch(`${probe.origin}${BRIDGE_ROUTE}`);
-  return { status: answer.status, text: await answer.text() };
-}
-
-export {
-  MarkerFilter,
-  ProbeModule,
-  jsonRequest,
-  mountStream,
-  request,
-  startAdapter,
-  startProbe,
-};
-export type { Probe, ProbeOptions, ProbeResult };
+export { MarkerFilter, ProbeModule };

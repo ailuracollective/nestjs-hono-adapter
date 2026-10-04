@@ -18,8 +18,8 @@ import type { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 
 import { ServerAdapter } from '../src/index.ts';
-import { request, startAdapter } from './support.ts';
-import type { Probe } from './support.ts';
+import { request, startAdapter } from './probe.ts';
+import type { Probe } from './probe.ts';
 
 /** The interface a case binds both transports to. */
 const LOCALHOST = '127.0.0.1';

@@ -5,7 +5,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import type { ViewEngine } from '../src/index.ts';
 import { ServerAdapter } from '../src/index.ts';
-import { request, startProbe } from './support.ts';
+import { request, startProbe } from './probe.ts';
 
 /** The templates the view cases render. */
 const FIXTURES = path.join(

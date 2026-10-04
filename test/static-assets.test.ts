@@ -4,7 +4,7 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import { ServerAdapter } from '../src/index.ts';
-import { request, startProbe } from './support.ts';
+import { request, startProbe } from './probe.ts';
 
 /** The files the static asset cases serve. */
 const FIXTURES = path.join(

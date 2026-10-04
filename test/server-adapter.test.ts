@@ -7,7 +7,7 @@ import {
   request,
   startAdapter,
   startProbe,
-} from './support.ts';
+} from './probe.ts';
 
 test('a route answers with the value it returned', async () => {
   const probe = await startProbe();

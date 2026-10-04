@@ -19,7 +19,7 @@ import {
   timeout,
 } from 'rxjs';
 
-import { mountStream, startProbe } from './support.ts';
+import { mountStream, startProbe } from './probe.ts';
 
 /** How long the second frame of the slow route waits. */
 const SECOND_FRAME_DELAY = 300;
@@ -258,7 +258,11 @@ class SseController {
 class SseModule {}
 
 test('an event stream is answered incrementally', async () => {
-  const probe = await startProbe({ module: SseModule });
+  // A real client reads the frames, so this probe listens.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   try {
     const started = Date.now();
     const response = await fetch(`${probe.origin}/sse/slow`);
@@ -278,7 +282,11 @@ test('an event stream is answered incrementally', async () => {
 });
 
 test('a frame carries the data, the type, the id and the retry', async () => {
-  const probe = await startProbe({ module: SseModule });
+  // A real client reads the frames, so this probe listens.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   try {
     const response = await fetch(`${probe.origin}/sse/frames`);
     expect(response.headers.get('x-stream')).toBe('yes');
@@ -295,7 +303,11 @@ test('a frame carries the data, the type, the id and the retry', async () => {
 });
 
 test('a promise of an observable is awaited', async () => {
-  const probe = await startProbe({ module: SseModule });
+  // A real client reads the frames, so this probe listens.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   try {
     const text = await streamText(probe.origin, '/sse/promise');
     expect(text).toContain('data: deferred');
@@ -305,7 +317,11 @@ test('a promise of an observable is awaited', async () => {
 });
 
 test('a handler that throws is answered by Nest', async () => {
-  const probe = await startProbe({ module: SseModule });
+  // A real client reads the answer, so this probe listens.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   try {
     const response = await fetch(`${probe.origin}/sse/throws`);
     expect(response.status).toBe(HttpStatus.FORBIDDEN);
@@ -318,7 +334,11 @@ test('a handler that throws is answered by Nest', async () => {
 });
 
 test('an observable that errors before a frame is answered by Nest', async () => {
-  const probe = await startProbe({ module: SseModule });
+  // A real client reads the answer, so this probe listens.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   try {
     const response = await fetch(`${probe.origin}/sse/errors`);
     expect(response.status).toBe(
@@ -330,7 +350,11 @@ test('an observable that errors before a frame is answered by Nest', async () =>
 });
 
 test('a stream that errors after a frame ends with an error event', async () => {
-  const probe = await startProbe({ module: SseModule });
+  // A real client reads the frames, so this probe listens.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   try {
     const response = await fetch(`${probe.origin}/sse/broken`);
     expect(response.status).toBe(HttpStatus.OK);
@@ -348,7 +372,11 @@ test('a stream that errors after a frame ends with an error event', async () => 
 
 test('a client that walks away unsubscribes the handler', async () => {
   torn = new Subject<void>();
-  const probe = await startProbe({ module: SseModule });
+  // The handler has to notice a client leaving a real socket.
+  const probe = await startProbe({
+    mode: 'socket',
+    module: SseModule,
+  });
   const client = await openStream(probe.origin, '/sse/open');
   try {
     client.abort();
@@ -362,8 +390,10 @@ test('a client that walks away unsubscribes the handler', async () => {
 });
 
 test('closing the application while a stream is open settles', async () => {
+  // Closing has to reach a connection that is really open.
   const probe = await startProbe({
     application: { forceCloseConnections: true },
+    mode: 'socket',
     module: SseModule,
   });
   const client = await openStream(probe.origin, '/sse/open');
