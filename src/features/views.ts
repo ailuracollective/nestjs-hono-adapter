@@ -4,7 +4,7 @@ import path from 'node:path';
 import { NotFoundException } from '@nestjs/common';
 
 import type { NestContext } from '../core/context.ts';
-import { toDirectories } from './static-assets.ts';
+import { toDirectories } from '../core/directories.ts';
 
 /** The data a template is rendered with. */
 type ViewData = Record<string, unknown>;
