@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 import { Hono } from 'hono';
 

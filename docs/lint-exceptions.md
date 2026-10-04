@@ -119,14 +119,6 @@ and does not follow a slice's rules:
   together to satisfy a count would hide a boundary the rest of
   the package keeps.
 
-## Scoped to `vitest.config.ts`
-
-- `import/no-default-export` — the runner's own contract is a
-  default export: `defineConfig` is read as one, and a named
-  export would not configure anything. Every other file in the
-  repository exports by name, which is what makes this one worth
-  writing down rather than leaving as an unexplained exception.
-
 ## Pinned to an option
 
 Rules are also pinned to a deliberate option rather than the
