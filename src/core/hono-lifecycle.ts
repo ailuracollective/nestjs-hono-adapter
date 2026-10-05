@@ -77,6 +77,7 @@ function isNotRunning(error: unknown): boolean {
  * and a request that arrives while the application is closing
  * is answered with `503` when `return503OnClosing` is set.
  */
+// oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 abstract class HonoLifecycle extends RouteAdapter {
   protected readonly hono: NestHono;
   /**
@@ -101,6 +102,9 @@ abstract class HonoLifecycle extends RouteAdapter {
     this.bodyLimit = options.bodyLimit ?? DEFAULT_BODY_LIMIT;
     this.rawBodyEnabled = options.rawBody ?? false;
     this.trustProxy = options.trustProxy ?? false;
+    this.beforeClose = (): void => {
+      this.closing = true;
+    };
     this.installSecurityHeaders(options.secureHeaders ?? true);
     // CORS and the closing refusal are one step through the
     // dispatcher rather than two, because each mounted middleware
@@ -146,16 +150,6 @@ abstract class HonoLifecycle extends RouteAdapter {
    */
   public isRouteOrderSensitive(): boolean {
     return false;
-  }
-
-  /**
-   * Marks the application as closing when Nest starts its
-   * shutdown rather than when the server is closed, so a
-   * deployment that asked for `return503OnClosing` is refused
-   * through the destroy and before-shutdown hooks as well.
-   */
-  public override beforeClose(): void {
-    this.closing = true;
   }
 
   /** Reads the shutdown options Nest hands the adapter. */
@@ -291,6 +285,31 @@ abstract class HonoLifecycle extends RouteAdapter {
       this.hono.use('*', secureHeaders(headers));
     }
   }
+}
+
+/**
+ * The member this class declares next to the base rather than
+ * in it. `@nestjs/core` 12 declares `beforeClose()` on
+ * `RouteAdapter` and Nest 11 does not, while this package
+ * compiles against `>=11 <13` and cannot express "only where it
+ * exists": `override` fails against the install that lacks the
+ * member and dropping it fails against the one that has it. A
+ * merged declaration is the one form both installs accept, and
+ * it only accepts a property, which is why `beforeClose` is
+ * installed as an own property in the constructor instead of
+ * being written as a method here.
+ * `test/types/route-adapter-compat.ts` is what holds the
+ * declaration to whichever base is installed, since nothing in
+ * the class body checks it any more.
+ */
+interface HonoLifecycle {
+  /**
+   * Marks the application as closing when Nest starts its
+   * shutdown rather than when the server is closed, so a
+   * deployment that asked for `return503OnClosing` is refused
+   * through the destroy and before-shutdown hooks as well.
+   */
+  beforeClose: () => void;
 }
 
 export { HonoLifecycle };

@@ -43,8 +43,11 @@ interface BodyParserOptions {
  */
 type SecurityHook = (
   request: NestRequest,
-  response: unknown,
-) => unknown;
+  response: {
+    setHeader: (name: string, value: string) => unknown;
+    removeHeader: (name: string) => unknown;
+  },
+) => Error | undefined;
 
 /**
  * HTTP adapter that runs Nest on Hono.
@@ -58,6 +61,7 @@ type SecurityHook = (
  * the server lifecycle are inherited from {@link HonoLifecycle};
  * this class implements the rest of the Nest contract.
  */
+// oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 class ServerAdapter extends HonoLifecycle {
   private readonly writer = new ResponseWriter();
   private readonly views: ViewRenderer;
@@ -225,39 +229,28 @@ class ServerAdapter extends HonoLifecycle {
    * A failure it reports is thrown into the path the exception
    * layer already owns.
    *
-   * The hook is installed as an own property rather than
-   * declared as a method here. `AbstractHttpAdapter` declares
-   * it only in Nest versions published after 12.0.3, while this
-   * package compiles against `>=11 <13`, so one source has to
-   * be valid both where the base method exists and where it
-   * does not: `override` fails to compile against the versions
-   * that lack it, and a method without it fails against the
-   * versions that have it, because this project asks TypeScript
-   * to check that every overriding member says so. Nest's own
-   * adapters never face the question because Nest compiles
-   * without `noImplicitOverride`. An own property sidesteps the
-   * rule: it shadows the prototype's method when a Nest
-   * declares it, and is the only one there is when it does
-   * not.
+   * It is installed as an own property rather than written as a
+   * method because `AbstractHttpAdapter` declares it only in
+   * Nest versions published after 12.0.3, while this package
+   * compiles against `>=11 <13`: a method with `override` fails
+   * against the versions that lack it, and one without fails
+   * against the versions that have it. The declaration on the
+   * merged interface below and the assignment here are what
+   * satisfies both.
    */
   private installSecurityHook(): void {
-    Object.assign(this, {
-      registerSecurityHook: (hook: SecurityHook): void => {
-        this.hono.use('*', async (context, next) => {
-          const request = toNestRequest(context, {
-            trustProxy: this.trustProxy,
-          });
-          const failure = await hook(
-            request,
-            context.env.outgoing,
-          );
-          if (failure instanceof Error) {
-            throw failure;
-          }
-          return next();
+    this.registerSecurityHook = (hook: SecurityHook): void => {
+      this.hono.use('*', (context, next) => {
+        const request = toNestRequest(context, {
+          trustProxy: this.trustProxy,
         });
-      },
-    });
+        const failure = hook(request, context.env.outgoing);
+        if (failure instanceof Error) {
+          throw failure;
+        }
+        return next();
+      });
+    };
   }
 
   public override setNotFoundHandler(
@@ -339,6 +332,25 @@ class ServerAdapter extends HonoLifecycle {
   }
 }
 
+/**
+ * The member this class declares next to the base rather than
+ * in it. Nest declares `registerSecurityHook` on its HTTP
+ * adapter only from 12.0.3 on, and `noImplicitOverride` has no
+ * way to say "only where the base has it": an `override` fails
+ * against a Nest 11 install and dropping it fails against Nest
+ * 12, which then reports that the member is not in the base. A
+ * merged declaration is the form both installs accept, and an
+ * assigned own property is what `installSecurityHook` fills in.
+ * The signature is this repository's own rather than the
+ * base's, so it is held to what this repository documents as
+ * well as to the base, in
+ * `test/types/route-adapter-compat.ts`.
+ */
+interface ServerAdapter {
+  /** Registers a hook Nest runs for every request. */
+  registerSecurityHook: (hook: SecurityHook) => void;
+}
+
 declare module '@nestjs/common' {
   /**
    * The application methods this adapter implements. Nest
@@ -362,4 +374,4 @@ declare module '@nestjs/common' {
 
 export { ServerAdapter };
 
-export type { ServerAdapterOptions };
+export type { SecurityHook, ServerAdapterOptions };
