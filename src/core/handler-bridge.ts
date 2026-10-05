@@ -2,14 +2,15 @@ import { Logger } from '@nestjs/common';
 import type { Next } from 'hono';
 
 import { readBody } from './body.ts';
+import type { NestContext } from './context.ts';
 import { toNestRequest } from './request.ts';
 import type {
   NestHandler,
   NestRequest,
   NextHandler,
   RequestOptions,
+  TrustProxy,
 } from './request.ts';
-import type { NestContext } from './context.ts';
 import { finalizeOnResponse } from './response-helpers.ts';
 
 /**
@@ -39,17 +40,6 @@ type HonoRouteHandler = (
 ) => Promise<Response>;
 
 /**
- * Opens a stream on the response Nest reads, and says when it
- * started. This is all the bridge asks of one: `core` names the
- * shape, and the capability that mounts an event stream
- * satisfies it structurally rather than being imported for it.
- */
-type StreamInterceptor = (
-  context: NestContext,
-  status: () => number | undefined,
-) => Promise<unknown>;
-
-/**
  * The handler Nest installs as its global exception layer. It
  * takes the exception first, so it is not a route handler. The
  * arguments are spelled as a tuple because their order is fixed
@@ -66,6 +56,24 @@ type ExceptionRunner = (
 ) => Promise<Response>;
 
 /**
+ * Installs the surface a handler streams into, and settles when
+ * that stream started. The bridge asks for one instead of
+ * reaching for it, so the feature stays on its own side of the
+ * seam.
+ *
+ * There is no stop signal to pass. The promise it answers with
+ * carries no listener, so a route that never streams leaves
+ * nothing to tear down — which is what made a stop signal
+ * necessary while the surface was an event target, and which
+ * cost every request an `AbortController` and a dispatch to
+ * abort it.
+ */
+type StreamInterceptor = (
+  context: NestContext,
+  status: () => number | undefined,
+) => Promise<unknown>;
+
+/**
  * Everything the bridge needs to know about the adapter that
  * built it. Each value is read per request rather than
  * captured, because a deployment configures the parsers and the
@@ -78,7 +86,7 @@ interface BridgeOptions {
     context: NestContext,
   ) => number | undefined;
   readonly rawBody: () => boolean;
-  readonly trustProxy: () => boolean;
+  readonly trustProxy: () => TrustProxy;
 }
 
 function requestOptions(
@@ -91,7 +99,7 @@ function requestOptions(
  * Builds the request Nest reads and the parser fills.
  *
  * Nest writes to the request bag, so the parsed payload is
- * copied into it here instead of being passed along separately.
+ * copied into it here instead of being handed along separately.
  * A payload that cannot be parsed throws the exception Nest
  * raises for a failed parse, which is what lets the exception
  * layer answer it like any other failure.
@@ -155,14 +163,26 @@ async function watchFailure(
  *
  * An `@Sse()` route answers only when its observable completes,
  * which is exactly what a long-lived stream never does, so the
- * handler is raced against the stream it starts. The moment the
- * stream commits its headers the response goes out, and the
- * handler is left writing into it — with a late failure logged
- * instead of escaping.
+ * handler is raced against the stream it starts. The stream is
+ * asked for before the handler runs, because a handler that
+ * streams writes into the surface the interceptor opens, and
+ * the moment the stream commits its headers the response goes
+ * out. The handler is then left writing into it — with a late
+ * failure logged instead of escaping.
  *
- * The interceptor is handed in rather than imported: which
- * streams exist is a deployment's business, and a composition
- * root decides it by passing the one to use.
+ * The interceptor is the route's own dependency rather than
+ * something the bridge looks up. A route that was given one
+ * therefore always has a real promise to race, so it can only
+ * read as streaming when a stream was actually started.
+ *
+ * The answer is returned rather than read off the context, and
+ * left there. Hono's dispatcher would otherwise assign the
+ * returned answer onto the context and merge, and the merge
+ * reads `body` off the answer to do it — which spends the one
+ * thing that lets the transport write a response in a single
+ * call. It does not: the answer was assigned by
+ * `buildResponse`, which set `finalized`, so the dispatcher
+ * skips the assignment entirely.
  */
 function createRouteHandler(
   handler: NestHandler,

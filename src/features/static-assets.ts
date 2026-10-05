@@ -108,11 +108,6 @@ function assertNoOtherModes(
   }
 }
 
-function assertSupported(options: StaticAssetsOptions): void {
-  assertNoHooks(options);
-  assertNoOtherModes(options);
-}
-
 /** The milliseconds a cache lifetime names. */
 function toMilliseconds(maxAge: number | string): number {
   if (typeof maxAge === 'number') {
@@ -133,19 +128,11 @@ function toMilliseconds(maxAge: number | string): number {
   return Number(amount) * scale;
 }
 
-/** The header a served file is cached with. */
-function cacheControl(options: StaticAssetsOptions): string {
-  const milliseconds = toMilliseconds(options.maxAge ?? 0);
-  const seconds = Math.floor(milliseconds / SECOND);
-  const base = `public, max-age=${seconds}`;
-  if (options.immutable === true) {
-    return `${base}, immutable`;
-  }
-
-  return base;
-}
-
-/** Writes the cache lifetime a deployment asked for. */
+/**
+ * Writes the cache lifetime a deployment asked for: the header
+ * value the served file is cached with, marked immutable when
+ * the deployment asked for that as well.
+ */
 function setCacheControl(
   response: Response,
   options: StaticAssetsOptions,
@@ -154,7 +141,15 @@ function setCacheControl(
     return;
   }
 
-  response.headers.set(CACHE_CONTROL, cacheControl(options));
+  const milliseconds = toMilliseconds(options.maxAge);
+  const seconds = Math.floor(milliseconds / SECOND);
+  const base = `public, max-age=${seconds}`;
+  let value = base;
+  if (options.immutable === true) {
+    value = `${base}, immutable`;
+  }
+
+  response.headers.set(CACHE_CONTROL, value);
 }
 
 /** The index file a directory request is answered with. */
@@ -176,17 +171,6 @@ function withoutPrefix(
   }
 
   return requestPath.slice(prefix.length);
-}
-
-/** The paths one mount answers on. */
-function mountPaths(
-  prefix: string | undefined,
-): readonly string[] {
-  if (prefix === undefined || prefix === '') {
-    return ['/*'];
-  }
-
-  return [prefix, `${prefix}/*`];
 }
 
 /** The handler that serves one directory. */
@@ -226,8 +210,16 @@ function mountStaticAssets(
   path: string | readonly string[],
   options: StaticAssetsOptions,
 ): void {
-  assertSupported(options);
-  const mounts = mountPaths(options.prefix);
+  assertNoHooks(options);
+  assertNoOtherModes(options);
+
+  // The paths one mount answers on: a deployment that named no
+  // prefix has its assets answer every path.
+  const { prefix } = options;
+  let mounts: readonly string[] = ['/*'];
+  if (prefix !== undefined && prefix !== '') {
+    mounts = [prefix, `${prefix}/*`];
+  }
 
   for (const directory of toDirectories(path)) {
     for (const mount of mounts) {

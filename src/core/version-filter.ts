@@ -59,28 +59,34 @@ function matchesVersion(
   );
 }
 
+/** The parameters of one media range, trimmed. */
+function parametersOf(mediaRange: string): string[] {
+  const [, ...parameters] = mediaRange.split(';');
+  return parameters.map((parameter) => parameter.trim());
+}
+
 /**
- * Reads the version out of the `Accept` header, which names it
- * in a parameter of one of its media ranges:
- * `application/json;q=0.8;v=2`.
- *
- * The header is read as ranges and their parameters rather than
- * indexed, because the parameter carrying the version is
- * neither always the first parameter of its range nor always in
- * the first range, and indexing the header reads whichever
- * parameter happens to come first whatever its name.
- *
- * The name looked for is the part of the configured key before
- * its equals sign, which is what Nest documents for `key`, and
- * a trailing `+` is dropped so a key written `v+=` names the
- * same parameter as one written `v=`.
- *
- * When several ranges name a version, the first one in the
- * header wins. A client ranks the ranges it sends in preference
- * order, so the earliest one is the one it asked for first, and
- * this is the order Nest's own adapter settles it in rather
- * than an arbitrary pick.
+ * Reads the version an `Accept` header carries, the way Nest's
+ * own adapters read it: every media range and every parameter
+ * is scanned, because `q` weights and other ranges may come
+ * first, and the first parameter that starts with the key wins.
+ * With `v=` as the key, `application/json;v=1` reads as `1`.
  */
+const TRAILING_PLUS = /\+$/u;
+
+function versionInRange(
+  mediaRange: string,
+  name: string,
+): string | undefined {
+  for (const parameter of parametersOf(mediaRange)) {
+    const [supplied, value] = parameter.split('=');
+    if (supplied === name && value !== undefined) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 function readMediaTypeVersion(
   request: NestRequest,
   key: string,
@@ -89,23 +95,21 @@ function readMediaTypeVersion(
   if (accept === undefined) {
     return undefined;
   }
-  // A key written without its equals sign names the whole of
-  // itself, so the name is whatever precedes one.
-  const [written = key] = key.split('=');
-  const name = `${written.replace('+', '')}=`;
-  // The first part of a range is its media type, and a media
-  // type carries no equals sign, so it never matches a name.
-  const parameters = accept
-    .split(',')
-    .flatMap((range) => range.split(';'))
-    .map((parameter) => parameter.trim());
-  const found = parameters.find((parameter) =>
-    parameter.startsWith(name),
+  // Nest documents the key as `v=` for `application/json;v=1`.
+  // It may carry a trailing plus, as `v+=`, to mean "any version",
+  // and that names the same parameter, so the name is compared
+  // rather than the raw key.
+  const name = (key.split('=')[0] ?? key).replace(
+    TRAILING_PLUS,
+    '',
   );
-  if (found === undefined) {
-    return undefined;
+  for (const mediaRange of accept.split(',')) {
+    const version = versionInRange(mediaRange, name);
+    if (version !== undefined) {
+      return version;
+    }
   }
-  return found.slice(name.length);
+  return undefined;
 }
 
 /**

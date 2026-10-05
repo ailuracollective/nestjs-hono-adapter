@@ -52,18 +52,6 @@ interface CorsOptions {
   readonly preflightContinue?: boolean;
 }
 
-/**
- * What a browser may send. The CSRF header is named because a
- * request that carries it stops being a simple one: a foreign
- * site cannot make it without a preflight, and the preflight is
- * where this list is read.
- */
-const ALLOWED_HEADERS = [
-  'authorization',
-  'content-type',
-  'x-csrf-token',
-];
-
 /** What a browser may call. */
 const ALLOWED_METHODS = [
   'DELETE',
@@ -75,8 +63,12 @@ const ALLOWED_METHODS = [
   'PUT',
 ];
 
-/** How long a browser may reuse a preflight answer. */
-const MAX_AGE_SECONDS = 600;
+/**
+ * How long a browser may reuse a preflight answer when the
+ * deployment named no duration: the value `@fastify/cors`
+ * answers with in the same case.
+ */
+const MAX_AGE_SECONDS = 86_400;
 
 /**
  * The status a preflight is answered with. The specification
@@ -148,12 +140,6 @@ function allowedOrigin(
   };
 }
 
-/**
- * Reads a list of header names. Nest accepts the same list as
- * an array or as one comma-separated string, and the string
- * form is what the platform adapters are given, so both are
- * split.
- */
 /**
  * Reads a list that Nest accepts either as an array or as one
  * comma-separated string. The string form is what the platform
@@ -232,9 +218,29 @@ function resolveOrigin(
 }
 
 /**
+ * The origin rule the middleware is given. A `*` stays the
+ * literal both platform adapters send for it, which also skips
+ * the `Vary: Origin` an echo would need; anything else is
+ * decided per request.
+ */
+function middlewareOrigin(
+  named: AllowedOrigins | undefined,
+): '*' | ((origin: string) => string | undefined) {
+  if (named === '*') {
+    return '*';
+  }
+  return allowedOrigin(named);
+}
+
+/**
  * Translates the options Nest was given into the middleware the
  * adapter runs. An origin a callback resolved for this request
  * is handed in, because the middleware reads the option once.
+ *
+ * The headers a preflight may ask for default to none named,
+ * which is how the middleware is told to reflect the
+ * `Access-Control-Request-Headers` a request arrives with — the
+ * default the platform adapters answer with.
  *
  * An answer status other than the one the middleware sends is
  * refused rather than ignored: the adapter answers a preflight
@@ -261,7 +267,7 @@ function corsMiddleware(
   return cors({
     allowHeaders: headerList(
       options.allowedHeaders,
-      ALLOWED_HEADERS,
+      NO_HEADERS,
     ),
     allowMethods: headerList(options.methods, ALLOWED_METHODS),
     credentials: options.credentials ?? false,
@@ -270,7 +276,7 @@ function corsMiddleware(
       NO_HEADERS,
     ),
     maxAge: options.maxAge ?? MAX_AGE_SECONDS,
-    origin: allowedOrigin(named),
+    origin: middlewareOrigin(named),
   });
 }
 
@@ -343,5 +349,5 @@ function corsBridge(
   };
 }
 
-export { corsBridge, corsMiddleware };
+export { corsBridge };
 export type { CorsOptions };

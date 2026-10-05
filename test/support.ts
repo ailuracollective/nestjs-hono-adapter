@@ -1,11 +1,4 @@
-/**
- * The fixtures every probe serves: the controllers whose routes
- * a case asks for, and the filter that marks an exception it
- * saw. The probe that serves them lives in `probe.ts`.
- */
 import 'reflect-metadata';
-
-import { Readable } from 'node:stream';
 
 import {
   Body,
@@ -20,18 +13,21 @@ import {
   Post,
   Query,
   QueryMethod,
-  Redirect,
   Render,
   Req,
-  Res,
-  StreamableFile,
+  Sse,
 } from '@nestjs/common';
 import type {
   ArgumentsHost,
   ExceptionFilter,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import type { NestContext, NestRequest } from '../src/index.ts';
+import { ServerAdapter } from '../src/index.ts';
+import { startApplication } from './probe.ts';
+import type { Probe, ProbeOptions } from './probe.ts';
 
 /** What a body that is not binary is reported as. */
 const NOT_BINARY = -1;
@@ -108,49 +104,14 @@ class ProbeController {
       secure: source.secure,
     };
   }
-}
 
-/**
- * A controller that answers the way an imperative handler does,
- * through the response object rather than a returned value.
- */
-@Controller('response')
-class ResponseController {
-  @Get('imperative')
-  public imperative(@Res() response: NestContext): void {
-    response.json({ imperative: true }, HttpStatus.CREATED);
-  }
-
-  @Get('passthrough')
-  public passthrough(
-    @Res({ passthrough: true }) response: NestContext,
-  ): unknown {
-    response.header('x-passthrough', 'yes');
-    return { passthrough: true };
-  }
-
-  @Get('decorated')
-  @Header('x-decorated', 'yes')
-  @HttpCode(HttpStatus.ACCEPTED)
-  public decorated(): unknown {
-    return { decorated: true };
-  }
-
-  @Get('redirect')
-  @Redirect(
-    'https://example.com/',
-    HttpStatus.MOVED_PERMANENTLY,
-  )
-  public redirect(): unknown {
-    return {};
-  }
-
-  @Get('file')
-  public file(): StreamableFile {
-    return new StreamableFile(Readable.from(['streamed']), {
-      disposition: 'attachment; filename="note.txt"',
-      type: 'text/plain',
-    });
+  /**
+   * A route whose path ends in a named wildcard, so a case can
+   * read the capture the router answers with.
+   */
+  @Get('files/*rest')
+  public files(@Req() source: NestRequest): unknown {
+    return { params: source.params };
   }
 }
 
@@ -171,13 +132,131 @@ class ViewController {
 }
 
 @Module({
-  controllers: [
-    ProbeController,
-    ResponseController,
-    ViewController,
-  ],
+  controllers: [ProbeController, ViewController],
 })
 class ProbeModule {}
+
+/** How long the second frame of the slow route waits. */
+const SECOND_FRAME_DELAY = 300;
+
+/** How often the open route ticks while the client listens. */
+const TICK_INTERVAL = 10;
+
+/** How many frames the flood route writes with no pause. */
+const FLOOD_FRAMES = 64;
+
+/**
+ * Says when the open route was torn down.
+ *
+ * The subject is a fixture member rather than one a case makes
+ * for itself: the route that fires it lives here too, so a
+ * subject created inside a case would be a different subject
+ * from the one the route writes to, and the case could only
+ * ever wait on its own silence.
+ */
+const torn = new Subject<void>();
+
+/**
+ * The routes every event-stream case starts from: one that
+ * answers at its own pace, one that names every frame field,
+ * one that answers through a promise, two that fail, one that
+ * answers with a status and a header of its own, one that
+ * floods an unread stream, and one that never ends.
+ */
+@Controller()
+class SseController {
+  @Sse('sse/slow')
+  public slow(): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      subscriber.next({ data: 'first' });
+      const timer = setTimeout(() => {
+        subscriber.next({ data: 'second' });
+        subscriber.complete();
+      }, SECOND_FRAME_DELAY);
+      return (): void => {
+        clearTimeout(timer);
+      };
+    });
+  }
+
+  @Sse('sse/frames')
+  @Header('x-stream', 'yes')
+  public frames(): Observable<MessageEvent> {
+    return of({
+      data: { count: 1 },
+      id: 'two',
+      retry: 3000,
+      type: 'tick',
+    });
+  }
+
+  @Sse('sse/promise')
+  public promised(): Promise<Observable<MessageEvent>> {
+    return Promise.resolve(of({ data: 'deferred' }));
+  }
+
+  @Sse('sse/throws')
+  public throws(): Observable<MessageEvent> {
+    throw new ForbiddenException('no stream');
+  }
+
+  @Sse('sse/errors')
+  public errors(): Observable<MessageEvent> {
+    return throwError(() => new Error('stream failed'));
+  }
+
+  @Sse('sse/broken')
+  public broken(): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      subscriber.next({ data: 'open' });
+      subscriber.error(new Error('after the frame'));
+    });
+  }
+
+  /**
+   * Answers with a status and a header the handler never names
+   * itself, so a case can tell whether the adapter passed on
+   * what Nest read from the route metadata.
+   */
+  @Sse('sse/decorated')
+  @Header('x-stream', 'yes')
+  @HttpCode(HttpStatus.ACCEPTED)
+  public decorated(): Observable<MessageEvent> {
+    return of({ data: 'decorated' });
+  }
+
+  /**
+   * Writes more frames than a stream holds, pausing for no
+   * reader, so a case can tell whether a full queue holds the
+   * writer and a stalled reader is caught up whole.
+   */
+  @Sse('sse/flood')
+  public flood(): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      for (let count = 0; count < FLOOD_FRAMES; count += 1) {
+        subscriber.next({ data: { count } });
+      }
+      subscriber.complete();
+    });
+  }
+
+  @Sse('sse/open')
+  public open(): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      subscriber.next({ data: 'open' });
+      const timer = setInterval(() => {
+        subscriber.next({ data: 'tick' });
+      }, TICK_INTERVAL);
+      return (): void => {
+        torn.next();
+        clearInterval(timer);
+      };
+    });
+  }
+}
+
+@Module({ controllers: [SseController] })
+class SseModule {}
 
 /** The status an exception carries, or a server error. */
 function httpStatusOf(exception: unknown): number {
@@ -204,4 +283,50 @@ class MarkerFilter implements ExceptionFilter {
   }
 }
 
-export { MarkerFilter, ProbeModule };
+/** The body of a JSON request, with the headers it needs. */
+function jsonRequest(body: unknown): RequestInit {
+  return {
+    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  };
+}
+
+/**
+ * Starts an application on the fixture above, on an adapter the
+ * caller already built. The module a case did not name is named
+ * here, which is why this entry point sits with the fixture
+ * rather than with the plumbing in `./probe.ts`.
+ */
+function startAdapter(
+  adapter: ServerAdapter,
+  options: ProbeOptions = {},
+): Promise<Probe> {
+  const module = options.module ?? ProbeModule;
+  return startApplication(adapter, module, options);
+}
+
+/**
+ * Starts an application of its own on an adapter of its own,
+ * from the fixture above unless a case names another module.
+ */
+function startProbe(
+  options: ProbeOptions = {},
+): Promise<Probe> {
+  return startAdapter(
+    new ServerAdapter(options.adapter),
+    options,
+  );
+}
+
+export {
+  FLOOD_FRAMES,
+  MarkerFilter,
+  ProbeModule,
+  SECOND_FRAME_DELAY,
+  SseModule,
+  jsonRequest,
+  startAdapter,
+  startProbe,
+  torn,
+};

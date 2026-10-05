@@ -3,10 +3,7 @@ import { expect, test } from 'bun:test';
 import { Hono } from 'hono';
 
 import type { NodeEnv } from '../src/core/context.ts';
-import {
-  corsBridge,
-  corsMiddleware,
-} from '../src/features/cors-middleware.ts';
+import { corsBridge } from '../src/features/cors-middleware.ts';
 import type { CorsOptions } from '../src/features/cors-middleware.ts';
 
 const ALLOWED = 'https://child.example.com';
@@ -27,21 +24,12 @@ const NO_CONTENT = 204;
 /** The status a request whose handling threw is answered with. */
 const SERVER_ERROR = 500;
 
-/** A service with CORS configured the way the bootstrap does it. */
-function service(options: CorsOptions): Hono<NodeEnv> {
-  const hono = new Hono<NodeEnv>();
-
-  hono.use('*', corsMiddleware(options));
-  hono.get('/', (context) => context.text('ok'));
-  hono.post('/', (context) => context.text('ok'));
-
-  return hono;
-}
-
 /**
  * A service that configures CORS the way an application does:
  * the options are read per request, so an origin callback can
- * decide for each one.
+ * decide for each one. The tests go through the bridge rather
+ * than through the middleware the bridge builds, because the
+ * bridge is the path a deployment actually takes.
  */
 function bridged(options: CorsOptions): Hono<NodeEnv> {
   const hono = new Hono<NodeEnv>();
@@ -89,7 +77,7 @@ function headerText(value: string | null): string {
 }
 
 test('an allowed origin is echoed back with credentials', async () => {
-  const response = await service(CROSS_SITE).request('/', {
+  const response = await bridged(CROSS_SITE).request('/', {
     headers: { origin: ALLOWED },
   });
 
@@ -103,7 +91,7 @@ test('an allowed origin is echoed back with credentials', async () => {
 });
 
 test('a foreign origin is answered without anything for it', async () => {
-  const response = await service(CROSS_SITE).request('/', {
+  const response = await bridged(CROSS_SITE).request('/', {
     headers: { origin: FOREIGN },
   });
 
@@ -113,13 +101,13 @@ test('a foreign origin is answered without anything for it', async () => {
 });
 
 test('a request no browser sent is left alone', async () => {
-  const response = await service(CROSS_SITE).request('/');
+  const response = await bridged(CROSS_SITE).request('/');
 
   expect(namedOrigin(response)).toBe(false);
 });
 
 test('a deployment that allows nothing writes nothing', async () => {
-  const response = await service({
+  const response = await bridged({
     credentials: true,
     origin: [],
   }).request('/', { headers: { origin: ALLOWED } });
@@ -128,7 +116,7 @@ test('a deployment that allows nothing writes nothing', async () => {
 });
 
 test('a deployment may allow any origin', async () => {
-  const response = await service({
+  const response = await bridged({
     credentials: true,
     origin: true,
   }).request('/', { headers: { origin: FOREIGN } });
@@ -139,7 +127,7 @@ test('a deployment may allow any origin', async () => {
 });
 
 test('an origin may be matched by a pattern', async () => {
-  const response = await service({
+  const response = await bridged({
     credentials: true,
     origin: [/^https:\/\/[a-z]+\.example\.com$/u],
   }).request('/', { headers: { origin: ALLOWED } });
@@ -150,7 +138,7 @@ test('an origin may be matched by a pattern', async () => {
 });
 
 test('a preflight is answered before any route is reached', async () => {
-  const response = await service(CROSS_SITE).request('/', {
+  const response = await bridged(CROSS_SITE).request('/', {
     headers: {
       'access-control-request-method': 'POST',
       origin: ALLOWED,
@@ -165,17 +153,92 @@ test('a preflight is answered before any route is reached', async () => {
     ),
   ).toMatch(/POST/u);
   expect(
-    headerText(
-      response.headers.get('access-control-allow-headers'),
-    ),
-  ).toMatch(/x-csrf-token/u);
-  expect(
     response.headers.get('access-control-allow-origin'),
   ).toBe(ALLOWED);
 });
 
+/**
+ * A preflight that asks for headers no deployment named is
+ * answered with them: the platform adapters reflect
+ * `Access-Control-Request-Headers` by default, so a client
+ * header a service never heard of is not refused by default.
+ */
+test('a preflight reflects the headers it asks for', async () => {
+  const response = await bridged(CROSS_SITE).request('/', {
+    headers: {
+      'access-control-request-headers':
+        'x-custom-auth, x-tenant',
+      'access-control-request-method': 'POST',
+      origin: ALLOWED,
+    },
+    method: 'OPTIONS',
+  });
+
+  expect(
+    headerText(
+      response.headers.get('access-control-allow-headers'),
+    ),
+  ).toBe('x-custom-auth,x-tenant');
+  expect(response.headers.get('vary')).toMatch(
+    /access-control-request-headers/iu,
+  );
+});
+
+test('a configured header list answers instead of reflecting', async () => {
+  const response = await bridged({
+    allowedHeaders: ['x-only'],
+    origin: [ALLOWED],
+  }).request('/', {
+    headers: {
+      'access-control-request-headers': 'x-custom-auth',
+      'access-control-request-method': 'POST',
+      origin: ALLOWED,
+    },
+    method: 'OPTIONS',
+  });
+
+  expect(
+    headerText(
+      response.headers.get('access-control-allow-headers'),
+    ),
+  ).toBe('x-only');
+});
+
+test('a preflight carries the fastify max age by default', async () => {
+  const preflight = {
+    'access-control-request-method': 'POST',
+    origin: ALLOWED,
+  };
+  const probe = await bridged(CROSS_SITE).request('/', {
+    headers: preflight,
+    method: 'OPTIONS',
+  });
+  const configured = await bridged({
+    maxAge: 60,
+    origin: [ALLOWED],
+  }).request('/', { headers: preflight, method: 'OPTIONS' });
+
+  expect(probe.headers.get('access-control-max-age')).toBe(
+    '86400',
+  );
+  expect(configured.headers.get('access-control-max-age')).toBe(
+    '60',
+  );
+});
+
+test('an origin of * is answered literally', async () => {
+  const response = await bridged({ origin: '*' }).request('/', {
+    headers: { origin: FOREIGN },
+  });
+
+  expect(
+    response.headers.get('access-control-allow-origin'),
+  ).toBe('*');
+  expect(response.headers.get('vary')).toBeNull();
+});
+
 test('a preflight for a foreign origin carries nothing', async () => {
-  const response = await service(CROSS_SITE).request('/', {
+  const response = await bridged(CROSS_SITE).request('/', {
     headers: {
       'access-control-request-method': 'POST',
       origin: FOREIGN,

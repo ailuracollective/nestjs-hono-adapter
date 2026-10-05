@@ -1,150 +1,203 @@
 # Architecture
 
-Where a change is allowed to go, and what refuses it when it
-does not. The shape of `src/` is enforced rather than described,
-so this file explains the checks; where a sentence here and the
-tree disagree, the tree is right.
+This is the map a contributor needs before changing a file. The
+README describes what the adapter does; this describes the shape
+it is built in, and which shapes are refused.
 
-## The layers
+## The three regions of `src/`
 
-`src/` is three directories:
-
-- `core/` holds the Nest to Hono contract: the request and
-  response translation, the path dialect, versioning, and the
-  server lifecycle.
-- `features/` holds the capabilities a deployment turns on —
-  CORS, event streams, static assets and views. Each is bound to
-  the adapter from one place, and nowhere else.
-- the four `ws-*` files at the root, with `ws.ts` beside them,
-  are an island behind the `./ws` subpath.
-
-The split buys one concrete thing: an application that serves
-HTTP never resolves the WebSocket peers. The rest of it is
-ownership — `features/` is where a capability is optional,
-`core/` is where the contract Nest reads lives.
-
-Recompute the sizes with `ls src/core`, `ls src/features` and
-`ls src/*.ts`. The test below names every module it needs to
-find, so a rename fails there before it fails here.
-
-## The import rules
-
-`test/layers.test.ts` walks the relative imports of `src/` and
-refuses four crossings. Its test names are the rule text:
-
-- `core` does not import `features`, except from
-  `src/core/hono-lifecycle.ts` and `src/core/server-adapter.ts`.
-- `features` does not import `features`.
-- `features` does not reach the `ws` island.
-- `ws` imports nothing from `core` or `features` as a value. A
-  type-only import is erased by the compiler, so it is allowed.
-  There is exactly one, and the test names it.
-
-The two composition roots are the load-bearing part of the first
-rule, and they are structural rather than a list someone wrote
-down: `hono-lifecycle.ts` is where CORS is mounted in front of
-every request, `server-adapter.ts` is where the optional
-capabilities are bound to the adapter, and those two are the
-only places the layers meet at all. A third core module naming a
-feature would be a module that composes instead of translating,
-and the exception would stop meaning anything.
-
-What the test names beyond that is a list someone wrote down on
-purpose. The modules a walk has to find are named so a rename
-fails loudly instead of passing vacuously, and the lint
-overrides are named in `.oxlintrc.json` with a reason each;
-`docs/lint-exceptions.md` holds those.
-
-Run it with `bun test test/layers.test.ts`.
-
-## The entry points
-
-`package.json` exports exactly two, `.` and `./ws`. Nothing else
-is reachable to a consumer, which is why moving a module between
-`core/` and `features/` is not a breaking change and the two
-published surfaces are the whole promise.
-
-The split is what keeps an HTTP-only deployment free of the
-optional peers: `test/entry-points.test.ts` walks the graph from
-each entry point and fails when the HTTP one reaches
-`@nestjs/websockets`, `@hono/node-ws` or `ws`. A re-export from
-`index.ts` would not do it, and `src/ws.ts` says why: an ESM
-re-export resolves eagerly and would load them anyway.
-
-## The Node boundary
-
-`src/` is not runtime-neutral and does not pretend to be. It
-imports eight `node:` builtins — `buffer`, `events`, `http`,
-`https`, `fs/promises`, `path`, `stream` and `util` — which is
-what `examples/cloudflare-workers/` sets
-`enable_nodejs_http_server_modules` for: with that flag the
-Workers runtime resolves them, and the example serves a real
-Nest application there.
-
-Recompute the list:
-
-```sh
-grep -rho "from 'node:[^']*'" src/ | sort -u
+```
+src/
+  index.ts  ws.ts                        the two public entrypoints
+  ws-adapter.ts  ws-client.ts  ws-server.ts   the WebSocket island
+  core/     the Nest <-> Hono translation
+  features/ the optional capabilities
 ```
 
-## The error contract
+**`core/`** holds the translation and the adapter chain, plus
+the primitives that translation needs. It is the only region
+that knows both Nest's contract and Hono's objects.
 
-Two families, and which one a refusal belongs to is the part
-worth knowing.
+**`features/`** holds the capabilities a deployment may or may
+not turn on: CORS, event streams, static assets, views. They are
+separate because each one is optional at runtime, and because
+none of them should be able to reach sideways into another.
 
-Refused while the application is being built, so a deployment
-can still change its mind. Each throws a `TypeError`:
+**The WebSocket island** is separate from both. It is the reason
+the package publishes a second entrypoint at all.
 
-- a path the router cannot read (`src/core/path.ts`);
-- a `bodyLimit` that is not a size (`src/core/body.ts`);
-- a route or middleware Nest registered in a shape the router
-  cannot read (`src/core/route-adapter.ts`);
-- a static asset option Hono's own handler decides for itself,
-  refused before anything is mounted
-  (`src/features/static-assets.ts`);
-- a view engine named before one was configured
-  (`src/features/views.ts`);
-- a gateway that asks for its own port, or for a namespace
-  (`src/ws-adapter.ts`).
+## The dependency rules
 
-Answered by the exception layer instead, because a request
-cannot be un-sent. Nest installs its handler through
-`setErrorHandler`, so each of these travels it like any other
-failure and the filters and interceptors see them:
+Four rules, all enforced by `test/layers.test.ts`:
 
-- a body over the limit, or one that does not match its content
-  type: `PayloadTooLargeException` and `BadRequestException`
-  (`src/core/body.ts`);
-- a view that is not there: `NotFoundException`
-  (`src/features/views.ts`);
-- a CORS `optionsSuccessStatus` the adapter does not send, and
-  which it therefore cannot honour: a `TypeError` raised while
-  the preflight is being answered
-  (`src/features/cors-middleware.ts`).
+1. `core/` never reaches `features/`, **except** from
+   `core/hono-lifecycle.ts` and `core/server-adapter.ts`.
+2. `features/` never reaches `features/`.
+3. `features/` never reaches the WebSocket island.
+4. The island reaches `core/` and `features/` **only through
+   type-only imports**.
 
-## The byte ceilings
+Rule 1 has exactly two exceptions because exactly two modules
+are the composition root: they are the ones that turn a
+capability into a running adapter. Everything else in `core/` is
+reached only by Nest's contract.
 
-`.size-limit.json` carries a brotli ceiling per published entry
-point, and `bun run size` is what measures them. It is a gate
-rather than a report: CI fails when a ceiling is exceeded, so a
-bundle that grows has to be argued for.
+Rule 4 is the load-bearing one. `src/ws-adapter.ts` does import
+`ServerAdapter`, and it does so with `import type`. That is
+erased at compile time, so the `/ws` subpath never loads the
+HTTP adapter. The moment that becomes a value import, a
+deployment that only serves HTTP pays for a WebSocket stack.
 
-`ws` carries no headroom at all.
+## Entrypoints and isolation
 
-`index` carries an envelope rather than a margin. The feature
-series is buying capability with bytes — a wildcard that
-resolves, middleware that reaches the paths under it, an
-`Accept` header read by parameter name rather than by position —
-and 7800 B is what that series is allowed to spend, declared
-once so each change reports its cost against a number instead of
-against the last one. It is not a ratchet: inside the series the
-ceiling does not move, and a change that would cross it is the
-discussion rather than the budget. Issue #46 carries the review
-that decides what the number is once the series closes.
+The `exports` map in `package.json` exposes exactly two
+specifiers: `.` and `./ws`. It exposes nothing else, so no
+consumer can reach an internal module by path — which is what
+makes it safe to move files between regions without it being a
+breaking change.
 
-The numbers move with every dependency bump, so read them from
-the measurement and not from here. What is worth knowing is what
-the measurement covers: the two published entry points, bundled
-the way a consumer resolves them, with the peers and the Node
-builtins excluded, because those bytes belong to the deployment
-and not to this package.
+`test/entry-points.test.ts` walks the import graph transitively
+from both entrypoints and fails if the HTTP one reaches
+`@hono/node-ws`, `@nestjs/websockets` or `ws`. Those are
+optional peer dependencies: a deployment that serves HTTP must
+not need them installed.
+
+Note the deliberate difference between the two guards.
+`entry-points.test.ts` counts a type-only import as an edge;
+`layers.test.ts` distinguishes them. That is on purpose. The
+entrypoint guard wants to be conservative — if a type import
+ever becomes a value import, it should catch it early. The layer
+guard has to be precise, because rule 4 is exactly about that
+difference.
+
+## The adapter chain
+
+Three modules, each extending the one before:
+
+```
+RouteAdapter  (core/route-adapter.ts)  extends AbstractHttpAdapter
+  HonoLifecycle (core/hono-lifecycle.ts)  adds the Hono app, the
+                                          middleware and the Node server
+    ServerAdapter (core/server-adapter.ts)  implements the rest of
+                                            the Nest contract
+```
+
+`AbstractHttpAdapter` comes from `@nestjs/core`. The other two
+are ours. They are one cohesive unit: splitting them across
+regions would mean a class extending something the layer rule
+forbids reaching.
+
+## Reading and writing
+
+`core/request.ts` turns a Hono request into the object Nest
+reads. `core/response.ts` turns a value Nest returned into a Web
+`Response`. They are two halves of one translation and they
+share nothing but the type `NestContext`.
+
+The split matters for one concrete reason: `node:stream` is used
+only by the half that streams a `StreamableFile`, so the request
+half does not import it at all.
+
+It is worth being precise about what the split does **not** buy.
+`core/request.ts` still reads `context.env.incoming` — the Node
+request `@hono/node-server` attaches to every request — to fill
+in `raw`, `socket` and `ip`. So the decode half needs the Node
+bindings: this is a Node adapter, not a portable one. The split
+removed a Node import, not the Node dependency.
+
+The suite reflects that honestly. `test/probe.ts` passes a
+synthetic `incoming` binding so most cases can run in process
+with no socket, and the handful that need a real one — TLS,
+shutdown, the WebSocket upgrade — keep it.
+
+Everything that reaches a capability goes through a seam. A
+capability is installed into the bridge as an argument rather
+than imported by it — `handler-bridge.ts` does not know that
+event streams exist. That is the whole point of the seam: the
+request path stays free of the optional features.
+
+One detail of the event stream seam decides how a route is
+answered, so it is worth knowing before you change
+`features/sse.ts` or the bridge that calls it. The stream
+surface — the writable Nest pipes its frames into, and the
+`write`, `setHeader` and `getHeaders` that go with it — is
+installed on the first read of `raw`, not on every request. That
+read is what tells an event stream apart from any other answer,
+and Nest makes it only on its SSE path: an ordinary route never
+builds the writable, never commits a `text/event-stream` answer,
+and keeps Hono's own context API on the object `@Res()` hands
+it. Installing the surface for every request is what answered
+every imperative route as an event stream.
+
+## Errors
+
+There is one funnel. `server-adapter.ts` registers
+`createExceptionRunner` on the Hono error handler, and
+everything Nest raises arrives there. Handlers that catch
+locally do it for a reason they can name: the exception runner
+deliberately does not re-read the body, because the failure may
+well be that reading it failed.
+
+## The Node surface
+
+The adapter is not runtime-neutral and does not claim to be.
+`docs/lint-exceptions.md` states "the platform is Node", and the
+Cloudflare example enables `enable_nodejs_http_server_modules`.
+
+Eight builtins are in use: `node:buffer`, `node:events`,
+`node:fs/promises`, `node:http`, `node:https`, `node:path`,
+`node:stream` and `node:util`. `test/node-builtins.test.ts`
+freezes that set. Adding one is allowed, but it means also
+deciding that the Wrangler compatibility flags still cover it —
+so the test failing is the signal to update both deliberately,
+not an obstacle to route around.
+
+Type-only imports count toward the frozen set, because a
+type-only import still couples a module's types to the platform.
+
+## The bundle budget
+
+`.size-limit.json` holds a ceiling per entrypoint, measured by
+`size-limit` as a consumer would see it: bundled, minified,
+brotlied, with peers external. `pnpm run check` runs it last,
+and CI runs it again as its own job.
+
+The ceilings are ratchets. Growth past one fails, and moving one
+is an explicit edit that has to be justified here. `index` sits
+at 7250 bytes against a measurement of 7101, and it is the one
+that has moved: two correctness fixes — the lazy `@Sse()`
+surface, because an ordinary `@Res()` route was answered as an
+event stream, and the null-body status, where a `@HttpCode(204)`
+handler returning a value was answered `500` — cost 101 bytes,
+and the query refactor and the zero-byte removals beside them
+paid 75 of that back. The net is +26 for the fixes rather than
++101. `ws` is still on its own measurement.
+
+Two consequences worth knowing before you write code:
+
+- **Extracting a helper costs bytes.** The bundler does not
+  inline module-level `function` declarations. Moving code is
+  free; pulling it apart is not.
+- **Import order is not free either.** The order of the import
+  statements in `core/server-adapter.ts` and
+  `core/hono-lifecycle.ts` is load-bearing for the measurement.
+  Alphabetising them costs five bytes. Leave them.
+
+If a change genuinely needs more room, say so in the change
+rather than quietly raising the ceiling. The budget is the
+product.
+
+## Where the guards live
+
+| File                         | What it holds                       |
+| ---------------------------- | ----------------------------------- |
+| `test/layers.test.ts`        | the four dependency rules           |
+| `test/entry-points.test.ts`  | subpath isolation                   |
+| `test/node-builtins.test.ts` | the frozen Node set                 |
+| `.oxlintrc.json`             | rule exceptions, each with a reason |
+
+When a lint exception is added, `docs/lint-exceptions.md`
+records why. That file is the reason the configuration is
+readable at all: it is a copy from a parent repository, and
+without the written reasons there is no telling which of its
+rules are deliberate and which are inherited by accident.

@@ -4,11 +4,12 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import { ServerAdapter } from '../src/index.ts';
-import { request, startProbe } from './probe.ts';
+import { startProbe } from './support.ts';
+import { request } from './probe.ts';
 
 /** The files the static asset cases serve. */
 const FIXTURES = path.join(
-  import.meta.dir,
+  import.meta.dirname,
   'fixtures',
   'public',
 );
@@ -25,6 +26,7 @@ test('a file under the prefix is served', async () => {
     configure: (app) => {
       app.useStaticAssets(FIXTURES, { prefix: '/public' });
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/public/hello.txt');
@@ -44,6 +46,7 @@ test('a directory request is answered with its index', async () => {
         prefix: '/public',
       });
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/public/nested/');
@@ -62,6 +65,7 @@ test('a maximum age is written as a cache header', async () => {
         prefix: '/public',
       });
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/public/hello.txt');
@@ -78,6 +82,7 @@ test('a file that does not exist reaches the routes', async () => {
     configure: (app) => {
       app.useStaticAssets(FIXTURES, { prefix: '/public' });
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(
@@ -92,8 +97,8 @@ test('a file that does not exist reaches the routes', async () => {
 
 /**
  * A case that checks a refusal calls the adapter rather than
- * the application: Bun ends a run when a Nest application
- * method throws, which Nest's own `app.get('nope')` shows too.
+ * the application: a throw from a Nest application method ends
+ * the test run, which Nest's own `app.get('nope')` shows too.
  */
 test('an option the handler cannot honour is refused', () => {
   const adapter = new ServerAdapter();

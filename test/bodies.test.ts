@@ -2,8 +2,12 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import { toByteLimit } from '../src/core/body.ts';
-import { jsonRequest, request, startProbe } from './probe.ts';
-import { MarkerFilter } from './support.ts';
+import {
+  MarkerFilter,
+  jsonRequest,
+  startProbe,
+} from './support.ts';
+import { request } from './probe.ts';
 
 /** A limit small enough that one longer body crosses it. */
 const BODY_LIMIT = 16;
@@ -17,7 +21,9 @@ const BYTES_LIMIT = 512;
 const BINARY_LENGTH = 4;
 
 test('a JSON body reaches the handler that asked for it', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const response = await request(
       probe,
@@ -32,7 +38,9 @@ test('a JSON body reaches the handler that asked for it', async () => {
 });
 
 test('a JSON suffix type is read as JSON', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const response = await request(probe, '/echo', {
       body: JSON.stringify({ data: 'value' }),
@@ -47,7 +55,9 @@ test('a JSON suffix type is read as JSON', async () => {
 });
 
 test('an empty JSON body is read as an empty object', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const response = await request(probe, '/echo', {
       body: '',
@@ -62,7 +72,9 @@ test('an empty JSON body is read as an empty object', async () => {
 });
 
 test('a form body is parsed the way a query string is', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const response = await request(probe, '/echo', {
       body: 'ids=1&ids=2&filter[name]=x',
@@ -81,8 +93,35 @@ test('a form body is parsed the way a query string is', async () => {
   }
 });
 
+test('deep brackets in a form body fold instead of failing', async () => {
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(probe, '/echo', {
+      body: 'alpha[beta][gamma][delta][epsilon][zeta][eta]=h',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
+    });
+    expect(response.status).toBe(HttpStatus.CREATED);
+    expect(response.body).toStrictEqual({
+      alpha: {
+        beta: {
+          gamma: { delta: { epsilon: { '[zeta][eta]': 'h' } } },
+        },
+      },
+    });
+  } finally {
+    await probe.close();
+  }
+});
+
 test('a query string reaches @Query() with its lists', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const response = await request(
       probe,
@@ -100,7 +139,9 @@ test('a query string reaches @Query() with its lists', async () => {
 });
 
 test('a multipart request fills the body and the files', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const form = new FormData();
     form.set('title', 'note');
@@ -123,7 +164,9 @@ test('a multipart request fills the body and the files', async () => {
 });
 
 test('a binary payload reaches the handler as bytes', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({
+    mode: 'in-process',
+  });
   try {
     const response = await request(probe, '/binary', {
       body: new Uint8Array(BINARY_LENGTH),
@@ -142,6 +185,7 @@ test('a binary payload reaches the handler as bytes', async () => {
 test('rawBody keeps the bytes when the application asks for them', async () => {
   const probe = await startProbe({
     application: { rawBody: true },
+    mode: 'in-process',
   });
   try {
     const response = await request(
@@ -163,6 +207,7 @@ test('a malformed body is answered by the exception layer', async () => {
     configure: (app) => {
       app.useGlobalFilters(new MarkerFilter());
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/echo', {
@@ -183,6 +228,7 @@ test('a malformed body is answered by the exception layer', async () => {
 test('a body over the limit is refused before it is read', async () => {
   const probe = await startProbe({
     adapter: { bodyLimit: BODY_LIMIT },
+    mode: 'in-process',
   });
   try {
     const response = await request(

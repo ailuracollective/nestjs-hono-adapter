@@ -1,37 +1,23 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { expect, test } from 'bun:test';
-import {
-  Controller,
-  ForbiddenException,
-  Header,
-  HttpStatus,
-  Module,
-  Sse,
-} from '@nestjs/common';
-import type { MessageEvent } from '@nestjs/common';
-import {
-  Observable,
-  Subject,
-  firstValueFrom,
-  of,
-  throwError,
-  timeout,
-} from 'rxjs';
+import { HttpStatus } from '@nestjs/common';
+import { firstValueFrom, timeout } from 'rxjs';
 
-import { mountStream, startProbe } from './probe.ts';
-
-/** How long the second frame of the slow route waits. */
-const SECOND_FRAME_DELAY = 300;
+import {
+  FLOOD_FRAMES,
+  SECOND_FRAME_DELAY,
+  SseModule,
+  startProbe,
+  torn,
+} from './support.ts';
+import type { Probe } from './probe.ts';
 
 /** How long a frame is given to arrive before a case fails. */
 const FRAME_TIMEOUT = 3000;
 
-/** How often the open route ticks while the client listens. */
-const TICK_INTERVAL = 10;
-
-/** Says when the open route was torn down. */
-let torn: Subject<void> = new Subject<void>();
+/** How long the flood route runs ahead of a stalled reader. */
+const FLOOD_DELAY = 100;
 
 /** One decoded chunk of an event stream, and when it arrived. */
 interface Snapshot {
@@ -158,114 +144,47 @@ function bodyOf(
 }
 
 /**
- * Opens a stream and reads its first frame, so a case can then
- * walk away from a live stream.
+ * Opens a stream on the probe's own connection and reads its
+ * first frame, so a case can then walk away from a live
+ * stream.
+ *
+ * Only a socket probe can do this. The case needs a client that
+ * really disconnects, and an in-process probe has no client to
+ * disconnect: its faked socket never fires `close`.
  */
 async function openStream(
-  origin: string,
+  probe: Probe,
   route: string,
 ): Promise<AbortController> {
   const client = new AbortController();
-  const response = await fetch(`${origin}${route}`, {
+  const response = await probe.respond(route, {
     signal: client.signal,
   });
   await readOnce(bodyOf(response).getReader(), FRAME_TIMEOUT);
   return client;
 }
 
-/** Fetches one route and reads the whole stream it answers. */
+/** Asks one route and reads the whole stream it answers. */
 async function streamText(
-  origin: string,
+  probe: Probe,
   route: string,
 ): Promise<string> {
-  const response = await fetch(`${origin}${route}`);
+  const response = await probe.respond(route);
   return framesOf(
     await collect(bodyOf(response), FRAME_TIMEOUT),
   );
 }
 
-/**
- * The routes every case streams from: one that answers at its
- * own pace, one that names every frame field, one that answers
- * through a promise, two that fail, and one that never ends.
- */
-@Controller()
-class SseController {
-  @Sse('sse/slow')
-  public slow(): Observable<MessageEvent> {
-    return new Observable((subscriber) => {
-      subscriber.next({ data: 'first' });
-      const timer = setTimeout(() => {
-        subscriber.next({ data: 'second' });
-        subscriber.complete();
-      }, SECOND_FRAME_DELAY);
-      return (): void => {
-        clearTimeout(timer);
-      };
-    });
-  }
-
-  @Sse('sse/frames')
-  @Header('x-stream', 'yes')
-  public frames(): Observable<MessageEvent> {
-    return of({
-      data: { count: 1 },
-      id: 'two',
-      retry: 3000,
-      type: 'tick',
-    });
-  }
-
-  @Sse('sse/promise')
-  public promised(): Promise<Observable<MessageEvent>> {
-    return Promise.resolve(of({ data: 'deferred' }));
-  }
-
-  @Sse('sse/throws')
-  public throws(): Observable<MessageEvent> {
-    throw new ForbiddenException('no stream');
-  }
-
-  @Sse('sse/errors')
-  public errors(): Observable<MessageEvent> {
-    return throwError(() => new Error('stream failed'));
-  }
-
-  @Sse('sse/broken')
-  public broken(): Observable<MessageEvent> {
-    return new Observable((subscriber) => {
-      subscriber.next({ data: 'open' });
-      subscriber.error(new Error('after the frame'));
-    });
-  }
-
-  @Sse('sse/open')
-  public open(): Observable<MessageEvent> {
-    return new Observable((subscriber) => {
-      subscriber.next({ data: 'open' });
-      const timer = setInterval(() => {
-        subscriber.next({ data: 'tick' });
-      }, TICK_INTERVAL);
-      return (): void => {
-        torn.next();
-        clearInterval(timer);
-      };
-    });
-  }
+/** A probe with no listener, no port and no teardown. */
+function streamedProbe(): Promise<Probe> {
+  return startProbe({ mode: 'in-process', module: SseModule });
 }
 
-@Module({ controllers: [SseController] })
-class SseModule {}
-
 test('an event stream is answered incrementally', async () => {
-  // A real client reads the frames, so this probe listens.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
+  const probe = await streamedProbe();
   try {
     const started = Date.now();
-    const response = await fetch(`${probe.origin}/sse/slow`);
+    const response = await probe.respond('/sse/slow');
     expect(response.headers.get('content-type')).toContain(
       'text/event-stream',
     );
@@ -282,13 +201,9 @@ test('an event stream is answered incrementally', async () => {
 });
 
 test('a frame carries the data, the type, the id and the retry', async () => {
-  // A real client reads the frames, so this probe listens.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
+  const probe = await streamedProbe();
   try {
-    const response = await fetch(`${probe.origin}/sse/frames`);
+    const response = await probe.respond('/sse/frames');
     expect(response.headers.get('x-stream')).toBe('yes');
     const text = framesOf(
       await collect(bodyOf(response), FRAME_TIMEOUT),
@@ -303,46 +218,34 @@ test('a frame carries the data, the type, the id and the retry', async () => {
 });
 
 test('a promise of an observable is awaited', async () => {
-  // A real client reads the frames, so this probe listens.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
+  const probe = await streamedProbe();
   try {
-    const text = await streamText(probe.origin, '/sse/promise');
+    const text = await streamText(probe, '/sse/promise');
     expect(text).toContain('data: deferred');
   } finally {
     await probe.close();
   }
 });
 
-test('a handler that throws is answered by Nest', async () => {
-  // A real client reads the answer, so this probe listens.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
+test('a stalled reader is caught up whole once it reads', async () => {
+  const probe = await streamedProbe();
   try {
-    const response = await fetch(`${probe.origin}/sse/throws`);
-    expect(response.status).toBe(HttpStatus.FORBIDDEN);
-    expect(response.headers.get('content-type')).toContain(
-      'application/json',
+    const response = await probe.respond('/sse/flood');
+    // The producer runs ahead with nobody reading: what fits
+    // in the queue is held, and the rest waits for this reader.
+    await delay(FLOOD_DELAY, undefined, { ref: false });
+    const text = framesOf(
+      await collect(bodyOf(response), FRAME_TIMEOUT),
     );
-  } finally {
-    await probe.close();
-  }
-});
-
-test('an observable that errors before a frame is answered by Nest', async () => {
-  // A real client reads the answer, so this probe listens.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
-  try {
-    const response = await fetch(`${probe.origin}/sse/errors`);
-    expect(response.status).toBe(
-      HttpStatus.INTERNAL_SERVER_ERROR,
+    const frames = text
+      .split('\n\n')
+      .filter((frame) => frame.includes('data:'));
+    expect(frames).toHaveLength(FLOOD_FRAMES);
+    expect(frames[0]).toContain(
+      `data: ${JSON.stringify({ count: 0 })}`,
+    );
+    expect(text).toContain(
+      `data: ${JSON.stringify({ count: FLOOD_FRAMES - 1 })}`,
     );
   } finally {
     await probe.close();
@@ -350,18 +253,14 @@ test('an observable that errors before a frame is answered by Nest', async () =>
 });
 
 test('a stream that errors after a frame ends with an error event', async () => {
-  // A real client reads the frames, so this probe listens.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
+  const probe = await streamedProbe();
   try {
-    const response = await fetch(`${probe.origin}/sse/broken`);
+    const response = await probe.respond('/sse/broken');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.headers.get('content-type')).toContain(
       'text/event-stream',
     );
-    const text = await streamText(probe.origin, '/sse/broken');
+    const text = await streamText(probe, '/sse/broken');
     expect(text).toContain('data: open');
     expect(text).toContain('event: error\n');
     expect(text).toContain('after the frame');
@@ -370,19 +269,23 @@ test('a stream that errors after a frame ends with an error event', async () => 
   }
 });
 
+/**
+ * This case stays on the socket, and so does the one after it.
+ * What each one is about is a live connection: a client that
+ * really disconnects, and an application really shutting one
+ * down. The faked socket an in-process probe runs with never
+ * emits `close`, and there is no connection for
+ * `forceCloseConnections` to force, so neither claim can be
+ * made without a real one.
+ */
 test('a client that walks away unsubscribes the handler', async () => {
-  torn = new Subject<void>();
-  // The handler has to notice a client leaving a real socket.
-  const probe = await startProbe({
-    mode: 'socket',
-    module: SseModule,
-  });
-  const client = await openStream(probe.origin, '/sse/open');
+  const probe = await startProbe({ module: SseModule });
+  const client = await openStream(probe, '/sse/open');
   try {
     client.abort();
     await firstValueFrom(torn.pipe(timeout(FRAME_TIMEOUT)));
     // The next request is served as if the first one never ran.
-    const text = await streamText(probe.origin, '/sse/frames');
+    const text = await streamText(probe, '/sse/frames');
     expect(text).toContain('data: {"count":1}');
   } finally {
     await probe.close();
@@ -390,13 +293,11 @@ test('a client that walks away unsubscribes the handler', async () => {
 });
 
 test('closing the application while a stream is open settles', async () => {
-  // Closing has to reach a connection that is really open.
   const probe = await startProbe({
     application: { forceCloseConnections: true },
-    mode: 'socket',
     module: SseModule,
   });
-  const client = await openStream(probe.origin, '/sse/open');
+  const client = await openStream(probe, '/sse/open');
   try {
     await Promise.race([
       probe.close(),
@@ -407,23 +308,4 @@ test('closing the application while a stream is open settles', async () => {
   }
   // A second close must settle the same way the first one did.
   await probe.close();
-});
-
-test('the bridge opens the interceptor given it', async () => {
-  const reads: number[] = [];
-  const probe = await startProbe({ module: SseModule });
-  const answer = await mountStream(probe, (context, status) => {
-    reads.push(status() ?? 0);
-    context.res = new Response('mounted', {
-      status: HttpStatus.CREATED,
-    });
-    return Promise.resolve();
-  });
-  try {
-    expect(reads).toStrictEqual([HttpStatus.ACCEPTED]);
-    expect(answer.status).toBe(HttpStatus.CREATED);
-    expect(answer.text).toBe('mounted');
-  } finally {
-    await probe.close();
-  }
 });

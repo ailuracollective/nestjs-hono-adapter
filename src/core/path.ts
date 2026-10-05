@@ -1,11 +1,9 @@
 /**
- * A parameter name, which both dialects write the same way. The
- * whole match is the name, so the expression captures nothing.
+ * A parameter name, which both dialects write the same way and
+ * after either `:` or `*`: the whole match is the name, so the
+ * expression captures nothing.
  */
 const PARAMETER = /^[A-Za-z0-9_]+/u;
-
-/** The name of a wildcard, which the v8 syntax spells `*rest`. */
-const WILDCARD = /^[A-Za-z0-9_]+/u;
 
 /** An optional segment, which the v8 syntax spells `{/:id}`. */
 const OPTIONAL_SEGMENT =
@@ -149,7 +147,7 @@ class PathTranslator {
   }
 
   private readWildcard(): void {
-    const match = WILDCARD.exec(
+    const match = PARAMETER.exec(
       this.path.slice(this.index + 1),
     );
     this.emit('*');

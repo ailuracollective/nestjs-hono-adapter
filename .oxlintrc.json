@@ -179,6 +179,23 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/core/hono-lifecycle.ts"],
+      "rules": {
+        "import/max-dependencies": [
+          "error",
+          {
+            "max": 12
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/sse.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
     }
   ],
   "ignorePatterns": [

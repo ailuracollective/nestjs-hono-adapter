@@ -3,8 +3,8 @@ import { RequestMethod } from '@nestjs/common';
 import type { VersioningOptions } from '@nestjs/common';
 import { AbstractHttpAdapter } from '@nestjs/core';
 
-import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
+import type { NestHandler, NestRequest } from './request.ts';
 import { createVersionFilter } from './version-filter.ts';
 import type { VersionValue } from './version-filter.ts';
 import { asVersionedRoute } from './versioned-route.ts';
@@ -43,6 +43,12 @@ const ALL_METHOD = 'ALL';
 /** Path a handler is mounted at when Nest passes it without one. */
 const ROOT_PATH = '/';
 
+/**
+ * Path middleware is mounted at when Nest passes it without
+ * one.
+ */
+const EVERY_PATH = '*';
+
 /** Either a route path, or the handler to mount at the root. */
 type RouteTarget = string | NestHandler;
 
@@ -66,6 +72,25 @@ function resolveRoute(
 }
 
 /**
+ * The path middleware covers, spelled the way the router reads
+ * it. The platform adapters mount middleware on a prefix —
+ * `use('/api')` answers `/api` and everything under it — and a
+ * Hono path answers exactly what it names, so the prefix is
+ * written out: `/api/*`, which covers `/api` itself as well. A
+ * path that already ends in the wildcard is left alone.
+ */
+function toMiddlewarePath(path: string): string {
+  if (path === ROOT_PATH) {
+    return EVERY_PATH;
+  }
+  if (path.endsWith(EVERY_PATH)) {
+    return path;
+  }
+  const trimmed = path.replace(/\/+$/u, '');
+  return `${trimmed}/${EVERY_PATH}`;
+}
+
+/**
  * The routing half of the Nest adapter contract: every verb a
  * route can be mapped to, the middleware factory and version
  * filtering. The concrete adapter supplies the registration, so
@@ -79,6 +104,16 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
   /** Registers one route with the underlying framework. */
   protected abstract register(
     method: string,
+    path: string,
+    handler: NestHandler,
+  ): void;
+
+  /**
+   * Mounts middleware with the underlying framework, which is
+   * what answers a path and everything under it rather than the
+   * path alone.
+   */
+  protected abstract mount(
     path: string,
     handler: NestHandler,
   ): void;
@@ -204,17 +239,18 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
 
   /**
    * Mounts global middleware. Nest calls this with a handler,
-   * or with a path and a handler, and both answer every
-   * method.
+   * or with a path and a handler. Both answer every method, and
+   * the handler alone answers every path, the way the platform
+   * adapters read the same call.
    */
   public override use(...args: unknown[]): void {
     const [first, second] = args;
     if (isHandler(first) && second === undefined) {
-      this.route(ALL_METHOD, first);
+      this.mount(EVERY_PATH, first);
       return;
     }
     if (typeof first === 'string' && isHandler(second)) {
-      this.route(ALL_METHOD, first, second);
+      this.mount(toMiddlewarePath(first), second);
       return;
     }
     throw new TypeError(
@@ -223,6 +259,12 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
     );
   }
 
+  /**
+   * Mounts one piece of Nest middleware. One for every method
+   * covers the path as a prefix, the way `router.use()` reads
+   * it on the platform adapters; one for a named method answers
+   * the path alone, the way a verb route reads it there.
+   */
   public override createMiddlewareFactory(
     requestMethod: RequestMethod,
   ): (path: string, callback: unknown) => void {
@@ -233,6 +275,10 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
         throw new TypeError(
           'Nest middleware must be registered as a function.',
         );
+      }
+      if (method === ALL_METHOD) {
+        this.mount(toMiddlewarePath(path), callback);
+        return;
       }
       this.route(method, path, callback);
     };
