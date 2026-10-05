@@ -10,6 +10,7 @@ export type {
   NestHandler,
   NestRequest,
   NextHandler,
+  TrustProxy,
 } from './core/request.ts';
 export type {
   NestContext,
@@ -24,4 +25,7 @@ export type {
   ViewEngine,
   ViewOptions,
 } from './features/views.ts';
-export type { ServerAdapterOptions } from './core/server-adapter.ts';
+export type {
+  SecurityHook,
+  ServerAdapterOptions,
+} from './core/server-adapter.ts';

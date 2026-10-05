@@ -43,8 +43,11 @@ interface BodyParserOptions {
  */
 type SecurityHook = (
   request: NestRequest,
-  response: unknown,
-) => unknown;
+  response: {
+    setHeader: (name: string, value: string) => unknown;
+    removeHeader: (name: string) => unknown;
+  },
+) => Error | undefined;
 
 /**
  * HTTP adapter that runs Nest on Hono.
@@ -61,6 +64,20 @@ type SecurityHook = (
 class ServerAdapter extends HonoLifecycle {
   private readonly writer = new ResponseWriter();
   private readonly views: ViewRenderer;
+
+  /**
+   * Registers a hook Nest runs for every request.
+   *
+   * It is installed as an own property and declared here as
+   * one, because which of Nest 11 and 12 declares it on its own
+   * base is not something this class can know, and
+   * `noImplicitOverride` has no way to say "only if it is
+   * there". Declaring it is what makes it visible to
+   * TypeScript; an assigned own property never is.
+   */
+  public override registerSecurityHook!: (
+    hook: SecurityHook,
+  ) => void;
 
   public constructor(options: ServerAdapterOptions = {}) {
     super(options);
@@ -225,39 +242,28 @@ class ServerAdapter extends HonoLifecycle {
    * A failure it reports is thrown into the path the exception
    * layer already owns.
    *
-   * The hook is installed as an own property rather than
-   * declared as a method here. `AbstractHttpAdapter` declares
-   * it only in Nest versions published after 12.0.3, while this
-   * package compiles against `>=11 <13`, so one source has to
-   * be valid both where the base method exists and where it
-   * does not: `override` fails to compile against the versions
-   * that lack it, and a method without it fails against the
-   * versions that have it, because this project asks TypeScript
-   * to check that every overriding member says so. Nest's own
-   * adapters never face the question because Nest compiles
-   * without `noImplicitOverride`. An own property sidesteps the
-   * rule: it shadows the prototype's method when a Nest
-   * declares it, and is the only one there is when it does
-   * not.
+   * It is assigned here rather than written as a method because
+   * `AbstractHttpAdapter` declares it only in Nest versions
+   * published after 12.0.3, while this package compiles against
+   * `>=11 <13`: a method with `override` fails against the
+   * versions that lack it, and one without fails against the
+   * versions that have it. Declaring the member with the base's
+   * own signature and assigning it here is what satisfies
+   * both.
    */
   private installSecurityHook(): void {
-    Object.assign(this, {
-      registerSecurityHook: (hook: SecurityHook): void => {
-        this.hono.use('*', async (context, next) => {
-          const request = toNestRequest(context, {
-            trustProxy: this.trustProxy,
-          });
-          const failure = await hook(
-            request,
-            context.env.outgoing,
-          );
-          if (failure instanceof Error) {
-            throw failure;
-          }
-          return next();
+    this.registerSecurityHook = (hook: SecurityHook): void => {
+      this.hono.use('*', (context, next) => {
+        const request = toNestRequest(context, {
+          trustProxy: this.trustProxy,
         });
-      },
-    });
+        const failure = hook(request, context.env.outgoing);
+        if (failure instanceof Error) {
+          throw failure;
+        }
+        return next();
+      });
+    };
   }
 
   public override setNotFoundHandler(
@@ -362,4 +368,4 @@ declare module '@nestjs/common' {
 
 export { ServerAdapter };
 
-export type { ServerAdapterOptions };
+export type { SecurityHook, ServerAdapterOptions };
