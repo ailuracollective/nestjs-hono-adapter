@@ -14,6 +14,7 @@
  * and a mismatch is a compilation error, so the file is named
  * so that `bun test` leaves it alone as well.
  */
+import type { ProbeApplication } from '../probe.ts';
 import type { HonoLifecycle } from '../../src/core/hono-lifecycle.ts';
 import type { RouteAdapter } from '../../src/core/route-adapter.ts';
 import type {
@@ -94,6 +95,22 @@ interface BaseThatDeclares {
  * arm a Nest 11 install takes is checked here too instead of
  * only there.
  */
+/**
+ * The option's two shapes, which is the same question about a
+ * different declaration: Nest declares `return503OnClosing` on
+ * `NestApplicationOptions` in some versions and not in others,
+ * and the probe has to accept the option either way. Both arms
+ * are held here so the check runs against each instead of only
+ * against whichever Nest is installed.
+ */
+interface OptionsThatDeclare {
+  readonly return503OnClosing?: boolean;
+}
+
+interface OptionsThatDeclareNothing {
+  readonly logger?: unknown;
+}
+
 interface BaseThatDeclaresNeither {
   close: () => Promise<void>;
 }
@@ -172,6 +189,14 @@ type SecurityHookMatchesTheDocumentedSignature = Assert<
  * 11 the base declares no member at all and the assertion above
  * is the one that holds the member.
  */
+type Return503IsAcceptedWhereDeclared = Assert<
+  AssignsTo<ProbeApplication, OptionsThatDeclare>
+>;
+
+type Return503IsAcceptedWhereUndeclared = Assert<
+  AssignsTo<ProbeApplication, OptionsThatDeclareNothing>
+>;
+
 type SecurityHookFitsTheBase = Assert<
   [BaseSecurityHook] extends [never]
     ? true
@@ -182,6 +207,8 @@ type SecurityHookFitsTheBase = Assert<
 >;
 
 export type {
+  Return503IsAcceptedWhereDeclared,
+  Return503IsAcceptedWhereUndeclared,
   BeforeCloseFitsTheBase,
   BeforeCloseMatchesTheDocumentedSignature,
   DetectionTellsADeclarationFromAnAbsence,

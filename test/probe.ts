@@ -116,10 +116,25 @@ interface Probe {
   close: () => Promise<void>;
 }
 
+/**
+ * The application options a case may name.
+ *
+ * `return503OnClosing` reaches this package through Nest, and
+ * Nest declares it only in versions published after 11. Writing
+ * the option directly against `NestApplicationOptions`
+ * type-checks against one supported version and fails against
+ * the other, so it is carried here as well. The cast below is
+ * what that costs: the value is handed to Nest unchanged either
+ * way.
+ */
+type ProbeApplication = NestApplicationOptions & {
+  readonly return503OnClosing?: boolean;
+};
+
 /** How a probe is built, when the defaults are not enough. */
 interface ProbeOptions {
   readonly adapter?: ServerAdapterOptions;
-  readonly application?: NestApplicationOptions;
+  readonly application?: ProbeApplication;
   readonly configure?: (app: INestApplication) => void;
   /**
    * The module the application is built from, when the probe
@@ -139,9 +154,9 @@ interface ProbeOptions {
  * otherwise.
  */
 function applicationOptions(
-  given: NestApplicationOptions | undefined,
-): NestApplicationOptions {
-  const merged: NestApplicationOptions = { logger: false };
+  given: ProbeApplication | undefined,
+): ProbeApplication {
+  const merged: ProbeApplication = { logger: false };
   if (given === undefined) {
     return merged;
   }
@@ -269,4 +284,10 @@ function startProbe(
 }
 
 export { request, startApplication, startProbe };
-export type { Probe, ProbeMode, ProbeOptions, ProbeResult };
+export type {
+  ProbeApplication,
+  Probe,
+  ProbeMode,
+  ProbeOptions,
+  ProbeResult,
+};
