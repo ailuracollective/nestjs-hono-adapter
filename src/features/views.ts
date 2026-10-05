@@ -5,6 +5,7 @@ import { NotFoundException } from '@nestjs/common';
 
 import type { NestContext } from '../core/context.ts';
 import { toDirectories } from '../core/directories.ts';
+import { isRecord } from '../core/query.ts';
 
 /** The data a template is rendered with. */
 type ViewData = Record<string, unknown>;
@@ -28,15 +29,13 @@ interface ViewOptions {
   readonly engine: ViewEngine;
 }
 
-function isRecord(value: unknown): value is ViewData {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value)
-  );
-}
-
-/** The value a handler returned, as the object a template reads. */
+/**
+ * The value a handler returned, as the object a template reads.
+ * A handler that returns nothing has nothing to render with,
+ * which is an empty object rather than a refusal: what an
+ * absent variable means is the template's decision, not the
+ * adapter's.
+ */
 function asData(options: unknown): ViewData {
   if (isRecord(options)) {
     return options;

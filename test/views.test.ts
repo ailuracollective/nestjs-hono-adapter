@@ -5,11 +5,12 @@ import { HttpStatus } from '@nestjs/common';
 
 import type { ViewEngine } from '../src/index.ts';
 import { ServerAdapter } from '../src/index.ts';
-import { request, startProbe } from './probe.ts';
+import { startProbe } from './support.ts';
+import { request } from './probe.ts';
 
 /** The templates the view cases render. */
 const FIXTURES = path.join(
-  import.meta.dir,
+  import.meta.dirname,
   'fixtures',
   'views',
 );
@@ -27,6 +28,7 @@ test('a view is rendered with the engine the deployment gave', async () => {
     configure: (app) => {
       app.setViewEngine(ENGINE);
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/view');
@@ -45,6 +47,7 @@ test('a view directory named on the application is read from', async () => {
       app.setBaseViewsDir(FIXTURES);
       app.setViewEngine(`.${ENGINE}`);
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/view');
@@ -61,6 +64,7 @@ test('a view that does not exist is a not-found answer', async () => {
     configure: (app) => {
       app.setViewEngine(ENGINE);
     },
+    mode: 'in-process',
   });
   try {
     const response = await request(probe, '/view/missing');
@@ -72,8 +76,8 @@ test('a view that does not exist is a not-found answer', async () => {
 
 /**
  * A case that checks a refusal calls the adapter rather than
- * the application: Bun ends a run when a Nest application
- * method throws, which Nest's own `app.get('nope')` shows too.
+ * the application: a throw from a Nest application method ends
+ * the test run, which Nest's own `app.get('nope')` shows too.
  */
 test('naming an engine without one configured is refused', () => {
   const adapter = new ServerAdapter();

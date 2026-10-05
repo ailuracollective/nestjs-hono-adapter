@@ -20,7 +20,7 @@
     "**/.turbo/**",
     "**/.vite/**",
     "**/*.tsbuildinfo",
-    "bun.lock",
+    "pnpm-lock.yaml",
     "CHANGELOG.md",
     "examples/**"
   ]

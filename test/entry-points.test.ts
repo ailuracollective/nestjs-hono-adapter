@@ -4,8 +4,14 @@ import path from 'node:path';
 import { expect, test } from 'bun:test';
 
 /** The HTTP entry point, and the WebSocket one beside it. */
-const ENTRY = path.resolve(import.meta.dir, '../src/index.ts');
-const WS_ENTRY = path.resolve(import.meta.dir, '../src/ws.ts');
+const ENTRY = path.resolve(
+  import.meta.dirname,
+  '../src/index.ts',
+);
+const WS_ENTRY = path.resolve(
+  import.meta.dirname,
+  '../src/ws.ts',
+);
 
 /**
  * The packages a deployment that only serves HTTP must not

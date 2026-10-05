@@ -19,11 +19,11 @@ bundle ceilings are written down in
 ## Install
 
 ```sh
-bun add @ailura/nestjs-hono-adapter hono @hono/node-server
+npm install @ailura/nestjs-hono-adapter hono @hono/node-server
 ```
 
 ```sh
-npm install @ailura/nestjs-hono-adapter hono @hono/node-server
+pnpm add @ailura/nestjs-hono-adapter hono @hono/node-server
 ```
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
@@ -40,7 +40,10 @@ import { AppModule } from './app.module.ts';
 
 const app = await NestFactory.create(
   AppModule,
-  new ServerAdapter({ bodyLimit: '2mb', trustProxy: true }),
+  new ServerAdapter({
+    bodyLimit: 2 * 1024 * 1024,
+    trustProxy: true,
+  }),
 );
 app.enableCors({
   credentials: true,
@@ -54,13 +57,46 @@ packages branch on.
 
 ## Options
 
-| Option          | Type                | Default | Effect                                                                               |
-| --------------- | ------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `bodyLimit`     | `number \| string`  | `1mb`   | Largest request body, as bytes or as a size such as `'512kb'`; `0` removes the limit |
-| `rawBody`       | `boolean`           | `false` | Keep the bytes that were read in `NestRequest.rawBody`                               |
-| `secureHeaders` | `boolean \| object` | `true`  | Install `hono/secure-headers`, with its defaults or with the given options           |
-| `trustProxy`    | `boolean`           | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                   |
-| `views`         | `object`            | —       | The engine a `@Render()` handler renders with, and where templates are read from     |
+| Option          | Type                            | Default | Effect                                                                           |
+| --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------- |
+| `bodyLimit`     | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                            |
+| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                           |
+| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options       |
+| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`               |
+| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from |
+
+## Where the platform adapters disagree
+
+Where `platform-express` and `platform-fastify` answer the same
+situation differently, this adapter answers as
+`platform-fastify` does. That is the closer of the two in every
+case that matters here: the router scores its routes rather than
+matching them in registration order, the response is
+encapsulated behind an object with an escape hatch to the
+socket, a trailing slash is significant, a body limit is a
+megabyte, and there is no `X-Powered-By` or `ETag` on the way
+out.
+
+Two defaults follow the **Express 4** behaviour instead, on
+purpose: `@Query()` and a URL-encoded body are parsed with the
+`qs` grammar, and an empty JSON body reads as `{}`. Both are
+supersets of the flat parsers the other two platforms use, so a
+controller written against either keeps reading what it expects.
+Express 5 reads the query flat; anything written for `qs` nests
+and stays a superset.
+
+| Situation                                      | This adapter                                          | Express                                      | Fastify                    |
+| ---------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- | -------------------------- |
+| A handler returns a string                     | `text/plain`                                          | `text/html`                                  | `text/plain`               |
+| A handler returns raw bytes                    | `application/octet-stream`                            | serialised as JSON                           | `application/octet-stream` |
+| `GET /users/` for `/users`                     | 404                                                   | matches                                      | 404                        |
+| A redirect carries a body                      | no                                                    | yes                                          | no                         |
+| Default body limit                             | 1 MiB                                                 | 100 KB                                       | 1 MiB                      |
+| Empty JSON body                                | `{}`                                                  | `{}`                                         | 400                        |
+| A body of JSON primitives                      | accepted                                              | 400                                          | accepted                   |
+| `trustProxy: 1` (hops) / `['10.0.0.1']` (list) | supported, read as proxy-addr reads it                | through `trust proxy` settings               | supported                  |
+| `req.params['*']` for `@Get('files/*')`        | the wildcard capture                                  | `req.params.rest` (array, path-to-regexp v8) | `req.params['*']`          |
+| Middleware for every method                    | the path as a prefix, the way `router.use()` reads it | same                                         | same                       |
 
 ## Routes
 
@@ -78,8 +114,24 @@ A path the router cannot read — `/users?`, a stray `}` or `(`,
 or a group that holds more than one parameter — throws as the
 application starts, rather than answering 404 later.
 
+A wildcard is read back under `*`, the key Fastify answers it
+by, and the name a route gave it is not carried over:
+`@Get('files/*rest')` fills `req.params['*']` with
+`reports/2024/q1.csv` for `/files/reports/2024/q1.csv`. Hono
+matches a wildcard without reporting what it stood for, so the
+adapter reads the capture out of the path itself.
+
+Middleware mounted for every method — `app.use(fn)` and a
+`MiddlewareConsumer` without a method — answers the path it was
+given as a prefix, the way `router.use()` reads it on both
+platform adapters: `use('/api')` answers `/api` and everything
+under it. Middleware for one named method answers that path
+alone, as a verb route reads it there.
+
 Versioning works over URI, header, media type and the custom
-strategy, including versioned redirects.
+strategy, including versioned redirects. A media-type version is
+read out of `Accept` wherever it sits: `q` weights before it, or
+an earlier media range, are skipped rather than mistaken for it.
 
 ## Query strings
 
@@ -104,8 +156,11 @@ A body that does not match its content type is refused with
 Nest's own `BadRequestException`, and one over `bodyLimit` with
 `PayloadTooLargeException`, so both travel through the exception
 layer and its filters.
-`app.useBodyParser('json', { limit: '1kb' })` overrides the
-limit for the parser names it is called with.
+
+`app.useBodyParser('json', { limit: '1kb' })` ignores the parser
+name and sets one limit for the adapter, so the size applies to
+every parser and every route, and it replaces the `bodyLimit`
+option. Called without a `limit` it changes nothing.
 
 With `rawBody: true` — the adapter option, or the same option on
 `NestFactory.create` — `NestRequest.rawBody` holds the bytes
@@ -115,9 +170,13 @@ never fill it, because the platform parser consumes the stream.
 ## Responses
 
 A returned value is answered as Nest answers it: an object as
-JSON, a string as text, a number as a status. `@Header()`,
-`@HttpCode()`, `@Redirect()` and `StreamableFile` are all
-honoured.
+JSON, a string as text, a number as a status. Raw bytes —
+`Buffer`, `Uint8Array`, `ArrayBuffer`, a `ReadableStream` — are
+answered as `application/octet-stream`, the type Fastify labels
+them with, because serialising them as JSON is the one answer
+that loses them. `@Header()`, `@HttpCode()`, `@Redirect()` and
+`StreamableFile` are all honoured, and a declared `Content-Type`
+always wins over the inferred one.
 
 `@Res()` works, and so does `@Res({ passthrough: true })`:
 Hono's own response helpers (`json`, `text`, `html`, `body`,
@@ -125,6 +184,11 @@ Hono's own response helpers (`json`, `text`, `html`, `body`,
 here, and the adapter makes sure the response a handler builds
 that way is the one that is sent. A `Response` assigned straight
 to `context.res` is sent as well.
+
+`write`, `setHeader`, `getHeaders` and the other Node stream
+members are installed only once an `@Sse()` route opens its
+stream, so a handler that reaches for one on an ordinary route
+fails rather than writing.
 
 ## Server-sent events
 
@@ -222,6 +286,26 @@ a deployment is told at startup rather than noticing later:
 `index: false`, `etag: false`, and `immutable` without a
 `maxAge`. An ETag is always written.
 
+## Request-level security
+
+`secureHeaders: true` installs `hono/secure-headers` for the
+answers the adapter builds, which the platform adapters do not
+do by default.
+
+Nest's own request-level security features — the security
+headers and the CSRF check it calls through
+`registerSecurityHook()` — are registered as Hono middleware in
+front of every route. The hook is handed the request it reads
+and the raw response it writes, the same two objects the Fastify
+adapter gives it, and the transport merges the headers it sets
+into whatever the route answers.
+
+The hook is installed as an own property rather than declared as
+a method: `AbstractHttpAdapter` declares it only in Nest
+versions published after 12.0.3, and this package compiles
+against `>=11 <13`, so one build has to answer a Nest that
+declares the method and one that does not.
+
 ## TLS, proxies and shutdown
 
 Pass Node's TLS options to Nest and the adapter builds an
@@ -236,17 +320,31 @@ await NestFactory.create(AppModule, new ServerAdapter(), {
 `getHttpServer()` returns that server, so an application can
 read its address or attach a listener.
 
-With `trustProxy: true`, `x-forwarded-proto`, `x-forwarded-for`
-and `x-forwarded-host` fill `NestRequest.protocol`, `secure`,
-`ip`, `ips` and `hostname`; without it they are ignored. The
-socket address is always used as the peer.
+`trustProxy` decides how much of a proxy's word the deployment
+believes, and the levels are the ones Fastify reads from
+proxy-addr:
+
+- `false` — nothing the chain says is read, and the socket
+  address is the peer.
+- `true` — the whole chain is trusted, so `ip` is the leftmost
+  address and `x-forwarded-proto` and `x-forwarded-host` fill
+  `protocol`, `secure` and `hostname`.
+- a **hop count** — that many addresses from the right are
+  trusted, `ip` being the first address past them.
+- a **list** — those addresses are trusted, `ip` being the first
+  address to the left of them that the list does not name. The
+  socket's own address is one of the addresses a list may name.
+
+`ips` is the chain as written whenever anything is trusted.
 
 `app.close()` stops accepting connections and then closes the
-server. `return503OnClosing: true` answers `503` to the requests
-that arrive while it is closing, and
-`forceCloseConnections: true` destroys the connections the
-server is still holding instead of waiting for them — both from
-the same options object Nest accepts.
+server. `return503OnClosing: true` answers `503`, with
+`Connection: close`, to the requests that arrive once the
+shutdown has started — from `beforeClose()`, so the destroy and
+before-shutdown hooks run inside that window rather than outside
+it — and `forceCloseConnections: true` destroys the connections
+the server is still holding instead of waiting for them, both
+from the same options object Nest accepts.
 
 ## Hono underneath
 
@@ -356,6 +454,15 @@ itself: the preflight headers are copied onto the response and
 the router answers, which is what an application with its own
 `OPTIONS` route wants.
 
+What the middleware answers when nothing is named follows the
+platform adapters: a preflight reflects the
+`Access-Control-Request-Headers` it arrived with rather than a
+list the deployment never wrote, a `max-age` of a day goes out
+by default, and an origin of `'*'` is answered literally, with
+no `Vary: Origin` to cache around it. An origin named with
+`true` or with a list is echoed back instead, which is what a
+deployment with credentials needs.
+
 Allowed origins are passed in by the application, which reads
 them from its own configuration. This package reads no
 environment variable, so one deployment policy is not baked into
@@ -370,24 +477,30 @@ the library.
 
 ## Development
 
-Bun installs and runs the workspace; the gates are oxlint,
-oxfmt, `tsc` and `bun test`.
+pnpm installs and runs the workspace; the gates are oxlint,
+oxfmt, `tsc`, vitest and size-limit.
 
 ```sh
-bun install
-bun run check
+pnpm install
+pnpm run check
 ```
 
-`bun run check` is exactly what CI runs: lint, format,
-typecheck, test, build.
+`pnpm run check` is exactly what CI runs: lint, format,
+typecheck, test, build and the bundle size gate.
+
+Before changing a file, read
+[docs/architecture.md](docs/architecture.md): it maps the
+regions of `src/`, the four dependency rules between them, what
+the frozen Node surface is, and why the bundle ceilings behave
+the way they do.
 
 The cases start a real application on an ephemeral port and talk
 to it over `fetch`, so they cover the path and query dialects,
 every body type, the response forms, event streams, CORS, views,
 static assets, TLS selection, proxy headers and shutdown. The
-TLS case runs its check in a child Node process, because Bun
-gives `node:http` and `node:https` the same `Server` class and
-`instanceof` cannot tell them apart there.
+TLS case runs its check in a child Node process, because the
+suite has to see the server class the way a consumer would, from
+a plain Node process rather than from the test runner.
 
 The adapter builds against two Nest majors. The suite runs
 against the version the lockfile pins, and the CI compatibility
@@ -398,17 +511,18 @@ the adapter. To run it locally, move the four packages in one
 call and put them back afterwards:
 
 ```sh
-bun add --exact @nestjs/common@11.x @nestjs/core@11.x \
+pnpm add --save-exact @nestjs/common@11.x @nestjs/core@11.x \
   @nestjs/websockets@11.x @nestjs/microservices@11.x
-bun run check
-bun install
+pnpm run check
+pnpm install
 ```
 
-Bun transpiles the tests from the root `tsconfig.json`, and the
-fixtures are Nest controllers whose decorators are the legacy
-kind, which is why that file turns `experimentalDecorators` and
-`emitDecoratorMetadata` on. The library declares no decorator,
-so neither flag changes what `bun run build` emits.
+The tests are transpiled from the root `tsconfig.json` through
+swc, and the fixtures are Nest controllers whose decorators are
+the legacy kind, which is why that file turns
+`experimentalDecorators` and `emitDecoratorMetadata` on. The
+library declares no decorator, so neither flag changes what
+`pnpm run build` emits.
 
 ## License
 

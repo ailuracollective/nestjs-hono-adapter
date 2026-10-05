@@ -18,7 +18,8 @@ import type { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 
 import { ServerAdapter } from '../src/index.ts';
-import { request, startAdapter } from './probe.ts';
+import { startAdapter } from './support.ts';
+import { request } from './probe.ts';
 import type { Probe } from './probe.ts';
 
 /** The interface a case binds both transports to. */
@@ -83,7 +84,12 @@ async function freePort(): Promise<number> {
   return portOf(address);
 }
 
-/** Starts the hybrid fixture on a microservice port of its own. */
+/**
+ * Starts the hybrid fixture with the HTTP side answered in
+ * process: the case is about one application serving both
+ * transports, and the TCP socket that matters here belongs to
+ * the microservice, which binds its own port either way.
+ */
 function startHybrid(port: number): Promise<Probe> {
   return startAdapter(new ServerAdapter(), {
     configure: (app) => {
@@ -92,6 +98,7 @@ function startHybrid(port: number): Promise<Probe> {
         transport: Transport.TCP,
       });
     },
+    mode: 'in-process',
     module: HybridModule,
   });
 }

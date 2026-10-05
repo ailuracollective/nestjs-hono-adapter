@@ -7,11 +7,13 @@ import type { NestApplicationOptions } from '@nestjs/common';
 import { Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
 
-import { closingBridge } from './closing.ts';
 import type { NestHono, NodeEnv } from './context.ts';
+import type { TrustProxy } from './request.ts';
 import { corsBridge } from '../features/cors-middleware.ts';
 import type { CorsOptions } from '../features/cors-middleware.ts';
+import { guardBridge } from '../features/guard-bridge.ts';
 import { RouteAdapter } from './route-adapter.ts';
+import { mountSse } from '../features/sse.ts';
 
 /**
  * The shutdown options, which Nest 11 does not declare as part
@@ -42,8 +44,8 @@ interface TransportOptions {
   readonly rawBody?: boolean;
   /** The security headers to send, or `false` to send none. */
   readonly secureHeaders?: boolean | SecureHeadersOptions;
-  /** Whether `X-Forwarded-*` headers come from a proxy. */
-  readonly trustProxy?: boolean;
+  /** How much of a proxy's word the deployment believes. */
+  readonly trustProxy?: TrustProxy;
 }
 
 /** Destroys the connections a server is still holding open. */
@@ -77,7 +79,13 @@ function isNotRunning(error: unknown): boolean {
  */
 abstract class HonoLifecycle extends RouteAdapter {
   protected readonly hono: NestHono;
-  protected readonly trustProxy: boolean;
+  /**
+   * The surface an event stream is written into. It is named
+   * here, next to the other features this class wires, so the
+   * bridge is handed one instead of reaching for the feature.
+   */
+  protected readonly interceptor = mountSse;
+  protected readonly trustProxy: TrustProxy;
   protected bodyLimit: number;
   protected bodyParsingEnabled = false;
   protected rawBodyEnabled: boolean;
@@ -94,16 +102,21 @@ abstract class HonoLifecycle extends RouteAdapter {
     this.rawBodyEnabled = options.rawBody ?? false;
     this.trustProxy = options.trustProxy ?? false;
     this.installSecurityHeaders(options.secureHeaders ?? true);
-    // CORS runs first, so a 503 sent while closing is readable.
+    // CORS and the closing refusal are one step through the
+    // dispatcher rather than two, because each mounted middleware
+    // is a step every request pays and an application that
+    // configured neither should not pay for either. The guard
+    // reports nothing for CORS until `enableCors()` has run, so
+    // the CORS step is built here and offered only once there is
+    // something for it to do.
+    const cors = corsBridge(() => this.corsOptions);
     hono.use(
       '*',
-      corsBridge(() => this.corsOptions),
-    );
-    hono.use(
-      '*',
-      closingBridge(
-        () => this.return503OnClosing && this.closing,
-      ),
+      guardBridge({
+        closing: () => this.return503OnClosing && this.closing,
+        cors,
+        corsEnabled: () => this.corsOptions !== undefined,
+      }),
     );
   }
 
@@ -135,6 +148,16 @@ abstract class HonoLifecycle extends RouteAdapter {
     return false;
   }
 
+  /**
+   * Marks the application as closing when Nest starts its
+   * shutdown rather than when the server is closed, so a
+   * deployment that asked for `return503OnClosing` is refused
+   * through the destroy and before-shutdown hooks as well.
+   */
+  public override beforeClose(): void {
+    this.closing = true;
+  }
+
   /** Reads the shutdown options Nest hands the adapter. */
   private readShutdownOptions(
     options: NestApplicationOptions,
@@ -150,6 +173,19 @@ abstract class HonoLifecycle extends RouteAdapter {
    * Creates the Node server Hono's fetch handler is served
    * through. Hono has no listener of its own, so `listen()` and
    * `close()` operate on the value built here.
+   *
+   * `@hono/node-server` replaces the global `Response` with a
+   * lighter one that holds the status, the headers and the body
+   * as three fields, so the writer hands an answer to the
+   * socket in one `end()` rather than reading its body as a
+   * stream and writing it a chunk at a time. That replacement
+   * is left enabled: it is worth roughly a third of the CPU an
+   * answer costs, and the adapter builds its answers out of the
+   * global at call time, so they come out as the lighter class
+   * without this adapter holding a reference of its own. The
+   * library sets the lighter class's prototype to the native
+   * one, so an answer still passes `instanceof Response`
+   * against what it was before.
    */
   public override initHttpServer(
     options: NestApplicationOptions,
@@ -163,7 +199,6 @@ abstract class HonoLifecycle extends RouteAdapter {
       this.setHttpServer(
         createAdaptorServer({
           fetch: this.hono.fetch,
-          overrideGlobalObjects: false,
         }),
       );
       return;
@@ -171,7 +206,6 @@ abstract class HonoLifecycle extends RouteAdapter {
     const adaptorOptions: AdaptorOptions = {
       createServer: createHttpsServer,
       fetch: this.hono.fetch,
-      overrideGlobalObjects: false,
       serverOptions: certificate,
     };
     this.setHttpServer(createAdaptorServer(adaptorOptions));

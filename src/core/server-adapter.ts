@@ -1,7 +1,8 @@
+import type { CorsOptions } from '../features/cors-middleware.ts';
 import { toByteLimit } from './body.ts';
+import { toNestRequest } from './request.ts';
 import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
-import type { CorsOptions } from '../features/cors-middleware.ts';
 import {
   createExceptionRunner,
   createRouteHandler,
@@ -16,7 +17,6 @@ import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
-import { mountSse } from '../features/sse.ts';
 import { mountStaticAssets } from '../features/static-assets.ts';
 import type { StaticAssetsOptions } from '../features/static-assets.ts';
 import { ViewRenderer } from '../features/views.ts';
@@ -37,6 +37,16 @@ interface BodyParserOptions {
 }
 
 /**
+ * The hook Nest's built-in HTTP security features register, as
+ * the base class types it: the request it reads and the raw
+ * response it writes.
+ */
+type SecurityHook = (
+  request: NestRequest,
+  response: unknown,
+) => unknown;
+
+/**
  * HTTP adapter that runs Nest on Hono.
  *
  * There is no official Hono adapter for Nest, so this one lives
@@ -55,6 +65,7 @@ class ServerAdapter extends HonoLifecycle {
   public constructor(options: ServerAdapterOptions = {}) {
     super(options);
     this.views = new ViewRenderer(options.views);
+    this.installSecurityHook();
   }
 
   public override status(
@@ -205,6 +216,50 @@ class ServerAdapter extends HonoLifecycle {
     this.applyLimit(options);
   }
 
+  /**
+   * Runs the request hook of Nest's built-in HTTP security
+   * features in front of every route. The hook is handed the
+   * request it reads and the raw response it writes, the same
+   * two objects the Fastify adapter gives it, and the transport
+   * merges the headers it sets into whatever the route answers.
+   * A failure it reports is thrown into the path the exception
+   * layer already owns.
+   *
+   * The hook is installed as an own property rather than
+   * declared as a method here. `AbstractHttpAdapter` declares
+   * it only in Nest versions published after 12.0.3, while this
+   * package compiles against `>=11 <13`, so one source has to
+   * be valid both where the base method exists and where it
+   * does not: `override` fails to compile against the versions
+   * that lack it, and a method without it fails against the
+   * versions that have it, because this project asks TypeScript
+   * to check that every overriding member says so. Nest's own
+   * adapters never face the question because Nest compiles
+   * without `noImplicitOverride`. An own property sidesteps the
+   * rule: it shadows the prototype's method when a Nest
+   * declares it, and is the only one there is when it does
+   * not.
+   */
+  private installSecurityHook(): void {
+    Object.assign(this, {
+      registerSecurityHook: (hook: SecurityHook): void => {
+        this.hono.use('*', async (context, next) => {
+          const request = toNestRequest(context, {
+            trustProxy: this.trustProxy,
+          });
+          const failure = await hook(
+            request,
+            context.env.outgoing,
+          );
+          if (failure instanceof Error) {
+            throw failure;
+          }
+          return next();
+        });
+      },
+    });
+  }
+
   public override setNotFoundHandler(
     handler: NestHandler,
   ): void {
@@ -232,13 +287,27 @@ class ServerAdapter extends HonoLifecycle {
     const honoHandler = createRouteHandler(
       handler,
       this.bridgeOptions,
-      mountSse,
+      this.interceptor,
     );
     if (method === ALL_METHOD) {
       this.hono.all(honoPath, honoHandler);
       return;
     }
     this.hono.on(method, honoPath, honoHandler);
+  }
+
+  protected override mount(
+    path: string,
+    handler: NestHandler,
+  ): void {
+    this.hono.use(
+      toHonoPath(path),
+      createRouteHandler(
+        handler,
+        this.bridgeOptions,
+        this.interceptor,
+      ),
+    );
   }
 
   private get bridgeOptions(): BridgeOptions {

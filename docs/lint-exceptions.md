@@ -71,6 +71,28 @@ contract, which makes two rules false positives:
   exactly the crossing the layered tree is for, and no file
   outside those two directories needs it.
 
+## Scoped to `src/core/hono-lifecycle.ts`
+
+- `import/max-dependencies` at 12 — it is the composition root
+  beside `server-adapter.ts`: CORS, the guard bridge, event
+  streams and the Node server factory are each their own module
+  and it binds all of them. Folding two together to satisfy a
+  count would hide a boundary the rest of the package keeps.
+
+## Scoped to `src/features/sse.ts`
+
+- `typescript/no-unsafe-type-assertion` — the stream's state
+  hangs off the Hono context under a module-private symbol,
+  because the context object is the one thing the writer and the
+  reader both hold. Reaching it means naming a shape the
+  `NestContext` type does not declare. Three sites, one reason.
+
+- `promise/avoid-new`, on one line — the waiter is a promise
+  settled from outside its own body, which is what a deferred
+  is. Written with `async` it would resolve at the first `await`
+  and settle nothing afterwards, which is the case this exists
+  for.
+
 ## Scoped to `test/**/*.ts`
 
 - `max-lines` at 600, against 400 for source. A source file that
@@ -87,6 +109,28 @@ contract, which makes two rules false positives:
   a number rather than on a reason. That is the failure this
   fixes: a guard that fires for a reason nobody can act on
   trains people to raise the bound without reading it.
+
+## Scoped to `src/core/hono-lifecycle.ts`
+
+- `import/max-dependencies` at 12 — it is the composition root
+  beside `server-adapter.ts`: CORS, the guard bridge, event
+  streams and the Node server factory are each their own module
+  and it binds all of them. Folding two together to satisfy a
+  count would hide a boundary the rest of the package keeps.
+
+## Scoped to `src/features/sse.ts`
+
+- `typescript/no-unsafe-type-assertion` — the stream's state
+  hangs off the Hono context under a module-private symbol,
+  because the context object is the one thing the writer and the
+  reader both hold. Reaching it means naming a shape the
+  `NestContext` type does not declare. Three sites, one reason.
+
+- `promise/avoid-new`, on one line — the waiter is a promise
+  settled from outside its own body, which is what a deferred
+  is. Written with `async` it would resolve at the first `await`
+  and settle nothing afterwards, which is the case this exists
+  for.
 
 ## Scoped to `test/**/*.ts`
 

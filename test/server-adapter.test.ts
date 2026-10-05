@@ -4,13 +4,13 @@ import { HttpStatus } from '@nestjs/common';
 import { ServerAdapter } from '../src/index.ts';
 import {
   jsonRequest,
-  request,
   startAdapter,
   startProbe,
-} from './probe.ts';
+} from './support.ts';
+import { request } from './probe.ts';
 
 test('a route answers with the value it returned', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(probe, '/ping');
     expect(response.status).toBe(HttpStatus.OK);
@@ -22,7 +22,7 @@ test('a route answers with the value it returned', async () => {
 });
 
 test('a primitive is answered as text', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(probe, '/text');
     expect(response.status).toBe(HttpStatus.OK);
@@ -34,7 +34,7 @@ test('a primitive is answered as text', async () => {
 });
 
 test('a JSON body reaches the handler that asked for it', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(
       probe,
@@ -49,7 +49,7 @@ test('a JSON body reaches the handler that asked for it', async () => {
 });
 
 test('a thrown HTTP exception is answered by Nest', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(probe, '/boom');
     expect(response.status).toBe(HttpStatus.FORBIDDEN);
@@ -63,7 +63,7 @@ test('a thrown HTTP exception is answered by Nest', async () => {
 });
 
 test('an unrouted path reaches the not-found handler', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(probe, '/nope');
     expect(response.status).toBe(HttpStatus.NOT_FOUND);
@@ -76,7 +76,7 @@ test('an unrouted path reaches the not-found handler', async () => {
 });
 
 test('a QUERY request reaches the handler registered for it', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(probe, '/lookup', {
       method: 'QUERY',
@@ -89,7 +89,7 @@ test('a QUERY request reaches the handler registered for it', async () => {
 });
 
 test('a QUERY route is only answered for that method', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     const response = await request(probe, '/lookup');
     expect(response.status).toBe(HttpStatus.NOT_FOUND);
@@ -103,7 +103,9 @@ test('a route registered on the adapter directly answers QUERY', async () => {
   adapter.query('/direct', (_request, response) => {
     response.res = Response.json({ direct: true });
   });
-  const probe = await startAdapter(adapter);
+  const probe = await startAdapter(adapter, {
+    mode: 'in-process',
+  });
   try {
     const response = await request(probe, '/direct', {
       method: 'QUERY',
@@ -116,7 +118,7 @@ test('a route registered on the adapter directly answers QUERY', async () => {
 });
 
 test('the adapter reports itself to Nest', async () => {
-  const probe = await startProbe();
+  const probe = await startProbe({ mode: 'in-process' });
   try {
     expect(probe.adapter.getType()).toBe('hono');
     expect(probe.adapter.isRouteOrderSensitive()).toBe(false);

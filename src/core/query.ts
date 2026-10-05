@@ -20,12 +20,48 @@ const INDEX = /^\d+$/u;
 const BRACKETS = /\[(?<name>[^\]]*)\]/gu;
 const MISSING = -1;
 
+/**
+ * The two ceilings this parser holds to, and they are `qs`'s
+ * own because the grammar here is the one `qs` accepts: a
+ * string `qs` would flatten or drop has to flatten or drop here
+ * too, and these are the numbers `qs` has always defaulted to.
+ * Without them a crafted query string, in the url or in an
+ * urlencoded body, buys unbounded stack and unbounded pairs
+ * inside the request path.
+ *
+ * Past the depth the run folds into one literal key rather than
+ * being refused, and past the parameter ceiling the rest of the
+ * pairs are ignored, because that is how `qs` answers with its
+ * defaults (`strictDepth` and `throwOnLimitExceeded` are both
+ * `false`) and no official adapter refuses a query at all:
+ * `platform-express` never parses it, handing Express 5 its
+ * `simple` `querystring.parse`, and `platform-fastify` uses
+ * `fast-querystring` — both flat, so neither can exceed a
+ * limit. A 400 here would be this adapter inventing a refusal
+ * and would break clients migrating from Express 4, whose `qs`
+ * truncates exactly this way.
+ *
+ * `qs`'s `arrayLimit` is deliberately not copied. It arrived as
+ * a regression that collapsed long repeated keys into objects
+ * and broke Express consumers, so a repeated name stays a list
+ * here however long it grows. Its `allowPrototypes` is not
+ * copied either: `FORBIDDEN_NAMES` above is the safer default
+ * and is already what `qs` does.
+ */
+const MAX_DEPTH = 5;
+const MAX_PAIRS = 1000;
+
 /** One assignment: the names still to walk and the value. */
 interface Target {
   readonly names: readonly string[];
   readonly value: string;
 }
 
+/**
+ * Says whether a value is the plain object a nested name
+ * builds. Arrays are excluded because a bracket that indexes
+ * builds a list instead.
+ */
 function isRecord(
   value: unknown,
 ): value is Record<string, unknown> {
@@ -73,6 +109,22 @@ function decode(value: string): string {
 }
 
 /**
+ * The names past the depth ceiling, kept as one literal key
+ * with their brackets read back, which is what `qs` leaves
+ * behind once it stops descending: in a run of nine segments
+ * `alpha` through `epsilon` stay nested and everything after
+ * them becomes the single key `'[zeta][eta][theta][iota]'`.
+ */
+function withinDepth(names: string[]): string[] {
+  const rest = names.slice(MAX_DEPTH);
+  if (rest.length === 0) {
+    return names;
+  }
+  const tail = rest.map((name) => `[${name}]`).join('');
+  return [...names.slice(0, MAX_DEPTH), tail];
+}
+
+/**
  * Splits `filter[name][]` into `['filter', 'name', '']`. A name
  * without brackets is its own single segment.
  */
@@ -86,7 +138,7 @@ function toNames(name: string): string[] {
     const groups = match.groups ?? {};
     names.push(groups.name ?? '');
   }
-  return names;
+  return withinDepth(names);
 }
 
 /**
@@ -128,7 +180,7 @@ function accepts(names: readonly string[]): boolean {
 }
 
 /**
- * Builds the tree one pair at a time.
+ * Builds the tree one pair at a time, up to the pair ceiling.
  *
  * A step whose next name is `[]` or a number builds a list, and
  * every other step builds an object; the methods below are
@@ -139,7 +191,8 @@ class QueryBuilder {
   private readonly query: ParsedQuery = {};
 
   public parse(source: string): ParsedQuery {
-    for (const pair of withoutQuestionMark(source).split('&')) {
+    const pairs = withoutQuestionMark(source).split('&');
+    for (const pair of pairs.slice(0, MAX_PAIRS)) {
       this.addPair(pair);
     }
     return this.query;
@@ -210,7 +263,7 @@ class QueryBuilder {
       this.assign(nested, target);
       return;
     }
-    container[name] = this.toRecord(existing, target);
+    container[name] = this.written(existing, target);
   }
 
   private intoList(list: unknown[], target: Target): void {
@@ -218,69 +271,51 @@ class QueryBuilder {
     if (name === undefined) {
       return;
     }
-    const nested = { names: rest, value: target.value };
-    if (name === '') {
-      this.addElement(list, nested);
-      return;
-    }
-    this.addIndex(list, name, nested);
+    this.place(list, name, {
+      names: rest,
+      value: target.value,
+    });
   }
 
-  private addIndex(
+  /**
+   * The one write into a list. An empty name appends at the end
+   * and any other name has to read as a safe non-negative
+   * index, so a single slot decides both and the two walks that
+   * used to differ only in that choice are gone. A name that
+   * reads as no such index drops the pair, which is what a
+   * bracket holding nonsense has always meant here.
+   */
+  private place(
     list: unknown[],
     name: string,
     target: Target,
   ): void {
-    const index = Number(name);
+    let index = list.length;
+    if (name !== '') {
+      index = Number(name);
+    }
     if (!Number.isSafeInteger(index) || index < 0) {
       return;
     }
-    this.addAt(list, index, target);
+    list[index] = this.written(list[index], target);
   }
 
-  private addElement(list: unknown[], target: Target): void {
+  /**
+   * What a target leaves in a slot: the value itself once no
+   * name is left to walk, otherwise the list or the object its
+   * next name calls for. The container is filled in place,
+   * which is how a later pair finds it again.
+   */
+  private written(existing: unknown, target: Target): unknown {
     const [next] = target.names;
     if (next === undefined) {
-      list.push(target.value);
-      return;
+      return repeated(existing, target.value);
     }
     if (isListStep(next)) {
-      const nested: unknown[] = [];
-      list.push(nested);
+      const nested = asList(existing);
       this.intoList(nested, target);
-      return;
+      return nested;
     }
-    list.push(this.toRecord(undefined, target));
-  }
-
-  private addAt(
-    list: unknown[],
-    index: number,
-    target: Target,
-  ): void {
-    const existing = list[index];
-    if (target.names.length === 0) {
-      list[index] = repeated(existing, target.value);
-      return;
-    }
-    const [next] = target.names;
-    if (isListStep(next ?? '')) {
-      list[index] = this.toList(existing, target);
-      return;
-    }
-    list[index] = this.toRecord(existing, target);
-  }
-
-  private toList(existing: unknown, target: Target): unknown[] {
-    const nested = asList(existing);
-    this.intoList(nested, target);
-    return nested;
-  }
-
-  private toRecord(
-    existing: unknown,
-    target: Target,
-  ): Record<string, unknown> {
     const nested = asRecord(existing);
     this.assign(nested, target);
     return nested;
@@ -294,11 +329,13 @@ class QueryBuilder {
  * indexes and `name[child]` nests; anything else is a string.
  * The grammar is the one the platform parsers accept, which is
  * what a controller written against Express or Fastify expects
- * to read.
+ * to read. Nothing here is ever refused: past `MAX_DEPTH` the
+ * remaining brackets become one literal key, and past
+ * `MAX_PAIRS` the remaining pairs are ignored.
  */
 function parseQuery(source: string): ParsedQuery {
   return new QueryBuilder().parse(source);
 }
 
-export { parseQuery };
+export { isRecord, parseQuery };
 export type { ParsedQuery };

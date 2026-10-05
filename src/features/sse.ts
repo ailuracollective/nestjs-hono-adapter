@@ -1,201 +1,74 @@
-import { once } from 'node:events';
-import { Writable } from 'node:stream';
-
-import { Logger } from '@nestjs/common';
-
 import type { NestContext } from '../core/context.ts';
+import { SseResponse } from '../core/sse-stream.ts';
+import type { StartSignal } from '../core/sse-stream.ts';
 
-/** The callback every Node stream write and finalizer takes. */
-type StreamCallback = (error?: Error | null) => void;
-
-/** The status an event stream answers with when Nest names none. */
-const DEFAULT_STATUS = 200;
-
-/** The event a stream emits once its headers are on the wire. */
-const STARTED = 'started';
-
-/** The header that says a proxy must not buffer the stream. */
-const NO_BUFFERING = 'no';
-
-/** The headers a stream is opened with, whatever Nest added. */
-const STREAM_HEADERS: Readonly<Record<string, string>> = {
-  'cache-control': 'no-cache',
-  connection: 'keep-alive',
-  'content-type': 'text/event-stream',
-  'x-accel-buffering': NO_BUFFERING,
-};
-
-/** Says why a stream failed, without taking the process down. */
-const logger = new Logger('SseResponse');
-
-function toBytes(chunk: unknown): Uint8Array | undefined {
-  if (typeof chunk === 'string') {
-    return new TextEncoder().encode(chunk);
-  }
-  if (chunk instanceof Uint8Array) {
-    return chunk;
-  }
-  return undefined;
+/** Stands in for a stream that never started. */
+function noStream(): void {
+  // Nothing to announce.
 }
-
-/** What Nest calls once the stream's headers are chosen. */
-type CommitListener = (response: Response) => void;
 
 /**
- * The Node writable Nest pipes an event stream into, and the
- * web stream the Hono response reads its frames from.
- *
- * Nest answers `@Sse()` through `SseStream`, a `Transform` that
- * is piped onto the response object. That object has to be a
- * genuine `Writable`, so this one collects what Nest writes and
- * hands the same bytes to a `ReadableStream`, which becomes the
- * Hono response the client reads. The members Nest touches
- * around the pipe — the status, the headers, the flushing and
- * the end — are all here, so it needs nothing from Node's own
- * `ServerResponse`. A client that walks away cancels the web
- * stream, and the writes that follow are dropped rather than
- * thrown at the process.
+ * The promise a route's stream settles, and the handle that
+ * settles it: what `Promise.withResolvers` returns, and newer
+ * than the lib this package compiles against.
  */
-class SseResponse extends Writable {
-  private readonly onCommit: CommitListener;
-  private readonly status: () => number | undefined;
-  private readonly stream: ReadableStream<Uint8Array>;
-  private controller:
-    | ReadableStreamDefaultController<Uint8Array>
-    | undefined;
-  private committed = false;
-  private cancelled = false;
-  private headers: Record<string, string> = {};
-  private answerStatus: number = DEFAULT_STATUS;
-
-  public constructor(
-    status: () => number | undefined,
-    onCommit: CommitListener,
-  ) {
-    super();
-    this.status = status;
-    this.onCommit = onCommit;
-    this.stream = new ReadableStream<Uint8Array>({
-      cancel: (): void => {
-        this.cancelled = true;
-      },
-      start: (controller): void => {
-        this.controller = controller;
-      },
-    });
-    // A client that walked away makes the next write fail; that
-    // is the client's business, not a reason to crash.
-    this.on('error', (error: Error): void => {
-      this.logFailure(error);
-    });
-  }
-
-  /**
-   * The status Nest read from the adapter before the handler
-   * ran, so `@HttpCode()` and a POST default reach the stream.
-   */
-  public get statusCode(): number | undefined {
-    return this.status();
-  }
-
-  /** Chooses the answer's status and headers, once. */
-  public writeHead(
-    status: number,
-    headers?: Record<string, string>,
-  ): this {
-    this.answerStatus = status;
-    this.headers = headers ?? {};
-    this.commit();
-    return this;
-  }
-
-  /**
-   * Nothing is buffered here, so there is nothing left to
-   * flush: Hono already has the response by the time Nest
-   * asks.
-   */
-  public flushHeaders(): void {
-    this.commit();
-  }
-
-  public setHeader(name: string, value: string): void {
-    this.headers[name] = value;
-  }
-
-  /**
-   * Turns what Nest wrote into the Hono response, exactly once.
-   * The response is handed over before the start event is
-   * emitted, so whoever waits on the event reads a live body.
-   */
-  private commit(): void {
-    if (this.committed) {
-      return;
-    }
-    this.committed = true;
-    const headers = new Headers(STREAM_HEADERS);
-    for (const [name, value] of Object.entries(this.headers)) {
-      headers.set(name, value);
-    }
-    this.onCommit(
-      new Response(this.stream, {
-        headers,
-        status: this.answerStatus,
-      }),
-    );
-    this.emit(STARTED);
-  }
-
-  private enqueue(chunk: Uint8Array): void {
-    const { controller } = this;
-    if (this.cancelled || controller === undefined) {
-      return;
-    }
-    controller.enqueue(chunk);
-  }
-
-  private finish(): void {
-    const { controller } = this;
-    if (this.cancelled || controller === undefined) {
-      return;
-    }
-    this.cancelled = true;
-    controller.close();
-  }
-
-  private logFailure(error: Error): void {
-    logger.debug(error.message);
-  }
-
-  public override _write(
-    chunk: unknown,
-    _encoding: BufferEncoding,
-    callback: StreamCallback,
-  ): void {
-    this.commit();
-    const bytes = toBytes(chunk);
-    if (bytes === undefined) {
-      callback(
-        new TypeError('An event stream carries bytes only.'),
-      );
-      return;
-    }
-    this.enqueue(bytes);
-    callback();
-  }
-
-  public override _final(callback: StreamCallback): void {
-    this.finish();
-    callback();
-  }
-
-  public override _destroy(
-    error: Error | null,
-    callback: StreamCallback,
-  ): void {
-    this.finish();
-    callback(error);
-  }
+interface StartWaiter {
+  readonly settle: StartSignal;
+  readonly started: Promise<void>;
 }
+
+/**
+ * Builds the waiter for one request's stream. A route that
+ * streams nothing never settles it and needs nothing torn down
+ * to stop waiting: the promise carries no listener.
+ *
+ * The promise is settled from outside its own body, which is
+ * what a deferred is: `async` here would resolve at the first
+ * `await` and settle nothing afterwards.
+ */
+function startWaiter(): StartWaiter {
+  let settle: StartSignal = noStream;
+  // oxlint-disable-next-line promise/avoid-new
+  const started = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  return { settle, started };
+}
+
+/**
+ * Where a context keeps what the `raw` getter needs to build
+ * its stream.
+ */
+const RAW_STATE = Symbol('sseState');
+
+/**
+ * What the `raw` getter reads when it is asked to open a
+ * stream.
+ */
+interface SseState {
+  opened: SseResponse | undefined;
+  status: () => number | undefined;
+  waiter: StartWaiter;
+}
+
+/**
+ * A context carrying the state its `raw` getter needs.
+ *
+ * The holder is a record rather than an interface extending the
+ * context because Hono's context type carries no symbol index
+ * signature, and one would have to be asserted through
+ * `unknown` to add. Both assertions here are that, and the file
+ * says what each is for.
+ */
+type SseHolder = Record<symbol, SseState | undefined>;
+
+/**
+ * The context prototypes the getter is already on.
+ *
+ * Weak, so holding one of them does not keep a Hono context
+ * class alive after the application that used it is gone.
+ */
+const installedOn = new WeakSet<object>();
 
 /** The headers Hono already recorded for the answer. */
 function recordedHeaders(
@@ -212,12 +85,12 @@ function recordedHeaders(
 
 /**
  * Gives the object Nest reads as its response the surface its
- * SSE path touches, so the same object serves every supported
- * Nest major.
+ * SSE path touches, once an event stream has been opened on it,
+ * so the same object serves every supported Nest major.
  *
  * Nest 11 and 12 both prefer `res.raw` when it is set, and Nest
- * 12 never reads the response's own members then. Pointing
- * `raw` at this writable is what keeps the frames travelling
+ * 12 never reads the response's own members then. The `raw`
+ * that names this writable is what keeps the frames travelling
  * through Hono: writing them straight into `c.env.outgoing`
  * would bypass the `Response` this adapter returns, and the
  * transport would then write that response into the same socket
@@ -229,7 +102,6 @@ function installSurface(
   response: SseResponse,
 ): void {
   Object.defineProperties(context, {
-    raw: { configurable: true, value: response },
     statusCode: {
       configurable: true,
       get: (): number | undefined => response.statusCode,
@@ -255,20 +127,87 @@ function installSurface(
 }
 
 /**
+ * Puts `raw` on Hono's context, once, so that no request has to
+ * define a property.
+ *
+ * `Object.defineProperty` costs about 285 nanoseconds where a
+ * plain property costs about 18, and on the request path this
+ * was the largest single cost left — more than everything else
+ * the adapter does put together. The getter belongs on the
+ * prototype for the same reason any accessor does: every
+ * context gets it, so no context should carry its own copy.
+ *
+ * A Hono application holds one context class, so this runs once
+ * per process in practice. The prototype is remembered rather
+ * than assumed, so a second application in the same process
+ * does not redefine what the first installed.
+ */
+function installRawGetter(context: NestContext): void {
+  const prototype = Object.getPrototypeOf(context) as object;
+  if (installedOn.has(prototype)) {
+    return;
+  }
+  installedOn.add(prototype);
+  Object.defineProperty(prototype, 'raw', {
+    configurable: true,
+    get(this: NestContext): SseResponse {
+      const holder = this as unknown as SseHolder;
+      const state = holder[RAW_STATE];
+      if (state === undefined) {
+        throw new TypeError(
+          'An event stream was asked for on a response this adapter did not mount one on.',
+        );
+      }
+      if (state.opened === undefined) {
+        state.opened = new SseResponse(
+          state.status,
+          (answer): void => {
+            this.res = answer;
+          },
+          state.waiter.settle,
+        );
+        installSurface(this, state.opened);
+      }
+      return state.opened;
+    },
+  });
+}
+
+/**
  * Opens an event stream on the response Nest reads, and says
  * when it started. The stream is the destination `SseStream`
  * pipes into, so nothing is buffered until Nest commits the
  * headers, which is also the moment the promise settles.
+ *
+ * The surface itself opens on the first read of `raw` rather
+ * than on every request, because that read is what tells an
+ * event stream apart from any other answer. Nest reads `res.raw
+ * ?? res` first on its SSE path and never reads it anywhere
+ * else, so an ordinary route never builds the writable or the
+ * web stream behind it, and never has its answer committed as a
+ * stream with the stream's own content type and headers: what
+ * it calls on the response stays Hono's own API, which is what
+ * `@Res()` handlers are documented to write through.
+ *
+ * The promise it answers with is the one thing built per
+ * request, and it is built here rather than on the first read
+ * of `raw` because the bridge has to be handed it before the
+ * handler runs. It settles when the stream commits its headers,
+ * and a route that answers without streaming never settles it,
+ * which needs nothing torn down to stop waiting since the
+ * promise carries no listener. The surface, the writable and
+ * the web stream behind them are all still built on that first
+ * read, so a route that streams nothing reaches none of them.
  */
 function mountSse(
   context: NestContext,
   status: () => number | undefined,
 ): Promise<unknown> {
-  const response = new SseResponse(status, (answer): void => {
-    context.res = answer;
-  });
-  installSurface(context, response);
-  return once(response, STARTED) as Promise<unknown>;
+  installRawGetter(context);
+  const waiter = startWaiter();
+  const holder = context as unknown as SseHolder;
+  holder[RAW_STATE] = { opened: undefined, status, waiter };
+  return waiter.started;
 }
 
-export { SseResponse, mountSse };
+export { mountSse };
