@@ -61,23 +61,10 @@ type SecurityHook = (
  * the server lifecycle are inherited from {@link HonoLifecycle};
  * this class implements the rest of the Nest contract.
  */
+// oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 class ServerAdapter extends HonoLifecycle {
   private readonly writer = new ResponseWriter();
   private readonly views: ViewRenderer;
-
-  /**
-   * Registers a hook Nest runs for every request.
-   *
-   * It is installed as an own property and declared here as
-   * one, because which of Nest 11 and 12 declares it on its own
-   * base is not something this class can know, and
-   * `noImplicitOverride` has no way to say "only if it is
-   * there". Declaring it is what makes it visible to
-   * TypeScript; an assigned own property never is.
-   */
-  public override registerSecurityHook!: (
-    hook: SecurityHook,
-  ) => void;
 
   public constructor(options: ServerAdapterOptions = {}) {
     super(options);
@@ -242,14 +229,14 @@ class ServerAdapter extends HonoLifecycle {
    * A failure it reports is thrown into the path the exception
    * layer already owns.
    *
-   * It is assigned here rather than written as a method because
-   * `AbstractHttpAdapter` declares it only in Nest versions
-   * published after 12.0.3, while this package compiles against
-   * `>=11 <13`: a method with `override` fails against the
-   * versions that lack it, and one without fails against the
-   * versions that have it. Declaring the member with the base's
-   * own signature and assigning it here is what satisfies
-   * both.
+   * It is installed as an own property rather than written as a
+   * method because `AbstractHttpAdapter` declares it only in
+   * Nest versions published after 12.0.3, while this package
+   * compiles against `>=11 <13`: a method with `override` fails
+   * against the versions that lack it, and one without fails
+   * against the versions that have it. The declaration on the
+   * merged interface below and the assignment here are what
+   * satisfies both.
    */
   private installSecurityHook(): void {
     this.registerSecurityHook = (hook: SecurityHook): void => {
@@ -343,6 +330,25 @@ class ServerAdapter extends HonoLifecycle {
     }
     return this.bodyLimit;
   }
+}
+
+/**
+ * The member this class declares next to the base rather than
+ * in it. Nest declares `registerSecurityHook` on its HTTP
+ * adapter only from 12.0.3 on, and `noImplicitOverride` has no
+ * way to say "only where the base has it": an `override` fails
+ * against a Nest 11 install and dropping it fails against Nest
+ * 12, which then reports that the member is not in the base. A
+ * merged declaration is the form both installs accept, and an
+ * assigned own property is what `installSecurityHook` fills in.
+ * The signature is this repository's own rather than the
+ * base's, so it is held to what this repository documents as
+ * well as to the base, in
+ * `test/types/route-adapter-compat.ts`.
+ */
+interface ServerAdapter {
+  /** Registers a hook Nest runs for every request. */
+  registerSecurityHook: (hook: SecurityHook) => void;
 }
 
 declare module '@nestjs/common' {

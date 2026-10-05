@@ -49,7 +49,6 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "prepack": "rm -rf dist *.tsbuildinfo && tsc -p tsconfig.json",
-    "prepare": "tsc -p tsconfig.json",
     "release": "semantic-release",
     "release:dry": "semantic-release --dry-run",
     "size": "bun run build && size-limit",
