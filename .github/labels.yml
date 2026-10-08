@@ -1,0 +1,111 @@
+---
+# GitHub labels — the manifest for ailuracollective/nestjs-hono-adapter.
+#
+# A manifest, not workflow input: GitHub does not read it, and editing it changes no remote.
+#
+# Apply from the repository root (diff against the remote to audit; `--force` never prunes):
+#
+#   yq -r '.[] | "gh label create \"\(.name)\" --color \"\(.color)\" --description \"\(.description)\" --force"' \
+#     .github/labels.yml | sh
+#
+# Quote every color: unquoted, a resolver may read it as a number (`yq` turns `000000`
+# into 0).
+#
+# Deviations from the shared standard are declared in `.github/standards.local.yml`.
+# `type/*` has five members, deliberately without `type/breaking-change`.
+
+- name: "type/bug"
+  color: "D73A4A"
+  description: "Something is not working as expected."
+
+- name: "type/feature"
+  color: "0075CA"
+  description: "A new capability or user-facing functionality."
+
+- name: "type/improvement"
+  color: "A2EEEF"
+  description: "An improvement to existing functionality."
+
+- name: "type/task"
+  color: "7057FF"
+  description: "A defined piece of work that does not represent a feature or bug."
+
+- name: "type/documentation"
+  color: "0075CA"
+  description: "Changes or additions to documentation."
+
+- name: "status/blocked"
+  color: "E4E669"
+  description: "Work cannot proceed because an external dependency or decision is blocking it."
+
+- name: "status/needs-review"
+  color: "5319E7"
+  description: "The issue or proposed solution requires review before proceeding."
+
+- name: "status/ready"
+  color: "0E8A16"
+  description: "The issue is sufficiently defined and ready to be worked on."
+
+- name: "status/in-progress"
+  color: "1D76DB"
+  description: "Work on this issue is currently in progress."
+
+- name: "status/waiting"
+  color: "CFD3D7"
+  description: "Work is waiting for information, feedback, approval, or another action."
+
+- name: "scope/frontend"
+  color: "BFDADC"
+  description: "Primarily affects the frontend or client-side application."
+
+- name: "scope/backend"
+  color: "D4C5F9"
+  description: "Primarily affects backend application logic or services."
+
+- name: "scope/api"
+  color: "C5DEF5"
+  description: "Primarily affects an API or integration contract."
+
+- name: "scope/database"
+  color: "FEF2C0"
+  description: "Primarily affects database structure, queries, migrations, or data."
+
+- name: "scope/devops"
+  color: "1D76DB"
+  description: "Primarily affects deployment, infrastructure, CI, or development tooling."
+
+- name: "scope/testing"
+  color: "FBCA04"
+  description: "Primarily affects automated or manual testing."
+
+- name: "scope/security"
+  color: "B60205"
+  description: "Primarily affects application or infrastructure security."
+
+- name: "scope/documentation"
+  color: "0075CA"
+  description: "Primarily affects documentation or project guidance."
+
+- name: "meta/dependency"
+  color: "0366D6"
+  description: "Related to a dependency update, dependency issue, or external package."
+
+- name: "meta/duplicate"
+  color: "CFD3D7"
+  description: "This issue duplicates another issue."
+
+- name: "meta/good-first-issue"
+  color: "7057FF"
+  description: "A suitable issue for someone contributing to the project for the first time."
+
+- name: "meta/help-wanted"
+  color: "008672"
+  description: "Additional community or contributor assistance is welcome."
+
+- name: "meta/wontfix"
+  color: "FFFFFF"
+  description: "The issue will not be addressed as part of the project."
+
+- name: "github_actions"
+  color: "000000"
+  description: "Pull requests that update GitHub Actions code."

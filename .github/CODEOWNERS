@@ -1,0 +1,29 @@
+# Code owners — ailuracollective/nestjs-hono-adapter
+#
+# The LAST matching pattern wins and replaces earlier owners, so put every owner on one
+# line. `*` matches at every depth. GitHub silently skips unparseable lines and owners
+# without write access. See docs/enforcement.md.
+
+*                       @SiddharthaGF
+
+# Owns itself, so a pull request cannot remove the review it needs.
+.github/CODEOWNERS      @SiddharthaGF
+
+# Headings here are required in every adopting repository's pull requests.
+.github/PULL_REQUEST_TEMPLATE/*   @SiddharthaGF
+
+# Mirrored by hand into each adopting repository's manifest and `policy.yml`.
+.github/labels.yml     @SiddharthaGF
+
+# A renamed field id breaks links; an unknown label is dropped silently.
+.github/ISSUE_TEMPLATE/*          @SiddharthaGF
+
+# Prose, read by no tool.
+.github/ISSUE_STANDARD.md         @SiddharthaGF
+
+# Rewritten by a machine, and the only workflow with a write grant.
+.releaserc.json                  @SiddharthaGF
+.github/workflows/release.yml     @SiddharthaGF
+
+# Read by every agent and contributor.
+/AGENTS.md               @SiddharthaGF
