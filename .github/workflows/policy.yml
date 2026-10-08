@@ -1,0 +1,87 @@
+---
+name: Contribution policy
+
+'on':
+  pull_request:
+    types:
+      [
+        opened,
+        synchronize,
+        reopened,
+        edited,
+        labeled,
+        unlabeled,
+        ready_for_review,
+      ]
+  issues:
+    types: [opened]
+permissions: {}
+
+concurrency:
+  group: policy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  branch-validation:
+    name: Branch name
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.state == 'open' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - uses: ailuracollective/actions/branch-validation@v2
+        with:
+          # `title-types` minus `breaking-change`, which is a commit marker, not a branch type.
+          branch-types: feat,fix,chore,docs,style,refactor,perf,test,build,ci,revert
+          skip-actors: ''
+          enable-status-comment: true
+          # The PAT keeps the comment out of `github-actions[bot]`'s name, which nobody can edit.
+          comment-token:
+            ${{ secrets.AILURA_PR_COMPLIANCE_TOKEN }}
+          comment-author: AiluraKitty
+
+  pull-request-policy:
+    name: Pull request policy
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.state == 'open' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # Stays read-only: the comment is written with `comment-token`.
+      pull-requests: read
+      contents: read
+    steps:
+      - uses: ailuracollective/actions/pull-request@v2
+        with:
+          type-labels: type/feature,type/bug,type/documentation,type/improvement,type/task
+          # Also the filenames of the body-structure templates.
+          title-types: feat,fix,chore,docs,style,refactor,perf,test,build,ci,revert,breaking-change
+          title-min: 15
+          title-max: 72
+          approved-label: status/ready
+          # The action's default template path is beside the directory, which does not exist here.
+          template-dir: .github/PULL_REQUEST_TEMPLATE
+          default-template: .github/PULL_REQUEST_TEMPLATE/PULL_REQUEST_TEMPLATE.md
+          skip-actors: ''
+          enable-status-comment: true
+          comment-token:
+            ${{ secrets.AILURA_PR_COMPLIANCE_TOKEN }}
+          comment-author: AiluraKitty
+
+  triage:
+    name: Issue triage
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - uses: ailuracollective/actions/triage@v2
+        with:
+          # Covers issues opened without a template.
+          auto-label-name: status/needs-review

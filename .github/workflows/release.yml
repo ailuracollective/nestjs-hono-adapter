@@ -1,40 +1,34 @@
 name: Release
 
-on:
+'on':
   push:
     branches: [main]
 
-# Publishing authenticates through OIDC trusted publishing, not a stored npm
-# token: the job mints a short-lived ID token and exchanges it at the registry
-# for a publish token scoped to this workflow. There is no long-lived secret to
-# leak or rotate, and provenance is attached automatically.
-#
-# The exchange only succeeds when the package settings on npmjs.com carry a
-# trusted publisher naming this repository and this exact workflow filename.
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  # Required for OIDC. Without it the token request fails and the release job
-  # cannot authenticate at all.
-  id-token: write
+permissions: {}
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  # A new push must wait for a release in flight, not interrupt it halfway.
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      # Required for npm OIDC trusted publishing.
+      id-token: write
     steps:
       - uses: actions/checkout@v5
         with:
-          # semantic-release reads the full tag history to find the last
-          # release, so a shallow clone is not enough.
+          # semantic-release reads the full tag history to find the last release.
           fetch-depth: 0
-          # The @semantic-release/git plugin pushes using GITHUB_TOKEN, so the
-          # checkout must not persist its own credentials in .git/config.
           persist-credentials: false
-      # semantic-release requires Node ^22.14.0 || >= 24.10.0, and OIDC trusted
-      # publishing requires npm CLI >= 11.5.1, which this Node ships with.
-      # registry-url is deliberately not set: @semantic-release/npm resolves the
-      # official registry on its own and only exchanges the OIDC token for it.
+      # semantic-release needs Node >= 24.10; OIDC trusted publishing needs
+      # npm CLI >= 11.5.1, which this Node ships.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -42,17 +36,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx semantic-release
         env:
-          # semantic-release hardcodes semantic-release-bot as the CI author
-          # and committer (see its index.js, which assigns GIT_AUTHOR_* before
-          # spreading the environment). Because the environment is spread last,
-          # anything set here wins: the tag and any release commit are
-          # attributed to this account instead. The name is the login because
-          # the visible name of a user account is free text and the login is
-          # the identity; the address is GitHub's id-qualified noreply form,
-          # which is what actually links the author to the account. This does
-          # not touch publishing, which authenticates through OIDC.
+          # A dedicated PAT of the AiluraKitty account, not the workflow's
+          # `GITHUB_TOKEN`: its holder authors the release and its tag. Kept
+          # separate from `AILURA_PR_COMPLIANCE_TOKEN`.
+          GITHUB_TOKEN: ${{ secrets.AILURA_RELEASE_TOKEN }}
+          # Attribute any commit semantic-release writes to AiluraKitty.
           GIT_AUTHOR_NAME: AiluraKitty
           GIT_AUTHOR_EMAIL: 334750167+AiluraKitty@users.noreply.github.com
           GIT_COMMITTER_NAME: AiluraKitty
           GIT_COMMITTER_EMAIL: 334750167+AiluraKitty@users.noreply.github.com
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
