@@ -3,7 +3,21 @@ name: CI
 "on":
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'tsconfig.json'
+      - '.size-limit.json'
+      - 'package.json'
+      - 'bun.lock'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'tsconfig.json'
+      - '.size-limit.json'
+      - 'package.json'
+      - 'bun.lock'
 
 permissions:
   contents: read
@@ -13,44 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # `check` and the `compat` matrix are required checks. A skipped job reports
-  # "Success", so a change that touches no code can skip CI — but a skipped
-  # *matrix* job reports no contexts at all, so `compat` gates its steps rather
-  # than the job. Drafts are skipped here too. See
-  # docs.github.com/actions/using-jobs/using-conditions-to-control-job-execution
-  preflight:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      run: ${{ steps.check.outputs.run }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - id: check
-        env:
-          DRAFT: ${{ github.event.pull_request.draft }}
-          # The base for a pull request, the previous commit for a push.
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          if [ "$DRAFT" = "true" ]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          elif [ -z "${BASE:-}" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "$BASE...HEAD" -- \
-            src test benchmark examples \
-            package.json bun.lock bunfig.toml tsconfig.json \
-            .oxlintrc.json .oxfmtrc.json .size-limit.json \
-            .github/workflows 2>/dev/null; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
-
   check:
-    needs: preflight
-    if: needs.preflight.outputs.run == 'true'
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -62,8 +40,7 @@ jobs:
       - run: bun run check
 
   size:
-    needs: preflight
-    if: needs.preflight.outputs.run == 'true'
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -75,7 +52,9 @@ jobs:
       - run: bun run size
 
   compat:
-    needs: preflight
+    # Every Nest package moves together: a mixed install is what a WebSocket or
+    # microservice case would fail on, not the adapter.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -83,22 +62,17 @@ jobs:
         nest: ['11', '12']
         node: ['22', '24']
     steps:
-      - if: needs.preflight.outputs.run == 'true'
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - if: needs.preflight.outputs.run == 'true'
-        uses: oven-sh/setup-bun@v2
-      - if: needs.preflight.outputs.run == 'true'
-        uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - if: needs.preflight.outputs.run == 'true'
-        run: |
-          bun install --frozen-lockfile
-          bun add --exact \
-            @nestjs/common@${{ matrix.nest }}.x \
-            @nestjs/core@${{ matrix.nest }}.x \
-            @nestjs/websockets@${{ matrix.nest }}.x \
-            @nestjs/microservices@${{ matrix.nest }}.x
-          bun run typecheck && bun test && bun run build
+      - run: bun install --frozen-lockfile
+      - run:
+          bun add --exact @nestjs/common@${{ matrix.nest }}.x
+          @nestjs/core@${{ matrix.nest }}.x
+          @nestjs/websockets@${{ matrix.nest }}.x
+          @nestjs/microservices@${{ matrix.nest }}.x
+      - run: bun run typecheck && bun test && bun run build
