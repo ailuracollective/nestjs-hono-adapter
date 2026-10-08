@@ -57,13 +57,14 @@ packages branch on.
 
 ## Options
 
-| Option          | Type                            | Default | Effect                                                                           |
-| --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------- |
-| `bodyLimit`     | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                            |
-| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                           |
-| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options       |
-| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`               |
-| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from |
+| Option                  | Type                            | Default | Effect                                                                                                               |
+| ----------------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| `bodyLimit`             | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                                                                |
+| `overrideGlobalObjects` | `boolean`                       | `true`  | Let `@hono/node-server` swap the global `Request` and `Response` for lighter ones; turn it off on Cloudflare Workers |
+| `rawBody`               | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                                                               |
+| `secureHeaders`         | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options                                           |
+| `trustProxy`            | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                                                   |
+| `views`                 | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from                                     |
 
 ## Where the platform adapters disagree
 

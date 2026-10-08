@@ -8,7 +8,17 @@ import { AppModule } from './app.module.ts';
 
 const PORT = 8787;
 
-const adapter = new ServerAdapter({ trustProxy: true });
+// `@hono/node-server` replaces the global `Response` with a lighter
+// one unless it is told not to, and this platform refuses an answer
+// that is not one of its own: it answers 1101 before the application
+// sees the request. Turning the replacement off keeps the platform’s
+// classes. It is a Workers-only concern — the lighter class is worth
+// roughly a third of the CPU an answer costs — so the default stays.
+const adapter = new ServerAdapter({
+  overrideGlobalObjects: false,
+  trustProxy: true,
+});
+
 const app = await NestFactory.create(AppModule, adapter, {
   logger: ['error', 'warn'],
 });
