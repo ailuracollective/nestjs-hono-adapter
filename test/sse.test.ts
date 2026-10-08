@@ -1,9 +1,13 @@
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 import { firstValueFrom, timeout } from 'rxjs';
 
+import type { NodeEnv } from '../src/index.ts';
+import type { Probe } from './probe.ts';
 import {
   FLOOD_FRAMES,
   SECOND_FRAME_DELAY,
@@ -11,7 +15,6 @@ import {
   startProbe,
   torn,
 } from './support.ts';
-import type { Probe } from './probe.ts';
 
 /** How long a frame is given to arrive before a case fails. */
 const FRAME_TIMEOUT = 3000;
@@ -273,10 +276,14 @@ test('a stream that errors after a frame ends with an error event', async () => 
  * This case stays on the socket, and so does the one after it.
  * What each one is about is a live connection: a client that
  * really disconnects, and an application really shutting one
- * down. The faked socket an in-process probe runs with never
- * emits `close`, and there is no connection for
- * `forceCloseConnections` to force, so neither claim can be
+ * down. There is no connection for `forceCloseConnections` to
+ * force and no client to walk away, so neither claim can be
  * made without a real one.
+ *
+ * A runtime with no connection behind it is a different case,
+ * and one an in-process probe can make: what stands in for the
+ * client is the request ending, or the reader letting go of the
+ * stream. Those are the two cases at the end of this file.
  */
 test('a client that walks away unsubscribes the handler', async () => {
   const probe = await startProbe({ module: SseModule });
@@ -308,4 +315,83 @@ test('closing the application while a stream is open settles', async () => {
   }
   // A second close must settle the same way the first one did.
   await probe.close();
+});
+
+/**
+ * Sends one request over a socket of the kind a runtime with no
+ * TCP socket behind it reports: the members everything else
+ * reads, and none of the tuning. Cloudflare Workers reports one
+ * through `cloudflare:node`, and nothing about it ever closes,
+ * so a case on this path is a case about a runtime where the
+ * disconnect has to arrive from somewhere else. Both are read
+ * back, because both are what the runtime has left to say it
+ * with.
+ */
+async function respondOverBareSocket(
+  probe: Probe,
+  path: string,
+): Promise<{
+  readonly incoming: IncomingMessage;
+  readonly response: Response;
+}> {
+  const socket = new Socket();
+  for (const name of [
+    'setKeepAlive',
+    'setNoDelay',
+    'setTimeout',
+  ] as const) {
+    Reflect.set(socket, name, undefined);
+  }
+  const incoming = new IncomingMessage(socket);
+  const binding = {
+    incoming,
+    outgoing: new ServerResponse(incoming),
+  } satisfies NodeEnv['Bindings'];
+  const response = await probe.adapter
+    .getHono()
+    .request(path, undefined, binding);
+  return { incoming, response };
+}
+
+test('a request that ends unsubscribes the handler', async () => {
+  const probe = await startProbe({
+    mode: 'in-process',
+    module: SseModule,
+  });
+  try {
+    const { incoming } = await respondOverBareSocket(
+      probe,
+      '/sse/open',
+    );
+    // The wait is armed first: the subject does not replay,
+    // and this disconnect is issued in the same tick.
+    const gone = firstValueFrom(
+      torn.pipe(timeout(FRAME_TIMEOUT)),
+    );
+    // What a platform with no socket to close says instead.
+    incoming.emit('close');
+    await gone;
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a reader that lets go unsubscribes the handler', async () => {
+  const probe = await startProbe({
+    mode: 'in-process',
+    module: SseModule,
+  });
+  try {
+    const { response } = await respondOverBareSocket(
+      probe,
+      '/sse/open',
+    );
+    const gone = firstValueFrom(
+      torn.pipe(timeout(FRAME_TIMEOUT)),
+    );
+    await bodyOf(response).cancel();
+    await gone;
+  } finally {
+    await probe.close();
+  }
 });

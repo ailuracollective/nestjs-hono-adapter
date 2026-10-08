@@ -3,7 +3,8 @@
   "main": "./src/worker.ts",
   "compatibility_date": "2026-08-04",
   "compatibility_flags": [
-    "enable_nodejs_http_server_modules"
+    "enable_nodejs_http_server_modules",
+    "enable_request_signal"
   ],
   "alias": {
     "@nestjs/platform-express": "./src/stub-platform-express.ts",

@@ -1,5 +1,6 @@
 /**
- * The socket Nest tunes when it opens an event stream.
+ * The socket Nest reads when it opens an event stream: the
+ * calls it tunes it with, and the close it watches for.
  *
  * `SseStream`, Nest’s own, calls `setKeepAlive(true)`,
  * `setNoDelay(true)` and `setTimeout(0)` on `req.socket` for
@@ -55,4 +56,37 @@ function tuneableSocket(socket: Socket): Socket {
   });
 }
 
-export { tuneableSocket };
+/**
+ * Whether the adapter completed this socket itself.
+ *
+ * One of the calls answering with the adapter’s own function is
+ * what tells a completed socket from one the runtime provides,
+ * and a runtime that provides the socket provides everything
+ * else a Node socket carries with it.
+ */
+function completedByAdapter(socket: Socket): boolean {
+  return socket.setKeepAlive === untuned;
+}
+
+/**
+ * Says the client is gone, on the object a stream’s reader
+ * watches for it.
+ *
+ * Nest opens an event stream by watching the request’s socket
+ * for `close`, which is how a client walking away reaches the
+ * handler on a runtime that has a socket. A socket the runtime
+ * left incomplete never reports one, so the disconnect arrives
+ * from wherever the runtime does say it and is said here, on
+ * the socket itself, where Nest is listening. A socket the
+ * runtime provides is left alone: it reports its own close, and
+ * a second one would be a lie about a connection that is still
+ * open.
+ */
+function reportDisconnect(socket: Socket): void {
+  if (!completedByAdapter(socket)) {
+    return;
+  }
+  socket.emit('close');
+}
+
+export { reportDisconnect, tuneableSocket };

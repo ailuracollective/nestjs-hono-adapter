@@ -51,6 +51,31 @@ const HIGH_WATER_MARK = 16;
 type CommitListener = (response: Response) => void;
 
 /**
+ * What the stream calls once its reader is gone.
+ *
+ * A reader takes the stream’s bytes or it walks away, and a
+ * platform says which by cancelling the stream it was given.
+ * Nothing downstream of this class is listening for that, so
+ * whoever mounted the stream is the one it has to tell.
+ */
+type DisconnectListener = () => void;
+
+/**
+ * What the stream says once it is open, and once it is over:
+ * the answer it committed, the start it announces, and the
+ * reader giving up.
+ *
+ * One record rather than three arguments, because all three are
+ * the same thing said to whoever mounted the stream, and a
+ * mount hands over all three or none.
+ */
+interface StreamSinks {
+  readonly onCommit: CommitListener;
+  readonly onDisconnect: DisconnectListener;
+  readonly signal: StartSignal;
+}
+
+/**
  * Says the stream started, to whoever is waiting on it.
  *
  * A callback rather than an event target: the only thing anyone
@@ -77,6 +102,7 @@ function toBytes(chunk: unknown): Uint8Array | undefined {
 
 class SseResponse extends Writable {
   private readonly onCommit: CommitListener;
+  private readonly onDisconnect: DisconnectListener;
   private readonly signal: StartSignal;
   private readonly status: () => number | undefined;
   private readonly stream: ReadableStream<Uint8Array>;
@@ -91,18 +117,19 @@ class SseResponse extends Writable {
 
   public constructor(
     status: () => number | undefined,
-    onCommit: CommitListener,
-    signal: StartSignal,
+    sinks: StreamSinks,
   ) {
     super();
     this.status = status;
-    this.onCommit = onCommit;
-    this.signal = signal;
+    this.onCommit = sinks.onCommit;
+    this.signal = sinks.signal;
+    this.onDisconnect = sinks.onDisconnect;
     this.stream = new ReadableStream<Uint8Array>(
       {
         cancel: (): void => {
           this.cancelled = true;
           this.release();
+          this.onDisconnect();
         },
         pull: (): void => {
           this.release();
