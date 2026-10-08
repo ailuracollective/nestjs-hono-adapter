@@ -1,5 +1,8 @@
 import type { NestContext } from '../core/context.ts';
-import { reportDisconnect } from '../core/socket.ts';
+import {
+  reportDisconnect,
+  tuneableSocket,
+} from '../core/socket.ts';
 import { SseResponse } from '../core/sse-stream.ts';
 import type { StartSignal } from '../core/sse-stream.ts';
 
@@ -143,8 +146,14 @@ function installSurface(
  */
 function watchDisconnect(context: NestContext): () => void {
   const { incoming } = context.env;
+  // Nest’s SSE path reads `req.raw`, the incoming message itself,
+  // not the request bag: the socket it tunes and reads ‘close’
+  // from is this one, so it is tuned here, before the stream
+  // behind `raw` is handed to Nest, and the disconnect is
+  // reported on the same object.
+  const socket = tuneableSocket(incoming.socket);
   const report = (): void => {
-    reportDisconnect(incoming.socket);
+    reportDisconnect(socket);
   };
   incoming.on('close', report);
   return report;

@@ -265,7 +265,7 @@ class RequestBag implements NestRequest {
   }
 
   public get socket(): IncomingMessage['socket'] {
-    return incomingOf(this.state).socket;
+    return tuneableSocket(incomingOf(this.state).socket);
   }
 
   public get url(): string {
