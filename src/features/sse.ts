@@ -1,4 +1,5 @@
 import type { NestContext } from '../core/context.ts';
+import { reportDisconnect } from '../core/socket.ts';
 import { SseResponse } from '../core/sse-stream.ts';
 import type { StartSignal } from '../core/sse-stream.ts';
 
@@ -127,6 +128,29 @@ function installSurface(
 }
 
 /**
+ * Watches for the client walking away, and answers with what
+ * says so.
+ *
+ * Nest ends an event stream when the request’s socket closes,
+ * and a runtime that carries a request without carrying the
+ * socket behind it never closes one. The request itself is what
+ * is left: a platform that cannot close a socket it does not
+ * have can still end the request, and this listens for that.
+ * The answer is handed to the stream too, so a reader that lets
+ * go of the bytes reaches the same end.
+ *
+ * The listener belongs to the request, which dies with it.
+ */
+function watchDisconnect(context: NestContext): () => void {
+  const { incoming } = context.env;
+  const report = (): void => {
+    reportDisconnect(incoming.socket);
+  };
+  incoming.on('close', report);
+  return report;
+}
+
+/**
  * Puts `raw` on Hono's context, once, so that no request has to
  * define a property.
  *
@@ -159,13 +183,14 @@ function installRawGetter(context: NestContext): void {
         );
       }
       if (state.opened === undefined) {
-        state.opened = new SseResponse(
-          state.status,
-          (answer): void => {
+        const report = watchDisconnect(this);
+        state.opened = new SseResponse(state.status, {
+          onCommit: (answer): void => {
             this.res = answer;
           },
-          state.waiter.settle,
-        );
+          onDisconnect: report,
+          signal: state.waiter.settle,
+        });
         installSurface(this, state.opened);
       }
       return state.opened;

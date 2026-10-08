@@ -6,6 +6,7 @@ import type { Forwarded, RequestOptions } from './forwarded.ts';
 import { paramsOf } from './params.ts';
 import { parseQuery } from './query.ts';
 import type { ParsedQuery } from './query.ts';
+import { tuneableSocket } from './socket.ts';
 
 /**
  * The request properties Nest's core reads. Every property is

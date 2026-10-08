@@ -224,6 +224,16 @@ the same moment. `app.close()` waits for an open stream to
 finish unless `forceCloseConnections` is set, the same way it
 waits for any long-lived request.
 
+A client that walks away is noticed however the runtime says it:
+by the request ending, and by the stream's own reader being
+cancelled. A runtime that carries no connection of its own says
+it neither way — there is nothing to close and nothing to cancel
+— so it has to be told, and a Worker can: the platform aborts
+the request's signal when the client goes, and
+`examples/cloudflare-workers` turns that into the request
+ending. A few lines of middleware, with `enable_request_signal`
+set to make the platform abort it.
+
 ## Views
 
 Rendering is left to the deployment: this adapter reads the

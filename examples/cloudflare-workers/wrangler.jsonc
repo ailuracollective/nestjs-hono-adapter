@@ -3,18 +3,19 @@
   "main": "./src/worker.ts",
   "compatibility_date": "2026-08-04",
   "compatibility_flags": [
-    "enable_nodejs_http_server_modules"
+    "enable_nodejs_http_server_modules",
+    "enable_request_signal"
   ],
   "alias": {
-    "@nestjs/platform-express": "./src/stub-platform-express.ts",
-    "@nestjs/platform-socket.io": "./src/stub-platform-express.ts",
-    "@nats-io/transport-node": "./src/stub-platform-express.ts",
-    "amqp-connection-manager": "./src/stub-platform-express.ts",
-    "class-transformer": "./src/stub-platform-express.ts",
-    "class-validator": "./src/stub-platform-express.ts",
-    "ioredis": "./src/stub-platform-express.ts",
-    "kafkajs": "./src/stub-platform-express.ts",
-    "mqtt": "./src/stub-platform-express.ts"
+    "@nestjs/platform-express": "./src/stub-optional-peers.ts",
+    "@nestjs/platform-socket.io": "./src/stub-optional-peers.ts",
+    "@nats-io/transport-node": "./src/stub-optional-peers.ts",
+    "amqp-connection-manager": "./src/stub-optional-peers.ts",
+    "class-transformer": "./src/stub-optional-peers.ts",
+    "class-validator": "./src/stub-optional-peers.ts",
+    "ioredis": "./src/stub-optional-peers.ts",
+    "kafkajs": "./src/stub-optional-peers.ts",
+    "mqtt": "./src/stub-optional-peers.ts"
   },
   // Worker Previews require the block. It can be empty: this
   // harness has no Preview-specific settings.
