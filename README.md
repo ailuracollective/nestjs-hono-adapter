@@ -1,20 +1,22 @@
 # @ailura/nestjs-hono-adapter
 
 <!-- Badges: calidad, seguridad y confianza -->
+
 [![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
 [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
 [![bundle size](https://img.shields.io/badge/bundle%20size-≤10kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/.size-limit.json)
 [![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
 [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/en/projects/)](https://www.bestpractices.dev/en/)
 
 An HTTP adapter that runs a NestJS application on
 [Hono](https://hono.dev), with no Express or Fastify underneath.
 
-**Problem**: Nest has no official Hono adapter. The two published
-alternatives target Nest 11 and answer incorrectly — one returns a
-success status to a handler that threw, the other writes every
-response twice.
+**Problem**: Nest has no official Hono adapter. The two
+published alternatives target Nest 11 and answer incorrectly —
+one returns a success status to a handler that threw, the other
+writes every response twice.
 
 **Solution**: This package implements the Nest 11/12
 `AbstractHttpAdapter` contract directly on Hono. Routes are
@@ -74,14 +76,22 @@ packages branch on.
 
 ## Documentation
 
-| Topic                                                        | What it covers                                                                                             |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| [docs/platform-differences.md](docs/platform-differences.md) | Where Express and Fastify disagree, and how this adapter answers; routes, query strings, bodies, responses |
-| [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
-| [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
-| [docs/development.md](docs/development.md)                   | Requirements, build and test commands, release process                                                     |
-| [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
-| [docs/lint-exceptions.md](docs/lint-exceptions.md)           | The lint rules this repository disables and why                                                            |
+| Topic                                                          | What it covers                                                                                             |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [docs/platform-differences.md](docs/platform-differences.md)   | Where Express and Fastify disagree, and how this adapter answers; routes, query strings, bodies, responses |
+| [docs/features.md](docs/features.md)                           | Server-sent events, views, static assets, CORS, request-level security                                     |
+| [docs/deployment.md](docs/deployment.md)                       | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
+| [docs/development.md](docs/development.md)                     | Requirements, build and test commands, release process                                                     |
+| [docs/architecture.md](docs/architecture.md)                   | The layer map, import rules, bundle ceilings, and Node boundary                                            |
+| [docs/lint-exceptions.md](docs/lint-exceptions.md)             | The lint rules this repository disables and why                                                            |
+| [docs/security-requirements.md](docs/security-requirements.md) | Security requirements and trust boundaries                                                                 |
+| [docs/code-review.md](docs/code-review.md)                     | Code review process and standards                                                                          |
+| [docs/assurance-case.md](docs/assurance-case.md)               | Security assurance case and threat model                                                                   |
+| [docs/hardening.md](docs/hardening.md)                         | Hardening mechanisms and deployment recommendations                                                        |
+| [GOVERNANCE.md](GOVERNANCE.md)                                 | How the project is governed, roles, and decision-making                                                    |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                       | Community standards and enforcement                                                                        |
+| [ROADMAP.md](ROADMAP.md)                                       | Planned direction for the next 12 months                                                                   |
+| [SECURITY.md](SECURITY.md)                                     | Vulnerability reporting process and supported versions                                                     |
 
 ## Requirements
 
@@ -102,18 +112,44 @@ typecheck, test, build and the bundle size gate.
 
 ## Contributing
 
-Contributions are welcome via [pull requests](https://github.com/ailuracollective/nestjs-hono-adapters/pulls).
+Contributions are welcome via
+[pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls).
+
+By participating in this project, you agree to abide by the
+[Code of Conduct](CODE_OF_CONDUCT.md) and to certify that your
+contributions comply with the
+[Developer Certificate of Origin](https://developercertificate.org/)
+(DCO). Add a `Signed-off-by` line to your commits to indicate
+your certification.
 
 ### Contribution requirements
 
-- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (enforced by semantic-release).
-- Run `bun run check` before opening a PR — it must pass lint, format, typecheck, test, build, and the bundle size gate.
-- Read [docs/architecture.md](docs/architecture.md) before editing `src/`: it documents the layer map, import rules, and bundle ceilings.
-- Tests must cover new behaviour; the suite runs against both Nest 11 and 12 on Node 22 and 24.
+- Follow the
+  [Conventional Commits](https://www.conventionalcommits.org/)
+  specification (enforced by semantic-release).
+- Run `bun run check` before opening a PR — it must pass lint,
+  format, typecheck, test, build, and the bundle size gate.
+- Read [docs/architecture.md](docs/architecture.md) before
+  editing `src/`: it documents the layer map, import rules, and
+  bundle ceilings.
+- Tests must cover new behaviour; the suite runs against both
+  Nest 11 and 12 on Node 22 and 24.
+- Coding standards are enforced automatically by
+  [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and
+  [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html).
 
 ## Reporting issues
 
-Open an [issue](https://github.com/ailuracollective/nestjs-hono-adapters/issues) for bugs or feature requests. Include the Nest and Hono versions, a minimal reproduction, and the behaviour you expected versus what happened.
+Open an
+[issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues)
+for bugs or feature requests. Include the Nest and Hono
+versions, a minimal reproduction, and the behaviour you expected
+versus what happened.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the vulnerability reporting
+process.
 
 ## License
 
