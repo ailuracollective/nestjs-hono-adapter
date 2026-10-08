@@ -40,6 +40,15 @@ type AdaptorOptions = Parameters<typeof createAdaptorServer>[0];
 interface TransportOptions {
   /** Largest body accepted, in bytes; `0` accepts any size. */
   readonly bodyLimit?: number;
+  /**
+   * Whether `@hono/node-server` may replace the global
+   * `Request` and `Response` with its lighter classes. On by
+   * default: they are worth roughly a third of the CPU an
+   * answer costs. A runtime that refuses an answer which is not
+   * one of its own — Cloudflare Workers, reached through
+   * `cloudflare:node`, does — turns it off.
+   */
+  readonly overrideGlobalObjects?: boolean;
   /** Whether `req.rawBody` keeps the bytes of every body. */
   readonly rawBody?: boolean;
   /** The security headers to send, or `false` to send none. */
@@ -88,6 +97,7 @@ abstract class HonoLifecycle extends RouteAdapter {
   protected readonly interceptor = mountSse;
   protected readonly trustProxy: TrustProxy;
   protected bodyLimit: number;
+  protected overrideGlobalObjects: boolean;
   protected bodyParsingEnabled = false;
   protected rawBodyEnabled: boolean;
   protected corsOptions: CorsOptions | undefined;
@@ -100,19 +110,28 @@ abstract class HonoLifecycle extends RouteAdapter {
     super(hono);
     this.hono = hono;
     this.bodyLimit = options.bodyLimit ?? DEFAULT_BODY_LIMIT;
+    this.overrideGlobalObjects =
+      options.overrideGlobalObjects ?? true;
     this.rawBodyEnabled = options.rawBody ?? false;
     this.trustProxy = options.trustProxy ?? false;
     this.beforeClose = (): void => {
       this.closing = true;
     };
     this.installSecurityHeaders(options.secureHeaders ?? true);
-    // CORS and the closing refusal are one step through the
-    // dispatcher rather than two, because each mounted middleware
-    // is a step every request pays and an application that
-    // configured neither should not pay for either. The guard
-    // reports nothing for CORS until `enableCors()` has run, so
-    // the CORS step is built here and offered only once there is
-    // something for it to do.
+    this.installGuards(hono);
+  }
+
+  /**
+   * Wires the two steps every request takes through the
+   * dispatcher. CORS and the closing refusal are one step
+   * rather than two, because each mounted middleware is a step
+   * every request pays and an application that configured
+   * neither should not pay for either. The guard reports
+   * nothing for CORS until `enableCors()` has run, so the CORS
+   * step is built here and offered only once there is something
+   * for it to do.
+   */
+  private installGuards(hono: NestHono): void {
     const cors = corsBridge(() => this.corsOptions);
     hono.use(
       '*',
@@ -180,6 +199,12 @@ abstract class HonoLifecycle extends RouteAdapter {
    * library sets the lighter class's prototype to the native
    * one, so an answer still passes `instanceof Response`
    * against what it was before.
+   *
+   * Passing `overrideGlobalObjects: false` keeps the platform’s
+   * own classes instead. A platform that checks the type of an
+   * answer at its own boundary refuses the lighter one, and the
+   * `httpServerHandler` of `cloudflare:node` does, so a Worker
+   * asks for the platform’s classes.
    */
   public override initHttpServer(
     options: NestApplicationOptions,
@@ -193,6 +218,7 @@ abstract class HonoLifecycle extends RouteAdapter {
       this.setHttpServer(
         createAdaptorServer({
           fetch: this.hono.fetch,
+          overrideGlobalObjects: this.overrideGlobalObjects,
         }),
       );
       return;
@@ -200,6 +226,7 @@ abstract class HonoLifecycle extends RouteAdapter {
     const adaptorOptions: AdaptorOptions = {
       createServer: createHttpsServer,
       fetch: this.hono.fetch,
+      overrideGlobalObjects: this.overrideGlobalObjects,
       serverOptions: certificate,
     };
     this.setHttpServer(createAdaptorServer(adaptorOptions));
