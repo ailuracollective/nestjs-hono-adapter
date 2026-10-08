@@ -1,7 +1,8 @@
 ---
 name: Maintenance
-description: Technical maintenance with no intended functional change.
-title: "chore: "
+description:
+  Technical maintenance with no intended functional change.
+title: 'chore: '
 labels:
   - type/task
   - status/needs-review
@@ -10,7 +11,9 @@ body:
     id: context
     attributes:
       label: Context
-      description: Why this work exists. Include evidence or current behavior when it materially affects the task.
+      description:
+        Why this work exists. Include evidence or current
+        behavior when it materially affects the task.
     validations:
       required: true
 
@@ -46,7 +49,9 @@ body:
     id: non-goals
     attributes:
       label: Non-goals
-      description: Only include when an explicit boundary prevents ambiguity.
+      description:
+        Only include when an explicit boundary prevents
+        ambiguity.
 
   - type: textarea
     id: constraints
@@ -62,5 +67,6 @@ body:
     attributes:
       label: References
       description: >-
-        Links or paths to authoritative context. A path is a navigation hint
-        unless the issue explicitly states that modifying that file is required.
+        Links or paths to authoritative context. A path is a
+        navigation hint unless the issue explicitly states that
+        modifying that file is required.

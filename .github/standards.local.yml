@@ -29,9 +29,11 @@
 # does not use; they are dropped below.
 
 extensions:
-  - name: "released"
-    color: "ededed"
-    description: "Applied by @semantic-release/github to issues and pull requests included in a release."
+  - name: 'released'
+    color: 'ededed'
+    description:
+      'Applied by @semantic-release/github to issues and pull
+      requests included in a release.'
 
 # --- Level 3 ---
 # `issue` is the ailuracollective/standards issue that approved the deviation.
@@ -40,9 +42,15 @@ extensions:
 # as an extension above.
 
 drops:
-  - name: "release/pending"
-    reason: "release-please's release-pull-request label; this repository releases with semantic-release, which never applies it."
+  - name: 'release/pending'
+    reason:
+      "release-please's release-pull-request label; this
+      repository releases with semantic-release, which never
+      applies it."
     issue: 31
-  - name: "release/tagged"
-    reason: "release-please's tagged-release label; this repository releases with semantic-release, which applies `released` instead."
+  - name: 'release/tagged'
+    reason:
+      "release-please's tagged-release label; this repository
+      releases with semantic-release, which applies `released`
+      instead."
     issue: 31
