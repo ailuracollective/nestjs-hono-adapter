@@ -2,7 +2,7 @@
   {
     "name": "index",
     "path": "dist/index.js",
-    "limit": 8016,
+    "limit": 8096,
     "brotli": true,
     "ignore": [
       "hono",

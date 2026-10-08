@@ -5,6 +5,7 @@ import { routePath } from 'hono/route';
 import type { NestContext } from './context.ts';
 import { parseQuery } from './query.ts';
 import type { ParsedQuery } from './query.ts';
+import { tuneableSocket } from './socket.ts';
 
 /** The header a proxy sets with the protocol it received. */
 const FORWARDED_PROTO = 'x-forwarded-proto';
@@ -371,7 +372,7 @@ function toNestRequest(
     rawBody: undefined,
     secure: scheme === 'https',
     session: undefined,
-    socket: incoming.socket,
+    socket: tuneableSocket(incoming.socket),
     url: route,
   };
 }
