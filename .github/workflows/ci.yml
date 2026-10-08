@@ -4,6 +4,7 @@ name: CI
   push:
     branches: [main]
     paths:
+      - '.github/workflows/**'
       - 'src/**'
       - 'test/**'
       - 'tsconfig.json'
@@ -12,6 +13,7 @@ name: CI
       - 'bun.lock'
   pull_request:
     paths:
+      - '.github/workflows/**'
       - 'src/**'
       - 'test/**'
       - 'tsconfig.json'
