@@ -1,16 +1,27 @@
 # @ailura/nestjs-hono-adapter
 
+<!-- Badges: calidad, seguridad y confianza -->
+
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
+[![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
+[![bundle size](https://img.shields.io/badge/bundle%20size-≤10kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/.size-limit.json)
+[![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
+[![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+
 An HTTP adapter that runs a NestJS application on
 [Hono](https://hono.dev), with no Express or Fastify underneath.
 
-Nest has no official Hono adapter. This package implements the
-Nest 11/12 `AbstractHttpAdapter` contract directly on Hono:
-routes are registered on a Hono application, and Hono's Web
-`Request` and `Response` are translated to and from the objects
-Nest reads and writes. The two published alternatives target
-Nest 11 and answer incorrectly — one returns a success status to
-a handler that threw, the other writes every response twice — so
-owning the adapter is the smaller cost.
+**Problem**: Nest has no official Hono adapter. The two
+published alternatives target Nest 11 and answer incorrectly —
+one returns a success status to a handler that threw, the other
+writes every response twice.
+
+**Solution**: This package implements the Nest 11/12
+`AbstractHttpAdapter` contract directly on Hono. Routes are
+registered on a Hono application, and Hono's Web `Request` and
+`Response` are translated to and from the objects Nest reads and
+writes.
 
 The layout of `src/`, the import rules it enforces and the
 bundle ceilings are written down in
@@ -534,6 +545,42 @@ the legacy kind, which is why that file turns
 `experimentalDecorators` and `emitDecoratorMetadata` on. The
 library declares no decorator, so neither flag changes what
 `pnpm run build` emits.
+
+## Contributing
+
+Contributions are welcome via
+[pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls).
+
+### Contribution requirements
+
+- Follow the
+  [Conventional Commits](https://www.conventionalcommits.org/)
+  specification (enforced by semantic-release).
+- Run `bun run check` before opening a PR — it must pass lint,
+  format, typecheck, test, build, and the bundle size gate.
+- Read [docs/architecture.md](docs/architecture.md) before
+  editing `src/`: it documents the layer map, import rules, and
+  bundle ceilings.
+- Tests must cover new behaviour; the suite runs against both
+  Nest 11 and 12 on Node 22 and 24.
+
+## Reporting issues
+
+Open an
+[issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues)
+for bugs or feature requests. Include the Nest and Hono
+versions, a minimal reproduction, and the behaviour you expected
+versus what happened.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the vulnerability reporting
+process.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the vulnerability reporting
+process.
 
 ## License
 
