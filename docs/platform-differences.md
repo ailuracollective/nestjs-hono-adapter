@@ -25,11 +25,11 @@ out.
 
 Two defaults follow the **Express 4** behaviour instead, on
 purpose: `@Query()` and a URL-encoded body are parsed with the
-`qs` grammar, and an empty JSON body reads as `{}`. Both are
-supersets of the flat parsers the other two platforms use, so a
-controller written against either keeps reading what it expects.
-Express 5 reads the query flat; anything written for `qs` nests
-and stays a superset.
+`qs` grammar, and an empty JSON body reads as `{}`. Express 5
+reads the query flat, as `platform-fastify` does, but bracket
+syntax nests here, where a flat parser keeps `filter[name]` as a
+literal key. A handler that reads those keys may need a change
+when it moves to this adapter.
 
 | Situation                                      | This adapter                                          | Express                                      | Fastify                    |
 | ---------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- | -------------------------- |
