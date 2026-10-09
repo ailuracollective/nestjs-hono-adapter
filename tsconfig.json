@@ -38,10 +38,9 @@
      * legacy kind, and `emitDecoratorMetadata` is what lets the
      * injector read constructor parameter types, so `tsc -p
      * test/tsconfig.json` needs both flags. The runner honours
-     * them through swc (`vitest.config.ts`), because vitest's
-     * default transform reads `experimentalDecorators` and drops
-     * the metadata. The library itself declares no decorator, so
-     * these change no emitted output.
+     * them through Bun's transpiler, which reads both from this
+     * file. The library itself declares no decorator, so these
+     * change no emitted output.
      */
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

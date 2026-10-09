@@ -159,19 +159,13 @@ type-only import still couples a module's types to the platform.
 
 `.size-limit.json` holds a ceiling per entrypoint, measured by
 `size-limit` as a consumer would see it: bundled, minified,
-brotlied, with peers external. `pnpm run check` runs it last,
-and CI runs it again as its own job.
+brotlied, with peers external. `bun run check` runs it last, and
+CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
-is an explicit edit that has to be justified here. `index` sits
-at 7250 bytes against a measurement of 7101, and it is the one
-that has moved: two correctness fixes — the lazy `@Sse()`
-surface, because an ordinary `@Res()` route was answered as an
-event stream, and the null-body status, where a `@HttpCode(204)`
-handler returning a value was answered `500` — cost 101 bytes,
-and the query refactor and the zero-byte removals beside them
-paid 75 of that back. The net is +26 for the fixes rather than
-+101. `ws` is still on its own measurement.
+is an explicit edit that has to be justified here. `index` has
+an 8500-byte ceiling and a measurement of 8450, and `ws` has a
+1345-byte ceiling and a measurement of 1340.
 
 Two consequences worth knowing before you write code:
 
