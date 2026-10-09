@@ -11,6 +11,8 @@
 
 An HTTP adapter that runs a NestJS application on
 [Hono](https://hono.dev), with no Express or Fastify underneath.
+Built for [Bun](https://bun.sh), with Node support via
+`@hono/node-server`.
 
 **Problem**: Nest has no official Hono adapter. The two
 published alternatives target Nest 11 and answer incorrectly —
@@ -28,6 +30,10 @@ writes.
 ## Install
 
 ```sh
+bun add @ailura/nestjs-hono-adapter hono @hono/node-server
+```
+
+```sh
 npm install @ailura/nestjs-hono-adapter hono @hono/node-server
 ```
 
@@ -37,7 +43,8 @@ pnpm add @ailura/nestjs-hono-adapter hono @hono/node-server
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
 are peer dependencies, so the application decides their
-versions.
+versions. Bun is the primary runtime and toolchain; Node 22+
+is supported through `@hono/node-server`.
 
 ## Use
 
@@ -89,8 +96,9 @@ packages branch on.
 
 ## Requirements
 
-- Node 22.12 or later (22.x and 24.x tested; 26.x ready as it
-  enters LTS).
+- Bun 1.2+ (primary runtime and toolchain).
+- Node 22.12+ when deploying via `@hono/node-server` (22.x and
+  24.x tested; 26.x ready as it enters LTS).
 - Nest 11 or 12.
 - Hono 4 and `@hono/node-server` 2.
 
