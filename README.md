@@ -23,6 +23,8 @@ registered on a Hono application, and Hono's Web `Request` and
 `Response` are translated to and from the objects Nest reads and
 writes.
 
+**Get started**: [Install](#install) · [Report a bug](https://github.com/ailuracollective/nestjs-hono-adapter/issues) · [Contribute](https://github.com/ailuracollective/nestjs-hono-adapter/pulls)
+
 ## Install
 
 ```sh
@@ -81,6 +83,7 @@ packages branch on.
 | [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
 | [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
 | [docs/development.md](docs/development.md)                   | Requirements, build and test commands, release process                                                     |
+| [docs/api.md](docs/api.md)                                 | API reference: classes, options, and types                                               |
 | [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
 | [docs/lint-exceptions.md](docs/lint-exceptions.md)           | The lint rules this repository disables and why                                                            |
 
@@ -111,6 +114,10 @@ Contributions are welcome via
 - Follow the
   [Conventional Commits](https://www.conventionalcommits.org/)
   specification (enforced by semantic-release).
+- Code must pass the project's
+  [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and
+  [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html)
+  configuration — the enforced coding standard.
 - Run `bun run check` before opening a PR — it must pass lint,
   format, typecheck, test, build, and the bundle size gate.
 - Read [docs/architecture.md](docs/architecture.md) before
