@@ -25,7 +25,10 @@ registered on a Hono application, and Hono's Web `Request` and
 `Response` are translated to and from the objects Nest reads and
 writes.
 
-**Get started**: [Install](#install) · [Report a bug](https://github.com/ailuracollective/nestjs-hono-adapter/issues) · [Contribute](https://github.com/ailuracollective/nestjs-hono-adapter/pulls)
+**Get started**: [Install](#install) ·
+[Report a bug](https://github.com/ailuracollective/nestjs-hono-adapter/issues)
+·
+[Contribute](https://github.com/ailuracollective/nestjs-hono-adapter/pulls)
 
 ## Install
 
@@ -43,8 +46,8 @@ pnpm add @ailura/nestjs-hono-adapter hono @hono/node-server
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
 are peer dependencies, so the application decides their
-versions. Bun is the primary runtime and toolchain; Node 22+
-is supported through `@hono/node-server`.
+versions. Bun is the primary runtime and toolchain; Node 22+ is
+supported through `@hono/node-server`.
 
 ## Use
 
@@ -90,8 +93,9 @@ packages branch on.
 | [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
 | [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
 | [docs/development.md](docs/development.md)                   | Requirements, build and test commands, release process                                                     |
-| [docs/api.md](docs/api.md)                                 | API reference: classes, options, and types                                               |
+| [docs/api.md](docs/api.md)                                   | API reference: classes, options, and types                                                                 |
 | [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
+| [docs/bundle-baseline.md](docs/bundle-baseline.md)           | Verified bundle and package measurements, and what the evidence supports                                   |
 | [docs/lint-exceptions.md](docs/lint-exceptions.md)           | The lint rules this repository disables and why                                                            |
 
 ## Requirements

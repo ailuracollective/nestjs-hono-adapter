@@ -164,8 +164,8 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. `index` has
-an 8500-byte ceiling and a measurement of 8450, and `ws` has a
-1345-byte ceiling and a measurement of 1340.
+an 8500-byte ceiling and a measurement of 8444, and `ws` has a
+1345-byte ceiling and a measurement of 1345.
 
 Two consequences worth knowing before you write code:
 
