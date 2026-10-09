@@ -1,0 +1,56 @@
+---
+# `.github/standards.local.yml` — this repository's customization record.
+#
+# It declares deviations from the shared standard; it configures nothing. No workflow
+# reads it, so a value here changes no behaviour. To change the gate, edit this
+# repository's own `policy.yml`.
+#
+# `reason` is required on every override, drop and structural entry. Level 3 also needs
+# `issue:`. Reserved families: type/, status/, scope/, meta/, github_actions, release/.
+# `type/` is frozen at five members. Policy: ailuracollective/standards docs/customization.md.
+#
+# Keep only the sections you use:
+#
+#   extensions        level 1  a label in a family the core does not use
+#   label-overrides   level 2  a core label's color or description
+#   input-overrides   level 2  a gate input's value
+#   drops             level 3  removing a core label
+#   structural        level 3  a gate input's set, or the manifest's shape
+
+# An explicit empty mapping: a comments-only file parses to None, like a truncated one.
+
+# Informational only.
+# extends: "2026-01"
+
+# --- Level 1 ---
+# This repository releases with semantic-release, whose @semantic-release/github
+# plugin labels every released issue and pull request `released` by default. The
+# core manifest's `release/` labels belong to release-please, which this repository
+# does not use; they are dropped below.
+
+extensions:
+  - name: 'released'
+    color: 'ededed'
+    description:
+      'Applied by @semantic-release/github to issues and pull
+      requests included in a release.'
+
+# --- Level 3 ---
+# `issue` is the ailuracollective/standards issue that approved the deviation.
+# release-please is not this repository's release tool, so its two labels are dropped
+# rather than carried unused. The semantic-release equivalent is `released`, declared
+# as an extension above.
+
+drops:
+  - name: 'release/pending'
+    reason:
+      "release-please's release-pull-request label; this
+      repository releases with semantic-release, which never
+      applies it."
+    issue: 31
+  - name: 'release/tagged'
+    reason:
+      "release-please's tagged-release label; this repository
+      releases with semantic-release, which applies `released`
+      instead."
+    issue: 31
