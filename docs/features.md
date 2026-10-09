@@ -1,7 +1,7 @@
 # Optional features
 
 The capabilities a deployment may turn on: event streams, views,
-static assets, CORS and request-level security.
+static assets, CORS, request-level security and Swagger.
 
 ## Contents
 
@@ -10,6 +10,7 @@ static assets, CORS and request-level security.
 - [Static assets](#static-assets)
 - [CORS](#cors)
 - [Request-level security](#request-level-security)
+- [Swagger](#swagger)
 
 ## Server-sent events
 
@@ -177,3 +178,56 @@ a method: `AbstractHttpAdapter` declares it only in Nest
 versions published after 12.0.3, and this package compiles
 against `>=11 <13`, so one build has to answer a Nest that
 declares the method and one that does not.
+
+## Swagger
+
+`@nestjs/swagger` works on this adapter as it does on Express
+and Fastify. `SwaggerModule.setup()` serves the UI, the
+bootstrap script and the JSON/YAML documents:
+
+```ts
+const document = SwaggerModule.createDocument(
+  app,
+  new DocumentBuilder()
+    .setTitle('Catalog')
+    .setVersion('1.0')
+    .build(),
+);
+SwaggerModule.setup('docs', app, document);
+```
+
+No configuration is needed, and the UI assets are served through
+`useStaticAssets()` at the path the setup named.
+
+### What the adapter provides
+
+A Nest module can register a route on the HTTP adapter itself,
+and it receives the Hono context as its Express-shaped `res`.
+Some modules — `@nestjs/swagger` among them — write to that
+object with `res.type()` and `res.send()`, which a Hono context
+does not carry. Without them such a route answers `500`.
+
+The adapter installs both on the Hono context prototype, once
+per process, in `src/core/express-surface.ts`:
+
+- `res.type(value)` writes `Content-Type` and returns the
+  context, as Express does for chaining.
+- `res.send(body)` answers the body through the same writer
+  every other answer goes through, honouring a status Nest set
+  first and falling back to `200`.
+
+The install is guarded on the prototype already answering
+`send`, so a second application in the same process, or a
+runtime that ships the method itself, is left alone. This is
+part of the translation rather than a Swagger-specific shim: any
+module that registers a route on the adapter this way gets the
+same surface.
+
+### What it does not provide
+
+Express's `res.type()` also accepts a shorthand such as `json`
+and expands it through a media type table. That table is not
+carried: no module that registers a route on the adapter uses a
+shorthand, and the bytes are spent on the `index` entrypoint,
+which has no headroom to spare. Write the full type where it is
+read.

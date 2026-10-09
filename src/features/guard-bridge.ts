@@ -11,8 +11,7 @@ const CLOSING_BODY = {
 
 /**
  * What a step that produces nothing looks like: the guard hands
- * one to CORS when it wants only the headers, and never to
- * anything that would wait for it.
+ * one to CORS when it wants only the headers.
  */
 const NOOP_NEXT = (): Promise<void> => Promise.resolve();
 
@@ -20,7 +19,7 @@ const NOOP_NEXT = (): Promise<void> => Promise.resolve();
 interface GuardState {
   /**
    * Whether the application has configured CORS. Asked apart
-   * from the step itself so the step can be built once, while
+   * from the step itself so the step can be built once while
    * whether it applies is still read per request:
    * `enableCors()` runs after the adapter is constructed.
    */
@@ -35,14 +34,12 @@ interface GuardState {
 }
 
 /**
- * The refusal a closing server answers a request with.
- *
- * A request already in flight is left to finish; one that
- * arrives afterwards is refused instead of being accepted and
- * then dropped when the socket goes away. The refusal asks for
- * the connection not to be reused, which is what lets a
- * balancer drain the instance faster — the same header the
- * Express adapter sends with its own answer.
+ * The refusal a closing server answers with. A request already
+ * in flight is left to finish; one arriving afterwards is
+ * refused rather than accepted and then dropped when the socket
+ * goes away. The refusal asks for the connection not to be
+ * reused, which is what lets a balancer drain the instance
+ * faster.
  */
 function closingAnswer(): Response {
   return Response.json(CLOSING_BODY, {
@@ -52,13 +49,11 @@ function closingAnswer(): Response {
 }
 
 /**
- * The refusal a closing server sends, written over the headers
- * CORS just added.
- *
- * The CORS step is given a `next` that produces nothing,
- * because a Hono middleware may not answer with a value where
- * `next` is expected; the answer is placed on the context
- * afterwards, which is where Hono reads it from.
+ * The refusal written over the headers CORS just added. The
+ * CORS step is given a `next` that produces nothing, because a
+ * Hono middleware may not answer with a value where `next` is
+ * expected; the answer is placed on the context afterwards,
+ * which is where Hono reads it from.
  */
 async function refuse(
   context: Context<NodeEnv, string>,
@@ -71,29 +66,17 @@ async function refuse(
 
 /**
  * One step through the dispatcher for the two things a request
- * may need before it reaches a route.
- *
- * CORS and the closing refusal were two middlewares, and each
- * mounted one is a step every request pays — about 400
- * nanoseconds each, on a path that costs over a hundred
- * microseconds. An application that configured neither paid for
- * both anyway, since neither can know when the Hono application
- * is built whether CORS will be enabled later or whether the
- * deployment asked for the 503.
- *
- * Both are still read on every request, because both can change
- * while the server is running: `enableCors()` is called after
- * the adapter is constructed, and the closing flag is set
- * during shutdown. What changes is that an application which
- * configured neither reaches its route after two reads and no
- * extra step.
- *
- * The CORS step is handed in rather than imported, because
- * features are siblings: the composition root is what wires two
- * of them into one chain.
- *
- * CORS runs first, so a request refused while closing keeps the
- * headers it would have been answered with.
+ * may need before it reaches a route. CORS and the closing
+ * refusal were two middlewares, and each mounted one is a step
+ * every request pays — about 400 nanoseconds each, on a path
+ * costing over a hundred microseconds — while neither can know
+ * at construction time whether CORS will be enabled later or a
+ * 503 was asked for. An application that configured neither now
+ * reaches its route after two reads and no extra step. CORS
+ * runs first, so a request refused while closing keeps the
+ * headers it would have been answered with, and it is handed in
+ * rather than imported because the composition root is what
+ * wires features into one chain.
  */
 function guardBridge(
   state: GuardState,

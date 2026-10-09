@@ -5,22 +5,17 @@ import { buildResponse } from './response.ts';
 
 /**
  * Where the status Nest asked for is kept until the answer is
- * built.
- *
- * A property on the context rather than a `WeakMap` beside it:
- * both live exactly as long as the context does, and one is a
- * write to an object that already exists while the other is a
- * hash of a private record on every answer.
+ * built: a property on the context rather than a `WeakMap`
+ * beside it, since both live exactly as long as the context
+ * does and one is a write to an object that already exists.
  */
 const PENDING_STATUS = Symbol('pendingStatus');
 
 /**
- * A context with somewhere to keep the status.
- *
- * Written as an interface extending the context rather than a
- * bare record so the assertion to it is one the checker can see
- * is a widening: the context has no such property, and this
- * says so in the type rather than in a comment.
+ * A context with somewhere to keep the status. Written as an
+ * interface extending the context rather than a bare record so
+ * the assertion to it is one the checker can see is a
+ * widening.
  */
 interface StatusCarrier {
   [PENDING_STATUS]?: number;
@@ -36,9 +31,8 @@ function pendingStatusOf(
 }
 
 /**
- * Writes what Nest answers onto the context of the request.
- *
- * A Hono context doubles as the response object, so a value is
+ * Writes what Nest answers onto the context of the request. A
+ * Hono context doubles as the response object, so a value is
  * turned into a Web response and stored on it. A status set
  * through `@HttpCode()` or `@Res()` is remembered per request,
  * because the adapter is asked for it after the handler ran.
@@ -53,7 +47,7 @@ class ResponseWriter {
   }
 
   /**
-   * The status Nest asked for, before any body was written. An
+   * The status Nest asked for, before any body was written; an
    * event stream needs it while the handler still runs.
    */
   public statusOf(response: NestContext): number | undefined {

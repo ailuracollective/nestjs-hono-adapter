@@ -37,9 +37,8 @@ const UNITS = new Map<string, number>([
 ]);
 
 /**
- * A payload as the pipeline reads it: the parsed value, the
- * uploaded files when the request was multipart, and the bytes
- * when the application asked to keep them.
+ * A payload as the pipeline reads it: the value, the uploads,
+ * and the bytes if they were asked for.
  */
 interface ParsedBody {
   body: unknown;
@@ -59,8 +58,8 @@ interface FormParts {
 }
 
 /**
- * Reads a size the way Nest's own parsers do, so a limit such
- * as `100kb` means the same thing here as it does on Express.
+ * Reads a size the way Nest's own parsers do, so `100kb` means
+ * here what it means on Express.
  */
 function toByteLimit(limit: number | string): number {
   if (typeof limit === 'number') {
@@ -223,14 +222,12 @@ async function readPayload(
 }
 
 /**
- * Reads the payload for the pipeline.
- *
- * On Express and Fastify Nest installs parser middleware that
- * fills `req.body` before the pipeline runs. Hono parses on
- * demand, so the adapter reads the body here and hands it over
- * in the same place. A payload that does not match its content
- * type is refused with the exception Nest raises for a failed
- * parse, so filters and logging see it like any other failure.
+ * Reads the payload where Express and Fastify would have had
+ * parser middleware fill `req.body` before the pipeline ran:
+ * Hono parses on demand. A payload that does not match its
+ * content type is refused with the exception Nest raises for a
+ * failed parse, so filters and logging see it like any
+ * failure.
  */
 function readBody(
   context: NestContext,

@@ -5,15 +5,12 @@ import type { NestHono, NodeEnv } from '../core/context.ts';
 import { toDirectories } from '../core/directories.ts';
 
 /**
- * The options Nest accepts for static assets. They are declared
- * here because Nest types the parameter as `any` on both the
+ * The options Nest accepts for static assets, declared here
+ * because Nest types the parameter as `any` on both the
  * application and the adapter, so nothing can be taken from a
- * signature.
- *
- * The options Hono's handler decides for itself are refused
- * rather than ignored, so a deployment finds out at startup
- * instead of from a response that quietly differs from the one
- * that was asked for.
+ * signature. The options Hono's handler decides for itself are
+ * refused rather than ignored, so a deployment finds out at
+ * startup instead of from a quietly different answer.
  */
 interface StaticAssetsOptions {
   readonly dotfiles?: string;
@@ -129,9 +126,8 @@ function toMilliseconds(maxAge: number | string): number {
 }
 
 /**
- * Writes the cache lifetime a deployment asked for: the header
- * value the served file is cached with, marked immutable when
- * the deployment asked for that as well.
+ * Writes the cache lifetime a deployment asked for, marked
+ * immutable when it asked for that too.
  */
 function setCacheControl(
   response: Response,
@@ -198,12 +194,9 @@ function directoryHandler(
 
 /**
  * Mounts the directories a deployment named, under the prefix
- * it asked for.
- *
- * A request that names no file in them travels on, which is
- * what Nest's own middleware does: the routes behind it answer,
- * and an answer the deployment asked for is written before
- * that.
+ * it asked for. A request naming no file in them travels on,
+ * which is what Nest's own middleware does: the routes behind
+ * it answer.
  */
 function mountStaticAssets(
   hono: NestHono,
@@ -213,8 +206,8 @@ function mountStaticAssets(
   assertNoHooks(options);
   assertNoOtherModes(options);
 
-  // The paths one mount answers on: a deployment that named no
-  // prefix has its assets answer every path.
+  // A deployment that named no prefix has its assets answer
+  // every path.
   const { prefix } = options;
   let mounts: readonly string[] = ['/*'];
   if (prefix !== undefined && prefix !== '') {

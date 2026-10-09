@@ -38,8 +38,7 @@ interface BodyParserOptions {
 
 /**
  * The hook Nest's built-in HTTP security features register, as
- * the base class types it: the request it reads and the raw
- * response it writes.
+ * the base class types it.
  */
 type SecurityHook = (
   request: NestRequest,
@@ -58,8 +57,7 @@ type SecurityHook = (
  * registered on a Hono application, and Hono's Web `Request`
  * and `Response` are translated to and from the objects Nest
  * reads and writes. The application, the middleware chain and
- * the server lifecycle are inherited from {@link HonoLifecycle};
- * this class implements the rest of the Nest contract.
+ * the server lifecycle are inherited from {@link HonoLifecycle}.
  */
 // oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 class ServerAdapter extends HonoLifecycle {
@@ -141,15 +139,22 @@ class ServerAdapter extends HonoLifecycle {
   }
 
   /** Names the engine, by the extension it renders. */
-  public override setViewEngine(engine: string): void {
+  public override setViewEngine(engine: string): this {
     this.views.useEngine(engine);
+    return this;
   }
 
-  /** Names the directories a view is read from. */
+  /**
+   * Names the directories a view is read from. `HttpServer`
+   * declares this one as returning the adapter, so it is
+   * answered that way: a caller that chains off it reads the
+   * same object Nest will go on to use.
+   */
   public setBaseViewsDir(
     directory: string | readonly string[],
-  ): void {
+  ): this {
     this.views.useDirectories(directory);
+    return this;
   }
 
   /**
@@ -159,17 +164,17 @@ class ServerAdapter extends HonoLifecycle {
   public override useStaticAssets(
     path: string | readonly string[],
     options?: StaticAssetsOptions,
-  ): void {
+  ): this {
     mountStaticAssets(this.hono, path, options ?? {});
+    return this;
   }
 
   /**
-   * Turns on the CORS middleware for this service.
-   *
-   * It has to be configured before the first request is served,
-   * which is how Nest itself is used: the application is built,
-   * `enableCors` is called on it, and only then does it listen.
-   * Until it is called no origin is allowed.
+   * Turns on the CORS middleware for this service. It has to be
+   * configured before the first request is served, which is how
+   * Nest itself is used: the application is built, `enableCors`
+   * is called on it, and only then does it listen. Until then
+   * no origin is allowed.
    */
   public override enableCors(options?: CorsOptions): void {
     this.corsOptions = options ?? {};
@@ -222,21 +227,18 @@ class ServerAdapter extends HonoLifecycle {
 
   /**
    * Runs the request hook of Nest's built-in HTTP security
-   * features in front of every route. The hook is handed the
-   * request it reads and the raw response it writes, the same
-   * two objects the Fastify adapter gives it, and the transport
-   * merges the headers it sets into whatever the route answers.
-   * A failure it reports is thrown into the path the exception
-   * layer already owns.
+   * features in front of every route, handed the request it
+   * reads and the raw response it writes — the same two objects
+   * the Fastify adapter gives it, whose headers the transport
+   * merges into whatever the route answers. A failure it
+   * reports is thrown onto the path the exception layer already
+   * owns.
    *
    * It is installed as an own property rather than written as a
    * method because `AbstractHttpAdapter` declares it only in
-   * Nest versions published after 12.0.3, while this package
-   * compiles against `>=11 <13`: a method with `override` fails
-   * against the versions that lack it, and one without fails
-   * against the versions that have it. The declaration on the
-   * merged interface below and the assignment here are what
-   * satisfies both.
+   * Nest versions published after 12.0.3, and
+   * `noImplicitOverride` has no way to say "only where the base
+   * has it".
    */
   private installSecurityHook(): void {
     this.registerSecurityHook = (hook: SecurityHook): void => {
@@ -334,17 +336,14 @@ class ServerAdapter extends HonoLifecycle {
 
 /**
  * The member this class declares next to the base rather than
- * in it. Nest declares `registerSecurityHook` on its HTTP
- * adapter only from 12.0.3 on, and `noImplicitOverride` has no
- * way to say "only where the base has it": an `override` fails
- * against a Nest 11 install and dropping it fails against Nest
- * 12, which then reports that the member is not in the base. A
- * merged declaration is the form both installs accept, and an
- * assigned own property is what `installSecurityHook` fills in.
- * The signature is this repository's own rather than the
- * base's, so it is held to what this repository documents as
- * well as to the base, in
- * `test/types/route-adapter-compat.ts`.
+ * in it, for the same reason as `beforeClose` above: Nest
+ * declares it only from 12.0.3 on, and `noImplicitOverride` has
+ * no way to say "only where the base has it". The assigned own
+ * property `installSecurityHook` fills in is what satisfies
+ * both installs. The signature is this repository's own rather
+ * than the base's, so `test/types/route-adapter-compat.ts`
+ * holds it to what this repository documents as well as to the
+ * base.
  */
 interface ServerAdapter {
   /** Registers a hook Nest runs for every request. */

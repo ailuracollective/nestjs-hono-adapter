@@ -7,8 +7,7 @@ import type { NestHandler, NestRequest } from './request.ts';
 
 /**
  * Mirrors VersionValue in version-options.interface, which
- *
- * @nestjs/common does not export: reading it from an internal
+ * `@nestjs/common` does not export: reading it from an internal
  * path would tie the package to a path Nest may move.
  */
 type VersionValue =
@@ -32,7 +31,7 @@ function isNeutral(version: VersionValue): boolean {
 }
 
 /**
- * Normalises a version, or a list of them, into a list. The
+ * Normalises a version, or a list of them, into a list; the
  * neutral marker is a symbol, so the list type is widened to
  * match it.
  */
@@ -69,8 +68,8 @@ function parametersOf(mediaRange: string): string[] {
  * Reads the version an `Accept` header carries, the way Nest's
  * own adapters read it: every media range and every parameter
  * is scanned, because `q` weights and other ranges may come
- * first, and the first parameter that starts with the key wins.
- * With `v=` as the key, `application/json;v=1` reads as `1`.
+ * first. With `v=` as the key, `application/json;v=1` reads as
+ * `1`.
  */
 const TRAILING_PLUS = /\+$/u;
 
@@ -95,10 +94,10 @@ function readMediaTypeVersion(
   if (accept === undefined) {
     return undefined;
   }
-  // Nest documents the key as `v=` for `application/json;v=1`.
-  // It may carry a trailing plus, as `v+=`, to mean "any version",
-  // and that names the same parameter, so the name is compared
-  // rather than the raw key.
+  // Nest documents the key as `v=` for `application/json;v=1`, and
+  // it may carry a trailing plus (`v+=`) to mean "any version",
+  // which names the same parameter, so the name is compared rather
+  // than the raw key.
   const name = (key.split('=')[0] ?? key).replace(
     TRAILING_PLUS,
     '',
@@ -171,14 +170,12 @@ function createHeaderFilter(
 
 /**
  * Guards a route handler by request version for the versioning
- * styles the route path does not already resolve. The logic
- * mirrors Nest's own adapters, so a versioned route behaves the
- * same way on Hono.
- *
- * URI versioning is a plain path prefix and needs no filter. A
- * request that asks for an unknown version is passed on rather
- * than rejected, which is how Nest keeps an older version
- * serving the same route.
+ * styles the route path does not already resolve, mirroring
+ * Nest's own adapters so a versioned route behaves the same way
+ * on Hono. URI versioning is a plain path prefix and needs no
+ * filter, and a request asking for an unknown version is passed
+ * on rather than rejected, which is how Nest keeps an older
+ * version serving the same route.
  */
 function createVersionFilter(
   handler: NestHandler,

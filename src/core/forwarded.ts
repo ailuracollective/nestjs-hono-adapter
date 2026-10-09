@@ -1,11 +1,10 @@
 import type { NestContext } from './context.ts';
 
 /**
- * How much of a proxy's word the deployment believes. `false`
- * is none of it, `true` is the whole chain, a hop count trusts
- * that many addresses from the right, and a list trusts the
- * addresses it names — the levels Fastify reads from
- * proxy-addr.
+ * How much of a proxy's word the deployment believes: `false`
+ * none of it, `true` the whole chain, a hop count that many
+ * addresses from the right, a list the addresses it names — the
+ * levels Fastify reads from proxy-addr.
  */
 type TrustProxy = boolean | number | string | readonly string[];
 
@@ -91,8 +90,8 @@ function forwardedValues(
 
 /**
  * The chain a proxy wrote, with the address the socket has of
- * the last hop in it: the list is read from the right, so the
- * nearest address is part of what a deployment may name.
+ * the last hop in it: read from the right, so the nearest
+ * address is part of what a deployment may name.
  */
 function chainOf(
   forwardedFor: readonly string[],
@@ -133,12 +132,12 @@ function firstUntrusted(
 
 /**
  * The client address a trusted proxy chain reveals, read the
- * way proxy-addr reads it. A hop count trusts that many
- * addresses from the right — the socket's own side — and the
- * answer is the first address past them; a list walks from the
- * right past every address it names, socket included; `true`
- * trusts the whole chain, so the leftmost address is the
- * client's, and `false` trusts nothing the chain says.
+ * way proxy-addr reads it: a hop count trusts that many
+ * addresses from the right — the socket's own side — and
+ * answers the first past them; a list walks from the right past
+ * every address it names, socket included; `true` trusts the
+ * whole chain, so the leftmost address is the client's; `false`
+ * trusts nothing the chain says.
  */
 function addressOf(
   forwardedFor: readonly string[],

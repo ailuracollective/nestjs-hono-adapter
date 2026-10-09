@@ -20,6 +20,15 @@ import { toNestRequest } from '../src/core/request.ts';
 import type { NestContext, NodeEnv } from '../src/index.ts';
 
 /**
+ * What Hono is handed as the environment of a request.
+ *
+ * The type allows any object, and a binding that carries no
+ * Node message is exactly one: the worker path hands Hono its
+ * own bindings, and `incoming` is simply not among them.
+ */
+type Bindings = Record<string, unknown>;
+
+/**
  * The request no listener sent, which is what the translation
  * reads the raw request and the socket from.
  */
@@ -92,4 +101,81 @@ test('a property read twice is built once', async () => {
   expect(bag.hosts).toBe(hosts);
   expect(bag.ips).toStrictEqual([]);
   expect(reached.incoming).toBe(1);
+});
+
+/**
+ * A binding with no Node message in it, which is what a worker
+ * hands the adapter: its own bindings, and nothing that arrived
+ * on a socket.
+ */
+const NO_NODE_MESSAGE: Bindings = {
+  get outgoing(): ServerResponse {
+    return SYNTHETIC_OUTGOING;
+  },
+};
+
+/**
+ * A context reached through that binding.
+ *
+ * The route has to run, so a case is measuring the translation
+ * rather than a request that never arrived.
+ */
+async function contextWithoutNodeMessage(): Promise<NestContext> {
+  const app = new Hono<NodeEnv>();
+  const captured: NestContext[] = [];
+  app.get('/read', (context) => {
+    captured.push(context);
+    return context.text('ok');
+  });
+  await app.request('/read', undefined, NO_NODE_MESSAGE);
+  const [context] = captured;
+  if (context === undefined) {
+    throw new Error('the route did not run');
+  }
+  return context;
+}
+
+test('the address is undefined rather than thrown when none arrived', async () => {
+  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+    trustProxy: false,
+  });
+
+  // `ip` is declared `string | undefined`, so this is the answer it
+  // owes rather than the one it happens to give when a socket is
+  // there. It matters because the default tracker of
+  // `@nestjs/throttler` reads this field, and a thrown error there
+  // answers 500 instead of throttling.
+  expect(bag.ip).toBeUndefined();
+});
+
+test('the forwarded chain is empty when no socket arrived', async () => {
+  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+    trustProxy: false,
+  });
+
+  expect(bag.ips).toStrictEqual([]);
+});
+
+test('the fields that need the socket still say what is missing', async () => {
+  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+    trustProxy: false,
+  });
+
+  // `raw` and `socket` cannot be answered at all without one, and
+  // their types do not pretend otherwise — so they name the absence
+  // rather than handing back `undefined` that would be read as a
+  // message somewhere else.
+  expect(() => bag.raw).toThrow('without a Node message');
+  expect(() => bag.socket).toThrow('without a Node message');
+});
+
+test('a property that needs no socket still answers without one', async () => {
+  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+    trustProxy: false,
+  });
+
+  expect(bag.method).toBe('GET');
+  expect(bag.path).toBe('/read');
+  expect(bag.url).toBe('/read');
+  expect(bag.hostname).toBeDefined();
 });

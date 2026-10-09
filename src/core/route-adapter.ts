@@ -76,8 +76,8 @@ function resolveRoute(
  * it. The platform adapters mount middleware on a prefix —
  * `use('/api')` answers `/api` and everything under it — and a
  * Hono path answers exactly what it names, so the prefix is
- * written out: `/api/*`, which covers `/api` itself as well. A
- * path that already ends in the wildcard is left alone.
+ * written out; one that already ends in the wildcard is left
+ * alone.
  */
 function toMiddlewarePath(path: string): string {
   if (path === ROOT_PATH) {
@@ -91,10 +91,10 @@ function toMiddlewarePath(path: string): string {
 }
 
 /**
- * The routing half of the Nest adapter contract: every verb a
- * route can be mapped to, the middleware factory and version
- * filtering. The concrete adapter supplies the registration, so
- * this half never touches Hono itself.
+ * The routing half of the Nest adapter contract: every verb,
+ * the middleware factory and version filtering. The concrete
+ * adapter supplies the registration, so this half never touches
+ * Hono.
  */
 abstract class RouteAdapter extends AbstractHttpAdapter<
   ServerType,
@@ -109,9 +109,8 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
   ): void;
 
   /**
-   * Mounts middleware with the underlying framework, which is
-   * what answers a path and everything under it rather than the
-   * path alone.
+   * Mounts middleware, which answers a path and everything
+   * under it rather than the path alone.
    */
   protected abstract mount(
     path: string,
@@ -238,10 +237,8 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
   }
 
   /**
-   * Mounts global middleware. Nest calls this with a handler,
-   * or with a path and a handler. Both answer every method, and
-   * the handler alone answers every path, the way the platform
-   * adapters read the same call.
+   * Mounts global middleware, which Nest calls with a handler
+   * or with a path and a handler.
    */
   public override use(...args: unknown[]): void {
     const [first, second] = args;
@@ -262,8 +259,8 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
   /**
    * Mounts one piece of Nest middleware. One for every method
    * covers the path as a prefix, the way `router.use()` reads
-   * it on the platform adapters; one for a named method answers
-   * the path alone, the way a verb route reads it there.
+   * it on the platform adapters; a named method answers the
+   * path alone, the way a verb route reads it there.
    */
   public override createMiddlewareFactory(
     requestMethod: RequestMethod,

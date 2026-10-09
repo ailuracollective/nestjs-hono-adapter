@@ -43,9 +43,8 @@ function isFrame(value: unknown): value is WsFrame {
 }
 
 /**
- * Reads the frame a parsed payload carries. A payload that is
- * only a string names the event and carries no data, which is
- * how a gateway is called without arguments.
+ * Reads the frame a parsed payload carries; a payload that is
+ * only a string names the event and carries no data.
  */
 function frameFrom(value: unknown): WsFrame | undefined {
   if (isFrame(value)) {
@@ -58,8 +57,8 @@ function frameFrom(value: unknown): WsFrame | undefined {
 }
 
 /**
- * Reads a frame from text. Text that is not JSON is taken as
- * the event name itself, so a client may send `ping` as well as
+ * Reads a frame from text; text that is not JSON is the event
+ * name itself, so a client may send `ping` as well as
  * `{"event":"ping"}`.
  */
 function parseText(text: string): WsFrame | undefined {
@@ -71,9 +70,9 @@ function parseText(text: string): WsFrame | undefined {
 }
 
 /**
- * Reads a frame from what the socket delivered. Text frames
- * arrive as text, binary frames as bytes, and a socket may hand
- * over an already parsed frame when one is replayed.
+ * Reads a frame from what the socket delivered: text frames
+ * arrive as text, binary ones as bytes, and a replayed frame
+ * may arrive parsed.
  */
 function parseFrame(raw: unknown): WsFrame | undefined {
   if (typeof raw === 'string') {
@@ -103,11 +102,10 @@ function withCorrelation(
 /**
  * The frame that answers one, or nothing when the handler
  * answered with nothing and the client asked for no
- * acknowledgement.
- *
- * A handler that answered with its own `{ event, data }` keeps
- * that shape, which is what the `ws` platform sends; anything
- * else is wrapped in the event being answered.
+ * acknowledgement. A handler that answered with its own `{
+ * event, data }` keeps that shape, which is what the `ws`
+ * platform sends; anything else is wrapped in the event being
+ * answered.
  */
 function toReply(
   frame: WsFrame,

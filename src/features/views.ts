@@ -11,12 +11,10 @@ import { isRecord } from '../core/query.ts';
 type ViewData = Record<string, unknown>;
 
 /**
- * Renders a template's source into the answer.
- *
- * The engine is handed the source rather than a file name, so
- * every engine is reached the same way: the lines that compile
- * and run a template belong to the application, which already
- * knows which engine it uses.
+ * Renders a template's source into the answer. The engine is
+ * handed the source rather than a file name, so every engine is
+ * reached the same way and the lines that compile a template
+ * belong to the application, which knows which engine it uses.
  */
 type ViewEngine = (
   source: string,
@@ -31,10 +29,9 @@ interface ViewOptions {
 
 /**
  * The value a handler returned, as the object a template reads.
- * A handler that returns nothing has nothing to render with,
- * which is an empty object rather than a refusal: what an
- * absent variable means is the template's decision, not the
- * adapter's.
+ * A handler returning nothing yields an empty object rather
+ * than a refusal: what an absent variable means is the
+ * template's decision, not the adapter's.
  */
 function asData(options: unknown): ViewData {
   if (isRecord(options)) {
@@ -114,12 +111,11 @@ async function readFrom(
 }
 
 /**
- * Renders the templates a deployment configured.
- *
- * The engine is optional because an application that renders
- * nothing never configures one: naming an engine is what makes
- * it required, and that happens at startup rather than at the
- * first request that renders.
+ * Renders the templates a deployment configured. The engine is
+ * optional because an application that renders nothing never
+ * configures one; naming an engine is what makes it required,
+ * and that happens at startup rather than at the first
+ * request.
  */
 class ViewRenderer {
   private readonly engine: ViewEngine | undefined;

@@ -16,10 +16,8 @@ import { RouteAdapter } from './route-adapter.ts';
 import { mountSse } from '../features/sse.ts';
 
 /**
- * The shutdown options, which Nest 11 does not declare as part
- * of the application options: `return503OnClosing` was added in
- * Nest 12, so it is read through a type that names it and stays
- * optional for both.
+ * `return503OnClosing` arrived in Nest 12, read through a type
+ * optional on both.
  */
 type ClosingOptions = NestApplicationOptions & {
   readonly return503OnClosing?: boolean;
@@ -42,11 +40,9 @@ interface TransportOptions {
   readonly bodyLimit?: number;
   /**
    * Whether `@hono/node-server` may replace the global
-   * `Request` and `Response` with its lighter classes. On by
-   * default: they are worth roughly a third of the CPU an
-   * answer costs. A runtime that refuses an answer which is not
-   * one of its own — Cloudflare Workers, reached through
-   * `cloudflare:node`, does — turns it off.
+   * `Request` and `Response` with its lighter classes, worth
+   * roughly a third of the CPU an answer costs. A platform that
+   * refuses a foreign answer at its own boundary turns it off.
    */
   readonly overrideGlobalObjects?: boolean;
   /** Whether `req.rawBody` keeps the bytes of every body. */
@@ -75,24 +71,16 @@ function isNotRunning(error: unknown): boolean {
 }
 
 /**
- * Runs Nest on Hono: this owns the Hono application, the
- * middleware every request passes through, and the Node server
- * the fetch handler is served on. The routes Nest registers and
- * the answers it writes are the business of the class below.
- *
- * The transport options Nest passes in are honoured: requests
- * are served over TLS when `httpsOptions` is set, connections
- * are dropped on shutdown when `forceCloseConnections` is set,
- * and a request that arrives while the application is closing
- * is answered with `503` when `return503OnClosing` is set.
+ * Runs Nest on Hono: owns the Hono application, the middleware
+ * every request crosses, and the Node server behind the fetch
+ * handler. The routes Nest registers are `RouteAdapter`'s.
  */
 // oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 abstract class HonoLifecycle extends RouteAdapter {
   protected readonly hono: NestHono;
   /**
-   * The surface an event stream is written into. It is named
-   * here, next to the other features this class wires, so the
-   * bridge is handed one instead of reaching for the feature.
+   * The surface an event stream is written into, named here to
+   * cross the seam.
    */
   protected readonly interceptor = mountSse;
   protected readonly trustProxy: TrustProxy;
@@ -122,14 +110,10 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
-   * Wires the two steps every request takes through the
-   * dispatcher. CORS and the closing refusal are one step
-   * rather than two, because each mounted middleware is a step
-   * every request pays and an application that configured
-   * neither should not pay for either. The guard reports
-   * nothing for CORS until `enableCors()` has run, so the CORS
-   * step is built here and offered only once there is something
-   * for it to do.
+   * CORS and the closing refusal are one middleware rather than
+   * two: each mount is a step every request pays for, and an
+   * application that configured neither should pay for
+   * neither.
    */
   private installGuards(hono: NestHono): void {
     const cors = corsBridge(() => this.corsOptions);
@@ -144,28 +128,26 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
-   * Identifier ecosystem packages branch on. It is the only
-   * value Nest itself does not consume.
+   * The literal, so a consumer's own branch narrows on it
+   * without comparing.
    */
-  public override getType(): string {
+  public override getType(): 'hono' {
     return 'hono';
   }
 
   /**
-   * The Hono application behind the adapter, for the middleware
-   * and routes only Hono knows how to express. Registering on
-   * it before the application listens puts them ahead of Nest's
-   * routes, after the headers and CORS this adapter installs.
+   * The Hono application, for what only Hono expresses.
+   * Registering here before the application listens puts it
+   * ahead of Nest's routes and behind the headers and CORS this
+   * adapter installs.
    */
   public getHono(): NestHono {
     return this.hono;
   }
 
   /**
-   * Says that a Hono router scores its routes rather than
-   * matching them in the order they were added, so two routes
-   * cannot shadow each other and Nest does not have to sort
-   * them.
+   * A Hono router scores its routes, so two cannot shadow each
+   * other.
    */
   public isRouteOrderSensitive(): boolean {
     return false;
@@ -184,27 +166,15 @@ abstract class HonoLifecycle extends RouteAdapter {
 
   /**
    * Creates the Node server Hono's fetch handler is served
-   * through. Hono has no listener of its own, so `listen()` and
-   * `close()` operate on the value built here.
-   *
-   * `@hono/node-server` replaces the global `Response` with a
-   * lighter one that holds the status, the headers and the body
-   * as three fields, so the writer hands an answer to the
-   * socket in one `end()` rather than reading its body as a
-   * stream and writing it a chunk at a time. That replacement
-   * is left enabled: it is worth roughly a third of the CPU an
-   * answer costs, and the adapter builds its answers out of the
-   * global at call time, so they come out as the lighter class
-   * without this adapter holding a reference of its own. The
-   * library sets the lighter class's prototype to the native
-   * one, so an answer still passes `instanceof Response`
-   * against what it was before.
-   *
-   * Passing `overrideGlobalObjects: false` keeps the platform’s
-   * own classes instead. A platform that checks the type of an
-   * answer at its own boundary refuses the lighter one, and the
-   * `httpServerHandler` of `cloudflare:node` does, so a Worker
-   * asks for the platform’s classes.
+   * through; `listen()` and `close()` work on the value built
+   * here. `overrideGlobalObjects` swaps the global `Response`
+   * for the lighter class `@hono/node-server` provides, so an
+   * answer is written in one `end()` instead of a chunk at a
+   * time — its prototype is the native one, so `instanceof
+   * Response` still passes. A platform that checks the type of
+   * an answer at its own boundary (`httpServerHandler` of
+   * `cloudflare:node` does) asks for the platform's own classes
+   * instead.
    */
   public override initHttpServer(
     options: NestApplicationOptions,
@@ -266,10 +236,9 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
-   * Stops the server and, when the application asked for it,
-   * the connections it is still holding open. A server that
-   * never started listening has nothing to close, so the error
-   * it reports then is not a failure worth propagating.
+   * Stops the server and, when asked, the connections it holds
+   * open. A server that never listened has nothing to close, so
+   * that error is not propagated.
    */
   public override async close(): Promise<void> {
     this.closing = true;
@@ -296,10 +265,9 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
-   * Installs the security headers Hono sends with every answer,
-   * unless the deployment turned them off. They come from Hono
-   * rather than from Helmet, which is Express middleware: the
-   * families of headers are the same.
+   * Installs the security headers, unless the deployment turned
+   * them off. They come from Hono rather than Helmet, which is
+   * Express middleware: the families of headers are the same.
    */
   private installSecurityHeaders(
     headers: boolean | SecureHeadersOptions,
@@ -316,27 +284,34 @@ abstract class HonoLifecycle extends RouteAdapter {
 
 /**
  * The member this class declares next to the base rather than
- * in it. `@nestjs/core` 12 declares `beforeClose()` on
- * `RouteAdapter` and Nest 11 does not, while this package
- * compiles against `>=11 <13` and cannot express "only where it
- * exists": `override` fails against the install that lacks the
- * member and dropping it fails against the one that has it. A
- * merged declaration is the one form both installs accept, and
- * it only accepts a property, which is why `beforeClose` is
- * installed as an own property in the constructor instead of
- * being written as a method here.
- * `test/types/route-adapter-compat.ts` is what holds the
- * declaration to whichever base is installed, since nothing in
- * the class body checks it any more.
+ * in it: Nest 12 declares `beforeClose()` and Nest 11 does not,
+ * and a package compiled against `>=11 <13` cannot express
+ * "only where it exists" — `override` fails on one install and
+ * dropping it fails on the other. A merged declaration is the
+ * one form both accept, and it only accepts a property, which
+ * is why `beforeClose` is installed in the constructor.
+ * `test/types/route-adapter-compat.ts` holds it to whichever
+ * base is installed, since nothing in the class body checks
+ * it.
  */
 interface HonoLifecycle {
   /**
    * Marks the application as closing when Nest starts its
-   * shutdown rather than when the server is closed, so a
+   * shutdown rather than when the server closes, so a
    * deployment that asked for `return503OnClosing` is refused
-   * through the destroy and before-shutdown hooks as well.
+   * through the destroy and before-shutdown hooks too.
    */
   beforeClose: () => void;
+
+  /**
+   * The Hono application, through the accessor `HttpServer`
+   * documents. Nest declares that one untyped, so the default
+   * is narrowed rather than the return type: the escape hatch
+   * `getInstance<Other>()` still answers, and a caller reaching
+   * past the default is saying so.
+   */
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the base declares this parameter; an accessor whose caller names a type cannot be narrowed to one return type.
+  getInstance: <TInstance = NestHono>() => TInstance;
 }
 
 export { HonoLifecycle };

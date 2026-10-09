@@ -47,9 +47,9 @@ interface HonoGatewayOptions {
 }
 
 /**
- * The part of a message event this adapter reads. It is named
- * here rather than taken from the DOM library, which this
- * package does not build against.
+ * The part of a message event this adapter reads, named here
+ * rather than taken from the DOM library this package does not
+ * build against.
  */
 interface WsMessageEvent {
   /** The frame the socket delivered. */
@@ -81,8 +81,7 @@ function indexHandlers(
 /**
  * Removes the upgrade listeners `@hono/node-ws` installed on
  * the server. Node types a listener as `Function`, which `off`
- * does not accept, so the call goes through `Reflect.apply`,
- * whose argument list carries no type.
+ * does not accept, so the call goes through `Reflect.apply`.
  */
 function detachUpgradeListeners(
   server: ServerType,
@@ -98,17 +97,14 @@ function detachUpgradeListeners(
 
 /**
  * WebSocket adapter that runs Nest's gateways on the Hono
- * application the HTTP adapter already serves.
- *
- * `@hono/node-ws` upgrades a request by asking the Hono
- * application for the gateway path, so the upgrade happens on
- * one server rather than on a second one opened beside it. One
- * route is registered per path a gateway named, and each route
- * hands Nest a {@link HonoSocket} to answer on.
- *
- * A gateway that asked for its own port or for a namespace
- * cannot be served this way; both are refused rather than
- * quietly served on the HTTP server.
+ * application the HTTP adapter already serves. `@hono/node-ws`
+ * upgrades a request by asking the Hono application for the
+ * gateway path, so the upgrade happens on one server rather
+ * than a second opened beside it; one route is registered per
+ * path a gateway named, and each hands Nest a {@link HonoSocket}
+ * to answer on. A gateway that asked for its own port or for a
+ * namespace cannot be served this way, and both are refused
+ * rather than quietly served on the HTTP server.
  */
 class HonoWsAdapter extends AbstractWsAdapter {
   private readonly adapter: ServerAdapter;
@@ -175,19 +171,14 @@ class HonoWsAdapter extends AbstractWsAdapter {
   }
 
   /**
-   * Releases the paths, the sockets and the WebSocket server
-   * this adapter created, and takes the upgrade listeners back
-   * off the Node server.
+   * Releases the paths, the sockets, the WebSocket server and
+   * the upgrade listeners this adapter registered.
    */
   public override dispose(): Promise<void> {
     this.release();
     return Promise.resolve();
   }
 
-  /**
-   * Releases the paths, the sockets, the WebSocket server and
-   * the upgrade listeners this adapter registered.
-   */
   private release(): void {
     const servers = [...this.servers.values()];
     this.servers.clear();

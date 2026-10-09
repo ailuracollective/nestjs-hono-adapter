@@ -9,7 +9,7 @@ import type { ParsedQuery } from './query.ts';
 import { tuneableSocket } from './socket.ts';
 
 /**
- * The request properties Nest's core reads. Every property is
+ * The request properties Nest's core reads. Every one is
  * declared, and the ones that can legitimately be absent are
  * written as `| undefined`, so `exactOptionalPropertyTypes`
  * cannot hide a field that was never populated.
@@ -37,15 +37,15 @@ interface NestRequest {
 }
 
 /**
- * Continues to whatever handles the request next. The adapter
- * contract types it as returning `void` while Hono returns a
- * promise, so it is kept as `unknown` and the result ignored.
+ * Continues to whatever handles the request next; kept as
+ * `unknown` because the adapter contract types it as `void`
+ * while Hono returns a promise.
  */
 type NextHandler = () => unknown;
 
 /**
  * A handler as Nest registers it: the route proxy, a middleware
- * or the not-found proxy all share this shape.
+ * and the not-found proxy share this shape.
  */
 type NestHandler = (
   request: NestRequest,
@@ -63,16 +63,11 @@ interface UrlParts {
 }
 
 /**
- * What a bag has not built yet, and the context it needs to
- * build it from.
- *
- * A bag is made for every request and read by Nest as a bag of
- * properties: a route touches a handful of them and the rest
- * are thrown away. Measured over this project’s own workload,
- * thirteen of the nineteen fields were never read at all, so
- * each one is built the first time it is asked for instead. A
- * field nobody reads now costs nothing, and a field somebody
- * reads costs what it always did.
+ * What a bag has not built yet, and the context it builds it
+ * from. A bag is made for every request and read as a bag of
+ * properties: measured over this project's own workload,
+ * thirteen of the nineteen fields were never read, so each is
+ * built the first time it is asked for.
  */
 interface BagState {
   readonly context: NestContext;
@@ -91,12 +86,11 @@ interface BagState {
 }
 
 /**
- * The parts of the request URL, read once and kept.
- *
- * It is still `new URL` rather than a hand-written split of the
- * target: the normalisation `new URL` applies to a path is
- * behaviour this translation has always had, and it is not a
- * thing to change while turning something else lazy.
+ * The parts of the request URL, read once and kept. Still `new
+ * URL` rather than a hand-written split: the normalisation it
+ * applies to a path is behaviour this translation has always
+ * had, and not a thing to change while turning something else
+ * lazy.
  */
 function urlPartsOf(state: BagState): UrlParts {
   const held = state.url;
@@ -126,26 +120,49 @@ function forwardedOf(state: BagState): Forwarded {
   return values;
 }
 
-/** The Node objects the request arrived on, read once. */
-function incomingOf(state: BagState): IncomingMessage {
+/**
+ * The Node message the request arrived on, when there is one.
+ * `undefined` is a real answer rather than a failure: a worker
+ * calling `getHono().fetch()` with its own bindings arrives
+ * without one, and the fields that can be answered without it
+ * still are.
+ */
+function incomingOf(
+  state: BagState,
+): IncomingMessage | undefined {
   const held = state.incoming;
   if (held !== undefined) {
     return held;
   }
-  const { incoming } = state.context.env;
+  const incoming: IncomingMessage | undefined =
+    state.context.env?.incoming;
   state.incoming = incoming;
   return incoming;
 }
 
 /**
- * The request object Nest expects.
- *
- * The four fields the adapter itself writes are own properties,
- * so `body`, `files` and `rawBody` stay assignable. Everything
- * else is an accessor on the prototype — never a property
- * defined for each request, which was measured at 285 ns and
- * would cost more than the work it saves — so the thirteen
- * fields a route never reads are never built.
+ * The Node message, for the two fields Nest types as always
+ * present. Reading one without a message is the caller reaching
+ * past what the request carries, so the absence is named here
+ * rather than left as a `TypeError` from a property read.
+ */
+function required(state: BagState): IncomingMessage {
+  const incoming = incomingOf(state);
+  if (incoming === undefined) {
+    throw new TypeError(
+      'the request arrived without a Node message, so this field has nothing to read',
+    );
+  }
+  return incoming;
+}
+
+/**
+ * The request object Nest expects. The four fields the adapter
+ * itself writes are own properties, so `body`, `files` and
+ * `rawBody` stay assignable; everything else is an accessor on
+ * the prototype, never a property defined for each request,
+ * which was measured at 285 ns and would cost more than the
+ * work it saves.
  */
 class RequestBag implements NestRequest {
   public body: unknown;
@@ -208,7 +225,7 @@ class RequestBag implements NestRequest {
     const { state } = this;
     state.ip ??= addressOf(
       forwardedOf(state).addresses,
-      incomingOf(state).socket.remoteAddress,
+      incomingOf(state)?.socket.remoteAddress,
       state.options.trustProxy,
     );
     return state.ip;
@@ -257,7 +274,7 @@ class RequestBag implements NestRequest {
   }
 
   public get raw(): IncomingMessage {
-    return incomingOf(this.state);
+    return required(this.state);
   }
 
   public get secure(): boolean {
@@ -265,7 +282,7 @@ class RequestBag implements NestRequest {
   }
 
   public get socket(): IncomingMessage['socket'] {
-    return tuneableSocket(incomingOf(this.state).socket);
+    return tuneableSocket(required(this.state).socket);
   }
 
   public get url(): string {
@@ -275,10 +292,9 @@ class RequestBag implements NestRequest {
 
 /**
  * Maps a Hono context onto the request object Nest expects.
- *
  * Nest reads the request as a bag of properties rather than
- * through an interface, so this is the single place where the
- * Web request is translated into that bag.
+ * through an interface, so this is the single place the Web
+ * request is translated into that bag.
  */
 function toNestRequest(
   context: NestContext,

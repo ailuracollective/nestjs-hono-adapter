@@ -132,6 +132,72 @@ contract, which makes two rules false positives:
   and settle nothing afterwards, which is the case this exists
   for.
 
+## Scoped to `src/core/request.ts`
+
+- `oxc/no-optional-chaining` and
+  `typescript/no-unnecessary-condition`, on two reads — Hono
+  types a context's `env` as always present, and the second rule
+  is that claim taken as a guarantee. It is not one: under
+  `@hono/node-server` the environment carries the Node message
+  the request arrived on, and the worker path hands the adapter
+  its own bindings, which carry none —
+  `examples/cloudflare-workers` reads the same field the same
+  defensive way. Without the narrowing, `req.ip` throws on that
+  path instead of answering the `undefined` its own type
+  declares, and a 500 stands in for the answer to every package
+  that reads it — the default tracker of `@nestjs/throttler`
+  among them.
+
+  Narrowing the environment through a helper instead was
+  measured at 40 bytes of the bundle over the inline read, which
+  is more than the margin the size gate in `.size-limit.json`
+  had left, so the two rules cost less here than the alternative
+  does.
+
+## Scoped to `test/config.test.ts`
+
+- `node/no-process-env` — this file is the only one whose
+  subject _is_ the process environment. What `@nestjs/config`
+  loads comes from `process.env` and goes back into it: a case
+  cannot show a variable being cached, skipped, shadowed by a
+  file, or kept by a validation function without setting one and
+  reading it back. The rule is right everywhere else in this
+  repository, which is why the override names this file rather
+  than the test tree.
+
+## Scoped to the compatibility fixtures
+
+`test/config-fixture.ts`, `test/cqrs.test.ts`,
+`test/event-emitter.test.ts`, `test/jwt.test.ts`,
+`test/schedule.test.ts`, `test/terminus.test.ts`:
+
+- `typescript/consistent-type-imports` — the package services
+  these files inject (`ConfigService`, `CommandBus`, `EventBus`,
+  `QueryBus`, `EventEmitter2`, `JwtService`,
+  `SchedulerRegistry`, `HealthCheckService`,
+  `HealthIndicatorService`) are reached only as constructor
+  parameter types, which is what the rule reads, but each has to
+  be a value import. Nest resolves them through the
+  `design:paramtypes` metadata the decorator emits, and a
+  type-only import is erased before that metadata is written:
+  the injection token then arrives as `undefined` and the
+  application fails to start with a dependency it cannot
+  resolve. The imports are values for that reason, not by
+  oversight. The rules are still on everywhere else in the test
+  tree, where a package service appears as a return type rather
+  than as something injected.
+
+## Scoped to one case file
+
+- `typescript/no-unsafe-type-assertion`, on one line — for
+  `test/testing.test.ts`. The package builds its application
+  with `createNestApplication`, which hands back the framework's
+  own `AbstractHttpAdapter`; `getHono` is what this package adds
+  to it rather than part of the contract Nest declares, so a
+  case that asks the application for its adapter has to narrow
+  it. The cast goes through `unknown` because the two types
+  share nothing for TypeScript to check it against.
+
 ## Scoped to `test/**/*.ts`
 
 A case builds the application it exercises, which is not a slice
@@ -179,6 +245,19 @@ and does not follow a slice's rules:
   module, and it binds all of them. Folding two of those
   together to satisfy a count would hide a boundary the rest of
   the package keeps.
+
+## Scoped to `src/core/hono-lifecycle.ts`
+
+- `typescript/no-unnecessary-type-parameters`, on one
+  declaration — `getInstance` is declared by Nest's
+  `AbstractHttpAdapter` as `<T = any>() => T`, and this package
+  narrows the default to the Hono application. The parameter is
+  read once because that is the shape of an accessor whose
+  caller names the type, and the rule wants the parameter gone —
+  which would collapse the declaration to the single return type
+  the base then refuses to accept. The declaration is written as
+  a property with the parameter spelled out, which is what the
+  other two rules that read that line ask for.
 
 ## Pinned to an option
 

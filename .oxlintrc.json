@@ -181,6 +181,32 @@
       }
     },
     {
+      "files": ["src/core/request.ts"],
+      "rules": {
+        "oxc/no-optional-chaining": "off",
+        "typescript/no-unnecessary-condition": "off"
+      }
+    },
+    {
+      "files": ["test/config.test.ts"],
+      "rules": {
+        "node/no-process-env": "off"
+      }
+    },
+    {
+      "files": [
+        "test/config-fixture.ts",
+        "test/cqrs.test.ts",
+        "test/event-emitter.test.ts",
+        "test/jwt.test.ts",
+        "test/schedule.test.ts",
+        "test/terminus.test.ts"
+      ],
+      "rules": {
+        "typescript/consistent-type-imports": "off"
+      }
+    },
+    {
       "files": ["src/core/hono-lifecycle.ts"],
       "rules": {
         "import/max-dependencies": [

@@ -5,6 +5,7 @@
  * needs to describe what it touches.
  */
 export { ServerAdapter } from './core/server-adapter.ts';
+export type { NestHonoApplication } from './core/application.ts';
 export type { ParsedBody } from './core/body.ts';
 export type {
   NestHandler,

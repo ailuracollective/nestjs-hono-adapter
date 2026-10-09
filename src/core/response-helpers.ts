@@ -19,19 +19,14 @@ type ResponseHelperCarrier = Record<
 >;
 
 /**
- * Wraps one helper so that the response it built becomes the
- * response of the context.
- *
- * A wrapper is built per request rather than once per
- * application because Hono's helpers are instance properties:
- * each context carries its own and there is no prototype to put
- * a shared one on. Sharing them would mean keeping the
- * originals somewhere and dispatching through a map on every
- * call, which trades seven allocations for a lookup on a path
- * that only `@Res()` handlers ever reach. Seven closures is
- * about 230 nanoseconds against a request that costs over a
- * hundred microseconds, so it is left as the straightforward
- * thing rather than made clever.
+ * Wraps one helper so the response it built becomes the
+ * response of the context. A wrapper is built per request
+ * rather than once per application because Hono's helpers are
+ * instance properties with no prototype to share them through;
+ * dispatching through a map instead would trade seven
+ * allocations for a lookup on a path only `@Res()` handlers
+ * ever reach, and the closures cost about 230 nanoseconds
+ * against a request costing over a hundred microseconds.
  */
 function wrapHelper(
   carrier: ResponseHelperCarrier,
@@ -50,16 +45,12 @@ function wrapHelper(
 }
 
 /**
- * Makes the Hono response helpers finalize the context.
- *
- * A handler that answers through `@Res()` calls one of these
- * helpers instead of returning a value, and Nest then skips its
- * own reply path. Hono only finalizes a context when `res` is
- * assigned, and the helpers do not assign it, so the answer
- * would be dropped and the client would read an empty response.
- * Wrapping them on the instance — Hono's helpers are own
- * properties, not prototype methods — keeps the imperative
- * style working without taking the response away from Hono.
+ * Makes the Hono response helpers finalize the context. A
+ * handler answering through `@Res()` calls one of these instead
+ * of returning a value, and Nest then skips its own reply path;
+ * Hono only finalizes a context when `res` is assigned, which
+ * the helpers do not do, so the answer would be dropped and the
+ * client would read an empty response.
  */
 function finalizeOnResponse(context: NestContext): void {
   const carrier = context as unknown as ResponseHelperCarrier;

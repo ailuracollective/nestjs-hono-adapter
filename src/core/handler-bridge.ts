@@ -3,6 +3,7 @@ import type { Next } from 'hono';
 
 import { readBody } from './body.ts';
 import type { NestContext } from './context.ts';
+import { installExpressSurface } from './express-surface.ts';
 import { toNestRequest } from './request.ts';
 import type {
   NestHandler,
@@ -40,7 +41,7 @@ type HonoRouteHandler = (
 ) => Promise<Response>;
 
 /**
- * The handler Nest installs as its global exception layer. It
+ * The handler Nest installs as its global exception layer: it
  * takes the exception first, so it is not a route handler. The
  * arguments are spelled as a tuple because their order is fixed
  * by Nest rather than by this adapter.
@@ -59,14 +60,9 @@ type ExceptionRunner = (
  * Installs the surface a handler streams into, and settles when
  * that stream started. The bridge asks for one instead of
  * reaching for it, so the feature stays on its own side of the
- * seam.
- *
- * There is no stop signal to pass. The promise it answers with
- * carries no listener, so a route that never streams leaves
- * nothing to tear down — which is what made a stop signal
- * necessary while the surface was an event target, and which
- * cost every request an `AbortController` and a dispatch to
- * abort it.
+ * seam. There is no stop signal to pass: the promise carries no
+ * listener, so a route that never streams leaves nothing to
+ * tear down.
  */
 type StreamInterceptor = (
   context: NestContext,
@@ -96,13 +92,11 @@ function requestOptions(
 }
 
 /**
- * Builds the request Nest reads and the parser fills.
- *
- * Nest writes to the request bag, so the parsed payload is
- * copied into it here instead of being handed along separately.
- * A payload that cannot be parsed throws the exception Nest
- * raises for a failed parse, which is what lets the exception
- * layer answer it like any other failure.
+ * Builds the request Nest reads and the parser fills. Nest
+ * writes to the request bag, so the parsed payload is copied
+ * into it here; a payload that cannot be parsed throws the
+ * exception Nest raises for a failed parse, which the exception
+ * layer then answers like any other failure.
  */
 async function prepareRequest(
   context: NestContext,
@@ -112,6 +106,7 @@ async function prepareRequest(
     context,
     requestOptions(options),
   );
+  installExpressSurface(context);
   finalizeOnResponse(context);
   if (!options.bodyParsingEnabled()) {
     return request;
@@ -162,27 +157,20 @@ async function watchFailure(
  * adapter collected.
  *
  * An `@Sse()` route answers only when its observable completes,
- * which is exactly what a long-lived stream never does, so the
- * handler is raced against the stream it starts. The stream is
- * asked for before the handler runs, because a handler that
- * streams writes into the surface the interceptor opens, and
- * the moment the stream commits its headers the response goes
- * out. The handler is then left writing into it — with a late
- * failure logged instead of escaping.
- *
- * The interceptor is the route's own dependency rather than
- * something the bridge looks up. A route that was given one
- * therefore always has a real promise to race, so it can only
- * read as streaming when a stream was actually started.
+ * which is what a long-lived stream never does, so the handler
+ * is raced against the stream it starts — asked for before the
+ * handler runs, because a handler that streams writes into the
+ * surface the interceptor opens and the moment the stream
+ * commits its headers the response goes out. A late failure is
+ * logged instead of escaping. The interceptor is the route's
+ * own dependency rather than something the bridge looks up, so
+ * a route given one always has a real promise to race.
  *
  * The answer is returned rather than read off the context, and
- * left there. Hono's dispatcher would otherwise assign the
+ * left there: the dispatcher would otherwise assign the
  * returned answer onto the context and merge, and the merge
- * reads `body` off the answer to do it — which spends the one
- * thing that lets the transport write a response in a single
- * call. It does not: the answer was assigned by
- * `buildResponse`, which set `finalized`, so the dispatcher
- * skips the assignment entirely.
+ * reads `body` off it — spending the one thing that lets the
+ * transport write a response in a single call.
  */
 function createRouteHandler(
   handler: NestHandler,
@@ -221,8 +209,8 @@ async function runNestHandler(
 /**
  * Builds the runner for the exception layer. The payload is not
  * read again here: the failure may well be that reading it
- * failed, and a second attempt would replace the answer with a
- * failure of its own.
+ * failed, and a second attempt would replace the answer with
+ * one of its own.
  */
 function createExceptionRunner(
   handler: NestExceptionHandler,

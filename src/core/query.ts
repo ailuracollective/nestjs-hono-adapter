@@ -1,14 +1,13 @@
 /**
- * A query string parsed into the shape a controller receives:
- * every leaf is a string, and a name that appears more than
- * once or uses brackets becomes a list or a nested object.
+ * A query string parsed the way a controller receives it: every
+ * leaf is a string.
  */
 type ParsedQuery = Record<string, unknown>;
 
 /**
  * Names that reach the prototype chain. A parser that writes
  * them hands a caller control over every object in the process,
- * so they are dropped instead.
+ * so they are dropped.
  */
 const FORBIDDEN_NAMES = new Set([
   '__proto__',
@@ -22,31 +21,13 @@ const MISSING = -1;
 
 /**
  * The two ceilings this parser holds to, and they are `qs`'s
- * own because the grammar here is the one `qs` accepts: a
- * string `qs` would flatten or drop has to flatten or drop here
- * too, and these are the numbers `qs` has always defaulted to.
- * Without them a crafted query string, in the url or in an
- * urlencoded body, buys unbounded stack and unbounded pairs
- * inside the request path.
- *
- * Past the depth the run folds into one literal key rather than
- * being refused, and past the parameter ceiling the rest of the
- * pairs are ignored, because that is how `qs` answers with its
- * defaults (`strictDepth` and `throwOnLimitExceeded` are both
- * `false`) and no official adapter refuses a query at all:
- * `platform-express` never parses it, handing Express 5 its
- * `simple` `querystring.parse`, and `platform-fastify` uses
- * `fast-querystring` — both flat, so neither can exceed a
- * limit. A 400 here would be this adapter inventing a refusal
- * and would break clients migrating from Express 4, whose `qs`
- * truncates exactly this way.
- *
- * `qs`'s `arrayLimit` is deliberately not copied. It arrived as
- * a regression that collapsed long repeated keys into objects
- * and broke Express consumers, so a repeated name stays a list
- * here however long it grows. Its `allowPrototypes` is not
- * copied either: `FORBIDDEN_NAMES` above is the safer default
- * and is already what `qs` does.
+ * own because the grammar here is the one `qs` accepts. Past
+ * the depth the run folds into one literal key and past the
+ * pair ceiling the rest are ignored, which is how `qs` answers
+ * with its defaults and what Express 4 clients migrating here
+ * expect; no official adapter refuses a query at all. `qs`'s
+ * `arrayLimit` is deliberately not copied: it arrived as a
+ * regression that collapsed long repeated keys into objects.
  */
 const MAX_DEPTH = 5;
 const MAX_PAIRS = 1000;
@@ -58,9 +39,8 @@ interface Target {
 }
 
 /**
- * Says whether a value is the plain object a nested name
- * builds. Arrays are excluded because a bracket that indexes
- * builds a list instead.
+ * Whether a value is the plain object a nested name builds; a
+ * bracket that indexes builds a list.
  */
 function isRecord(
   value: unknown,
@@ -87,17 +67,16 @@ function asList(value: unknown): unknown[] {
 }
 
 /**
- * Says whether the next segment builds a list: `[]` appends,
- * and a number indexes.
+ * Whether the next segment builds a list: `[]` appends and a
+ * number indexes.
  */
 function isListStep(name: string): boolean {
   return name === '' || INDEX.test(name);
 }
 
 /**
- * Decodes one side of a pair. A sequence that is not valid
- * percent-encoding is kept as it arrived, which is what the
- * platform parsers do rather than refusing the request.
+ * Decodes one side of a pair; invalid percent-encoding is kept
+ * as it arrived, as the platform parsers do.
  */
 function decode(value: string): string {
   const spaced = value.replaceAll('+', ' ');
@@ -110,10 +89,8 @@ function decode(value: string): string {
 
 /**
  * The names past the depth ceiling, kept as one literal key
- * with their brackets read back, which is what `qs` leaves
- * behind once it stops descending: in a run of nine segments
- * `alpha` through `epsilon` stay nested and everything after
- * them becomes the single key `'[zeta][eta][theta][iota]'`.
+ * with their brackets read back — what `qs` leaves behind once
+ * it stops descending.
  */
 function withinDepth(names: string[]): string[] {
   const rest = names.slice(MAX_DEPTH);
@@ -125,8 +102,8 @@ function withinDepth(names: string[]): string[] {
 }
 
 /**
- * Splits `filter[name][]` into `['filter', 'name', '']`. A name
- * without brackets is its own single segment.
+ * Splits `filter[name][]` into `['filter', 'name', '']`; a name
+ * without brackets is one segment.
  */
 function toNames(name: string): string[] {
   const first = name.indexOf('[');
@@ -142,9 +119,8 @@ function toNames(name: string): string[] {
 }
 
 /**
- * Adds a value to a name that may already hold one. The second
- * value turns the entry into a list, which is how a repeated
- * name is read.
+ * Adds a value to a name that may already hold one; the second
+ * value turns the entry into a list.
  */
 function repeated(current: unknown, value: string): unknown {
   if (current === undefined) {
@@ -180,12 +156,10 @@ function accepts(names: readonly string[]): boolean {
 }
 
 /**
- * Builds the tree one pair at a time, up to the pair ceiling.
- *
- * A step whose next name is `[]` or a number builds a list, and
- * every other step builds an object; the methods below are
- * split along that decision so each one stays readable on its
- * own.
+ * Builds the tree one pair at a time, up to the pair ceiling. A
+ * step whose next name is `[]` or a number builds a list and
+ * every other step builds an object; the methods are split
+ * along that decision so each stays readable on its own.
  */
 class QueryBuilder {
   private readonly query: ParsedQuery = {};
@@ -278,12 +252,11 @@ class QueryBuilder {
   }
 
   /**
-   * The one write into a list. An empty name appends at the end
+   * The one write into a list: an empty name appends at the end
    * and any other name has to read as a safe non-negative
-   * index, so a single slot decides both and the two walks that
-   * used to differ only in that choice are gone. A name that
-   * reads as no such index drops the pair, which is what a
-   * bracket holding nonsense has always meant here.
+   * index, so a single slot decides both. A name reading as no
+   * such index drops the pair, which is what a bracket holding
+   * nonsense means.
    */
   private place(
     list: unknown[],
@@ -301,10 +274,9 @@ class QueryBuilder {
   }
 
   /**
-   * What a target leaves in a slot: the value itself once no
-   * name is left to walk, otherwise the list or the object its
-   * next name calls for. The container is filled in place,
-   * which is how a later pair finds it again.
+   * What a target leaves in a slot: the value once no name is
+   * left to walk, otherwise the list or object its next name
+   * calls for, filled in place so a later pair finds it again.
    */
   private written(existing: unknown, target: Target): unknown {
     const [next] = target.names;
@@ -324,14 +296,11 @@ class QueryBuilder {
 
 /**
  * Parses a query string, with or without its leading `?`.
- *
  * Repeated names become lists, `name[]` appends, `name[0]`
  * indexes and `name[child]` nests; anything else is a string.
  * The grammar is the one the platform parsers accept, which is
  * what a controller written against Express or Fastify expects
- * to read. Nothing here is ever refused: past `MAX_DEPTH` the
- * remaining brackets become one literal key, and past
- * `MAX_PAIRS` the remaining pairs are ignored.
+ * to read.
  */
 function parseQuery(source: string): ParsedQuery {
   return new QueryBuilder().parse(source);

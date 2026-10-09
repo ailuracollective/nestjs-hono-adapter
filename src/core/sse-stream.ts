@@ -1,15 +1,12 @@
 /**
- * The writable an event stream is written into.
- *
- * Nest pipes a `@Sse()` route's observable onto the object it
- * reads as its response, and that object has to be a genuine
- * `Writable`. This one collects what Nest writes and hands the
- * same bytes to a `ReadableStream`, which becomes the Hono
- * response the client reads. It lives apart from the module
- * that mounts it on a context because it is a different thing:
- * this is the stream itself, and everything here is about the
- * bytes and how they are paced. Nothing here knows about Nest
- * controllers, routes or contexts.
+ * The writable an event stream is written into. Nest pipes a
+ * `@Sse()` route's observable onto the object it reads as its
+ * response, and that object has to be a genuine `Writable`:
+ * this one collects what Nest writes and hands the same bytes
+ * to a `ReadableStream`, which becomes the Hono response. It
+ * lives apart from the module that mounts it because it is a
+ * different thing — the stream itself, all bytes and pacing,
+ * knowing nothing of controllers, routes or contexts.
  */
 
 import { Writable } from 'node:stream';
@@ -30,7 +27,7 @@ const NO_BUFFERING = 'no';
 
 /**
  * The headers a stream is opened with, whatever Nest added.
- * `connection` is not one of them: Nest writes it when the
+ * `connection` is not among them: Nest writes it when the
  * request is HTTP/1 and leaves it out when it is not, where it
  * would be forbidden, so the default cannot say it either.
  */
@@ -42,8 +39,7 @@ const STREAM_HEADERS: Readonly<Record<string, string>> = {
 
 /**
  * The frames a stream holds before a writer waits for the
- * reader. Node's own object streams settle on sixteen, and a
- * frame is one of those in everything but name.
+ * reader; Node's own object streams settle on sixteen.
  */
 const HIGH_WATER_MARK = 16;
 
@@ -51,23 +47,17 @@ const HIGH_WATER_MARK = 16;
 type CommitListener = (response: Response) => void;
 
 /**
- * What the stream calls once its reader is gone.
- *
- * A reader takes the stream’s bytes or it walks away, and a
- * platform says which by cancelling the stream it was given.
- * Nothing downstream of this class is listening for that, so
- * whoever mounted the stream is the one it has to tell.
+ * What the stream calls once its reader is gone. A platform
+ * says which by cancelling the stream it was given, and nothing
+ * downstream is listening for that, so whoever mounted the
+ * stream is the one it has to tell.
  */
 type DisconnectListener = () => void;
 
 /**
- * What the stream says once it is open, and once it is over:
- * the answer it committed, the start it announces, and the
- * reader giving up.
- *
- * One record rather than three arguments, because all three are
- * the same thing said to whoever mounted the stream, and a
- * mount hands over all three or none.
+ * What the stream says once it is open, and once it is over —
+ * one record rather than three arguments, because a mount hands
+ * over all three or none.
  */
 interface StreamSinks {
   readonly onCommit: CommitListener;
@@ -76,14 +66,11 @@ interface StreamSinks {
 }
 
 /**
- * Says the stream started, to whoever is waiting on it.
- *
- * A callback rather than an event target: the only thing anyone
- * ever does with the signal is wait for the one event, and an
- * `EventTarget` costs an allocation and a dispatch per request
- * to carry it. On a route that streams nothing — which is every
- * route on an application that does not use `@Sse()` — that
- * cost is paid for a notification that is never delivered.
+ * Says the stream started, to whoever waits on it. A callback
+ * rather than an event target: the only thing anyone does with
+ * the signal is wait for the one event, and an `EventTarget`
+ * costs an allocation and a dispatch per request to carry it —
+ * paid even on the routes that stream nothing.
  */
 type StartSignal = () => void;
 
@@ -167,9 +154,8 @@ class SseResponse extends Writable {
   }
 
   /**
-   * Nothing is buffered here, so there is nothing left to
-   * flush: Hono already has the response by the time Nest
-   * asks.
+   * Nothing is buffered here, so there is nothing to flush:
+   * Hono already has the response.
    */
   public flushHeaders(): void {
     this.commit();
@@ -180,9 +166,9 @@ class SseResponse extends Writable {
   }
 
   /**
-   * Turns what Nest wrote into the Hono response, exactly once.
-   * The response is handed over before the start event is
-   * emitted, so whoever waits on the event reads a live body.
+   * Turns what Nest wrote into the Hono response, exactly once,
+   * handing it over before the start event is emitted so
+   * whoever waits on that event reads a live body.
    */
   private commit(): void {
     if (this.committed) {
@@ -205,11 +191,10 @@ class SseResponse extends Writable {
 
   /**
    * Hands a frame to the web stream. Once its queue is full the
-   * write waits for the reader to drain it: the writable then
-   * answers the way a socket would, so a producer that outruns
-   * its client is slowed rather than buffered. Only one write
-   * is ever held, because a writable does not take the next one
-   * before this one answers.
+   * write waits for the reader to drain it, so a producer that
+   * outruns its client is slowed rather than buffered. Only one
+   * write is ever held, because a writable does not take the
+   * next one before this one answers.
    */
   private enqueue(
     chunk: Uint8Array,

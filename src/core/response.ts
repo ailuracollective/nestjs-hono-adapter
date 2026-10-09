@@ -12,10 +12,10 @@ const BINARY_CONTENT_TYPE = 'application/octet-stream';
 
 /**
  * The statuses Fetch forbids a body on. A handler declared
- * `@HttpCode(HttpStatus.NO_CONTENT)` may still return a value,
+ * `@HttpCode(HttpStatus.NO_CONTENT)` may still return a value
  * and the `Response` constructor throws on that pair instead of
- * dropping the value, so the throw reaches the client as a 500
- * where every other Nest adapter answers the status alone.
+ * dropping the value, so the throw would reach the client as a
+ * 500 where every other Nest adapter answers the status alone.
  */
 const NULL_BODY_STATUS = new Set([
   HttpStatus.SWITCHING_PROTOCOLS,
@@ -48,25 +48,18 @@ function isBinaryBody(
 }
 
 /**
- * The headers of an answer, in the shape the transport writes.
- *
- * A plain record rather than a `Headers`, and the reason is the
- * cost of the alternative rather than its shape. A `Headers`
- * validates every name and value through the WebIDL converters
- * as it is built, and the transport then walks the result a
- * second time to turn it back into a record for `writeHead()`.
- * Both passes scale with how many headers an answer carries,
- * and an answer with the default security headers on carries
- * twelve. A record is written straight through.
+ * The headers of an answer, as a plain record rather than a
+ * `Headers`: a `Headers` validates every name and value through
+ * the WebIDL converters and the transport then walks the result
+ * a second time, and an answer with the default security
+ * headers on carries twelve. A record is written straight
+ * through.
  */
 type HeaderRecord = Record<string, string | string[]>;
 
 /**
- * Adds one value to a header that may already carry some.
- *
- * Nest accepts a header as a list, which Node writes as one
- * header line per entry, so a name seen twice becomes a list
- * rather than overwriting what was there.
+ * Adds one value to a header that may already carry some; Nest
+ * accepts a header as a list, Node writes it as lines.
  */
 function appendHeader(
   headers: HeaderRecord,
@@ -84,11 +77,8 @@ function appendHeader(
 }
 
 /**
- * The headers already recorded on the context, as a record.
- *
- * One pass and nothing more. They are read before the answer
- * that carries them is assigned, because assigning it replaces
- * the response they sit on.
+ * The headers already recorded on the context, read before the
+ * answer that carries them replaces the response they sit on.
  */
 function recordedHeaders(context: NestContext): HeaderRecord {
   const headers: HeaderRecord = {};
@@ -99,12 +89,10 @@ function recordedHeaders(context: NestContext): HeaderRecord {
 }
 
 /**
- * Labels the answer with the type the adapter infers, unless
- * the handler declared one: an explicit `Content-Type` is the
- * handler's own answer, and it has to be read the same way
- * whatever shape the value returned took. A rule that honoured
- * it for a primitive and overwrote it for an object would make
- * the declaration depend on the shape of the value.
+ * Labels the answer with the inferred type, unless the handler
+ * declared one. An explicit `Content-Type` is the handler's own
+ * answer, so it is read the same way whatever shape the
+ * returned value took.
  */
 function defaultContentType(
   headers: HeaderRecord,
@@ -132,9 +120,8 @@ function toList(
 }
 
 /**
- * Writes the disposition a file declares. Nest accepts a list,
- * which Node treats as one header line per entry, so each entry
- * is appended rather than overwritten.
+ * Writes the disposition a file declares, one header line per
+ * entry as Node treats a list.
  */
 function setDisposition(
   headers: HeaderRecord,
@@ -147,11 +134,10 @@ function setDisposition(
 
 /**
  * The web stream a Node file stream becomes. A file can sit on
- * an object-mode stream, which yields values that are not
- * bytes, and a web response reads only `Uint8Array` chunks, so
+ * an object-mode stream yielding values that are not bytes, so
  * such a stream is encoded on the way out: the Node writer
  * tolerates a string and the runtimes that read the body as
- * bytes, which is every runtime that is not Node, do not.
+ * bytes do not.
  */
 function toBodyStream(stream: Readable): ReadableStream {
   const web = Readable.toWeb(stream);
@@ -162,10 +148,9 @@ function toBodyStream(stream: Readable): ReadableStream {
 }
 
 /**
- * Streams a file Nest built, keeping the headers it declares.
- * `StreamableFile` is the one response type that reaches the
- * adapter as a Node stream, so it is converted here rather than
- * buffered.
+ * Streams a file Nest built, keeping the headers it declares;
+ * `StreamableFile` is the one response type that arrives as a
+ * Node stream.
  */
 function toFileResponse(
   file: StreamableFile,
@@ -189,8 +174,8 @@ function toFileResponse(
 }
 
 /**
- * Answers a body of bytes with the type a binary answer
- * carries, unless the handler declared its own.
+ * Answers a body of bytes with the binary type, unless the
+ * handler declared its own.
  */
 function toBinaryResponse(
   body: Uint8Array | ArrayBuffer | ReadableStream,
@@ -202,16 +187,11 @@ function toBinaryResponse(
 }
 
 /**
- * Answers a value as JSON.
- *
- * Written out rather than reached for through
- * `Response.json()`, which copies whatever it is given into a
- * `Headers` of its own before building the answer — a second
- * validation pass over every header, on the one path every
- * request that returns a value takes. The type is declared
- * above like any other, so the only thing given up is the check
- * that the value can be serialized at all, which is read here
- * instead.
+ * Answers a value as JSON, written out rather than reached for
+ * through `Response.json()`, which copies what it is given into
+ * a `Headers` of its own — a second validation pass over every
+ * header, on the one path every request returning a value
+ * takes.
  */
 function jsonResponse(
   body: unknown,
@@ -251,22 +231,14 @@ function toResponse(
 }
 
 /**
- * Builds the Web response for a value Nest returned.
- *
- * The headers already recorded on the context are copied first:
- * `@Header()` reaches the adapter through `setHeader()`, which
- * stores them on the context, and replacing the response would
- * otherwise drop them.
- *
- * Reading them materializes a response on the context, and the
- * caller assigns this one over the top. Hono merges the two
- * when that happens, and merging reads `body` off the answer
- * being assigned — which is what turns a response the transport
- * can write in one call into one it has to read as a stream and
- * write a chunk at a time. The merge copies headers this
- * function has already copied, so it is redundant work on the
- * path every request takes. Clearing the materialized response
- * through the public setter first leaves nothing to merge.
+ * Builds the Web response for a value Nest returned. The
+ * headers already on the context are copied first: `@Header()`
+ * reaches the adapter through `setHeader()`, and replacing the
+ * response would otherwise drop them. Reading them materializes
+ * a response that Hono would then merge with this one, and the
+ * merge reads `body` off the answer — spending the one thing
+ * that lets the transport write it in a single call. Clearing
+ * it through the public setter leaves nothing to merge.
  */
 function buildResponse(
   context: NestContext,

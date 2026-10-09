@@ -12,10 +12,10 @@ const TRAILING_SLASH = /\/$/u;
 
 /**
  * The pattern a request matched, with its named parameters
- * filled in by the values the route captured. A named parameter
- * the route did not capture is left as it was written, which
- * reads as a prefix the path cannot match, and the caller
- * treats that as no capture rather than a wrong one.
+ * filled in by the values the route captured. One the route did
+ * not capture is left as it was written, which reads as a
+ * prefix the path cannot match, and the caller treats that as
+ * no capture rather than a wrong one.
  */
 function resolvedPrefixOf(
   pattern: string,
@@ -59,17 +59,10 @@ function captureBetween(
 }
 
 /**
- * The text a wildcard stands for. The router matches the
- * wildcard without reporting what it stood for — it names the
- * pattern it matched, not the capture — so the capture is read
- * back out of the path: it is what lies between the part of the
- * pattern before the `*` and the part after it.
- */
-/**
- * The wildcard a route matched when it matched the bare prefix.
- * Hono routes `/tree` to `/tree/*`, so the request reached this
- * route and the wildcard matched nothing, rather than nothing
- * matching. That is empty, not absent.
+ * The wildcard a route matched when it matched the bare prefix:
+ * Hono routes `/tree` to `/tree/*`, so the wildcard matched
+ * nothing rather than nothing matching, and that is empty
+ * rather than absent.
  */
 function emptyTailOf(
   path: string,
@@ -81,6 +74,13 @@ function emptyTailOf(
   return undefined;
 }
 
+/**
+ * The text a wildcard stands for. The router matches the
+ * wildcard without reporting what it stood for — it names the
+ * pattern it matched, not the capture — so the capture is read
+ * back out of the path: what lies between the part of the
+ * pattern before the `*` and the part after it.
+ */
 function wildcardOf(
   context: NestContext,
   params: Record<string, string>,
@@ -104,8 +104,8 @@ function wildcardOf(
 
 /**
  * The params a route captured. The wildcard is read under the
- * key the router answers it by — `*`, the same one Fastify uses
- * — and a path that matched none yields an empty bag.
+ * key the router answers it by — `*`, the one Fastify uses —
+ * and a path that matched none yields an empty bag.
  */
 function paramsOf(
   context: NestContext,

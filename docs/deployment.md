@@ -64,8 +64,9 @@ adapter.getHono().use('*', async (context, next) => {
 });
 ```
 
-`getInstance()` answers the same application, which is the
-untyped accessor Nest itself declares.
+`getInstance()` answers the same application through the
+accessor Nest itself declares. This package narrows that
+accessor's default type to it, so neither call needs a cast.
 
 ## WebSockets
 

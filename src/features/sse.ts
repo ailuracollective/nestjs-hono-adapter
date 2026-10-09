@@ -22,13 +22,9 @@ interface StartWaiter {
 }
 
 /**
- * Builds the waiter for one request's stream. A route that
- * streams nothing never settles it and needs nothing torn down
- * to stop waiting: the promise carries no listener.
- *
- * The promise is settled from outside its own body, which is
- * what a deferred is: `async` here would resolve at the first
- * `await` and settle nothing afterwards.
+ * Builds the waiter for one request's stream. The promise is
+ * settled from outside its own body, which is what a deferred
+ * is: `async` here would resolve at the first `await`.
  */
 function startWaiter(): StartWaiter {
   let settle: StartSignal = noStream;
@@ -56,21 +52,16 @@ interface SseState {
 }
 
 /**
- * A context carrying the state its `raw` getter needs.
- *
- * The holder is a record rather than an interface extending the
- * context because Hono's context type carries no symbol index
- * signature, and one would have to be asserted through
- * `unknown` to add. Both assertions here are that, and the file
- * says what each is for.
+ * A context carrying the state its `raw` getter needs. The
+ * holder is a record rather than an interface extending the
+ * context because Hono's context type has no symbol index
+ * signature, and adding one means asserting through `unknown`.
  */
 type SseHolder = Record<symbol, SseState | undefined>;
 
 /**
- * The context prototypes the getter is already on.
- *
- * Weak, so holding one of them does not keep a Hono context
- * class alive after the application that used it is gone.
+ * The context prototypes the getter is already on, weak so none
+ * of them is kept alive by it.
  */
 const installedOn = new WeakSet<object>();
 
@@ -89,17 +80,13 @@ function recordedHeaders(
 
 /**
  * Gives the object Nest reads as its response the surface its
- * SSE path touches, once an event stream has been opened on it,
- * so the same object serves every supported Nest major.
- *
- * Nest 11 and 12 both prefer `res.raw` when it is set, and Nest
- * 12 never reads the response's own members then. The `raw`
- * that names this writable is what keeps the frames travelling
- * through Hono: writing them straight into `c.env.outgoing`
- * would bypass the `Response` this adapter returns, and the
- * transport would then write that response into the same socket
- * a second time. `req.raw` is the real incoming message, which
- * is what tunes the socket and reports a disconnect.
+ * SSE path touches, once a stream has been opened on it. The
+ * `raw` that names this writable is what keeps the frames
+ * travelling through Hono: writing them straight into
+ * `c.env.outgoing` would make the transport write this
+ * adapter's `Response` to the same socket a second time.
+ * `req.raw` stays the real incoming message, which is what
+ * tunes the socket and reports a disconnect.
  */
 function installSurface(
   context: NestContext,
@@ -131,26 +118,18 @@ function installSurface(
 }
 
 /**
- * Watches for the client walking away, and answers with what
- * says so.
- *
- * Nest ends an event stream when the request’s socket closes,
+ * Watches for the client walking away and answers with what
+ * says so. Nest ends an event stream when the socket closes,
  * and a runtime that carries a request without carrying the
- * socket behind it never closes one. The request itself is what
- * is left: a platform that cannot close a socket it does not
- * have can still end the request, and this listens for that.
- * The answer is handed to the stream too, so a reader that lets
- * go of the bytes reaches the same end.
- *
- * The listener belongs to the request, which dies with it.
+ * socket never closes one; the request itself is what is left
+ * to end, and the listener dies with it.
  */
 function watchDisconnect(context: NestContext): () => void {
   const { incoming } = context.env;
-  // Nest’s SSE path reads `req.raw`, the incoming message itself,
-  // not the request bag: the socket it tunes and reads ‘close’
-  // from is this one, so it is tuned here, before the stream
-  // behind `raw` is handed to Nest, and the disconnect is
-  // reported on the same object.
+  // Nest's SSE path reads `req.raw`, the incoming message itself,
+  // not the request bag: that is the socket it tunes and reads
+  // 'close' from, so it is tuned here, before the stream is handed
+  // over, and the disconnect is reported on the same object.
   const socket = tuneableSocket(incoming.socket);
   const report = (): void => {
     reportDisconnect(socket);
@@ -160,20 +139,12 @@ function watchDisconnect(context: NestContext): () => void {
 }
 
 /**
- * Puts `raw` on Hono's context, once, so that no request has to
- * define a property.
- *
- * `Object.defineProperty` costs about 285 nanoseconds where a
- * plain property costs about 18, and on the request path this
- * was the largest single cost left — more than everything else
- * the adapter does put together. The getter belongs on the
- * prototype for the same reason any accessor does: every
- * context gets it, so no context should carry its own copy.
- *
- * A Hono application holds one context class, so this runs once
- * per process in practice. The prototype is remembered rather
- * than assumed, so a second application in the same process
- * does not redefine what the first installed.
+ * Puts `raw` on Hono's context, once, so no request defines a
+ * property: `Object.defineProperty` costs about 285 nanoseconds
+ * where a plain property costs about 18, and on the request
+ * path this was the largest single cost left. The prototype is
+ * remembered rather than assumed, so a second application in
+ * the same process does not redefine what the first installed.
  */
 function installRawGetter(context: NestContext): void {
   const prototype = Object.getPrototypeOf(context) as object;
@@ -209,29 +180,17 @@ function installRawGetter(context: NestContext): void {
 
 /**
  * Opens an event stream on the response Nest reads, and says
- * when it started. The stream is the destination `SseStream`
- * pipes into, so nothing is buffered until Nest commits the
- * headers, which is also the moment the promise settles.
- *
- * The surface itself opens on the first read of `raw` rather
- * than on every request, because that read is what tells an
- * event stream apart from any other answer. Nest reads `res.raw
- * ?? res` first on its SSE path and never reads it anywhere
- * else, so an ordinary route never builds the writable or the
- * web stream behind it, and never has its answer committed as a
- * stream with the stream's own content type and headers: what
- * it calls on the response stays Hono's own API, which is what
- * `@Res()` handlers are documented to write through.
- *
- * The promise it answers with is the one thing built per
- * request, and it is built here rather than on the first read
- * of `raw` because the bridge has to be handed it before the
- * handler runs. It settles when the stream commits its headers,
- * and a route that answers without streaming never settles it,
- * which needs nothing torn down to stop waiting since the
- * promise carries no listener. The surface, the writable and
- * the web stream behind them are all still built on that first
- * read, so a route that streams nothing reaches none of them.
+ * when it started. The surface itself opens on the first read
+ * of `raw` rather than on every request, because that read is
+ * what tells an event stream apart from any other answer — so a
+ * route that streams nothing never builds the writable, the web
+ * stream behind it, or the commit. The promise it answers with
+ * is the one thing built per request, and it is built here
+ * rather than on the first read because the bridge has to be
+ * handed it before the handler runs; it settles when the stream
+ * commits its headers, and a route that answers without
+ * streaming never settles it, which needs nothing torn down
+ * since the promise carries no listener.
  */
 function mountSse(
   context: NestContext,

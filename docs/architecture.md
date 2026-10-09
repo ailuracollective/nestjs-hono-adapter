@@ -48,6 +48,15 @@ erased at compile time, so the `/ws` subpath never loads the
 HTTP adapter. The moment that becomes a value import, a
 deployment that only serves HTTP pays for a WebSocket stack.
 
+`src/core/application.ts` is the one module whose entire
+contents are types: the interface a bootstrap hands to
+`NestFactory.create()`, and the member this package declares on
+Nest's `HttpServer` so `getHono()` is reachable out of
+`getHttpAdapter()`. Every import it declares is `import type`,
+so it costs the bundle nothing and the bundler never reaches it
+— a claim `test/types/application-surface.ts` holds at compile
+time rather than leaving to review.
+
 ## Entrypoints and isolation
 
 The `exports` map in `package.json` exposes exactly two
@@ -183,12 +192,14 @@ product.
 
 ## Where the guards live
 
-| File                         | What it holds                       |
-| ---------------------------- | ----------------------------------- |
-| `test/layers.test.ts`        | the four dependency rules           |
-| `test/entry-points.test.ts`  | subpath isolation                   |
-| `test/node-builtins.test.ts` | the frozen Node set                 |
-| `.oxlintrc.json`             | rule exceptions, each with a reason |
+| File                                 | What it holds                       |
+| ------------------------------------ | ----------------------------------- |
+| `test/layers.test.ts`                | the four dependency rules           |
+| `test/entry-points.test.ts`          | subpath isolation                   |
+| `test/node-builtins.test.ts`         | the frozen Node set                 |
+| `test/types/application-surface.ts`  | the types a consumer reads through  |
+| `test/types/route-adapter-compat.ts` | the members two Nest versions share |
+| `.oxlintrc.json`                     | rule exceptions, each with a reason |
 
 When a lint exception is added, `docs/lint-exceptions.md`
 records why. That file is the reason the configuration is
