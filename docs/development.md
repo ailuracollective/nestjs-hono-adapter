@@ -47,19 +47,21 @@ against the version the lockfile pins, and the CI compatibility
 job installs Nest 11 and 12 on Node 22 and 24 — every
 `@nestjs/*` package moves together, because a mixed install is
 what a gateway or a microservice case would fail on rather than
-the adapter. To run it locally, move the four packages in one
-call and put them back afterwards:
+the adapter. `bun add` rewrites `package.json` and `bun.lock`,
+so run the check in a disposable checkout, or restore both files
+before the frozen install:
 
 ```sh
 bun add --exact @nestjs/common@11.x @nestjs/core@11.x \
   @nestjs/websockets@11.x @nestjs/microservices@11.x
 bun run check
+git restore package.json bun.lock
 bun install --frozen-lockfile
 ```
 
 The tests are transpiled from the root `tsconfig.json` through
-swc, and the fixtures are Nest controllers whose decorators are
-the legacy kind, which is why that file turns
+Bun's transpiler, and the fixtures are Nest controllers whose
+decorators are the legacy kind, which is why that file turns
 `experimentalDecorators` and `emitDecoratorMetadata` on. The
 library declares no decorator, so neither flag changes what
 `bun run build` emits.

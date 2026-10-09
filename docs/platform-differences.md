@@ -116,11 +116,11 @@ never fill it, because the platform parser consumes the stream.
 ## Responses
 
 A returned value is answered as Nest answers it: an object as
-JSON, a string as text, a number as a status. Raw bytes —
-`Buffer`, `Uint8Array`, `ArrayBuffer`, a `ReadableStream` — are
-answered as `application/octet-stream`, the type Fastify labels
-them with, because serialising them as JSON is the one answer
-that loses them. `@Header()`, `@HttpCode()`, `@Redirect()` and
+JSON, a string as text, a number as text. Raw bytes — `Buffer`,
+`Uint8Array`, `ArrayBuffer`, a `ReadableStream` — are answered
+as `application/octet-stream`, the type Fastify labels them
+with, because serialising them as JSON is the one answer that
+loses them. `@Header()`, `@HttpCode()`, `@Redirect()` and
 `StreamableFile` are all honoured, and a declared `Content-Type`
 always wins over the inferred one.
 

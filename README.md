@@ -23,12 +23,6 @@ registered on a Hono application, and Hono's Web `Request` and
 `Response` are translated to and from the objects Nest reads and
 writes.
 
-**Solution**: This package implements the Nest 11/12
-`AbstractHttpAdapter` contract directly on Hono. Routes are
-registered on a Hono application, and Hono's Web `Request` and
-`Response` are translated to and from the objects Nest reads and
-writes.
-
 ## Install
 
 ```sh
@@ -109,21 +103,6 @@ typecheck, test, build and the bundle size gate.
 
 ## Contributing
 
-Contributions are welcome via [pull requests](https://github.com/ailuracollective/nestjs-hono-adapters/pulls).
-
-### Contribution requirements
-
-- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (enforced by semantic-release).
-- Run `bun run check` before opening a PR — it must pass lint, format, typecheck, test, build, and the bundle size gate.
-- Read [docs/architecture.md](docs/architecture.md) before editing `src/`: it documents the layer map, import rules, and bundle ceilings.
-- Tests must cover new behaviour; the suite runs against both Nest 11 and 12 on Node 22 and 24.
-
-## Reporting issues
-
-Open an [issue](https://github.com/ailuracollective/nestjs-hono-adapters/issues) for bugs or feature requests. Include the Nest and Hono versions, a minimal reproduction, and the behaviour you expected versus what happened.
-
-## Contributing
-
 Contributions are welcome via
 [pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls).
 
@@ -147,11 +126,6 @@ Open an
 for bugs or feature requests. Include the Nest and Hono
 versions, a minimal reproduction, and the behaviour you expected
 versus what happened.
-
-## Security
-
-See [SECURITY.md](SECURITY.md) for the vulnerability reporting
-process.
 
 ## Security
 

@@ -159,13 +159,13 @@ type-only import still couples a module's types to the platform.
 
 `.size-limit.json` holds a ceiling per entrypoint, measured by
 `size-limit` as a consumer would see it: bundled, minified,
-brotlied, with peers external. `pnpm run check` runs it last,
-and CI runs it again as its own job.
+brotlied, with peers external. `bun run check` runs it last, and
+CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
-is an explicit edit that has to be justified here. `index` sits
-at 8450 bytes against a measurement of 8450, and `ws` at 1340
-bytes against a measurement of 1340.
+is an explicit edit that has to be justified here. `index` has
+an 8500-byte ceiling and a measurement of 8450, and `ws` has a
+1345-byte ceiling and a measurement of 1340.
 
 Two consequences worth knowing before you write code:
 
