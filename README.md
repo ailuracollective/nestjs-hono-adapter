@@ -117,9 +117,14 @@ await app.init();
 export default { fetch: fetchHandler(adapter.getHono()) };
 ```
 
-The fetch handler reads the client address from
-`cf-connecting-ip`, returning `undefined` when it is absent.
-`x-forwarded-for` is read only when `trustProxy` is enabled.
+The fetch handler has no client address by default and ignores
+`cf-connecting-ip`. Pass `fetchHandler(app, { clientAddress })`
+with a resolver for a trusted address supplied by the host; read
+a header there only if the host guarantees clients cannot forge
+it. `x-forwarded-for` can still supply `ip` when `trustProxy`
+trusts the proxy. See
+[fetch hosts](docs/deployment.md#fetch-hosts) for the header
+opt-in and fallback behavior.
 
 `getType()` answers `hono`, which is the value ecosystem
 packages branch on.

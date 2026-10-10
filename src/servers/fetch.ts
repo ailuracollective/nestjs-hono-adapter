@@ -73,25 +73,35 @@ class FetchServer extends EventEmitter implements Server {
   }
 }
 
-/**
- * The client address Cloudflare's `cf-connecting-ip` header
- * names, when present.
- */
-function clientAddress(request: Request): string | undefined {
-  return request.headers.get('cf-connecting-ip') ?? undefined;
+/** The trusted request metadata a fetch host can supply. */
+interface FetchHandlerOptions {
+  /**
+   * Resolves a trusted address supplied by the host. Only read
+   * a header here if the host guarantees clients cannot forge
+   * it; this address is used even with `trustProxy: false`.
+   * Without a resolver, the carrier has no address.
+   */
+  readonly clientAddress?: (
+    request: Request,
+  ) => string | undefined;
 }
 
 /**
  * Wraps a Hono application as the `fetch` a host exports. The
  * request carrier Nest's SSE path reads is synthesized from the
- * request's signal, and the client address from
- * `cf-connecting-ip`, when present.
+ * request's signal, and its address comes only from the host's
+ * explicitly configured resolver.
  */
 function fetchHandler(
   app: NestHono,
+  options: FetchHandlerOptions = {},
 ): (request: Request) => Promise<Response> {
   return (request: Request): Promise<Response> => {
-    const incoming = new RequestCarrier(clientAddress(request));
+    let address: string | undefined = undefined;
+    if (options.clientAddress !== undefined) {
+      address = options.clientAddress(request);
+    }
+    const incoming = new RequestCarrier(address);
     request.signal.addEventListener(
       'abort',
       () => {
@@ -132,6 +142,7 @@ function fetchServer(
 
 export { fetchHandler, fetchServer };
 export type {
+  FetchHandlerOptions,
   FetchServerOptions,
   StaticHandler as FetchStaticHandler,
   WebSocketFactory as FetchWebSocketFactory,

@@ -94,10 +94,30 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 ```
 
 `listen()` and `close()` do nothing; the request carrier Nest's
-SSE path reads is synthesized from the request's signal, and the
-client address from `cf-connecting-ip`, when present. There is
-no native socket, so `raw` is the carrier and `ip` is that
-address, or `undefined` when the header is absent. Forwarded
+SSE path reads is synthesized from the request's signal. There
+is no native socket, so `raw` is the carrier. By default the
+carrier has no address, and `cf-connecting-ip` is ignored.
+
+Pass `fetchHandler(app, { clientAddress })` to resolve a trusted
+address supplied by the host. The resolver's result is used as
+the carrier's address even with `trustProxy: false`, so only
+read `cf-connecting-ip` when the host guarantees that clients
+cannot forge it:
+
+```ts
+// Only on a host that guarantees cf-connecting-ip.
+export default {
+  fetch: fetchHandler(adapter.getHono(), {
+    clientAddress: (request) =>
+      request.headers.get('cf-connecting-ip') ?? undefined,
+  }),
+};
+```
+
+If `cf-connecting-ip` is absent, `ip` may still resolve from
+`x-forwarded-for` when `trustProxy` trusts the proxy. With the
+resolver above, `ip` is `undefined` only when neither header
+supplies an address accepted by this configuration. Forwarded
 headers are read only when `trustProxy` is enabled.
 
 Static assets and WebSockets are host-specific. A host that has

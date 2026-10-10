@@ -17,7 +17,9 @@ import {
   fetchHandler,
   fetchServer,
 } from '../src/servers/fetch.ts';
+import type { FetchHandlerOptions } from '../src/servers/fetch.ts';
 import { ServerAdapter } from '../src/index.ts';
+import type { TrustProxy } from '../src/index.ts';
 import { ProbeModule, SseModule } from './support.ts';
 
 /** A running application answered through the fetch handler. */
@@ -29,9 +31,12 @@ interface FetchProbe {
 /** Starts one module on the fetch transport. */
 async function startFetch(
   module: Type<unknown>,
+  handler: FetchHandlerOptions = {},
+  trustProxy: TrustProxy = false,
 ): Promise<FetchProbe> {
   const adapter = new ServerAdapter({
     transport: fetchServer(),
+    trustProxy,
   });
   const app = await NestFactory.create(module, adapter, {
     logger: false,
@@ -39,7 +44,7 @@ async function startFetch(
   await app.init();
   return {
     close: () => app.close(),
-    fetch: fetchHandler(adapter.getHono()),
+    fetch: fetchHandler(adapter.getHono(), handler),
   };
 }
 
@@ -65,7 +70,7 @@ test('a route answers through the fetch handler', async () => {
   }
 });
 
-test('the fetch client address ignores x-forwarded-for', async () => {
+test('untrusted fetch headers cannot supply the client address', async () => {
   const probe = await startFetch(ProbeModule);
   try {
     const response = await probe.fetch(
@@ -77,8 +82,29 @@ test('the fetch client address ignores x-forwarded-for', async () => {
       }),
     );
     expect(response.status).toBe(HttpStatus.OK);
+    const body: unknown = await response.json();
+    expect(body).not.toHaveProperty('ip');
+    expect(body).toMatchObject({ ips: [] });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a trusted host address takes precedence over untrusted headers', async () => {
+  const probe = await startFetch(ProbeModule, {
+    clientAddress: () => '192.0.2.1',
+  });
+  try {
+    const response = await probe.fetch(
+      new Request('http://host.test/request', {
+        headers: {
+          'cf-connecting-ip': '203.0.113.7',
+          'x-forwarded-for': '198.51.100.1',
+        },
+      }),
+    );
     expect(await response.json()).toMatchObject({
-      ip: '203.0.113.7',
+      ip: '192.0.2.1',
       ips: [],
     });
   } finally {
@@ -86,16 +112,83 @@ test('the fetch client address ignores x-forwarded-for', async () => {
   }
 });
 
-test('the fetch client address is absent without cf-connecting-ip', async () => {
-  const probe = await startFetch(ProbeModule);
+test.each([
+  {
+    headers: { 'cf-connecting-ip': '203.0.113.7' },
+    ip: '203.0.113.7',
+    ips: [],
+    trust: false,
+  },
+  {
+    headers: { 'x-forwarded-for': '198.51.100.1' },
+    ip: undefined,
+    ips: [],
+    trust: false,
+  },
+  {
+    headers: { 'x-forwarded-for': '198.51.100.1' },
+    ip: '198.51.100.1',
+    ips: ['198.51.100.1'],
+    trust: true,
+  },
+  { headers: {}, ip: undefined, ips: [], trust: true },
+  {
+    headers: {
+      'cf-connecting-ip': '203.0.113.7',
+      'x-forwarded-for': '198.51.100.1',
+    },
+    ip: '198.51.100.1',
+    ips: ['198.51.100.1'],
+    trust: true,
+  },
+] satisfies readonly {
+  headers: Record<string, string>;
+  ip: string | undefined;
+  ips: string[];
+  trust: boolean;
+}[])(
+  'an opted-in header resolves with proxy policy: %j',
+  async ({ headers, ip, ips, trust }) => {
+    const probe = await startFetch(
+      ProbeModule,
+      {
+        clientAddress: (request) =>
+          request.headers.get('cf-connecting-ip') ?? undefined,
+      },
+      trust,
+    );
+    try {
+      const response = await probe.fetch(
+        new Request('http://host.test/request', { headers }),
+      );
+      const body: unknown = await response.json();
+      if (ip === undefined) {
+        expect(body).not.toHaveProperty('ip');
+      } else {
+        expect(body).toMatchObject({ ip });
+      }
+      expect(body).toMatchObject({ ips });
+    } finally {
+      await probe.close();
+    }
+  },
+);
+
+test('trusted forwarded headers work without a host resolver', async () => {
+  const probe = await startFetch(ProbeModule, {}, true);
   try {
     const response = await probe.fetch(
       new Request('http://host.test/request', {
-        headers: { 'x-forwarded-for': '198.51.100.1' },
+        headers: {
+          'cf-connecting-ip': '203.0.113.7',
+          'x-forwarded-for': '198.51.100.1',
+        },
       }),
     );
-    expect(response.status).toBe(HttpStatus.OK);
-    expect(await response.json()).not.toHaveProperty('ip');
+    expect(await response.json()).toMatchObject({
+      ip: '198.51.100.1',
+      ips: ['198.51.100.1'],
+    });
   } finally {
     await probe.close();
   }
