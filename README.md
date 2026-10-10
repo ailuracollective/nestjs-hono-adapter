@@ -6,7 +6,6 @@
 [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
 [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
 [![bundle size](https://img.shields.io/badge/bundle%20size-≤10kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/.size-limit.json)
-[![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
 [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 An HTTP adapter that runs a NestJS application on
@@ -125,7 +124,7 @@ Contributions are welcome via
 
 - Follow the
   [Conventional Commits](https://www.conventionalcommits.org/)
-  specification (enforced by semantic-release).
+  specification (enforced by the contribution policy).
 - Code must pass the project's
   [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and
   [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html)

@@ -21,9 +21,12 @@
 # Prose, read by no tool.
 .github/ISSUE_STANDARD.md         @SiddharthaGF
 
-# Rewritten by a machine, and the only workflow with a write grant.
-.releaserc.json                  @SiddharthaGF
-.github/workflows/release.yml     @SiddharthaGF
+# Rewritten by a machine; release-please writes the version bump, the tag and
+# the release, and publish.yml publishes to npm from the release tag.
+release-please-config.json       @SiddharthaGF
+.release-please-manifest.json    @SiddharthaGF
+.github/workflows/release.yml    @SiddharthaGF
+.github/workflows/publish.yml     @SiddharthaGF
 
 # Read by every agent and contributor.
 /AGENTS.md               @SiddharthaGF
