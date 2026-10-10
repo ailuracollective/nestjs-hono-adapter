@@ -193,7 +193,7 @@ A pull request must:
 
 ## Documentation
 
-Documentation lives in `docs/` (architecture, lint exceptions)
+Documentation lives in `docs/` (architecture)
 and in the README. A change to public behavior or configuration
 updates the documentation in the same change. A generated
 changelog is not edited by hand.
@@ -206,8 +206,6 @@ rules, and a README section for user-facing behavior.
 
 - [docs/architecture.md](docs/architecture.md) — the layer map,
   import rules, and Node boundary. Read before editing `src/`.
-- [docs/lint-exceptions.md](docs/lint-exceptions.md) — the lint
-  rules this repository disables and why.
 - [.size-limit.json](.size-limit.json) — the bundle ceilings the
   size gate enforces.
 - [release-please-config.json](release-please-config.json) — the
