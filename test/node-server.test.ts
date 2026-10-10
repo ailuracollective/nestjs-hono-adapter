@@ -124,6 +124,26 @@ test('an adapter that names no transport serves through Node', async () => {
   }
 });
 
+test('an undefined transport still serves through Node and keeps the other options', async () => {
+  const options = {
+    overrideGlobalObjects: false,
+    trustProxy: true,
+  };
+  // JavaScript callers can explicitly leave the transport undefined.
+  Reflect.set(options, 'transport', undefined);
+  const adapter = new ServerAdapter(options);
+  const probe = await startAdapter(adapter);
+  try {
+    const response = await request(probe, '/request', {
+      headers: { 'x-forwarded-for': '203.0.113.7' },
+    });
+    expect(response.body).toMatchObject({ ip: '203.0.113.7' });
+    expect(adapter.getHttpServer()).toBeInstanceOf(HttpServer);
+  } finally {
+    await probe.close();
+  }
+});
+
 /**
  * The transport the adapter picks itself is the Node one: it
  * carries no websocket helper, which is what sends the `/ws`
