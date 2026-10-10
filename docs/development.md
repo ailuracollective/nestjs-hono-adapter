@@ -53,7 +53,8 @@ frozen install:
 
 ```sh
 bun add --exact @nestjs/common@11.x @nestjs/core@11.x \
-  @nestjs/websockets@11.x @nestjs/microservices@11.x
+  @nestjs/websockets@11.x @nestjs/microservices@11.x \
+  @nestjs/testing@11.x
 bun run check
 git restore package.json bun.lock
 bun install --frozen-lockfile

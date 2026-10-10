@@ -136,6 +136,28 @@ test('an adapter that names no transport picks the Node one', () => {
   ).toBeUndefined();
 });
 
+test('an explicit undefined transport still builds a Node server', async () => {
+  const answer = await runNode('node', [
+    '--input-type=module',
+    '-e',
+    `
+const { ServerAdapter } = await import(${JSON.stringify(SOURCE)});
+const { Server: HttpServer } = await import('node:http');
+const originalRequest = globalThis.Request;
+const adapter = new ServerAdapter({
+  transport: undefined,
+  overrideGlobalObjects: false,
+});
+adapter.initHttpServer({});
+process.stdout.write(String(
+  adapter.getHttpServer() instanceof HttpServer &&
+  globalThis.Request === originalRequest
+));
+`,
+  ]);
+  expect(answer).toBe('true');
+});
+
 /**
  * The options that are not a transport are read on the default
  * path too, because the transport the adapter picks itself is

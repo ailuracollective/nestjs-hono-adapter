@@ -105,13 +105,9 @@ test('a property read twice is built once', async () => {
  * `env.incoming` as optional, so a binding that does not carry
  * one is a request with nothing to read the socket from.
  */
-// The binding is widened to the type the adapter expects, whose
-// `incoming` is required, while the value deliberately leaves it
-// absent — which is the case being pinned down.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the widening is the case.
 const NO_REQUEST_CARRIER = {
   server: SYNTHETIC_SERVER,
-} as unknown as NestEnv['Bindings'];
+} satisfies NestEnv['Bindings'];
 
 /**
  * A context reached through that binding.

@@ -73,7 +73,7 @@ function withTransport(
       overrideGlobalObjects:
         options.overrideGlobalObjects ?? true,
     });
-  return Object.assign({ transport }, options);
+  return Object.assign({}, options, { transport });
 }
 
 /** The options Nest hands the parser middleware. */
