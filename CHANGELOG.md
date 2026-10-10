@@ -6,6 +6,13 @@
 * add comprehensive tests for NestJS integration with various modules ([1ef6c9e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/1ef6c9ec2d77a5615c5d1751cc480a5b663422c2))
 
 
+## [1.4.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.3.0...v1.4.0) (2026-10-10)
+
+
+### Features
+
+* serve Nest through a runtime transport, Node by default ([#75](https://github.com/ailuracollective/nestjs-hono-adapter/issues/75)) ([5454ae7](https://github.com/ailuracollective/nestjs-hono-adapter/commit/5454ae7aaffbdd84e77cc5846a8d11831a32bf05))
+
 ## [1.2.4](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.2.3...v1.2.4) (2026-10-08)
 
 
