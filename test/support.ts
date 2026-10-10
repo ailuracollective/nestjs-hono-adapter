@@ -24,8 +24,12 @@ import type {
 } from '@nestjs/common';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
-import type { NestContext, NestRequest } from '../src/index.ts';
-import { ServerAdapter } from '../src/index.ts';
+import type {
+  NestContext,
+  NestRequest,
+  ServerAdapter,
+} from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { startApplication } from './probe.ts';
 import type { Probe, ProbeOptions } from './probe.ts';
 
@@ -313,10 +317,7 @@ function startAdapter(
 function startProbe(
   options: ProbeOptions = {},
 ): Promise<Probe> {
-  return startAdapter(
-    new ServerAdapter(options.adapter),
-    options,
-  );
+  return startAdapter(bunAdapter(options.adapter), options);
 }
 
 export {

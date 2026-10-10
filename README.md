@@ -10,8 +10,10 @@
 
 An HTTP adapter that runs a NestJS application on
 [Hono](https://hono.dev), with no Express or Fastify underneath.
-Built for [Bun](https://bun.sh), with Node support via
-`@hono/node-server`.
+The core is runtime-neutral; a **transport** decides how it is
+served. The default is `@hono/node-server`, which runs on Node
+and on Bun alike and is what this package has always served
+through; `bunServer()` opts into Bun's own server instead.
 
 **Problem**: Nest has no official Hono adapter. The two
 published alternatives target Nest 11 and answer incorrectly —
@@ -32,27 +34,33 @@ writes.
 ## Install
 
 ```sh
-bun add @ailura/nestjs-hono-adapter hono @hono/node-server
+bun add @ailura/nestjs-hono-adapter hono
 ```
 
 ```sh
-npm install @ailura/nestjs-hono-adapter hono @hono/node-server
+npm install @ailura/nestjs-hono-adapter hono
 ```
 
 ```sh
-pnpm add @ailura/nestjs-hono-adapter hono @hono/node-server
+pnpm add @ailura/nestjs-hono-adapter hono
 ```
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
 are peer dependencies, so the application decides their
-versions. Bun is the primary runtime and toolchain; Node 22+ is
-supported through `@hono/node-server`.
+versions. `@hono/node-server` is what the adapter serves through
+when no transport is named, so it is required. A deployment that
+serves WebSockets also installs `@hono/node-ws` and
+`@nestjs/websockets`: those two are the optional peers, reached
+through `./ws` and nowhere else.
 
 ## Use
+
+Pick the transport for the runtime, then inject it:
 
 ```ts
 import { NestFactory } from '@nestjs/core';
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
+import { bunServer } from '@ailura/nestjs-hono-adapter/bun-server';
 
 import { AppModule } from './app.module.ts';
 
@@ -60,6 +68,7 @@ const app = await NestFactory.create(
   AppModule,
   new ServerAdapter({
     bodyLimit: 2 * 1024 * 1024,
+    transport: bunServer(),
     trustProxy: true,
   }),
 );
@@ -70,19 +79,66 @@ app.enableCors({
 await app.listen(3000);
 ```
 
+Leaving `transport` out serves through `@hono/node-server` on
+Node and on Bun — the runtime every deployment was served by
+before the transports split — with `overrideGlobalObjects` on,
+as it always was:
+
+```ts
+new ServerAdapter();
+```
+
+The same transport, named, is where that option lives too; the
+`ServerAdapterOptions.overrideGlobalObjects` spelling is kept,
+and is read only when no transport is named:
+
+```ts
+import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
+
+new ServerAdapter({
+  transport: nodeServer({ overrideGlobalObjects: true }),
+});
+```
+
+On a host that serves a Web `Request`, such as Cloudflare
+Workers, Vercel Functions or Deno, the fetch transport takes no
+port and the deployment exports the handler:
+
+```ts
+import {
+  fetchHandler,
+  fetchServer,
+} from '@ailura/nestjs-hono-adapter/fetch';
+
+const adapter = new ServerAdapter({ transport: fetchServer() });
+const app = await NestFactory.create(AppModule, adapter);
+await app.init();
+
+export default { fetch: fetchHandler(adapter.getHono()) };
+```
+
+The fetch handler has no client address by default and ignores
+`cf-connecting-ip`. Pass `fetchHandler(app, { clientAddress })`
+with a resolver for a trusted address supplied by the host; read
+a header there only if the host guarantees clients cannot forge
+it. `x-forwarded-for` can still supply `ip` when `trustProxy`
+trusts the proxy. See
+[fetch hosts](docs/deployment.md#fetch-hosts) for the header
+opt-in and fallback behavior.
+
 `getType()` answers `hono`, which is the value ecosystem
 packages branch on.
 
 ## Options
 
-| Option                  | Type                            | Default | Effect                                                                                                               |
-| ----------------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `bodyLimit`             | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                                                                |
-| `overrideGlobalObjects` | `boolean`                       | `true`  | Let `@hono/node-server` swap the global `Request` and `Response` for lighter ones; turn it off on Cloudflare Workers |
-| `rawBody`               | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                                                               |
-| `secureHeaders`         | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options                                           |
-| `trustProxy`            | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                                                   |
-| `views`                 | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from                                     |
+| Option          | Type                            | Default | Effect                                                                           |
+| --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------- |
+| `bodyLimit`     | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                            |
+| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                           |
+| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options       |
+| `transport`     | `Transport`                     | —       | The runtime: `bunServer()`, `nodeServer()` or `fetchServer()`                    |
+| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`               |
+| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from |
 
 ## Documentation
 
@@ -95,15 +151,15 @@ packages branch on.
 | [docs/api.md](docs/api.md)                                   | API reference: classes, options, and types                                                                 |
 | [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
 | [docs/bundle-baseline.md](docs/bundle-baseline.md)           | Verified bundle and package measurements, and what the evidence supports                                   |
-| [docs/lint-exceptions.md](docs/lint-exceptions.md)           | The lint rules this repository disables and why                                                            |
+| [examples/](examples/)                                       | Cloudflare Workers, Vercel, Cloud Run, and container examples — one application behind a transport         |
 
 ## Requirements
 
-- Bun 1.2+ (primary runtime and toolchain).
-- Node 22.12+ when deploying via `@hono/node-server` (22.x and
-  24.x tested; 26.x ready as it enters LTS).
+- Bun 1.2+ (toolchain), or Node 22.12+.
+- `@hono/node-server`, which both serve through by default;
+  `bunServer()` replaces it with Bun's own server.
 - Nest 11 or 12.
-- Hono 4 and `@hono/node-server` 2.
+- Hono 4.
 
 ## Development
 
@@ -135,7 +191,7 @@ Contributions are welcome via
   editing `src/`: it documents the layer map, import rules, and
   bundle ceilings.
 - Tests must cover new behaviour; the suite runs against both
-  Nest 11 and 12 on Node 22 and 24.
+  Nest 11 and 12 on Bun.
 
 ## Reporting issues
 

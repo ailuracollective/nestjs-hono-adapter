@@ -32,7 +32,8 @@ import type {
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 
-import { ServerAdapter } from '../src/index.ts';
+import type { ServerAdapter } from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 
 /** What the guarded route answers with. */
 const OPEN = { guarded: true };
@@ -168,7 +169,7 @@ async function withApplication<Answer>(
   }).compile();
 
   const application = compiled.createNestApplication(
-    new ServerAdapter(),
+    bunAdapter(),
     {
       logger: false,
     },
@@ -200,7 +201,7 @@ async function withOverriddenGuard<Answer>(
     .compile();
 
   const application = compiled.createNestApplication(
-    new ServerAdapter(),
+    bunAdapter(),
     {
       logger: false,
     },
@@ -221,7 +222,7 @@ async function overConnection(
   adapter: ServerAdapter,
 ): Promise<Answered> {
   const address = adapter.getHttpServer().address();
-  if (address === null || typeof address === 'string') {
+  if (address === undefined || typeof address === 'string') {
     throw new TypeError(
       'the application is not listening on a port',
     );
@@ -282,7 +283,7 @@ test('an application built by the testing package answers over a connection', as
     imports: [OpenModule],
   }).compile();
 
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
   const application = compiled.createNestApplication(adapter, {
     logger: false,
   });

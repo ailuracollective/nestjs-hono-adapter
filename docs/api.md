@@ -43,8 +43,14 @@ const app = await NestFactory.create<NestHonoApplication>(
 );
 
 app.getHttpAdapter().getHono(); // NestHono
-app.getHttpServer().address(); // ServerType
+app.getHttpServer().address(); // Server & http.Server
 ```
+
+The server is named as both the port every transport implements
+and Node's own `http.Server`, so a caller that reached for
+`closeAllConnections()` or listened for `'upgrade'` — both of
+which worked before the transports split — still compiles. Only
+the default (Node) transport answers a real `http.Server`.
 
 `NestFactory.create()` types what it answers as whatever the
 type argument says, defaulting to `INestApplication`. That
@@ -63,14 +69,61 @@ same type argument.
 
 ### `ServerAdapterOptions`
 
-| Option                  | Type                            | Default | Description                                                                                               |
-| ----------------------- | ------------------------------- | ------- | --------------------------------------------------------------------------------------------------------- |
-| `bodyLimit`             | `number`                        | `1 MiB` | Largest request body in bytes; `0` removes the limit                                                      |
-| `overrideGlobalObjects` | `boolean`                       | `true`  | Let `@hono/node-server` swap global `Request`/`Response` for lighter ones; turn off on Cloudflare Workers |
-| `rawBody`               | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                                                    |
-| `secureHeaders`         | `boolean \| object`             | `true`  | Install `hono/secure-headers` with defaults or with the given options                                     |
-| `trustProxy`            | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                                           |
-| `views`                 | `ViewOptions`                   | —       | The engine a `@Render()` handler renders with, and where templates are read from                          |
+| Option                  | Type                            | Default        | Description                                                                      |
+| ----------------------- | ------------------------------- | -------------- | -------------------------------------------------------------------------------- |
+| `bodyLimit`             | `number`                        | `1 MiB`        | Largest request body in bytes; `0` removes the limit                             |
+| `rawBody`               | `boolean`                       | `false`        | Keep the bytes that were read in `NestRequest.rawBody`                           |
+| `secureHeaders`         | `boolean \| object`             | `true`         | Install `hono/secure-headers` with defaults or with the given options            |
+| `overrideGlobalObjects` | `boolean`                       | `true`         | Read only when `transport` is left out; `nodeServer()` takes its own             |
+| `transport`             | `Transport`                     | `nodeServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()`   |
+| `trustProxy`            | `boolean \| number \| string[]` | `false`        | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                  |
+| `views`                 | `ViewOptions`                   | —              | The engine a `@Render()` handler renders with, and where templates are read from |
+
+### Transports
+
+The runtime is injected through `transport`, and each one lives
+behind its own subpath so a deployment loads only what it serves
+with:
+
+| Subpath                                   | Export                  | Runtime                                        |
+| ----------------------------------------- | ----------------------- | ---------------------------------------------- |
+| `@ailura/nestjs-hono-adapter/bun-server`  | `bunServer()`           | Bun's own server                               |
+| `@ailura/nestjs-hono-adapter/node-server` | `nodeServer(options?)`  | `@hono/node-server`                            |
+| `@ailura/nestjs-hono-adapter/fetch`       | `fetchServer(options?)` | A fetch host (Workers, Vercel Functions, Deno) |
+
+`nodeServer` is the transport the adapter serves through when
+`transport` is left out, so `new ServerAdapter()` keeps working
+wherever `@hono/node-server` does — on Node and on Bun. It takes
+one option, `overrideGlobalObjects` (default `false`): whether
+`@hono/node-server` may replace the global `Request` and
+`Response` with its lighter classes. It is off by default
+because the replacement is process-wide and not restored; the
+transport the adapter picks itself passes `true`, which is the
+behaviour every deployment had before the transports split, and
+which `ServerAdapterOptions.overrideGlobalObjects` still
+reaches.
+
+A transport carries a websocket helper only where the runtime
+has one. `nodeServer` names none, so the `/ws` island falls back
+to `@hono/node-ws`: an application that serves no WebSocket
+never installs it.
+
+`fetchServer` takes no port: `listen()` and `close()` do
+nothing, and the deployment exports the handler. Static assets
+and WebSockets are host-specific, so a host that has them passes
+`serveStatic` and `upgradeWebSocket`; asking for one without
+passing it throws. `fetchHandler(app)` wraps the Hono
+application as the `fetch` a host exports:
+
+```ts
+const adapter = new ServerAdapter({
+  transport: fetchServer(),
+});
+const app = await NestFactory.create(AppModule, adapter);
+await app.init();
+
+export default { fetch: fetchHandler(adapter.getHono()) };
+```
 
 ### Application methods
 
@@ -161,23 +214,23 @@ namespace is refused.
 
 The request object Nest reads. Key properties:
 
-| Property      | Type                        | Description                           |
-| ------------- | --------------------------- | ------------------------------------- |
-| `method`      | `string`                    | HTTP method                           |
-| `url`         | `string`                    | The full URL                          |
-| `originalUrl` | `string`                    | Path plus query string                |
-| `path`        | `string`                    | The pathname                          |
-| `hostname`    | `string`                    | The hostname                          |
-| `protocol`    | `string`                    | `'http'` or `'https'`                 |
-| `secure`      | `boolean`                   | Whether the connection is TLS         |
-| `ip`          | `string \| undefined`       | The client IP                         |
-| `ips`         | `string[]`                  | Forwarded IPs                         |
-| `headers`     | `Record<string, string>`    | Request headers                       |
-| `query`       | `ParsedQuery`               | Parsed query string                   |
-| `params`      | `Record<string, string>`    | Route parameters                      |
-| `body`        | `unknown`                   | Parsed request body                   |
-| `rawBody`     | `Buffer \| undefined`       | Raw body bytes (when `rawBody: true`) |
-| `socket`      | `IncomingMessage['socket']` | The underlying socket                 |
+| Property      | Type                     | Description                                     |
+| ------------- | ------------------------ | ----------------------------------------------- |
+| `method`      | `string`                 | HTTP method                                     |
+| `url`         | `string`                 | The full URL                                    |
+| `originalUrl` | `string`                 | Path plus query string                          |
+| `path`        | `string`                 | The pathname                                    |
+| `hostname`    | `string`                 | The hostname                                    |
+| `protocol`    | `string`                 | `'http'` or `'https'`                           |
+| `secure`      | `boolean`                | Whether the connection is TLS                   |
+| `ip`          | `string \| undefined`    | The client IP                                   |
+| `ips`         | `string[]`               | Forwarded IPs                                   |
+| `headers`     | `Record<string, string>` | Request headers                                 |
+| `query`       | `ParsedQuery`            | Parsed query string                             |
+| `params`      | `Record<string, string>` | Route parameters                                |
+| `body`        | `unknown`                | Parsed request body                             |
+| `rawBody`     | `Buffer \| undefined`    | Raw body bytes (when `rawBody: true`)           |
+| `socket`      | `Socket`                 | The request's socket, as the runtime reports it |
 
 ### `TrustProxy`
 

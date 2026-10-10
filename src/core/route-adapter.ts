@@ -1,8 +1,8 @@
-import type { ServerType } from '@hono/node-server';
 import { RequestMethod } from '@nestjs/common';
 import type { VersioningOptions } from '@nestjs/common';
 import { AbstractHttpAdapter } from '@nestjs/core';
 
+import type { Server } from './server.ts';
 import type { NestContext } from './context.ts';
 import type { NestHandler, NestRequest } from './request.ts';
 import { createVersionFilter } from './version-filter.ts';
@@ -97,7 +97,7 @@ function toMiddlewarePath(path: string): string {
  * Hono.
  */
 abstract class RouteAdapter extends AbstractHttpAdapter<
-  ServerType,
+  Server,
   NestRequest,
   NestContext
 > {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { ServerAdapter } from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { startProbe } from './support.ts';
 import { request } from './probe.ts';
 
@@ -101,7 +101,7 @@ test('a file that does not exist reaches the routes', async () => {
  * the test run, which Nest's own `app.get('nope')` shows too.
  */
 test('an option the handler cannot honour is refused', () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
 
   expect(() => {
     adapter.useStaticAssets(FIXTURES, {

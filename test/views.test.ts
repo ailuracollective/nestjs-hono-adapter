@@ -4,7 +4,7 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import type { ViewEngine } from '../src/index.ts';
-import { ServerAdapter } from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { startProbe } from './support.ts';
 import { request } from './probe.ts';
 
@@ -80,7 +80,7 @@ test('a view that does not exist is a not-found answer', async () => {
  * the test run, which Nest's own `app.get('nope')` shows too.
  */
 test('naming an engine without one configured is refused', () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
 
   expect(() => {
     adapter.setViewEngine(ENGINE);

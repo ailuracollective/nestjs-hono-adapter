@@ -17,7 +17,7 @@ import {
 import type { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 
-import { ServerAdapter } from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { startAdapter } from './support.ts';
 import { request } from './probe.ts';
 import type { Probe } from './probe.ts';
@@ -91,7 +91,7 @@ async function freePort(): Promise<number> {
  * the microservice, which binds its own port either way.
  */
 function startHybrid(port: number): Promise<Probe> {
-  return startAdapter(new ServerAdapter(), {
+  return startAdapter(bunAdapter(), {
     configure: (app) => {
       app.connectMicroservice({
         options: { host: LOCALHOST, port },

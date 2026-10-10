@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 
-import type { NestContext, NodeEnv } from '../core/context.ts';
+import type { NestContext, NestEnv } from '../core/context.ts';
 
 /** The origins a deployment may allow. */
 type AllowedOrigins =
@@ -231,7 +231,7 @@ function middlewareOrigin(
 function corsMiddleware(
   options: CorsOptions,
   resolved?: AllowedOrigins,
-): MiddlewareHandler<NodeEnv> {
+): MiddlewareHandler<NestEnv> {
   const named = resolved ?? staticOrigin(options.origin);
   if (
     options.preflightContinue !== true &&
@@ -281,7 +281,7 @@ function isContinuedPreflight(
  */
 async function forwardPreflight(
   context: NestContext,
-  middleware: MiddlewareHandler<NodeEnv>,
+  middleware: MiddlewareHandler<NestEnv>,
 ): Promise<void> {
   const answer = await middleware(context, NOOP_NEXT);
   if (answer === undefined) {
@@ -306,7 +306,7 @@ async function forwardPreflight(
  */
 function corsBridge(
   handler: () => CorsOptions | undefined,
-): MiddlewareHandler<NodeEnv> {
+): MiddlewareHandler<NestEnv> {
   return async (context, next) => {
     const options = handler();
     if (options === undefined) {

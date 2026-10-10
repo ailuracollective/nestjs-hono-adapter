@@ -2,7 +2,7 @@
   {
     "name": "index",
     "path": "dist/index.js",
-    "limit": 8600,
+    "limit": 8900,
     "brotli": true,
     "ignore": [
       "hono",
@@ -11,22 +11,85 @@
       "@nestjs/websockets",
       "@nestjs/microservices",
       "@hono/node-server",
-      "@hono/node-ws",
       "rxjs",
       "node:buffer",
-      "node:http",
-      "node:stream",
       "node:events",
-      "node:util",
-      "node:https",
       "node:fs",
-      "node:path"
+      "node:http",
+      "node:https",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "bun-server",
+    "path": "dist/servers/bun.js",
+    "limit": 1024,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "node-server",
+    "path": "dist/servers/node.js",
+    "limit": 560,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@hono/node-server",
+      "@hono/node-ws",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:http",
+      "node:https",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "fetch",
+    "path": "dist/servers/fetch.js",
+    "limit": 480,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:path",
+      "node:stream",
+      "node:util"
     ]
   },
   {
     "name": "ws",
-    "path": "dist/ws.js",
-    "limit": 1345,
+    "path": "dist/ws/index.js",
+    "limit": 1400,
     "brotli": true,
     "ignore": [
       "hono",
@@ -34,17 +97,13 @@
       "@nestjs/core",
       "@nestjs/websockets",
       "@nestjs/microservices",
-      "@hono/node-server",
-      "@hono/node-ws",
       "rxjs",
       "node:buffer",
-      "node:http",
-      "node:stream",
       "node:events",
-      "node:util",
-      "node:https",
       "node:fs",
-      "node:path"
+      "node:path",
+      "node:stream",
+      "node:util"
     ]
   }
 ]

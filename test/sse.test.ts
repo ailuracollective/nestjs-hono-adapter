@@ -1,12 +1,12 @@
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 import { firstValueFrom, timeout } from 'rxjs';
 
-import type { NodeEnv } from '../src/index.ts';
+import { RequestCarrier } from '../src/core/bindings.ts';
+import type { Bindings } from '../src/core/bindings.ts';
+import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 import type { Probe } from './probe.ts';
 import {
   FLOOD_FRAMES,
@@ -318,35 +318,26 @@ test('closing the application while a stream is open settles', async () => {
 });
 
 /**
- * Sends one request over a socket of the kind a runtime with no
- * TCP socket behind it reports: the members everything else
- * reads, and none of the tuning. Cloudflare Workers reports one
- * through `cloudflare:node`, and nothing about it ever closes,
- * so a case on this path is a case about a runtime where the
- * disconnect has to arrive from somewhere else. Both are read
- * back, because both are what the runtime has left to say it
- * with.
+ * Sends one request over the carrier Bun hands the adapter: a
+ * synthesized socket with no tuning of its own, which is what a
+ * runtime with no TCP socket behind it reports. Nothing about
+ * that socket ever closes by itself, so a case on this path is
+ * a case about a disconnect that has to arrive from somewhere
+ * else. Both are read back, because both are what the adapter
+ * has left to say it with.
  */
 async function respondOverBareSocket(
   probe: Probe,
   path: string,
 ): Promise<{
-  readonly incoming: IncomingMessage;
+  readonly incoming: RequestCarrier;
   readonly response: Response;
 }> {
-  const socket = new Socket();
-  for (const name of [
-    'setKeepAlive',
-    'setNoDelay',
-    'setTimeout',
-  ] as const) {
-    Reflect.set(socket, name, undefined);
-  }
-  const incoming = new IncomingMessage(socket);
+  const incoming = new RequestCarrier(undefined);
   const binding = {
     incoming,
-    outgoing: new ServerResponse(incoming),
-  } satisfies NodeEnv['Bindings'];
+    server: SYNTHETIC_SERVER,
+  } satisfies Bindings;
   const response = await probe.adapter
     .getHono()
     .request(path, undefined, binding);

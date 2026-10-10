@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 
-import { CLOSE_EVENT } from './ws-client.ts';
-import type { HonoSocket } from './ws-client.ts';
+import { CLOSE_EVENT } from './client.ts';
+import type { HonoSocket } from './client.ts';
 
 /** The event Nest listens on for every new socket. */
 const CONNECTION_EVENT = 'connection';

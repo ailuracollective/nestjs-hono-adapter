@@ -15,8 +15,10 @@ import {
   timeout,
 } from 'rxjs';
 
+import { bunAdapter } from './bun-adapter.ts';
 import { ServerAdapter } from '../src/index.ts';
-import { HonoWsAdapter } from '../src/ws.ts';
+import { nodeServer } from '../src/servers/node.ts';
+import { HonoWsAdapter } from '../src/ws/index.ts';
 
 /** The path the gateway fixture listens on. */
 const GATEWAY_PATH = '/ws';
@@ -109,15 +111,16 @@ function within<Result>(
 }
 
 /** Starts the gateway fixture on an ephemeral port. */
-async function startGateways(): Promise<WsProbe> {
-  const adapter = new ServerAdapter();
+async function startGateways(
+  adapter: ServerAdapter = bunAdapter(),
+): Promise<WsProbe> {
   const app = await NestFactory.create(GatewayModule, adapter, {
     logger: false,
   });
   app.useWebSocketAdapter(new HonoWsAdapter(adapter));
   await app.listen(ANY_PORT, LOCALHOST);
   const address = adapter.getHttpServer().address();
-  if (address === null || typeof address === 'string') {
+  if (address === undefined || typeof address === 'string') {
     throw new TypeError(
       'the adapter is not listening on a port',
     );
@@ -173,6 +176,20 @@ async function expectAnswered(
 
 test('a gateway answers on the Hono server', async () => {
   const probe = await startGateways();
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    await expectAnswered(socket, { amount: INPUT });
+  } finally {
+    socket.close();
+    await probe.close();
+    await probe.close();
+  }
+});
+
+test('a gateway answers on the Node transport', async () => {
+  const probe = await startGateways(
+    new ServerAdapter({ transport: nodeServer() }),
+  );
   const socket = await open(socketUrl(probe, GATEWAY_PATH));
   try {
     await expectAnswered(socket, { amount: INPUT });

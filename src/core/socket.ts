@@ -4,25 +4,16 @@
  *
  * `SseStream` calls `setKeepAlive`, `setNoDelay` and
  * `setTimeout(0)` on `req.socket`, and watches that socket for
- * `close`. A runtime can carry a request without carrying the
- * TCP socket behind it — Cloudflare Workers through
- * `cloudflare:node` reports a socket with `on`, `once` and
- * `remoteAddress` and none of the three calls — so opening a
- * stream there fails with a `TypeError` before a single frame
- * is written. Those calls are filled in with what a socket that
- * cannot be tuned has to say, which is nothing; everything else
- * is left alone, and a socket that can be tuned is handed back
+ * `close`. Bun carries a request without carrying the TCP
+ * socket behind it: the socket the adapter hands over has an
+ * address and the emitter surface and none of the three calls.
+ * Those calls are filled in with what a socket that cannot be
+ * tuned has to say, which is nothing; everything else is left
+ * alone, and a socket the runtime does provide is handed back
  * untouched.
  */
 
-import type { IncomingMessage } from 'node:http';
-
-/**
- * The socket a request carries, named through the import the
- * source already has: `node:net` is not one of the builtins the
- * platform freeze lets the source name.
- */
-type Socket = IncomingMessage['socket'];
+import type { Socket } from './bindings.ts';
 
 /**
  * What a tuning call answers with; it answers with itself, so a

@@ -3,7 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 
-import type { NodeEnv } from '../src/index.ts';
+import type { NestEnv } from '../src/index.ts';
 import { guardBridge } from '../src/features/guard-bridge.ts';
 import { startProbe } from './support.ts';
 
@@ -17,7 +17,7 @@ const REFUSED = {
  * A CORS step that does nothing, standing in for the one an
  * application that never enables CORS would carry.
  */
-const noCorsStep: MiddlewareHandler<NodeEnv> = (
+const noCorsStep: MiddlewareHandler<NestEnv> = (
   _context,
   next,
 ) => next();
@@ -28,8 +28,8 @@ function noCorsEnabled(): boolean {
 }
 
 /** An application that reports whether it is shutting down. */
-function probeApp(isClosing: () => boolean): Hono<NodeEnv> {
-  const app = new Hono<NodeEnv>();
+function probeApp(isClosing: () => boolean): Hono<NestEnv> {
+  const app = new Hono<NestEnv>();
   app.use(
     '*',
     guardBridge({

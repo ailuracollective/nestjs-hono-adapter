@@ -9,9 +9,6 @@
  * independent of each other.
  */
 
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
-
 import type {
   INestApplication,
   NestApplicationOptions,
@@ -19,8 +16,12 @@ import type {
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { ServerAdapter } from '../src/index.ts';
-import type { ServerAdapterOptions } from '../src/index.ts';
+import { RequestCarrier } from '../src/core/bindings.ts';
+import type { Bindings } from '../src/core/bindings.ts';
+import type { ServerAdapter } from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
+import type { AdapterOptions } from './bun-adapter.ts';
+import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 
 /** The port a probe asks the system to pick for it. */
 const ANY_PORT = 0;
@@ -42,44 +43,24 @@ const IN_PROCESS_MODE = 'in-process';
 
 /**
  * The request an in-process request is read from: one that
- * never arrived.
+ * never arrived. Its socket reports no address, which is the
+ * truth of a request nobody sent.
  */
-const SYNTHETIC_INCOMING = new IncomingMessage(new Socket());
+const SYNTHETIC_INCOMING = new RequestCarrier(undefined);
 
 /**
- * The response no listener writes, made so the binding carries
- * one.
+ * The bindings an in-process request is run with, written by
+ * hand because no transport will build them: the request
+ * carrier Nest's SSE path reads, and the native Bun server. A
+ * hand-written binding is what makes the claim explicit rather
+ * than accidental: a case on this path exercises the handler
+ * chain, not the transport, and a case that needs a real
+ * connection asks for a socket probe instead of being handed
+ * one that pretends it was there.
  */
-const SYNTHETIC_OUTGOING = new ServerResponse(
-  SYNTHETIC_INCOMING,
-);
-
-/**
- * The environment an in-process request is run with, written by
- * hand because no listener will build one: the request that
- * never arrived and the response made against it, which is what
- * the adapter reads the socket and the raw request from, and
- * from which it reports the client address. That address is
- * absent, which is the truth of a request nobody sent.
- *
- * A hand-written binding is what makes the claim explicit
- * rather than accidental: a case on this path exercises the
- * handler chain, not the transport, and a case that needs a
- * real connection asks for a socket probe instead of being
- * handed one that pretends it was there.
- *
- * Hono hands a context the environment whole, while
- * `@hono/node-server` types those bindings under `Bindings`, so
- * both spellings are written: the one the adapter reads and the
- * one the type declares.
- */
-const IN_PROCESS_ENV = {
-  Bindings: {
-    incoming: SYNTHETIC_INCOMING,
-    outgoing: SYNTHETIC_OUTGOING,
-  },
+const IN_PROCESS_ENV: Bindings = {
   incoming: SYNTHETIC_INCOMING,
-  outgoing: SYNTHETIC_OUTGOING,
+  server: SYNTHETIC_SERVER,
 };
 
 /** What one request through a running application saw. */
@@ -133,7 +114,7 @@ type ProbeApplication = NestApplicationOptions & {
 
 /** How a probe is built, when the defaults are not enough. */
 interface ProbeOptions {
-  readonly adapter?: ServerAdapterOptions;
+  readonly adapter?: AdapterOptions;
   readonly application?: ProbeApplication;
   readonly configure?: (app: INestApplication) => void;
   /**
@@ -179,7 +160,7 @@ function bodyOf(text: string, contentType: string): unknown {
 /** The address a listening adapter answers on. */
 function originOf(adapter: ServerAdapter): string {
   const address = adapter.getHttpServer().address();
-  if (address === null || typeof address === 'string') {
+  if (address === undefined || typeof address === 'string') {
     throw new TypeError(
       'the adapter is not listening on a port',
     );
@@ -277,7 +258,7 @@ function startProbe(
     );
   }
   return startApplication(
-    new ServerAdapter(options.adapter),
+    bunAdapter(options.adapter),
     module,
     options,
   );

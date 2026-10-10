@@ -59,11 +59,12 @@ on Hono 4.
 This file covers the whole repository. The directories that are
 part of the repository and that an agent may edit:
 
-- `src/` — the adapter source, layered into `core/` and
-  `features/`.
+- `src/` — the adapter source, layered into `core/`,
+  `features/`, `servers/` and `ws/`.
 - `test/` — the test suite, including fixtures and probes.
-- `docs/` — architecture and lint-exception documentation.
-- `examples/` — runnable examples (Cloudflare Workers).
+- `docs/` — architecture and documentation.
+- `examples/` — runnable Cloudflare Workers, Vercel, Cloud Run,
+  and container examples.
 
 An agent must not touch `dist/`, `node_modules/`, or `bun.lock`
 (except via `bun install`). There is no subdirectory
@@ -80,14 +81,26 @@ Nest reads and writes.
 
 The stack is Bun (runtime and package manager), TypeScript
 (strict), Hono 4 (web framework), and NestJS 11/12 (the
-framework being adapted). The package publishes two entrypoints:
-`.` (the HTTP adapter) and `./ws` (the WebSocket adapter).
+framework being adapted). The core is runtime-neutral: a
+`Transport` serves through Bun's own server,
+`@hono/node-server`, or a fetch host's Web `Request`/`Response`;
+each transport lives behind its own subpath, and the Node one is
+the default, so a bootstrap that names none keeps working on
+Node and on Bun. The package publishes five entrypoints: `.`
+(the adapter), `./bun-server`, `./node-server`, `./fetch` and
+`./ws` (the WebSocket adapter).
 
 The source is layered: `src/core/` holds the request decode,
-response encode, and lifecycle bridge; `src/features/` holds
-optional capabilities (CORS, guards, SSE, static assets, views).
-The layout, import rules, and bundle ceilings are written down
-in [docs/architecture.md](docs/architecture.md).
+response encode, and lifecycle bridge, plus the `Server` and
+`Transport` ports; `src/features/` holds optional capabilities
+(CORS, guards, SSE, static assets, views); `src/servers/` holds
+the runtime transports (`bun.ts`, `node.ts`, `fetch.ts`),
+reached through their subpaths — and the Node one from
+`core/server-adapter.ts`, the adapter's composition root, as the
+transport it serves through by default; and `src/ws/` is the
+WebSocket island behind `./ws`. The layout, import rules, and
+bundle ceilings are written down in
+[docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 
@@ -112,9 +125,9 @@ in [docs/architecture.md](docs/architecture.md).
   entrypoint is bundled the way a consumer resolves it, and CI
   fails when a ceiling in `.size-limit.json` is exceeded. This
   is a gate, not a report.
-- **The compat matrix tests NestJS 11 and 12 on Node 22
-  and 24.** Every Nest package moves together; a mixed install
-  is what a WebSocket or microservice case would fail on.
+- **The compat matrix tests NestJS 11 and 12 on Bun.** Every
+  Nest package moves together; a mixed install is what a
+  WebSocket or microservice case would fail on.
 
 ## Development instructions
 
@@ -158,7 +171,7 @@ command. The size gate fails when a bundle ceiling in
 
 The compat matrix in CI additionally runs
 `bun run typecheck && bun test && bun run build` against NestJS
-11 and 12 on Node 22 and 24.
+11 and 12 on Bun.
 
 ## Git and pull requests
 

@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import type { Context, MiddlewareHandler } from 'hono';
 
-import type { NodeEnv } from '../core/context.ts';
+import type { NestEnv } from '../core/context.ts';
 
 /** The answer Nest's own adapters give while shutting down. */
 const CLOSING_BODY = {
@@ -25,7 +25,7 @@ interface GuardState {
    */
   readonly corsEnabled: () => boolean;
   /** The CORS step. */
-  readonly cors: MiddlewareHandler<NodeEnv>;
+  readonly cors: MiddlewareHandler<NestEnv>;
   /**
    * Whether the server is closing and a request must be
    * refused.
@@ -56,8 +56,8 @@ function closingAnswer(): Response {
  * which is where Hono reads it from.
  */
 async function refuse(
-  context: Context<NodeEnv, string>,
-  cors: MiddlewareHandler<NodeEnv>,
+  context: Context<NestEnv, string>,
+  cors: MiddlewareHandler<NestEnv>,
 ): Promise<Response> {
   await cors(context, NOOP_NEXT);
   context.res = closingAnswer();
@@ -80,7 +80,7 @@ async function refuse(
  */
 function guardBridge(
   state: GuardState,
-): MiddlewareHandler<NodeEnv> {
+): MiddlewareHandler<NestEnv> {
   return async (context, next) => {
     const corsEnabled = state.corsEnabled();
     const closing = state.closing();

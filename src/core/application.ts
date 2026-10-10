@@ -8,9 +8,10 @@
  * what keeps this package's bundle unaffected by them: the
  * runtime graph of `.` never reaches this module.
  */
-import type { ServerType } from '@hono/node-server';
+import type { Server as NativeServer } from 'node:http';
 import type { INestApplication } from '@nestjs/common';
 
+import type { Server } from './server.ts';
 import type { NestHono } from './context.ts';
 import type { ServerAdapter } from './server-adapter.ts';
 
@@ -34,8 +35,18 @@ import type { ServerAdapter } from './server-adapter.ts';
  * never constructs it, and it stays assignable to
  * `INestApplication`, so a function that took one keeps taking
  * this.
+ *
+ * The server is named as both the port every transport
+ * implements and Node's own `http.Server`, which is the object
+ * `getHttpServer()` answered before the transports split: a
+ * `closeAllConnections()` or an `'upgrade'` listener keeps
+ * compiling. Only the default (Node) transport hands back an
+ * actual `http.Server`; the Bun and fetch transports answer the
+ * port and leave the rest of the intersection unimplemented.
  */
-interface NestHonoApplication extends INestApplication<ServerType> {
+interface NestHonoApplication extends INestApplication<
+  Server & NativeServer
+> {
   /**
    * The adapter itself, rather than the shared contract — so
    * `getHono()` and `useBodyParser()` are reachable without a

@@ -14,7 +14,7 @@
  * and a mismatch is a compilation error, so the file is named
  * so that `bun test` leaves it alone as well.
  */
-import type { ServerType } from '@hono/node-server';
+import type { Server as NodeHttpServer } from 'node:http';
 import type {
   HttpServer,
   INestApplication,
@@ -23,10 +23,12 @@ import type {
 import { NestFactory } from '@nestjs/core';
 
 import type {
+  Server,
   NestHonoApplication,
   NestHono,
+  ServerAdapter,
 } from '../../src/index.ts';
-import { ServerAdapter } from '../../src/index.ts';
+import { bunAdapter } from '../bun-adapter.ts';
 
 /** Fails the build unless the type handed to it is `true`. */
 type Assert<Condition extends true> = Condition;
@@ -57,17 +59,11 @@ type Same<Left, Right> =
 async function reads(
   module: Type<unknown>,
 ): Promise<
-  readonly [
-    NestHono,
-    ServerType,
-    'hono',
-    NestHono,
-    ServerAdapter,
-  ]
+  readonly [NestHono, Server, 'hono', NestHono, ServerAdapter]
 > {
   const app = await NestFactory.create<NestHonoApplication>(
     module,
-    new ServerAdapter(),
+    bunAdapter(),
   );
   return [
     app.getHttpAdapter().getHono(),
@@ -87,10 +83,7 @@ async function reads(
 async function readsWithoutNamingTheType(
   module: Type<unknown>,
 ): Promise<readonly [NestHono, INestApplication]> {
-  const app = await NestFactory.create(
-    module,
-    new ServerAdapter(),
-  );
+  const app = await NestFactory.create(module, bunAdapter());
   return [app.getHttpAdapter().getHono(), app];
 }
 
@@ -114,11 +107,24 @@ type TheApplicationIsAnINestApplication = Assert<
   AssignsTo<NestHonoApplication, INestApplication>
 >;
 
-/** The native server is the one `@hono/node-server` builds. */
-type TheServerIsTheNodeServer = Assert<
-  Same<
+/** The server is the port every transport implements. */
+type TheServerIsTheAdapterServer = Assert<
+  AssignsTo<
     ReturnType<NestHonoApplication['getHttpServer']>,
-    ServerType
+    Server
+  >
+>;
+
+/**
+ * And it keeps Node's own `http.Server`, the object
+ * `getHttpServer()` answered with before the transports split,
+ * so a caller that reached for `closeAllConnections()` or
+ * listened for `'upgrade'` on it still compiles.
+ */
+type TheServerKeepsTheNodeSurface = Assert<
+  AssignsTo<
+    ReturnType<NestHonoApplication['getHttpServer']>,
+    NodeHttpServer
   >
 >;
 
@@ -145,7 +151,8 @@ export type {
   TheAdapterBehindTheApplicationIsThisOne,
   TheAdapterIsTheContractItDeclares,
   TheApplicationIsAnINestApplication,
-  TheServerIsTheNodeServer,
+  TheServerIsTheAdapterServer,
+  TheServerKeepsTheNodeSurface,
 };
 export {
   reads,
