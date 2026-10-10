@@ -1,6 +1,7 @@
-name: Release
+---
+name: release
 
-'on':
+on:
   push:
     branches: [main]
 
@@ -8,7 +9,6 @@ permissions: {}
 
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
-  # A new push must wait for a release in flight, not interrupt it halfway.
   cancel-in-progress: false
 
 jobs:
@@ -19,29 +19,13 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      # Required for npm OIDC trusted publishing.
-      id-token: write
     steps:
       - uses: actions/checkout@v5
         with:
-          # semantic-release reads the full tag history to find the last release.
-          fetch-depth: 0
           persist-credentials: false
-      # semantic-release needs Node >= 24.10; OIDC trusted publishing needs
-      # npm CLI >= 11.5.1, which this Node ships.
-      - uses: actions/setup-node@v4
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
-          node-version: 24
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bunx semantic-release
-        env:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
           # A dedicated PAT of the AiluraKitty account, not the workflow's
-          # `GITHUB_TOKEN`: its holder authors the release and its tag. Kept
-          # separate from `AILURA_PR_COMPLIANCE_TOKEN`.
-          GITHUB_TOKEN: ${{ secrets.AILURA_RELEASE_TOKEN }}
-          # Attribute any commit semantic-release writes to AiluraKitty.
-          GIT_AUTHOR_NAME: AiluraKitty
-          GIT_AUTHOR_EMAIL: 334750167+AiluraKitty@users.noreply.github.com
-          GIT_COMMITTER_NAME: AiluraKitty
-          GIT_COMMITTER_EMAIL: 334750167+AiluraKitty@users.noreply.github.com
+          token: ${{ secrets.AILURA_RELEASE_TOKEN }}

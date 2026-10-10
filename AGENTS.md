@@ -42,7 +42,8 @@ do not restate them:
   repository's CI; bun-based checks, size gate, NestJS compat
   matrix.
 - [.github/workflows/release.yml](.github/workflows/release.yml)
-  — semantic-release with OIDC trusted publishing.
+  — release-please, with npm published through OIDC trusted
+  publishing.
 - [.github/ISSUE_STANDARD.md](.github/ISSUE_STANDARD.md),
   [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/),
   [.github/PULL_REQUEST_TEMPLATE/](.github/PULL_REQUEST_TEMPLATE/),
@@ -90,11 +91,15 @@ in [docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 
-- **Releases use semantic-release with OIDC trusted
-  publishing.** npm is published with a short-lived OIDC token
-  (no stored npm token), and GitHub releases are authored by the
-  AiluraKitty account through `AILURA_RELEASE_TOKEN`. See
-  `.releaserc.json` and `.github/workflows/release.yml`.
+- **Releases use release-please with OIDC trusted publishing.**
+  release-please opens a release pull request per push to
+  `main`; merging it creates the tag and the GitHub release,
+  authored by the AiluraKitty account through
+  `AILURA_RELEASE_TOKEN`. The release then fires
+  `.github/workflows/publish.yml`, which publishes to npm with a
+  short-lived OIDC token (no stored npm token). See
+  `release-please-config.json` and
+  `.github/workflows/release.yml`.
 - **The toolchain is Bun.** Install, test, and build all run
   through Bun; `bun install --frozen-lockfile` is the only
   supported install command.
@@ -192,11 +197,16 @@ rules, and a README section for user-facing behavior.
   rules this repository disables and why.
 - [.size-limit.json](.size-limit.json) — the bundle ceilings the
   size gate enforces.
-- [.releaserc.json](.releaserc.json) — the semantic-release
-  configuration.
+- [release-please-config.json](release-please-config.json) — the
+  release-please configuration.
+- [.release-please-manifest.json](.release-please-manifest.json)
+  — the last released version per package.
+- [.github/workflows/publish.yml](.github/workflows/publish.yml)
+  — npm publication with OIDC trusted publishing, fired by the
+  release.
 - [.github/standards.local.yml](.github/standards.local.yml) —
-  this repository's declared deviations from the standard (the
-  `released` label, and the dropped `release/*` labels).
+  this repository's declared deviations from the standard; it
+  currently records none.
 
 ## Completion requirements
 

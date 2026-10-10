@@ -134,3 +134,11 @@
 - name: 'github_actions'
   color: '000000'
   description: 'Pull requests that update GitHub Actions code.'
+
+- name: 'release/pending'
+  color: '675500'
+  description: 'Release PR pending merge.'
+
+- name: 'release/tagged'
+  color: '73e6ae'
+  description: 'Already included in a tagged release.'

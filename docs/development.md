@@ -6,6 +6,7 @@ How to build, test and release this package.
 
 - [Requirements](#requirements)
 - [Development](#development)
+- [Release](#release)
 - [License](#license)
 
 ## Requirements
@@ -65,6 +66,22 @@ decorators are the legacy kind, which is why that file turns
 `experimentalDecorators` and `emitDecoratorMetadata` on. The
 library declares no decorator, so neither flag changes what
 `bun run build` emits.
+
+## Release
+
+Releases run through
+[release-please](https://github.com/googleapis/release-please).
+On every push to `main` it opens a release pull request with the
+version bump and the generated changelog; merging it creates the
+tag and the GitHub release. Nothing is published directly, so a
+release is a reviewed change like any other — and the release
+pull request is exempt from the policy gates by its head ref.
+
+Merging the release pull request publishes the package to npm:
+the GitHub release fires `.github/workflows/publish.yml`, which
+builds the tagged commit and runs `npm publish --provenance`
+under OIDC trusted publishing, so no npm token is stored
+anywhere.
 
 ## License
 
