@@ -65,6 +65,42 @@ test('a route answers through the fetch handler', async () => {
   }
 });
 
+test('the fetch client address ignores x-forwarded-for', async () => {
+  const probe = await startFetch(ProbeModule);
+  try {
+    const response = await probe.fetch(
+      new Request('http://host.test/request', {
+        headers: {
+          'cf-connecting-ip': '203.0.113.7',
+          'x-forwarded-for': '198.51.100.1, 198.51.100.2',
+        },
+      }),
+    );
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(await response.json()).toMatchObject({
+      ip: '203.0.113.7',
+      ips: [],
+    });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('the fetch client address is absent without cf-connecting-ip', async () => {
+  const probe = await startFetch(ProbeModule);
+  try {
+    const response = await probe.fetch(
+      new Request('http://host.test/request', {
+        headers: { 'x-forwarded-for': '198.51.100.1' },
+      }),
+    );
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(await response.json()).not.toHaveProperty('ip');
+  } finally {
+    await probe.close();
+  }
+});
+
 test('a stream answers through the fetch handler', async () => {
   const probe = await startFetch(SseModule);
   try {

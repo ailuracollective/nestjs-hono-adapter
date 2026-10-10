@@ -95,9 +95,10 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 
 `listen()` and `close()` do nothing; the request carrier Nest's
 SSE path reads is synthesized from the request's signal, and the
-client address from the proxy headers the host sets. There is no
-socket, so `raw` is the carrier and `ip` is what the headers
-say.
+client address from `cf-connecting-ip`, when present. There is
+no native socket, so `raw` is the carrier and `ip` is that
+address, or `undefined` when the header is absent. Forwarded
+headers are read only when `trustProxy` is enabled.
 
 Static assets and WebSockets are host-specific. A host that has
 them passes them to

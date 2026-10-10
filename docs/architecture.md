@@ -178,13 +178,14 @@ only by the half that streams a `StreamableFile`, so the request
 half does not import it at all.
 
 It is worth being precise about what the split does **not** buy.
-`core/request.ts` still reads `context.env.incoming` — the
-request carrier `core/bindings.ts` attaches to every request —
-to fill in `raw`, `socket` and `ip`. That carrier is not a Node
-`IncomingMessage`: the socket is synthesized and reports the
-address Bun gives back, so the decode half needs the transport
-bindings, not a portable request. The split removed an import,
-not the dependency.
+`core/request.ts` still reads `context.env.incoming` to fill in
+`raw`, `socket` and `ip`. On the Node transport path, this is
+the Node `IncomingMessage` attached by `@hono/node-server`,
+including its real socket. On the Bun transport path, the
+carrier and socket are synthesized, and the socket reports the
+address Bun gives back. The decode half still depends on the
+transport bindings; removing an import did not remove that
+dependency.
 
 The suite reflects that honestly. `test/probe.ts` passes a
 synthetic carrier so most cases can run in process with no

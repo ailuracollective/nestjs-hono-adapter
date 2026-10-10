@@ -74,26 +74,18 @@ class FetchServer extends EventEmitter implements Server {
 }
 
 /**
- * The client address a proxy's headers name, when they name
- * one.
+ * The client address Cloudflare's `cf-connecting-ip` header
+ * names, when present.
  */
 function clientAddress(request: Request): string | undefined {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded !== null) {
-    const [first] = forwarded.split(',');
-    if (first === undefined) {
-      return undefined;
-    }
-    return first.trim();
-  }
   return request.headers.get('cf-connecting-ip') ?? undefined;
 }
 
 /**
  * Wraps a Hono application as the `fetch` a host exports. The
  * request carrier Nest's SSE path reads is synthesized from the
- * request's signal, and the client address from the proxy
- * headers the host sets.
+ * request's signal, and the client address from
+ * `cf-connecting-ip`, when present.
  */
 function fetchHandler(
   app: NestHono,

@@ -117,6 +117,10 @@ await app.init();
 export default { fetch: fetchHandler(adapter.getHono()) };
 ```
 
+The fetch handler reads the client address from
+`cf-connecting-ip`, returning `undefined` when it is absent.
+`x-forwarded-for` is read only when `trustProxy` is enabled.
+
 `getType()` answers `hono`, which is the value ecosystem
 packages branch on.
 
