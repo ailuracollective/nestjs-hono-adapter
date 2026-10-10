@@ -9,15 +9,12 @@ const SOURCE_ROOT = path.resolve(import.meta.dirname, '../src');
 /**
  * Every `node:` builtin the source is allowed to name.
  *
- * This is a freeze, not a wish list. The adapter is not
- * runtime-neutral and never claimed to be:
- * `docs/lint-exceptions.md` states that the platform is Node,
- * and the Cloudflare example runs on the
- * `enable_nodejs_http_server_modules` compatibility flag. When
- * this test fails, one of two things is true, and the choice is
- * yours to make deliberately: the new import is wrong and the
- * source goes back, or this list and the `compatibility_flags`
- * in `examples/cloudflare-workers/wrangler.jsonc` both get
+ * This is a freeze, not a wish list. The adapter serves through
+ * Bun's own server and the platform is Bun; the builtins below
+ * are the ones Nest, Bun and the features this package carries
+ * still rely on. When this test fails, one of two things is
+ * true, and the choice is yours to make deliberately: the new
+ * import is wrong and the source goes back, or this list is
  * updated on purpose, in the same change.
  *
  * A type-only import counts here too. It costs nothing at

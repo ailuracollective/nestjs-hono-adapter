@@ -1,6 +1,5 @@
-import type { ServerType } from '@hono/node-server';
-import { createNodeWebSocket } from '@hono/node-ws';
-import type { NodeWebSocket } from '@hono/node-ws';
+import type { Server as HttpServer } from 'node:http';
+
 import type { WsMessageHandler } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { AbstractWsAdapter } from '@nestjs/websockets';
@@ -17,7 +16,12 @@ import {
 } from 'rxjs';
 import type { Observable } from 'rxjs';
 
-import type { ServerAdapter } from './core/server-adapter.ts';
+import { createNodeWebSocket } from '@hono/node-ws';
+
+import type { NestHono } from '../core/context.ts';
+import type { Server } from '../core/server.ts';
+import type { ServerAdapter } from '../core/server-adapter.ts';
+import type { WebSocketSupport } from '../core/transport.ts';
 import {
   CLOSE_EVENT,
   HonoSocket,
@@ -25,9 +29,9 @@ import {
   isReply,
   parseFrame,
   toReply,
-} from './ws-client.ts';
-import type { WsFrame } from './ws-client.ts';
-import { GatewayServer } from './ws-server.ts';
+} from './client.ts';
+import type { WsFrame } from './client.ts';
+import { GatewayServer } from './server.ts';
 
 /** The port a gateway asks for when it keeps the HTTP one. */
 const UNDERLYING_PORT = 0;
@@ -80,35 +84,66 @@ function indexHandlers(
 
 /**
  * Removes the upgrade listeners `@hono/node-ws` installed on
- * the server. Node types a listener as `Function`, which `off`
- * does not accept, so the call goes through `Reflect.apply`.
+ * the server, keeping the ones that were there first. Node
+ * types a listener as `Function`, and `off` takes one, so the
+ * listener is narrowed to the shape `off` accepts.
  */
 function detachUpgradeListeners(
-  server: ServerType,
+  server: HttpServer,
   kept: readonly unknown[],
 ): void {
-  const off = server.off.bind(server);
   for (const listener of server.listeners(UPGRADE_EVENT)) {
     if (!kept.includes(listener)) {
-      Reflect.apply(off, undefined, [UPGRADE_EVENT, listener]);
+      server.off(
+        UPGRADE_EVENT,
+        listener as (...args: unknown[]) => void,
+      );
     }
   }
 }
 
 /**
+ * The websocket surface Node has had all along, and the one a
+ * deployment gets when the transport it injected carries no
+ * helper of its own. `@hono/node-ws` upgrades a request by
+ * asking the Hono application for the gateway path, so the
+ * upgrade happens on the HTTP server rather than on a second
+ * one opened beside it. It is demanded here, in the island,
+ * rather than by any transport, so an application that serves
+ * no websocket never installs it.
+ */
+function nodeWebSocket(app: NestHono): WebSocketSupport {
+  const node = createNodeWebSocket({ app });
+  return {
+    install: (server: Server): (() => void) => {
+      const native = server as unknown as HttpServer;
+      const before = native.listeners(UPGRADE_EVENT);
+      node.injectWebSocket(native);
+      return () => {
+        detachUpgradeListeners(native, before);
+      };
+    },
+    upgradeWebSocket:
+      node.upgradeWebSocket as unknown as WebSocketSupport['upgradeWebSocket'],
+  };
+}
+
+/**
  * WebSocket adapter that runs Nest's gateways on the Hono
- * application the HTTP adapter already serves. `@hono/node-ws`
- * upgrades a request by asking the Hono application for the
- * gateway path, so the upgrade happens on one server rather
- * than a second opened beside it; one route is registered per
- * path a gateway named, and each hands Nest a {@link HonoSocket}
- * to answer on. A gateway that asked for its own port or for a
- * namespace cannot be served this way, and both are refused
- * rather than quietly served on the HTTP server.
+ * application the HTTP adapter already serves. The transport
+ * the HTTP adapter was built with upgrades the request when it
+ * carries a helper — `hono/bun` on Bun, the host's own on a
+ * fetch deployment — and `@hono/node-ws` answers otherwise, so
+ * the upgrade happens on one server rather than a second opened
+ * beside it; one route is registered per path a gateway named,
+ * and each hands Nest a {@link HonoSocket} to answer on. A
+ * gateway that asked for its own port or for a namespace cannot
+ * be served this way, and both are refused rather than quietly
+ * served on the HTTP server.
  */
 class HonoWsAdapter extends AbstractWsAdapter {
   private readonly adapter: ServerAdapter;
-  private readonly node: NodeWebSocket;
+  private readonly support: WebSocketSupport;
   private readonly servers = new Map<string, GatewayServer>();
   private readonly logger = new Logger(HonoWsAdapter.name);
   private detach: (() => void) | undefined;
@@ -117,9 +152,11 @@ class HonoWsAdapter extends AbstractWsAdapter {
   public constructor(httpAdapter: ServerAdapter) {
     super(httpAdapter);
     this.adapter = httpAdapter;
-    this.node = createNodeWebSocket({
-      app: httpAdapter.getHono(),
-    });
+    const app = httpAdapter.getHono();
+    const factory =
+      httpAdapter.getTransport().createWebSocket ??
+      nodeWebSocket;
+    this.support = factory(app);
   }
 
   public override create(
@@ -170,10 +207,7 @@ class HonoWsAdapter extends AbstractWsAdapter {
     return Promise.resolve();
   }
 
-  /**
-   * Releases the paths, the sockets, the WebSocket server and
-   * the upgrade listeners this adapter registered.
-   */
+  /** Releases the paths and the sockets this adapter registered. */
   public override dispose(): Promise<void> {
     this.release();
     return Promise.resolve();
@@ -185,7 +219,6 @@ class HonoWsAdapter extends AbstractWsAdapter {
     for (const server of servers) {
       server.close();
     }
-    this.node.wss.close();
     const { detach } = this;
     if (detach !== undefined) {
       detach();
@@ -213,7 +246,7 @@ class HonoWsAdapter extends AbstractWsAdapter {
 
   /** Registers the upgrade route one gateway path needs. */
   private serve(path: string, server: GatewayServer): void {
-    const upgrade = this.node.upgradeWebSocket(() => {
+    const upgrade = this.support.upgradeWebSocket(() => {
       const client = new HonoSocket();
       return {
         onClose: (): void => {
@@ -231,17 +264,14 @@ class HonoWsAdapter extends AbstractWsAdapter {
     this.adapter.getHono().get(path, upgrade);
   }
 
-  /** Lets the Node server hand upgrades to the Hono app. */
+  /** Lets the runtime's server hand upgrades to the Hono app. */
   private inject(): void {
     if (this.injected) {
       return;
     }
-    const server = this.adapter.getHttpServer();
-    const before = server.listeners(UPGRADE_EVENT);
-    this.node.injectWebSocket(server);
-    this.detach = (): void => {
-      detachUpgradeListeners(server, before);
-    };
+    this.detach = this.support.install(
+      this.adapter.getHttpServer(),
+    );
     this.injected = true;
   }
 

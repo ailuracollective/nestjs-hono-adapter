@@ -126,6 +126,9 @@ function installSurface(
  */
 function watchDisconnect(context: NestContext): () => void {
   const { incoming } = context.env;
+  if (incoming === undefined) {
+    return noStream;
+  }
   // Nest's SSE path reads `req.raw`, the incoming message itself,
   // not the request bag: that is the socket it tunes and reads
   // 'close' from, so it is tuned here, before the stream is handed

@@ -3,6 +3,7 @@ import { toByteLimit } from './body.ts';
 import { toNestRequest } from './request.ts';
 import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
+import type { Transport } from './transport.ts';
 import {
   createExceptionRunner,
   createRouteHandler,
@@ -17,18 +18,62 @@ import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
+import { nodeServer } from '../servers/node.ts';
 import { mountStaticAssets } from '../features/static-assets.ts';
 import type { StaticAssetsOptions } from '../features/static-assets.ts';
 import { ViewRenderer } from '../features/views.ts';
 import type { ViewOptions } from '../features/views.ts';
 
 /** The options the adapter itself reads. */
-interface ServerAdapterOptions extends TransportOptions {
+interface ServerAdapterOptions extends Omit<
+  TransportOptions,
+  'transport'
+> {
+  /**
+   * Whether `@hono/node-server` may replace the global
+   * `Request` and `Response` with its lighter classes. Read
+   * only where no transport is named, because it is a switch on
+   * the transport the adapter picks itself: it is the option
+   * every deployment set before the transports split, and it is
+   * handed to the Node transport with the default it always
+   * had. `nodeServer()` takes its own, for the deployment that
+   * names the transport instead of relying on this.
+   */
+  readonly overrideGlobalObjects?: boolean;
+  /**
+   * The runtime to serve through. Left out, the adapter serves
+   * through the Node transport — the runtime every deployment
+   * was served by before the transports split, which runs on
+   * Bun as well as on Node. `bunServer()` picks Bun's own
+   * server instead, and `fetchServer()` a host that hands over
+   * a Web `Request`.
+   */
+  readonly transport?: Transport;
   /**
    * The views a handler may render, when the application has
    * any.
    */
   readonly views?: ViewOptions;
+}
+
+/**
+ * Fills in the transport a deployment named none. It is the
+ * Node one, with the global-object switch `@hono/node-server`
+ * was handed before the transports split, so a bootstrap that
+ * never names a runtime keeps answering with the bytes and the
+ * behaviour it answered with then. A deployment that injects a
+ * transport is answered from it and never reaches this.
+ */
+function withTransport(
+  options: ServerAdapterOptions,
+): TransportOptions {
+  const transport =
+    options.transport ??
+    nodeServer({
+      overrideGlobalObjects:
+        options.overrideGlobalObjects ?? true,
+    });
+  return Object.assign({}, options, { transport });
 }
 
 /** The options Nest hands the parser middleware. */
@@ -65,7 +110,7 @@ class ServerAdapter extends HonoLifecycle {
   private readonly views: ViewRenderer;
 
   public constructor(options: ServerAdapterOptions = {}) {
-    super(options);
+    super(withTransport(options));
     this.views = new ViewRenderer(options.views);
     this.installSecurityHook();
   }
@@ -165,7 +210,12 @@ class ServerAdapter extends HonoLifecycle {
     path: string | readonly string[],
     options?: StaticAssetsOptions,
   ): this {
-    mountStaticAssets(this.hono, path, options ?? {});
+    mountStaticAssets({
+      hono: this.hono,
+      options: options ?? {},
+      path,
+      transport: this.transport,
+    });
     return this;
   }
 
@@ -230,9 +280,11 @@ class ServerAdapter extends HonoLifecycle {
    * features in front of every route, handed the request it
    * reads and the raw response it writes — the same two objects
    * the Fastify adapter gives it, whose headers the transport
-   * merges into whatever the route answers. A failure it
-   * reports is thrown onto the path the exception layer already
-   * owns.
+   * merges into whatever the route answers. Where the transport
+   * is `@hono/node-server`, that response is the Node one a
+   * deployment has always been handed; the Bun and fetch
+   * transports get a Hono-backed stand-in. A failure it reports
+   * is thrown onto the path the exception layer already owns.
    *
    * It is installed as an own property rather than written as a
    * method because `AbstractHttpAdapter` declares it only in
@@ -246,7 +298,17 @@ class ServerAdapter extends HonoLifecycle {
         const request = toNestRequest(context, {
           trustProxy: this.trustProxy,
         });
-        const failure = hook(request, context.env.outgoing);
+        const failure = hook(
+          request,
+          context.env.outgoing ?? {
+            removeHeader: (name: string): void => {
+              context.res.headers.delete(name);
+            },
+            setHeader: (name: string, value: string): void => {
+              context.header(name, value);
+            },
+          },
+        );
         if (failure instanceof Error) {
           throw failure;
         }

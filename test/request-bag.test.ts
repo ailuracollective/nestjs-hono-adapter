@@ -10,34 +10,33 @@
  * measures.
  */
 
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
-
 import { expect, test } from 'bun:test';
 import { Hono } from 'hono';
 
-import { toNestRequest } from '../src/core/request.ts';
-import type { NestContext, NodeEnv } from '../src/index.ts';
+import type { IncomingMessage } from 'node:http';
 
-/**
- * What Hono is handed as the environment of a request.
- *
- * The type allows any object, and a binding that carries no
- * Node message is exactly one: the worker path hands Hono its
- * own bindings, and `incoming` is simply not among them.
- */
-type Bindings = Record<string, unknown>;
+import { RequestCarrier } from '../src/core/bindings.ts';
+import { toNestRequest } from '../src/core/request.ts';
+import type {
+  Incoming,
+  NestContext,
+  NestEnv,
+} from '../src/index.ts';
+import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 
 /**
  * The request no listener sent, which is what the translation
  * reads the raw request and the socket from.
+ *
+ * It is named as both faces the translation publishes — the
+ * carrier Nest reads, and the `IncomingMessage` a deployment
+ * read before the transports split — because the cases below
+ * compare it to the bag's own properties.
  */
-const SYNTHETIC_INCOMING = new IncomingMessage(new Socket());
-
-/** The response made against it, so the binding carries one. */
-const SYNTHETIC_OUTGOING = new ServerResponse(
-  SYNTHETIC_INCOMING,
-);
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- named as the two faces the package publishes, the carrier Nest reads and the `IncomingMessage` a deployment read before the transports split.
+const SYNTHETIC_INCOMING = new RequestCarrier(
+  undefined,
+) as unknown as IncomingMessage & Incoming;
 
 /** How often the translation reached for the socket. */
 interface Reached {
@@ -57,15 +56,13 @@ async function contextOver(
 ): Promise<{ context: NestContext; reached: Reached }> {
   const reached: Reached = { incoming: 0 };
   const binding = {
-    get incoming(): IncomingMessage {
+    get incoming(): Incoming {
       reached.incoming += 1;
       return SYNTHETIC_INCOMING;
     },
-    get outgoing(): ServerResponse {
-      return SYNTHETIC_OUTGOING;
-    },
-  } satisfies NodeEnv['Bindings'];
-  const app = new Hono<NodeEnv>();
+    server: SYNTHETIC_SERVER,
+  } satisfies NestEnv['Bindings'];
+  const app = new Hono<NestEnv>();
   const captured: NestContext[] = [];
   app.get('/read', (context) => {
     captured.push(context);
@@ -104,15 +101,13 @@ test('a property read twice is built once', async () => {
 });
 
 /**
- * A binding with no Node message in it, which is what a worker
- * hands the adapter: its own bindings, and nothing that arrived
- * on a socket.
+ * A binding with no request carrier in it. The adapter reads
+ * `env.incoming` as optional, so a binding that does not carry
+ * one is a request with nothing to read the socket from.
  */
-const NO_NODE_MESSAGE: Bindings = {
-  get outgoing(): ServerResponse {
-    return SYNTHETIC_OUTGOING;
-  },
-};
+const NO_REQUEST_CARRIER = {
+  server: SYNTHETIC_SERVER,
+} satisfies NestEnv['Bindings'];
 
 /**
  * A context reached through that binding.
@@ -120,14 +115,14 @@ const NO_NODE_MESSAGE: Bindings = {
  * The route has to run, so a case is measuring the translation
  * rather than a request that never arrived.
  */
-async function contextWithoutNodeMessage(): Promise<NestContext> {
-  const app = new Hono<NodeEnv>();
+async function contextWithoutCarrier(): Promise<NestContext> {
+  const app = new Hono<NestEnv>();
   const captured: NestContext[] = [];
   app.get('/read', (context) => {
     captured.push(context);
     return context.text('ok');
   });
-  await app.request('/read', undefined, NO_NODE_MESSAGE);
+  await app.request('/read', undefined, NO_REQUEST_CARRIER);
   const [context] = captured;
   if (context === undefined) {
     throw new Error('the route did not run');
@@ -136,7 +131,7 @@ async function contextWithoutNodeMessage(): Promise<NestContext> {
 }
 
 test('the address is undefined rather than thrown when none arrived', async () => {
-  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+  const bag = toNestRequest(await contextWithoutCarrier(), {
     trustProxy: false,
   });
 
@@ -149,7 +144,7 @@ test('the address is undefined rather than thrown when none arrived', async () =
 });
 
 test('the forwarded chain is empty when no socket arrived', async () => {
-  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+  const bag = toNestRequest(await contextWithoutCarrier(), {
     trustProxy: false,
   });
 
@@ -157,7 +152,7 @@ test('the forwarded chain is empty when no socket arrived', async () => {
 });
 
 test('the fields that need the socket still say what is missing', async () => {
-  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+  const bag = toNestRequest(await contextWithoutCarrier(), {
     trustProxy: false,
   });
 
@@ -165,12 +160,12 @@ test('the fields that need the socket still say what is missing', async () => {
   // their types do not pretend otherwise — so they name the absence
   // rather than handing back `undefined` that would be read as a
   // message somewhere else.
-  expect(() => bag.raw).toThrow('without a Node message');
-  expect(() => bag.socket).toThrow('without a Node message');
+  expect(() => bag.raw).toThrow('without a carrier');
+  expect(() => bag.socket).toThrow('without a carrier');
 });
 
 test('a property that needs no socket still answers without one', async () => {
-  const bag = toNestRequest(await contextWithoutNodeMessage(), {
+  const bag = toNestRequest(await contextWithoutCarrier(), {
     trustProxy: false,
   });
 

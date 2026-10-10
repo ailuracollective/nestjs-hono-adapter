@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { Hono } from 'hono';
 
-import type { NodeEnv } from '../src/core/context.ts';
+import type { NestEnv } from '../src/core/context.ts';
 import { corsBridge } from '../src/features/cors-middleware.ts';
 import type { CorsOptions } from '../src/features/cors-middleware.ts';
 
@@ -31,8 +31,8 @@ const SERVER_ERROR = 500;
  * than through the middleware the bridge builds, because the
  * bridge is the path a deployment actually takes.
  */
-function bridged(options: CorsOptions): Hono<NodeEnv> {
-  const hono = new Hono<NodeEnv>();
+function bridged(options: CorsOptions): Hono<NestEnv> {
+  const hono = new Hono<NestEnv>();
 
   hono.use(
     '*',

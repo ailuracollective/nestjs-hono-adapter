@@ -4,28 +4,31 @@
  * `SseStream`, Nest’s own, calls `setKeepAlive`, `setNoDelay`
  * and `setTimeout` on `req.socket` before it writes a frame,
  * and it watches the same socket for `close` to learn that the
- * client walked away. A runtime can carry the request without
- * carrying the socket behind it, so these cases pin down what
- * the translation hands over in each of the two worlds, and
- * what it says on it when the client is gone.
+ * client walked away. Bun carries a request without carrying
+ * the TCP socket behind it, so these cases pin down what the
+ * translation hands over in each of the two worlds, and what it
+ * says on it when the client is gone.
  */
-
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
 
 import { expect, test } from 'bun:test';
 import { Hono } from 'hono';
 
+import {
+  CarrierSocket,
+  RequestCarrier,
+} from '../src/core/bindings.ts';
+import type { Bindings, Socket } from '../src/core/bindings.ts';
 import { toNestRequest } from '../src/core/request.ts';
 import {
   reportDisconnect,
   tuneableSocket,
 } from '../src/core/socket.ts';
 import type {
+  NestEnv,
   NestContext,
   NestRequest,
-  NodeEnv,
 } from '../src/index.ts';
+import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 
 /** The calls Nest makes on a stream's socket when it opens one. */
 const TUNING = [
@@ -35,34 +38,32 @@ const TUNING = [
 ] as const;
 
 /**
- * A socket of the kind a runtime with no TCP socket behind it
- * reports: the members everything else reads, and none of the
- * tuning. Cloudflare Workers reports one through
- * `cloudflare:node` carrying `on`, `once` and `remoteAddress`.
- *
- * A real socket is used, with the three calls taken off it, so
- * the case cannot pass on a stand-in that answers to something
- * else as well.
+ * A socket of the kind a runtime with a TCP socket behind it
+ * reports: the tuning calls are its own, so the adapter must
+ * leave them alone. The calls are deliberately not the
+ * adapter's own stand-ins, which is what `reportDisconnect`
+ * tells the two apart by.
  */
-function socketWithoutTuning(): Socket {
-  const socket = new Socket();
-  for (const name of TUNING) {
-    Reflect.set(socket, name, undefined);
-  }
+function socketWithTuning(): Socket {
+  const socket = new CarrierSocket('127.0.0.1');
+  const tuning = (): Socket => socket;
+  socket.setKeepAlive = tuning;
+  socket.setNoDelay = tuning;
+  socket.setTimeout = tuning;
   return socket;
 }
 
 /**
- * The request the translation builds over a socket, so a case
- * can read what Nest would be handed.
+ * The request the translation builds over a synthesized socket,
+ * so a case can read what Nest would be handed.
  */
-async function bagOver(socket: Socket): Promise<NestRequest> {
-  const incoming = new IncomingMessage(socket);
+async function bagOver(): Promise<NestRequest> {
+  const incoming = new RequestCarrier('127.0.0.1');
   const binding = {
     incoming,
-    outgoing: new ServerResponse(incoming),
-  } satisfies NodeEnv['Bindings'];
-  const app = new Hono<NodeEnv>();
+    server: SYNTHETIC_SERVER,
+  } satisfies Bindings;
+  const app = new Hono<NestEnv>();
   const captured: NestContext[] = [];
   app.get('/read', (context) => {
     captured.push(context);
@@ -77,27 +78,29 @@ async function bagOver(socket: Socket): Promise<NestRequest> {
 }
 
 test('a socket that can be tuned is handed back untouched', () => {
-  const socket = new Socket();
+  const socket = socketWithTuning();
   expect(tuneableSocket(socket)).toBe(socket);
 });
 
 test('a socket the runtime cannot tune answers the calls', () => {
-  const socket = tuneableSocket(socketWithoutTuning());
+  const { socket } = new RequestCarrier(undefined);
+  const tuneable = tuneableSocket(socket);
   for (const name of TUNING) {
-    expect(typeof socket[name]).toBe('function');
+    expect(typeof tuneable[name]).toBe('function');
   }
-  // The real calls answer with the socket, so a caller that
+  // The stand-ins answer with the socket, so a caller that
   // chains them still can.
-  const chained = socket
-    .setKeepAlive(true)
-    .setNoDelay(true)
-    .setTimeout(0);
-  expect(chained).toBe(socket);
+  const keepAlive = tuneable.setKeepAlive;
+  expect(keepAlive).toBeDefined();
+  if (keepAlive === undefined) {
+    throw new Error('the stand-in was not installed');
+  }
+  expect(keepAlive.call(tuneable, true)).toBe(tuneable);
   expect(socket.remoteAddress).toBeUndefined();
 });
 
 test('the socket a request carries answers those calls', async () => {
-  const bag = await bagOver(socketWithoutTuning());
+  const bag = await bagOver();
   for (const name of TUNING) {
     expect(typeof bag.socket[name]).toBe('function');
   }
@@ -107,7 +110,7 @@ test('the socket a request carries answers those calls', async () => {
 });
 
 test('a socket the runtime provides reports its own end', () => {
-  const socket = new Socket();
+  const socket = socketWithTuning();
   const closed: string[] = [];
   socket.on('close', () => {
     closed.push('closed');
@@ -119,11 +122,12 @@ test('a socket the runtime provides reports its own end', () => {
 });
 
 test('a socket the runtime left incomplete is told', () => {
-  const socket = tuneableSocket(socketWithoutTuning());
+  const { socket } = new RequestCarrier(undefined);
+  const tuneable = tuneableSocket(socket);
   let closed = 0;
-  socket.on('close', () => {
+  tuneable.on('close', () => {
     closed += 1;
   });
-  reportDisconnect(socket);
+  reportDisconnect(tuneable);
   expect(closed).toBe(1);
 });

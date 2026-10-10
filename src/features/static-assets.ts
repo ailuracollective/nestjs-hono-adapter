@@ -1,7 +1,10 @@
-import { serveStatic } from '@hono/node-server/serve-static';
 import type { MiddlewareHandler } from 'hono';
 
-import type { NestHono, NodeEnv } from '../core/context.ts';
+import type { NestEnv, NestHono } from '../core/context.ts';
+import type {
+  StaticOptions,
+  Transport,
+} from '../core/transport.ts';
 import { toDirectories } from '../core/directories.ts';
 
 /**
@@ -20,6 +23,13 @@ interface StaticAssetsOptions {
   readonly immutable?: boolean;
   readonly index?: string | false;
   readonly maxAge?: number | string;
+  /**
+   * The URL path the files are served under, with its leading
+   * slash. It is stripped from the request before the file is
+   * looked up, so `useStaticAssets('public', { prefix:
+   * '/assets' })` serves `public/index.txt` at
+   * `/assets/index.txt`.
+   */
   readonly prefix?: string;
   readonly redirect?: boolean;
   readonly setHeaders?: unknown;
@@ -169,17 +179,41 @@ function withoutPrefix(
   return requestPath.slice(prefix.length);
 }
 
+/** What one directory is served from, as the transport reads it. */
+interface StaticTarget {
+  readonly hono: NestHono;
+  readonly transport: Transport;
+  readonly path: string | readonly string[];
+  readonly options: StaticAssetsOptions;
+}
+
+/** The transport options one directory is served with. */
+function staticOptions(
+  directory: string,
+  options: StaticAssetsOptions,
+): StaticOptions {
+  const index = indexOf(options);
+  const { prefix } = options;
+  if (prefix === undefined) {
+    return { index, root: directory };
+  }
+  return {
+    index,
+    rewriteRequestPath: (requestPath: string): string =>
+      withoutPrefix(requestPath, prefix),
+    root: directory,
+  };
+}
+
 /** The handler that serves one directory. */
 function directoryHandler(
   directory: string,
+  transport: Transport,
   options: StaticAssetsOptions,
-): MiddlewareHandler<NodeEnv> {
-  const serve = serveStatic({
-    index: indexOf(options),
-    rewriteRequestPath: (path: string) =>
-      withoutPrefix(path, options.prefix),
-    root: directory,
-  });
+): MiddlewareHandler<NestEnv> {
+  const serve = transport.serveStatic(
+    staticOptions(directory, options),
+  );
 
   return async (context, next) => {
     const found = await serve(context, next);
@@ -198,11 +232,8 @@ function directoryHandler(
  * which is what Nest's own middleware does: the routes behind
  * it answer.
  */
-function mountStaticAssets(
-  hono: NestHono,
-  path: string | readonly string[],
-  options: StaticAssetsOptions,
-): void {
+function mountStaticAssets(target: StaticTarget): void {
+  const { hono, transport, path, options } = target;
   assertNoHooks(options);
   assertNoOtherModes(options);
 
@@ -216,7 +247,10 @@ function mountStaticAssets(
 
   for (const directory of toDirectories(path)) {
     for (const mount of mounts) {
-      hono.use(mount, directoryHandler(directory, options));
+      hono.use(
+        mount,
+        directoryHandler(directory, transport, options),
+      );
     }
   }
 }

@@ -52,10 +52,10 @@ const REQUIRED = [
   'src/features/sse.ts',
   'src/features/static-assets.ts',
   'src/features/views.ts',
-  'src/ws-adapter.ts',
-  'src/ws-client.ts',
-  'src/ws-server.ts',
-  'src/ws.ts',
+  'src/ws/adapter.ts',
+  'src/ws/client.ts',
+  'src/ws/server.ts',
+  'src/ws/index.ts',
 ];
 
 /**
@@ -112,10 +112,7 @@ function layerOf(file: string): Layer | undefined {
   if (directory === 'src/features') {
     return 'features';
   }
-  if (
-    directory === 'src' &&
-    path.basename(file).startsWith('ws')
-  ) {
+  if (directory === 'src/ws') {
     return 'ws';
   }
   return undefined;
@@ -283,7 +280,7 @@ test('a feature reaching another feature is refused', () => {
 test('a feature reaching the ws island is refused', () => {
   const forbidden = crossing(
     'src/features/static-assets.ts',
-    'src/ws-adapter.ts',
+    'src/ws/adapter.ts',
   );
   expect(featureReachesWs([forbidden])).toStrictEqual([
     forbidden,
@@ -292,7 +289,7 @@ test('a feature reaching the ws island is refused', () => {
 
 test('ws reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
-    'src/ws-adapter.ts',
+    'src/ws/adapter.ts',
     'src/core/server-adapter.ts',
   );
   expect(wsReachesApp([forbidden])).toStrictEqual([forbidden]);
@@ -300,7 +297,7 @@ test('ws reaching the application is refused when it is a value', () => {
 
 test('the same edge as a type is erased, so it is allowed', () => {
   const erased = crossing(
-    'src/ws-adapter.ts',
+    'src/ws/adapter.ts',
     'src/core/server-adapter.ts',
     true,
   );
@@ -324,7 +321,7 @@ test('the first three rules count a type import as an edge', () => {
   ]);
   const stillTyped = crossing(
     'src/features/static-assets.ts',
-    'src/ws-adapter.ts',
+    'src/ws/adapter.ts',
     true,
   );
   expect(featureReachesWs([stillTyped])).toStrictEqual([
@@ -354,7 +351,7 @@ test('the ws island reaches the application through no value', async () => {
   expect(wsReachesApp(await scan(SOURCE))).toStrictEqual([]);
 });
 
-test('the one edge from ws into the application is a type', async () => {
+test('the edges from ws into the application are types', async () => {
   const edges = await scan(SOURCE);
   const intoApp = edges.filter(
     (edge) =>
@@ -364,8 +361,23 @@ test('the one edge from ws into the application is a type', async () => {
   );
   expect(intoApp).toStrictEqual([
     {
-      from: 'src/ws-adapter.ts',
+      from: 'src/ws/adapter.ts',
+      to: 'src/core/context.ts',
+      typeOnly: true,
+    },
+    {
+      from: 'src/ws/adapter.ts',
+      to: 'src/core/server.ts',
+      typeOnly: true,
+    },
+    {
+      from: 'src/ws/adapter.ts',
       to: 'src/core/server-adapter.ts',
+      typeOnly: true,
+    },
+    {
+      from: 'src/ws/adapter.ts',
+      to: 'src/core/transport.ts',
       typeOnly: true,
     },
   ]);
