@@ -1,13 +1,12 @@
-import { createServer as createHttpsServer } from 'node:https';
-import { promisify } from 'node:util';
-
-import { createAdaptorServer } from '@hono/node-server';
-import type { ServerType } from '@hono/node-server';
 import type { NestApplicationOptions } from '@nestjs/common';
 import { Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
 
-import type { NestHono, NodeEnv } from './context.ts';
+import type { Server as NativeServer } from 'node:http';
+
+import type { NestEnv, NestHono } from './context.ts';
+import type { Server } from './server.ts';
+import type { Transport } from './transport.ts';
 import type { TrustProxy } from './request.ts';
 import { corsBridge } from '../features/cors-middleware.ts';
 import type { CorsOptions } from '../features/cors-middleware.ts';
@@ -31,49 +30,27 @@ type SecureHeadersOptions = NonNullable<
   Parameters<typeof secureHeaders>[0]
 >;
 
-/** What `@hono/node-server` accepts to build the Node server. */
-type AdaptorOptions = Parameters<typeof createAdaptorServer>[0];
-
 /** The transport options the lifecycle reads. */
 interface TransportOptions {
   /** Largest body accepted, in bytes; `0` accepts any size. */
   readonly bodyLimit?: number;
-  /**
-   * Whether `@hono/node-server` may replace the global
-   * `Request` and `Response` with its lighter classes, worth
-   * roughly a third of the CPU an answer costs. A platform that
-   * refuses a foreign answer at its own boundary turns it off.
-   */
-  readonly overrideGlobalObjects?: boolean;
   /** Whether `req.rawBody` keeps the bytes of every body. */
   readonly rawBody?: boolean;
   /** The security headers to send, or `false` to send none. */
   readonly secureHeaders?: boolean | SecureHeadersOptions;
+  /**
+   * The runtime-specific half of the adapter: how the server is
+   * built, files are served and websockets are upgraded.
+   */
+  readonly transport: Transport;
   /** How much of a proxy's word the deployment believes. */
   readonly trustProxy?: TrustProxy;
 }
 
-/** Destroys the connections a server is still holding open. */
-function closeConnections(server: ServerType): void {
-  if ('closeAllConnections' in server) {
-    server.closeAllConnections();
-  }
-}
-
-/** Says whether a close failure only means the server never ran. */
-function isNotRunning(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ERR_SERVER_NOT_RUNNING'
-  );
-}
-
 /**
  * Runs Nest on Hono: owns the Hono application, the middleware
- * every request crosses, and the Node server behind the fetch
- * handler. The routes Nest registers are `RouteAdapter`'s.
+ * every request crosses, and the server the injected transport
+ * builds. The routes Nest registers are `RouteAdapter`'s.
  */
 // oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 abstract class HonoLifecycle extends RouteAdapter {
@@ -83,9 +60,10 @@ abstract class HonoLifecycle extends RouteAdapter {
    * cross the seam.
    */
   protected readonly interceptor = mountSse;
+  /** The runtime-specific half of the adapter. */
+  protected readonly transport: Transport;
   protected readonly trustProxy: TrustProxy;
   protected bodyLimit: number;
-  protected overrideGlobalObjects: boolean;
   protected bodyParsingEnabled = false;
   protected rawBodyEnabled: boolean;
   protected corsOptions: CorsOptions | undefined;
@@ -93,13 +71,12 @@ abstract class HonoLifecycle extends RouteAdapter {
   private forceCloseConnections = false;
   private return503OnClosing = false;
 
-  protected constructor(options: TransportOptions = {}) {
-    const hono = new Hono<NodeEnv>();
+  protected constructor(options: TransportOptions) {
+    const hono = new Hono<NestEnv>();
     super(hono);
     this.hono = hono;
+    this.transport = options.transport;
     this.bodyLimit = options.bodyLimit ?? DEFAULT_BODY_LIMIT;
-    this.overrideGlobalObjects =
-      options.overrideGlobalObjects ?? true;
     this.rawBodyEnabled = options.rawBody ?? false;
     this.trustProxy = options.trustProxy ?? false;
     this.beforeClose = (): void => {
@@ -146,6 +123,19 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
+   * The server Nest drives. It is the port every transport
+   * implements — and, on the default (Node) transport, Node's
+   * own `http.Server`, which is the object this method answered
+   * before the transports split. The intersection is that
+   * compatibility face: a `closeAllConnections()` or an
+   * `'upgrade'` listener keeps compiling, and on the Node
+   * transport keeps working.
+   */
+  public override getHttpServer(): Server & NativeServer {
+    return this.httpServer as Server & NativeServer;
+  }
+
+  /**
    * A Hono router scores its routes, so two cannot shadow each
    * other.
    */
@@ -165,16 +155,12 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
-   * Creates the Node server Hono's fetch handler is served
-   * through; `listen()` and `close()` work on the value built
-   * here. `overrideGlobalObjects` swaps the global `Response`
-   * for the lighter class `@hono/node-server` provides, so an
-   * answer is written in one `end()` instead of a chunk at a
-   * time — its prototype is the native one, so `instanceof
-   * Response` still passes. A platform that checks the type of
-   * an answer at its own boundary (`httpServerHandler` of
-   * `cloudflare:node` does) asks for the platform's own classes
-   * instead.
+   * Builds the server the injected transport serves the Hono
+   * application through; `listen()` and `close()` work on the
+   * value built here. The transport gets the certificate a
+   * deployment named, and — where it needs to — defers starting
+   * the server so a WebSocket handler can be handed over
+   * first.
    */
   public override initHttpServer(
     options: NestApplicationOptions,
@@ -183,23 +169,16 @@ abstract class HonoLifecycle extends RouteAdapter {
     if (options.rawBody === true) {
       this.rawBodyEnabled = true;
     }
-    const certificate = options.httpsOptions;
-    if (certificate === undefined) {
-      this.setHttpServer(
-        createAdaptorServer({
-          fetch: this.hono.fetch,
-          overrideGlobalObjects: this.overrideGlobalObjects,
-        }),
-      );
-      return;
-    }
-    const adaptorOptions: AdaptorOptions = {
-      createServer: createHttpsServer,
-      fetch: this.hono.fetch,
-      overrideGlobalObjects: this.overrideGlobalObjects,
-      serverOptions: certificate,
-    };
-    this.setHttpServer(createAdaptorServer(adaptorOptions));
+    this.setHttpServer(
+      this.transport.createServer(this.hono, {
+        httpsOptions: options.httpsOptions,
+      }),
+    );
+  }
+
+  /** The runtime-specific half of the adapter. */
+  public getTransport(): Transport {
+    return this.transport;
   }
 
   public override listen(
@@ -216,14 +195,6 @@ abstract class HonoLifecycle extends RouteAdapter {
     hostnameOrCallback?: string | (() => void),
     callback?: () => void,
   ): void {
-    if (typeof port === 'string') {
-      this.httpServer.listen(port, callback);
-      return;
-    }
-    if (typeof hostnameOrCallback === 'function') {
-      this.httpServer.listen(port, hostnameOrCallback);
-      return;
-    }
     if (typeof hostnameOrCallback === 'string') {
       this.httpServer.listen(
         port,
@@ -232,29 +203,16 @@ abstract class HonoLifecycle extends RouteAdapter {
       );
       return;
     }
-    this.httpServer.listen(port, callback);
+    this.httpServer.listen(port, hostnameOrCallback);
   }
 
   /**
    * Stops the server and, when asked, the connections it holds
-   * open. A server that never listened has nothing to close, so
-   * that error is not propagated.
+   * open. A server that never listened has nothing to close.
    */
   public override async close(): Promise<void> {
     this.closing = true;
-    const { httpServer } = this;
-    if (this.forceCloseConnections) {
-      closeConnections(httpServer);
-    }
-    try {
-      await promisify((done: () => void) => {
-        httpServer.close(done);
-      })();
-    } catch (error) {
-      if (!isNotRunning(error)) {
-        throw error;
-      }
-    }
+    await this.httpServer.close(this.forceCloseConnections);
   }
 
   /** Records that the payload's bytes have to be kept. */

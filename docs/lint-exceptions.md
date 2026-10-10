@@ -140,13 +140,11 @@ contract, which makes two rules false positives:
   is that claim taken as a guarantee. It is not one: under
   `@hono/node-server` the environment carries the Node message
   the request arrived on, and the worker path hands the adapter
-  its own bindings, which carry none —
-  `examples/cloudflare-workers` reads the same field the same
-  defensive way. Without the narrowing, `req.ip` throws on that
-  path instead of answering the `undefined` its own type
-  declares, and a 500 stands in for the answer to every package
-  that reads it — the default tracker of `@nestjs/throttler`
-  among them.
+  its own bindings, which carry none. Without the narrowing,
+  `req.ip` throws on that path instead of answering the
+  `undefined` its own type declares, and a 500 stands in for the
+  answer to every package that reads it — the default tracker of
+  `@nestjs/throttler` among them.
 
   Narrowing the environment through a helper instead was
   measured at 40 bytes of the bundle over the inline read, which
@@ -218,11 +216,14 @@ and does not follow a slice's rules:
   it builds the way a bootstrap does, and folding those imports
   through a barrel would hide which adapter a case exercises.
 
-- `unicorn/prefer-event-target` — for `src/ws-client.ts` and
-  `src/ws-server.ts`. Nest's own WebSocket contract is
-  `on`/`once`-based (`BaseWsInstance`), and `EventTarget` offers
-  neither, so the two classes that implement that contract for a
-  connection and for a gateway path cannot be event targets.
+- `unicorn/prefer-event-target` — for `src/ws/client.ts`,
+  `src/ws/server.ts`, `src/core/bindings.ts` and the three
+  transports. Nest's own WebSocket contract is `on`/`once`-based
+  (`BaseWsInstance`), and `EventTarget` offers neither, so the
+  two classes that implement that contract for a connection and
+  for a gateway path cannot be event targets. The request
+  carrier and the server wrappers follow the same contract: Nest
+  watches the socket for `close` and the server for `error`.
 
 ## Scoped to one file
 
@@ -238,13 +239,15 @@ and does not follow a slice's rules:
   behind a function that names what it is doing, and both files
   say so.
 
-- `import/max-dependencies` at 12 — for
+- `import/max-dependencies` at 13 — for
   `src/core/server-adapter.ts`. It is the composition root of
   the adapter: the response writer, the Nest bridge, the path
   dialect, CORS, static assets and views are each their own
-  module, and it binds all of them. Folding two of those
-  together to satisfy a count would hide a boundary the rest of
-  the package keeps.
+  module, and it binds all of them, plus — one over the count it
+  held before — the Node transport it serves through when a
+  deployment names none. Folding two of those together to
+  satisfy a count would hide a boundary the rest of the package
+  keeps.
 
 ## Scoped to `src/core/hono-lifecycle.ts`
 
@@ -273,3 +276,51 @@ a deliberately ignored promise is marked next to `await`),
 `react/jsx-filename-extension` (`.jsx`, `.tsx`) and
 `react/jsx-max-depth` (5), which come from the same copy and
 never fire here either.
+
+## Scoped to the transports split
+
+The split moved the runtime-specific halves of the adapter
+behind `src/servers/`, and left the composition root that serves
+through one of them by default:
+
+- `import/max-dependencies` at 12 — for `src/servers/bun.ts`,
+  `src/servers/node.ts` and `src/ws/adapter.ts`. A transport is
+  a composition root of its own: the server, the request
+  bindings, the static middleware and the websocket helper are
+  each their own module, and the Node one reaches four optional
+  packages. The island reaches the HTTP adapter, the ports and
+  its own two modules. Folding them together to satisfy a count
+  would hide the runtime boundary the split is for.
+
+- `max-lines` at 450 — for `src/core/server-adapter.ts`, the
+  adapter's composition root, where every member Nest calls and
+  the comment saying why one exists are worth their lines.
+
+- `prefer-object-spread` — for the same file, where the
+  transport a deployment left out is filled in with
+  `Object.assign`, because `oxc/no-rest-spread-properties`
+  forbids the spread the rule would prefer. One of the two has
+  to be off in a file whose whole job is filling in what the
+  caller did not name, and the spread is the one the rest of
+  `src/` refuses.
+
+- `typescript/no-unsafe-type-assertion` — for
+  `src/core/hono-lifecycle.ts`, `src/core/request.ts` and
+  `src/ws/adapter.ts`, on the casts the compatibility face
+  costs: `getHttpServer()` is narrowed to
+  `Server & http.Server`, the request's `raw` and `socket` to
+  the Node message and its socket, and the server the island is
+  handed to Node's own so the upgrade listener can be installed
+  on it. Each sits behind a function that names what it does.
+
+- `promise/avoid-new`, on one line in `src/servers/node.ts` — a
+  Node caller that passed `close(callback)` has its answer
+  settled from outside the promise body, and the `async` form
+  the rule prefers would resolve at the first `await` and never
+  reach it.
+
+- `typescript/no-deprecated`, on two lines in
+  `src/servers/bun.ts` — `hono/bun` re-exports `websocket` and
+  `upgradeWebSocket` with a deprecation pointing at `@hono/bun`,
+  and the transport imports what the declared peer
+  (`hono ^4.13.8`) publishes.

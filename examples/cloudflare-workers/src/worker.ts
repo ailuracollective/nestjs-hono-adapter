@@ -2,8 +2,8 @@ import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
 import { httpServerHandler } from 'cloudflare:node';
-import type { IncomingMessage } from 'node:http';
 
+import type { Incoming } from '../../../src/index.ts';
 import { ServerAdapter } from '../../../src/index.ts';
 import { AppModule } from './app.module.ts';
 
@@ -46,8 +46,13 @@ const signals = new WeakMap<object, AbortSignal>();
  * survives. Nothing documents the handle, so it is read
  * defensively: a runtime that stops leaving one leaves the
  * application where it was, which is with no signal at all.
+ *
+ * The parameter is the adapter’s own carrier type rather
+ * than an `IncomingMessage`: the binding is whatever object
+ * the runtime attached, and this Worker only reads a handle
+ * off it.
  */
-function contextOf(incoming: IncomingMessage): object | undefined {
+function contextOf(incoming: Incoming): object | undefined {
   const held: unknown = Reflect.get(incoming, 'cloudflare');
   if (typeof held !== 'object' || held === null) {
     return undefined;
@@ -74,13 +79,19 @@ adapter.getHono().get('/debug-env', (context) =>
 // which on this platform is the only thing left to say the
 // client is gone. The signal filed above is what knows.
 adapter.getHono().use(async (context, next) => {
+  // The adapter publishes the request binding as optional, a
+  // fetch host attaching none of its own. This Worker is on
+  // the Node path — `cloudflare:node` hands over a message —
+  // so the binding is read only when one was attached.
   const { incoming } = context.env;
-  const holding = contextOf(incoming);
-  const signal =
-    holding === undefined ? undefined : signals.get(holding);
-  signal?.addEventListener('abort', () => {
-    incoming.emit('close');
-  });
+  if (incoming !== undefined) {
+    const holding = contextOf(incoming);
+    const signal =
+      holding === undefined ? undefined : signals.get(holding);
+    signal?.addEventListener('abort', () => {
+      incoming.emit('close');
+    });
+  }
   await next();
 });
 

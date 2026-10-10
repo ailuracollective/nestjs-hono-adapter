@@ -6,7 +6,7 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "moduleDetection": "force",
-    "types": ["node"],
+    "types": ["bun"],
 
     "strict": true,
     "noUncheckedIndexedAccess": true,

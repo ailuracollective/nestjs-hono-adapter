@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 
+import type { Incoming, Socket } from './bindings.ts';
 import type { NestContext } from './context.ts';
 import { addressOf, forwardedValues } from './forwarded.ts';
 import type { Forwarded, RequestOptions } from './forwarded.ts';
@@ -28,8 +29,8 @@ interface NestRequest {
   query: ParsedQuery;
   params: Record<string, string>;
   hosts: Record<string, string>;
-  socket: IncomingMessage['socket'];
-  raw: IncomingMessage;
+  socket: IncomingMessage['socket'] & Socket;
+  raw: IncomingMessage & Incoming;
   body: unknown;
   rawBody: Buffer | undefined;
   session: unknown;
@@ -76,7 +77,7 @@ interface BagState {
   headers: Record<string, string> | undefined;
   hostname: string | undefined;
   hosts: Record<string, string> | undefined;
-  incoming: IncomingMessage | undefined;
+  incoming: Incoming | undefined;
   ip: string | undefined;
   method: string | undefined;
   params: Record<string, string> | undefined;
@@ -127,14 +128,12 @@ function forwardedOf(state: BagState): Forwarded {
  * without one, and the fields that can be answered without it
  * still are.
  */
-function incomingOf(
-  state: BagState,
-): IncomingMessage | undefined {
+function incomingOf(state: BagState): Incoming | undefined {
   const held = state.incoming;
   if (held !== undefined) {
     return held;
   }
-  const incoming: IncomingMessage | undefined =
+  const incoming: Incoming | undefined =
     state.context.env?.incoming;
   state.incoming = incoming;
   return incoming;
@@ -146,11 +145,11 @@ function incomingOf(
  * past what the request carries, so the absence is named here
  * rather than left as a `TypeError` from a property read.
  */
-function required(state: BagState): IncomingMessage {
+function required(state: BagState): Incoming {
   const incoming = incomingOf(state);
   if (incoming === undefined) {
     throw new TypeError(
-      'the request arrived without a Node message, so this field has nothing to read',
+      'the request arrived without a carrier, so this field has nothing to read',
     );
   }
   return incoming;
@@ -273,16 +272,18 @@ class RequestBag implements NestRequest {
     return state.query;
   }
 
-  public get raw(): IncomingMessage {
-    return required(this.state);
+  public get raw(): IncomingMessage & Incoming {
+    return required(this.state) as IncomingMessage & Incoming;
   }
 
   public get secure(): boolean {
     return this.protocol === 'https';
   }
 
-  public get socket(): IncomingMessage['socket'] {
-    return tuneableSocket(required(this.state).socket);
+  public get socket(): IncomingMessage['socket'] & Socket {
+    return tuneableSocket(
+      required(this.state).socket,
+    ) as IncomingMessage['socket'] & Socket;
   }
 
   public get url(): string {

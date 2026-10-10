@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { ServerAdapter } from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import {
   jsonRequest,
   startAdapter,
@@ -99,7 +99,7 @@ test('a QUERY route is only answered for that method', async () => {
 });
 
 test('a route registered on the adapter directly answers QUERY', async () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
   adapter.query('/direct', (_request, response) => {
     response.res = Response.json({ direct: true });
   });

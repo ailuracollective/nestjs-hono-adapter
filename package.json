@@ -4,6 +4,7 @@
   "description": "NestJS HTTP adapter that runs an application on Hono.",
   "keywords": [
     "adapter",
+    "bun",
     "hono",
     "http",
     "nestjs",
@@ -32,9 +33,21 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./bun-server": {
+      "types": "./dist/servers/bun.d.ts",
+      "default": "./dist/servers/bun.js"
+    },
+    "./node-server": {
+      "types": "./dist/servers/node.d.ts",
+      "default": "./dist/servers/node.js"
+    },
+    "./fetch": {
+      "types": "./dist/servers/fetch.d.ts",
+      "default": "./dist/servers/fetch.js"
+    },
     "./ws": {
-      "types": "./dist/ws.d.ts",
-      "default": "./dist/ws.js"
+      "types": "./dist/ws/index.d.ts",
+      "default": "./dist/ws/index.js"
     }
   },
   "publishConfig": {
@@ -76,7 +89,6 @@
     "@types/bun": "^1.4.2",
     "@types/node": "^22.20.3",
     "@types/passport-jwt": "4.0.1",
-    "@types/ws": "^8.18.1",
     "hono": "^4.13.8",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",

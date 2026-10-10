@@ -12,8 +12,10 @@ the Hono API, WebSockets and microservices.
 
 ## TLS, proxies and shutdown
 
-Pass Node's TLS options to Nest and the adapter builds an
-`https.Server`:
+Pass TLS options to Nest and the adapter hands them to the
+transport it was given, which serves over `https`: the options
+become `@hono/node-server`'s `serverOptions` on the default
+transport, and `Bun.serve`'s own with `bunServer()`.
 
 ```ts
 await NestFactory.create(AppModule, new ServerAdapter(), {
@@ -21,8 +23,11 @@ await NestFactory.create(AppModule, new ServerAdapter(), {
 });
 ```
 
-`getHttpServer()` returns that server, so an application can
-read its address or attach a listener.
+`getHttpServer()` returns the server Nest drives — Node's own
+`http.Server` on the default transport, with `listen` and
+`close` adapted onto it in place — so an application can read
+its address, attach a listener, or call `closeAllConnections()`
+as it did before the transports split.
 
 `trustProxy` decides how much of a proxy's word the deployment
 believes, and the levels are the ones Fastify reads from
@@ -68,12 +73,49 @@ adapter.getHono().use('*', async (context, next) => {
 accessor Nest itself declares. This package narrows that
 accessor's default type to it, so neither call needs a cast.
 
+## Fetch hosts
+
+A host that serves a Web `Request` and expects a Web `Response`
+— Cloudflare Workers, Vercel Functions, Deno — does not hand the
+application a port, so the fetch transport takes none. Nest
+still initializes, and the handler is what the host exports:
+
+```ts
+import {
+  fetchHandler,
+  fetchServer,
+} from '@ailura/nestjs-hono-adapter/fetch';
+
+const adapter = new ServerAdapter({ transport: fetchServer() });
+const app = await NestFactory.create(AppModule, adapter);
+await app.init();
+
+export default { fetch: fetchHandler(adapter.getHono()) };
+```
+
+`listen()` and `close()` do nothing; the request carrier Nest's
+SSE path reads is synthesized from the request's signal, and the
+client address from the proxy headers the host sets. There is no
+socket, so `raw` is the carrier and `ip` is what the headers
+say.
+
+Static assets and WebSockets are host-specific. A host that has
+them passes them to
+`fetchServer({ serveStatic, upgradeWebSocket })`; asking for a
+capability that was not passed throws rather than answering
+nothing.
+
 ## WebSockets
 
 Gateways have their own Nest adapter, kept behind the `./ws`
 subpath so an HTTP-only deployment never resolves
-`@nestjs/websockets` or `@hono/node-ws`: both are optional
-peers, and neither is installed for the routes above.
+`@nestjs/websockets`: it is an optional peer, and it is not
+installed for the routes above. The upgrade is served by the
+transport when it carries a websocket helper — `hono/bun` with
+`bunServer()`, whatever host a `fetchServer()` was handed — and
+by `@hono/node-ws` otherwise, which includes the default (Node)
+transport. A deployment that serves gateways installs
+`@hono/node-ws`; one that serves none never resolves it.
 
 ```ts
 import { HonoWsAdapter } from '@ailura/nestjs-hono-adapter/ws';

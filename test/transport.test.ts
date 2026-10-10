@@ -1,16 +1,24 @@
-import { execFile } from 'node:child_process';
-import { Server as HttpServer } from 'node:http';
-import type { ServerResponse } from 'node:http';
-import { promisify } from 'node:util';
-
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 import type { NestApplicationOptions } from '@nestjs/common';
 
-import { ServerAdapter } from '../src/index.ts';
-import type { NestRequest } from '../src/index.ts';
+import { BunServer, toBunTls } from '../src/servers/bun.ts';
+import type {
+  NestRequest,
+  ServerAdapter,
+} from '../src/index.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { request } from './probe.ts';
 import { startAdapter, startProbe } from './support.ts';
+
+/**
+ * The response surface a hook Nest's built-in security features
+ * register writes through, as the base class types it.
+ */
+interface SecurityResponse {
+  setHeader: (name: string, value: string) => unknown;
+  removeHeader: (name: string) => unknown;
+}
 
 /**
  * The hook Nest's built-in security features register, as the
@@ -19,7 +27,7 @@ import { startAdapter, startProbe } from './support.ts';
  */
 type SecurityHook = (
   request: NestRequest,
-  response: ServerResponse,
+  response: SecurityResponse,
 ) => unknown;
 
 /**
@@ -56,49 +64,6 @@ const FORWARDED_FOR = '203.0.113.7, 10.0.0.1';
 /** The host a proxy claims the request was sent to. */
 const FORWARDED_HOST = 'api.example.com';
 
-/** Where the adapter lives, for the check Node runs. */
-const SOURCE = `${import.meta.dirname}/../src/core/server-adapter.ts`;
-
-/**
- * A check the runtime itself answers: the server class is read
- * with `instanceof`, so the check runs in a plain Node process
- * rather than inside the test runner, which also shows that the
- * adapter runs on the runtime a deployment uses.
- */
-const TLS_CHECK = `
-const { ServerAdapter } = await import(${JSON.stringify(SOURCE)});
-const { Server: HttpsServer } = await import('node:https');
-const secure = new ServerAdapter();
-secure.initHttpServer({ httpsOptions: {} });
-const plain = new ServerAdapter();
-plain.initHttpServer({});
-const answers = [
-  secure.getHttpServer() instanceof HttpsServer,
-  plain.getHttpServer() instanceof HttpsServer,
-];
-process.stdout.write(answers.join(','));
-`;
-
-/**
- * Runs a child process and answers what it printed.
- *
- * The callback is declared here rather than left to `execFile`,
- * whose own signature promises a value a caller cannot use.
- */
-function execute(
-  file: string,
-  args: string[],
-  done: (error: Error | null, stdout: string) => void,
-): void {
-  execFile(file, args, done);
-}
-
-/**
- * Runs a check in a child process, which is how Node is
- * reached.
- */
-const runNode = promisify(execute);
-
 function forwarded(): Record<string, string> {
   return {
     'x-forwarded-for': FORWARDED_FOR,
@@ -107,24 +72,21 @@ function forwarded(): Record<string, string> {
   };
 }
 
-test('a plain server is an HTTP server', async () => {
+test('a plain server is the Bun server this adapter drives', async () => {
   const probe = await startProbe();
   try {
     expect(probe.adapter.getHttpServer()).toBeInstanceOf(
-      HttpServer,
+      BunServer,
     );
   } finally {
     await probe.close();
   }
 });
 
-test('httpsOptions are served over TLS', async () => {
-  const answers = await runNode('node', [
-    '--input-type=module',
-    '-e',
-    TLS_CHECK,
-  ]);
-  expect(answers).toBe('true,false');
+test('httpsOptions are mapped onto Bun TLS options', () => {
+  expect(
+    toBunTls({ cert: 'the cert', key: 'the key' }),
+  ).toStrictEqual({ cert: 'the cert', key: 'the key' });
 });
 
 test('security headers are sent unless they are turned off', async () => {
@@ -240,7 +202,7 @@ test('a trust list is walked from the right, the socket included', async () => {
 });
 
 test('a Hono route registered before listening is served', async () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
   adapter
     .getHono()
     .get('/native', (context) => context.text('native'));
@@ -263,7 +225,7 @@ test('a Hono route registered before listening is served', async () => {
  * rather than to the route's.
  */
 test('the security hook runs in front of every route', async () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
   securityHookOf(adapter)((_request, response) => {
     response.setHeader('x-hook', 'ran');
   });
@@ -278,7 +240,7 @@ test('the security hook runs in front of every route', async () => {
 });
 
 test('a failure the security hook reports is answered by Nest', async () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
   securityHookOf(adapter)(() => new Error('hook refused'));
   const probe = await startAdapter(adapter);
   try {
@@ -301,7 +263,7 @@ type ClosingOptions = NestApplicationOptions & {
 };
 
 test('closing an adapter that never listened is not an error', async () => {
-  const adapter = new ServerAdapter();
+  const adapter = bunAdapter();
   const options: ClosingOptions = {
     forceCloseConnections: true,
     return503OnClosing: true,

@@ -1,10 +1,25 @@
 # Bundle and package baseline
 
 The verified measurements behind issue #66, taken at commit
-`f4f2531` on 2026-10-08. This page is the baseline later changes
-are compared against: it records what was measured, how, and
-what the evidence supports. It does not propose the
-implementation.
+`f4f2531` on 2026-10-08 and re-measured after the Bun transport
+migration. This page is the baseline later changes are compared
+against: it records what was measured, how, and what the
+evidence supports. It does not propose the implementation.
+
+The transport split moved the measurements, and making the Node
+transport the default moved `index` back up: `index` 8804 B,
+`bun-server` 981 B, `node-server` 511 B, `fetch` 437 B and `ws`
+1368 B; the ceilings are 8900 B, 1024 B, 560 B, 480 B and 1400
+B. The two raises are deliberate and are the price of the
+default: `index` carries the Node transport again (+380 B
+against the 8424 B of the split) because `new ServerAdapter()`
+has to keep serving, and `ws` carries the `@hono/node-ws`
+fallback the transport no longer does (+112 B). `node-server`
+fell by 176 B, because Node's own `http.Server` is what it hands
+back now instead of a wrapper around it. The per-feature deltas
+and the package contents below were taken before the Bun
+transport rewrite and have not been re-measured — they remain
+the comparison for the code structure they describe.
 
 ## Environment
 
@@ -41,14 +56,18 @@ npm pack --dry-run
 
 ## The size gate baseline
 
-| Entrypoint | Ceiling | Measured | Headroom                |
-| ---------- | ------- | -------- | ----------------------- |
-| `index`    | 8500 B  | 8444 B   | 56 B (99.4% of ceiling) |
-| `ws`       | 1345 B  | 1345 B   | 0 B (at the ceiling)    |
+| Entrypoint    | Ceiling | Measured | Headroom                |
+| ------------- | ------- | -------- | ----------------------- |
+| `index`       | 8900 B  | 8804 B   | 96 B (98.9% of ceiling) |
+| `bun-server`  | 1024 B  | 981 B    | 43 B (95.8% of ceiling) |
+| `node-server` | 560 B   | 511 B    | 49 B (91.3% of ceiling) |
+| `fetch`       | 480 B   | 437 B    | 54 B (88.8% of ceiling) |
+| `ws`          | 1400 B  | 1368 B   | 32 B (97.7% of ceiling) |
 
-Both pass today. Neither has room for growth: `ws` is exactly at
-its ceiling, and `index` has 56 bytes. This confirms the premise
-of issue #66.
+All five pass today, and the headroom is still thin on `index`
+and `ws` — 96 and 32 bytes — which is the premise of issue #66.
+The `node-server` ceiling was lowered from 720 B to 560 B in the
+same edit, so the win is recorded rather than absorbed.
 
 ## Published package contents
 
@@ -75,8 +94,8 @@ specifiers from each entrypoint, separating **value** imports
 compile time, zero bundle cost).
 
 **The `ws` entrypoint is already isolated.** By value imports it
-reaches exactly four modules: `ws.ts`, `ws-adapter.ts`,
-`ws-client.ts`, `ws-server.ts`. Its import of `ServerAdapter` is
+reaches exactly four modules: `ws/index.ts`, `ws/adapter.ts`,
+`ws/client.ts`, `ws/server.ts`. Its import of `ServerAdapter` is
 type-only, so the HTTP adapter is never loaded. There is no
 unreachable code in this entrypoint; only its absolute code size
 is a concern.

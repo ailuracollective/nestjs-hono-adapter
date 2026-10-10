@@ -27,6 +27,9 @@
   "env": {
     "builtin": true
   },
+  "globals": {
+    "Bun": "readonly"
+  },
   "rules": {
     "import/no-named-export": "off",
     "import/prefer-default-export": "off",
@@ -150,19 +153,92 @@
         "import/max-dependencies": [
           "error",
           {
+            "max": 13
+          }
+        ],
+        "prefer-object-spread": "off"
+      }
+    },
+    {
+      "files": [
+        "src/ws/client.ts",
+        "src/ws/server.ts",
+        "src/core/bindings.ts",
+        "src/servers/bun.ts",
+        "src/servers/node.ts",
+        "src/servers/fetch.ts"
+      ],
+      "rules": {
+        "unicorn/prefer-event-target": "off"
+      }
+    },
+    {
+      "files": [
+        "src/core/hono-lifecycle.ts",
+        "src/core/request.ts",
+        "src/features/static-assets.ts",
+        "src/servers/bun.ts",
+        "src/servers/node.ts",
+        "src/ws/adapter.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "src/servers/bun.ts",
+        "src/servers/node.ts",
+        "src/ws/adapter.ts"
+      ],
+      "rules": {
+        "import/max-dependencies": [
+          "error",
+          {
             "max": 12
           }
         ]
       }
     },
     {
-      "files": ["src/ws-client.ts", "src/ws-server.ts"],
+      "files": [
+        "src/core/server-adapter.ts",
+        "src/servers/bun.ts"
+      ],
       "rules": {
-        "unicorn/prefer-event-target": "off"
+        "max-lines": [
+          "error",
+          {
+            "max": 450
+          }
+        ]
       }
     },
     {
-      "files": ["src/core/**/*.ts", "src/features/**/*.ts"],
+      "files": ["src/servers/node.ts"],
+      "rules": {
+        "typescript/unbound-method": "off"
+      }
+    },
+    {
+      "files": ["test/bun-adapter.ts"],
+      "rules": {
+        "prefer-object-spread": "off"
+      }
+    },
+    {
+      "files": ["src/core/bindings.ts"],
+      "rules": {
+        "max-classes-per-file": "off"
+      }
+    },
+    {
+      "files": [
+        "src/core/**/*.ts",
+        "src/features/**/*.ts",
+        "src/servers/**/*.ts",
+        "src/ws/**/*.ts"
+      ],
       "rules": {
         "import/no-relative-parent-imports": "off"
       }
