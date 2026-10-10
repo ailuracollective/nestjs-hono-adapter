@@ -30,30 +30,6 @@ bun run check
 `bun run check` is exactly what CI runs: lint, format,
 typecheck, test, build and the bundle size gate.
 
-### The lockfile format the build image reads
-
-`bun.lock` is written in the format the oldest toolchain in the
-path understands. The Cloudflare build image that builds
-`examples/cloudflare-workers` ships Bun 1.2.15, which refuses a
-`lockfileVersion: 2` lockfile: `bun install --frozen-lockfile`
-stops at `Unknown lockfile version` before it builds anything.
-Bun 1.4.2 writes version 2 on a plain `bun install`, so a
-lockfile rewritten locally by a newer Bun breaks that build
-without a line of source changing.
-
-There are two ways out, and one of them belongs to the
-Cloudflare project:
-
-- Regenerate the file with the version the image pins. Bun 1.2.x
-  writes version 1 and every later Bun reads it, so the graph
-  stays what it was and only the header and the format change.
-- Or set `BUN_VERSION` in the Cloudflare project to the version
-  this repository develops against, and keep the version 2 file.
-
-`bun install --frozen-lockfile` never rewrites the header, so CI
-and a disposable checkout are safe either way; a plain
-`bun install` is what changes it.
-
 Before changing a file, read
 [docs/architecture.md](architecture.md): it maps the regions of
 `src/`, the four dependency rules between them, what the frozen
