@@ -4,10 +4,13 @@ import {
   Get,
   Post,
   Query,
+  Req,
   Sse,
 } from '@nestjs/common';
 import { interval, map, take } from 'rxjs';
 import type { Observable } from 'rxjs';
+
+import { TeapotError } from './boom.filter.ts';
 
 @Controller()
 export class AppController {
@@ -32,5 +35,17 @@ export class AppController {
       take(3),
       map((index) => ({ data: `frame-${index}` })),
     );
+  }
+
+  @Get('boom')
+  public boom(): never {
+    throw new TeapotError('this one is on purpose');
+  }
+
+  @Post('raw')
+  public raw(@Req() request: { rawBody?: Uint8Array }): {
+    bytes: number;
+  } {
+    return { bytes: request.rawBody?.length ?? 0 };
   }
 }

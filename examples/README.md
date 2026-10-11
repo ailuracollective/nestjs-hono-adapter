@@ -5,30 +5,43 @@
 | `examples/cloudflare/fetch` | fetch    | `src/worker.ts` |
 | `examples/cloudflare/node`  | node     | `src/worker.ts` |
 
-Both serve the same routes:
+Both carry `enableVersioning({ type: URI, defaultVersion: '1' })`,
+so every route sits under `/v1` unless it says otherwise:
 
-| Route        | Answer                                    |
-| ------------ | ----------------------------------------- |
-| `GET /health`  | `{ ok: true, where: 'workers' }`        |
-| `GET /hello?name=` | `Hello <name>!`                     |
-| `POST /echo`   | the body, echoed back                    |
-| `GET /stream`  | three SSE frames, 100 ms apart         |
-| `GET /docs-json` | the OpenAPI document                   |
-| `GET /reference` | the Scalar API reference              |
+| Route              | Answer                                       |
+| ------------------ | -------------------------------------------- |
+| `GET /v1/health`   | `{ ok: true, where: 'workers' }`            |
+| `GET /v1/hello?name=` | `Hello <name>!`                         |
+| `GET /v2/hello`    | `{ from: 'v2' }`, the versioned controller   |
+| `POST /v1/echo`    | the body, echoed back                        |
+| `POST /v1/raw`     | the byte count Nest kept, with `rawBody: true` |
+| `GET /v1/stream`   | three SSE frames, 100 ms apart              |
+| `GET /v1/boom`     | 418, answered by the filter                  |
+| `GET /v1/docs-json` | the OpenAPI document                        |
+| `GET /v1/reference` | the Scalar API reference                    |
 
-The node one adds `GET /debug-env`, which reports the
+CORS is on for `https://example.com`, and `bodyLimit` is 1 KiB, so a
+larger body is refused with a 413:
+
+```sh
+curl -i -X OPTIONS localhost:8787/v1/hello \
+  -H 'Origin: https://example.com' \
+  -H 'Access-Control-Request-Method: GET'
+```
+
+The node one adds `GET /v1/debug-env`, which reports the
 `cloudflare:node` request binding.
 
 The fetch one adds two, both about the host:
 
-| Route          | Answer                                          |
-| -------------- | ----------------------------------------------- |
-| `GET /whoami`  | the client address, from `cf-connecting-ip`      |
-| `GET /private` | needs `x-api-token: let-me-in`, else 401         |
+| Route              | Answer                                      |
+| ------------------ | ------------------------------------------- |
+| `GET /v1/whoami`   | the client address, from `cf-connecting-ip`  |
+| `GET /v1/private`  | needs `x-api-token: let-me-in`, else 401     |
 
 ```sh
-curl localhost:8787/whoami
-curl -H 'x-api-token: let-me-in' localhost:8787/private
+curl localhost:8787/v1/whoami
+curl -H 'x-api-token: let-me-in' localhost:8787/v1/private
 ```
 
 ## Run it
@@ -86,13 +99,22 @@ one. The fetch Worker passes a `clientAddress` resolver that reads
 `trustProxy` stays off there on purpose: with it on, `x-forwarded-for`
 is read in place of the host's address.
 
+Both folders are Bun workspace members, so an install from anywhere
+hoists `node_modules` to the root — where the `src/` imports resolve
+against.
+
 The thirteen optional peers Nest and `@nestjs/swagger` name inside lazy
 `import()`s are aliased to `src/stub-optional-peers.ts`, an empty
 module. See the comment there for what they are.
 
-Both folders are Bun workspace members, so an install from anywhere
-hoists `node_modules` to the root — where the `src/` imports resolve
-against.
+## Constructor injection
+
+`BoomFilter` takes a `HttpAdapterHost` and names it with `@Inject`,
+rather than leaning on the constructor type. Wrangler transpiles with
+esbuild, which does not emit `design:paramtypes`, so without the
+decorator Nest builds the filter with nothing and `catch` throws on
+the first request. Anything in these folders with a constructor
+parameter needs the decorator.
 
 ## Why there is no Bun folder
 

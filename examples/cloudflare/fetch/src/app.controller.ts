@@ -11,6 +11,7 @@ import {
 import { interval, map, take } from 'rxjs';
 import type { Observable } from 'rxjs';
 
+import { TeapotError } from './boom.filter.ts';
 import { TokenGuard } from './token.guard.ts';
 
 @Controller()
@@ -49,5 +50,17 @@ export class AppController {
   @UseGuards(TokenGuard)
   public private_(): { secret: string } {
     return { secret: 'only with x-api-token: let-me-in' };
+  }
+
+  @Get('boom')
+  public boom(): never {
+    throw new TeapotError('this one is on purpose');
+  }
+
+  @Post('raw')
+  public raw(@Req() request: { rawBody?: Uint8Array }): {
+    bytes: number;
+  } {
+    return { bytes: request.rawBody?.length ?? 0 };
   }
 }

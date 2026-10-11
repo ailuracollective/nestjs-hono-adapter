@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
@@ -17,6 +18,8 @@ import { AppModule } from './app.module.ts';
 const adapter = new ServerAdapter({
   transport: fetchServer(),
   trustProxy: false,
+  rawBody: true,
+  bodyLimit: 1024,
 });
 
 const app = await NestFactory.create<NestHonoApplication>(
@@ -24,6 +27,16 @@ const app = await NestFactory.create<NestHonoApplication>(
   adapter,
   { logger: ['error', 'warn'] },
 );
+
+app.enableCors({
+  origin: ['https://example.com'],
+  credentials: true,
+});
+
+app.enableVersioning({
+  type: VersioningType.URI,
+  defaultVersion: '1',
+});
 
 const document = SwaggerModule.createDocument(
   app,
@@ -33,10 +46,10 @@ const document = SwaggerModule.createDocument(
     .build(),
 );
 
-adapter.getHono().get('/docs-json', (context) => context.json(document));
+adapter.getHono().get('/v1/docs-json', (context) => context.json(document));
 
 app.use(
-  '/reference',
+  '/v1/reference',
   apiReference({
     content: document,
     pageTitle: 'Ailura NestJS + Hono (Cloudflare fetch)',
