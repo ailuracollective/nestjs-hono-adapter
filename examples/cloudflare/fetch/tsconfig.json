@@ -16,13 +16,15 @@
     "skipLibCheck": true,
 
     /**
-     * No `paths` entry for the adapter, for the same reason
-     * `wrangler.jsonc` has no `alias` entry for it: tsc resolves
-     * `@ailura/nestjs-hono-adapter` and its subpaths the way a real
-     * project does, through `node_modules` and the published
-     * `exports`. That needs `dist/` to exist, so run `bun run build`
-     * at the repository root before typechecking this example.
+     * The adapter is aliased to the repository source, and the
+     * transport under the `/servers/*` specifier
+     * `wrangler.jsonc` uses, so the example runs from a fresh clone
+     * with no build step. The paths are relative to this file.
      */
+    "paths": {
+      "@ailura/nestjs-hono-adapter": ["../../../src/index.ts"],
+      "@ailura/nestjs-hono-adapter/servers/fetch": ["../../../src/servers/fetch.ts"]
+    }
   },
   "include": [
     "src/**/*.ts"

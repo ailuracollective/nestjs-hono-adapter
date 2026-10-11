@@ -8,7 +8,7 @@ import {
   ServerAdapter,
   type NestHonoApplication,
 } from '@ailura/nestjs-hono-adapter';
-import { bunServer } from '@ailura/nestjs-hono-adapter/bun-server';
+import { bunServer } from '@ailura/nestjs-hono-adapter/servers/bun';
 import { AppModule } from './app.module.ts';
 
 /**

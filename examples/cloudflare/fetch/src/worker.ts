@@ -11,7 +11,7 @@ import {
 import {
   fetchHandler,
   fetchServer,
-} from '@ailura/nestjs-hono-adapter/fetch';
+} from '@ailura/nestjs-hono-adapter/servers/fetch';
 import { AppModule } from './app.module.ts';
 
 const adapter = new ServerAdapter({

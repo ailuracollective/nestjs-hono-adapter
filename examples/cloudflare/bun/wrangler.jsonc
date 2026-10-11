@@ -6,28 +6,12 @@
     "nodejs_compat",
     "enable_request_signal"
   ],
-  // `@nestjs/swagger` calls `createRequire(import.meta.url)` at
-  // module load; `import.meta.url` is undefined under workerd, which
-  // makes `createRequire` throw. A defined value keeps the call
-  // valid; the UI path (`getSwaggerAssetsAbsoluteFSPath`) is never
-  // reached because the example only builds the document and hands
-  // it to Scalar, which serves its page from a CDN.
   "define": {
     "import.meta.url": "\"file:///worker.js\""
   },
-  // The adapter is deliberately absent from this block. A real
-  // project installs `@ailura/nestjs-hono-adapter` and imports it, and
-  // its subpaths, by name — and resolution here takes that same road:
-  // `node_modules` holds the workspace root, whose `exports` answer
-  // with `dist/`. An entry pointing at `src/` would be a path only
-  // this repository has, and would hide the very thing an example is
-  // for, which is that the published subpaths resolve.
-  //
-  // What is left is the part a real project does copy: the optional
-  // peers below, aliased to a module with nothing in it, because the
-  // bundler resolves them on the way to the branches this Worker
-  // never takes. See `src/stub-optional-peers.ts`.
   "alias": {
+    "@ailura/nestjs-hono-adapter": "../../../src/index.ts",
+    "@ailura/nestjs-hono-adapter/servers/bun": "../../../src/servers/bun.ts",
     "@fastify/static": "./src/stub-optional-peers.ts",
     "@nestjs/platform-express": "./src/stub-optional-peers.ts",
     "@nestjs/platform-socket.io": "./src/stub-optional-peers.ts",
