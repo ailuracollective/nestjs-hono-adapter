@@ -12,6 +12,29 @@ a JSON echo, and a Server-Sent Events stream. Both document themselves
 — `/docs-json` is the OpenAPI document, `/reference` the Scalar API
 reference.
 
+## Deploying to Cloudflare
+
+Both folders build, but the alias decides **where** the build has to
+run. The transport alias points at `src/servers/`, so the repository
+has to be present, and its dependencies installed, for the bundler to
+read the library's own imports out of the tree. A Worker Builds
+project therefore takes the repository root, not the example:
+
+| Setting         | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Root directory  | the repository root — **not** `examples/cloudflare/…`      |
+| Build command   | `bun install --frozen-lockfile`                           |
+| Deploy command  | `bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc` |
+
+and for the node pairing, `…/node/wrangler.jsonc` in the deploy
+command.
+
+Installs that land in the example folder instead leave the library's
+imports with nothing to resolve against, and the build fails on
+`@nestjs/common` and `hono` — nine times between them — every one of
+them from a file under `src/`. That is the whole reason the root
+matters here.
+
 ## The transports
 
 A real project installs the package and imports one subpath:
