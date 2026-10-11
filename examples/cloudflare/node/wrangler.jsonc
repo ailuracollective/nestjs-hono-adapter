@@ -26,7 +26,8 @@
     "class-validator": "./src/stub-optional-peers.ts",
     "ioredis": "./src/stub-optional-peers.ts",
     "kafkajs": "./src/stub-optional-peers.ts",
-    "mqtt": "./src/stub-optional-peers.ts"
+    "mqtt": "./src/stub-optional-peers.ts",
+    "node:module": "./src/stub-node-module.ts"
   },
   "previews": {}
 }
