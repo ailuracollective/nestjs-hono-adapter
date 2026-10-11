@@ -5,7 +5,7 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "preview": "wrangler versions upload"
+    "preview": "env -u WRANGLER_CI_MATCH_TAG wrangler versions upload"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
