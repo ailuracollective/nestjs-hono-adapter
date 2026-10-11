@@ -17,6 +17,8 @@ so every route sits under `/v1` unless it says otherwise:
 | `POST /v1/raw`     | the byte count Nest kept, with `rawBody: true` |
 | `GET /v1/stream`   | three SSE frames, 100 ms apart              |
 | `GET /v1/boom`     | 418, answered by the filter                  |
+| `GET /v1/private`  | 401 without the token                         |
+| `GET /v1/whoami`   | the client address                            |
 | `GET /v1/docs-json` | the OpenAPI document                        |
 | `GET /v1/reference` | the Scalar API reference                    |
 
@@ -29,20 +31,23 @@ curl -i -X OPTIONS localhost:8787/v1/hello \
   -H 'Access-Control-Request-Method: GET'
 ```
 
-The node one adds `GET /v1/debug-env`, which reports the
-`cloudflare:node` request binding.
+Both carry a guard on `GET /v1/private`, which needs
+`x-api-token: let-me-in` and answers 401 without it:
 
-The fetch one adds two, both about the host:
+```sh
+curl -H 'x-api-token: let-me-in' localhost:8787/v1/private
+```
 
-| Route              | Answer                                      |
-| ------------------ | ------------------------------------------- |
-| `GET /v1/whoami`   | the client address, from `cf-connecting-ip`  |
-| `GET /v1/private`  | needs `x-api-token: let-me-in`, else 401     |
+Both answer `GET /v1/whoami` with the client address, from a different
+place: the fetch Worker reads `cf-connecting-ip`, the node one reads
+the `cloudflare:node` socket.
 
 ```sh
 curl localhost:8787/v1/whoami
-curl -H 'x-api-token: let-me-in' localhost:8787/v1/private
 ```
+
+The node one also adds `GET /v1/debug-env`, which reports that
+request binding.
 
 ## Run it
 

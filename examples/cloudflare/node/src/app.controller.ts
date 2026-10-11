@@ -6,11 +6,13 @@ import {
   Query,
   Req,
   Sse,
+  UseGuards,
 } from '@nestjs/common';
 import { interval, map, take } from 'rxjs';
 import type { Observable } from 'rxjs';
 
 import { TeapotError } from './boom.filter.ts';
+import { TokenGuard } from './token.guard.ts';
 
 @Controller()
 export class AppController {
@@ -47,5 +49,22 @@ export class AppController {
     bytes: number;
   } {
     return { bytes: request.rawBody?.length ?? 0 };
+  }
+
+  @Get('private')
+  @UseGuards(TokenGuard)
+  public private_(): { secret: string } {
+    return { secret: 'only with x-api-token: let-me-in' };
+  }
+
+  @Get('whoami')
+  public whoami(@Req() request: { ip?: string }): {
+    ip: string | null;
+    via: string;
+  } {
+    return {
+      ip: request.ip ?? null,
+      via: 'cloudflare:node socket',
+    };
   }
 }
