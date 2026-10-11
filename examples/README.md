@@ -7,10 +7,11 @@ One Nest application behind a transport, grouped by platform.
 | Cloudflare Workers | ✔️   | ✔️   | ❌  |
 
 `examples/cloudflare/fetch` and `examples/cloudflare/node` are the two
-folders. Both run the same application: a health route, a query route,
-a JSON echo, and a Server-Sent Events stream. Both document themselves
-— `/docs-json` is the OpenAPI document, `/reference` the Scalar API
-reference.
+folders. Both run the same application: `/health`, `/hello?name=`,
+`/echo` and the `/stream` SSE route, and both document themselves —
+`/docs-json` is the OpenAPI document, `/reference` the Scalar API
+reference. The node one adds `/debug-env`, which reads the
+`cloudflare:node` request binding the adapter never exposes itself.
 
 ## Deploying to Cloudflare
 
@@ -99,18 +100,8 @@ express and eight clients into a Worker that reaches for none of them.
 
 ## Why the Bun column is ❌
 
-Bun is a published transport and it works; it just cannot be one
-*inside* a Worker. A Cloudflare Worker runs on `workerd`, which has no
-`Bun` global at all, and `bunServer()` reaches for one through
-`hono/bun`, whose `ssg.js` opens with `const { write } = Bun;` at
-module scope. That is evaluated on import, so a Worker pairing the two
-fails before it reaches `Bun.serve` — earlier and louder than the
-transport alone would suggest.
-
-The failure is worth knowing precisely rather than discovering it: the
-reference is a bare identifier, so a bundler resolves it to nothing and
-emits a `ReferenceError: Bun is not defined` the first time the module
-is evaluated. `wrangler deploy` reports success, `wrangler dev` answers
-*The Workers runtime failed to start*, and every request gets nothing.
-Serve through the fetch or the node transport instead.
+`workerd` has no `Bun` global, and `bunServer()` reaches for one
+through `hono/bun`, so a Worker pairing the two fails on import rather
+than on the transport. Serve through the fetch or the node transport
+instead.
 

@@ -153,7 +153,7 @@ packages branch on.
 | [docs/api.md](docs/api.md)                                   | API reference: classes, options, and types                                                                 |
 | [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
 | [docs/bundle-baseline.md](docs/bundle-baseline.md)           | Verified bundle and package measurements, and what the evidence supports                                   |
-| [examples/](examples/)                                       | Cloudflare Workers, Vercel, Cloud Run, and container examples — one application behind a transport         |
+| [examples/](examples/)                                       | Cloudflare Workers examples — one application per transport that runs on a Worker                          |
 
 ## Requirements
 

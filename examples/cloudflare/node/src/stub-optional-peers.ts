@@ -3,7 +3,7 @@
  * with nothing in it, for the packages this Worker never asks
  * for.
  *
- * Nest and `@nestjs/swagger` name ten of them, every one an
+ * Nest and `@nestjs/swagger` name thirteen of them, every one an
  * optional peer that is not installed here, and every one inside a
  * lazy `import()` that a bundler resolves while it builds — whether
  * or not the branch around it is ever taken:
@@ -12,6 +12,12 @@
  *   `NestFactory` when no adapter is passed, and this Worker
  *   passes one;
  * - `@nestjs/platform-socket.io`, the WebSocket platform;
+ * - `@nestjs/microservices` and
+ *   `@nestjs/microservices/microservices-module.js`, which
+ *   `NestFactory` and `NestApplication` reach for on their
+ *   microservice paths;
+ * - `@nestjs/websockets/socket-module.js`, the same on the
+ *   WebSocket path;
  * - `class-validator` and `class-transformer`, what
  *   `ValidationPipe` and `ClassSerializerInterceptor` reach for
  *   when they are used;
