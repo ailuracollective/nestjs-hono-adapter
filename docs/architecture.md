@@ -279,11 +279,11 @@ is an explicit edit that has to be justified here. Today:
 The instrumentation hooks added a step every request crosses.
 `setOnRequestHook` and `setOnResponseHook` were inherited as
 no-ops, and running them means building the request and response
-pair a hook reads on the way in and again once the chain settles.
-That costs 229 bytes, more than the 50 the 9000-byte ceiling
-left, so `index` moved to 9250. It is the price of the feature;
-a deployment that wants the bytes back can do without the
-response hook, which is the half that runs after the answer
+pair a hook reads on the way in and again once the chain
+settles. That costs 229 bytes, more than the 50 the 9000-byte
+ceiling left, so `index` moved to 9250. It is the price of the
+feature; a deployment that wants the bytes back can do without
+the response hook, which is the half that runs after the answer
 exists.
 
 The upload island added the multipart seam to `index`: a
