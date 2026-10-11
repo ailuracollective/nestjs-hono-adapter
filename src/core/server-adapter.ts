@@ -18,6 +18,7 @@ import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
+import { parsesMultipart } from './multipart.ts';
 import { nodeServer } from '../servers/node.ts';
 import { mountStaticAssets } from '../features/static-assets.ts';
 import type { StaticAssetsOptions } from '../features/static-assets.ts';
@@ -371,6 +372,7 @@ class ServerAdapter extends HonoLifecycle {
     return {
       bodyLimit: () => this.effectiveBodyLimit(),
       bodyParsingEnabled: () => this.bodyParsingEnabled,
+      multipart: () => parsesMultipart(this),
       pendingStatus: (context) => this.writer.statusOf(context),
       rawBody: () => this.rawBodyEnabled,
       trustProxy: () => this.trustProxy,

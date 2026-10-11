@@ -2,7 +2,7 @@
   {
     "name": "index",
     "path": "dist/index.js",
-    "limit": 8900,
+    "limit": 9000,
     "brotli": true,
     "ignore": [
       "hono",
@@ -103,6 +103,34 @@
       "node:fs",
       "node:path",
       "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "multipart",
+    "path": "dist/multipart/index.js",
+    "limit": 3800,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@hono/node-server",
+      "@hono/node-ws",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "busboy",
+      "rxjs",
+      "node:buffer",
+      "node:crypto",
+      "node:fs",
+      "node:fs/promises",
+      "node:http",
+      "node:https",
+      "node:os",
+      "node:path",
+      "node:stream",
+      "node:stream/promises",
       "node:util"
     ]
   }

@@ -8,9 +8,10 @@ it is built in, and which shapes are refused.
 
 ```
 src/
-  index.ts  ws/index.ts                  the neutral entrypoints
+  index.ts  ws/index.ts  multipart/index.ts    the entrypoints
   servers/bun.ts  servers/node.ts  servers/fetch.ts   the runtime transports
   ws/adapter.ts  ws/client.ts  ws/server.ts   the WebSocket island
+  multipart/  the upload island
   core/     the Nest <-> Hono translation and the ports
   features/ the optional capabilities
 ```
@@ -36,6 +37,16 @@ Workers, Vercel Functions, Deno — where nothing listens.
 **The WebSocket island** is separate from all of them. It is
 neutral: it asks the adapter for its transport rather than
 importing a runtime's own WebSocket module.
+
+**The upload island** (`multipart/`) is the second opt-in
+island, behind `./multipart`. It is the only place that consumes
+a `multipart/form-data` body and the only place that depends on
+a parser (`busboy`, an optional peer). Its interceptors parse
+the body the way multer does, so `@UploadedFile()` and
+`@UploadedFiles()` work; importing it marks the adapter through
+`core/multipart.ts`, and a marked adapter leaves a multipart
+body alone for an interceptor to consume. An adapter that serves
+no upload carries no trace of it.
 
 ## The dependency rules
 
@@ -82,11 +93,11 @@ time rather than leaving to review.
 
 ## Entrypoints and isolation
 
-The `exports` map in `package.json` exposes five specifiers:
-`.`, `./bun-server`, `./node-server`, `./fetch` and `./ws`. It
-exposes nothing else, so no consumer can reach an internal
-module by path — which is what makes it safe to move files
-between regions without it being a breaking change.
+The `exports` map in `package.json` exposes six specifiers: `.`,
+`./bun-server`, `./node-server`, `./fetch`, `./multipart` and
+`./ws`. It exposes nothing else, so no consumer can reach an
+internal module by path — which is what makes it safe to move
+files between regions without it being a breaking change.
 
 `test/entry-points.test.ts` walks the import graph transitively
 from the neutral entrypoints. It fails if `.` reaches
@@ -247,12 +258,20 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 8900-byte ceiling and a measurement of 8804,
-`bun-server` 1024/981, `node-server` 560/511, `fetch` 480/437
-and `ws` 1400/1368.
+`index` has a 9000-byte ceiling and a measurement of 8910,
+`bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
+`multipart` 3800/3580 and `ws` 1430/1420.
 
-The split moved weight between entrypoints rather than out of
-the package. `index` serves through the Node transport by
+The upload island added the multipart seam to `index`: a
+`WeakSet` beside the adapter and one branch in the request path,
+read per request. That is what raised `index` from 8804 to 8910
+and its ceiling from 8900 to 9000. The island itself is its own
+entrypoint, so its parser and storage are counted against
+`multipart` alone and never against a deployment that serves no
+upload.
+
+The transport split moved weight between entrypoints rather than
+out of the package. `index` serves through the Node transport by
 default, so `node-server`'s server-building half is reachable
 from it again, and its bytes are back in the neutral entrypoint:
 8424 to 8804, ceiling 8500 to 8900. That raise is taken here
@@ -288,3 +307,13 @@ product.
 | `test/types/application-surface.ts`  | the types a consumer reads through  |
 | `test/types/route-adapter-compat.ts` | the members two Nest versions share |
 | `.oxlintrc.json`                     | rule exceptions, each with a reason |
+
+The `.oxlintrc.json` exception for `src/multipart/**` is the
+widest one, and it is taken because the island mirrors multer's
+semantics and `append-field`'s port: it keeps multer's
+`_handleFile` / `_removeFile` names and its `Error | null`
+callbacks, and its request-shaped parser has more parameters and
+statements per function than the house style allows. The
+type-safety rules stay on everywhere else. Relaxing a rule for
+one file rather than for the region is preferred when a
+single-file exception is enough.

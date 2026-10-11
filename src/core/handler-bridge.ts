@@ -78,6 +78,11 @@ type StreamInterceptor = (
 interface BridgeOptions {
   readonly bodyLimit: () => number | undefined;
   readonly bodyParsingEnabled: () => boolean;
+  /**
+   * Whether the upload island owns this adapter's multipart
+   * bodies, in which case the request path leaves one alone.
+   */
+  readonly multipart: () => boolean;
   readonly pendingStatus: (
     context: NestContext,
   ) => number | undefined;
@@ -114,6 +119,7 @@ async function prepareRequest(
   const parsed = await readBody(context, {
     bodyLimit: options.bodyLimit(),
     rawBody: options.rawBody(),
+    skipMultipart: options.multipart(),
   });
   request.body = parsed.body;
   request.files = parsed.files;

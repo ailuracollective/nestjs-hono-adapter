@@ -153,7 +153,7 @@
         "import/max-dependencies": [
           "error",
           {
-            "max": 13
+            "max": 14
           }
         ],
         "prefer-object-spread": "off"
@@ -297,6 +297,49 @@
       "files": ["src/features/sse.ts"],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["src/multipart/**/*.ts"],
+      "rules": {
+        "import/max-dependencies": "off",
+        "import/no-relative-parent-imports": "off",
+        "import/group-exports": "off",
+        "init-declarations": "off",
+        "max-classes-per-file": "off",
+        "max-lines": "off",
+        "max-lines-per-function": "off",
+        "max-params": "off",
+        "max-statements": "off",
+        "no-continue": "off",
+        "no-magic-numbers": "off",
+        "no-ternary": "off",
+        "no-underscore-dangle": "off",
+        "node/callback-return": "off",
+        "node/no-sync": "off",
+        "oxc/no-optional-chaining": "off",
+        "oxc/no-rest-spread-properties": "off",
+        "prefer-destructuring": "off",
+        "prefer-named-capture-group": "off",
+        "prefer-object-spread": "off",
+        "promise/always-return": "off",
+        "promise/avoid-new": "off",
+        "promise/prefer-await-to-then": "off",
+        "sort-keys": "off",
+        "typescript/explicit-function-return-type": "off",
+        "typescript/no-misused-promises": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "typescript/prefer-promise-reject-errors": "off",
+        "typescript/strict-void-return": "off",
+        "unicorn/no-array-for-each": "off",
+        "unicorn/no-array-reduce": "off",
+        "unicorn/no-null": "off",
+        "unicorn/no-useless-switch-case": "off",
+        "unicorn/no-useless-undefined": "off",
+        "unicorn/prefer-number-coercion": "off",
+        "unicorn/switch-case-braces": "off"
       }
     }
   ],

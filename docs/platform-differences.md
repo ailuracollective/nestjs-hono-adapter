@@ -99,6 +99,12 @@ middleware:
   land on `NestRequest.body` and files on `NestRequest.files`;
 - every other content type as a `Buffer`.
 
+When the `./multipart` upload island is imported, the request
+path leaves a multipart body for one of its interceptors to
+consume instead, as `@nestjs/platform-fastify` does; a multipart
+route without an upload interceptor then reads no `body` and no
+`files`.
+
 A body that does not match its content type is refused with
 Nest's own `BadRequestException`, and one over `bodyLimit` with
 `PayloadTooLargeException`, so both travel through the exception

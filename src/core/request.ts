@@ -34,7 +34,16 @@ interface NestRequest {
   body: unknown;
   rawBody: Buffer | undefined;
   session: unknown;
-  files: Record<string, unknown> | undefined;
+  files:
+    | Record<string, unknown>
+    | readonly unknown[]
+    | undefined;
+  /**
+   * The single upload an interceptor stored, as
+   * `@UploadedFile()` reads it. Only the upload island writes
+   * it.
+   */
+  file: unknown;
 }
 
 /**
@@ -166,7 +175,12 @@ function required(state: BagState): Incoming {
 class RequestBag implements NestRequest {
   public body: unknown;
 
-  public files: Record<string, unknown> | undefined;
+  public file: unknown;
+
+  public files:
+    | Record<string, unknown>
+    | readonly unknown[]
+    | undefined;
 
   public rawBody: Buffer | undefined;
 
@@ -194,6 +208,7 @@ class RequestBag implements NestRequest {
       url: undefined,
     };
     this.body = undefined;
+    this.file = undefined;
     this.files = undefined;
     this.rawBody = undefined;
     this.session = undefined;

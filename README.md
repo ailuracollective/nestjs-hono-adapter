@@ -51,9 +51,11 @@ pnpm add @ailura/nestjs-hono-adapter hono
 are peer dependencies, so the application decides their
 versions. `@hono/node-server` is what the adapter serves through
 when no transport is named, so it is required. A deployment that
-serves WebSockets also installs `@hono/node-ws` and
-`@nestjs/websockets`: those two are the optional peers, reached
-through `./ws` and nowhere else.
+serves uploads installs `busboy`, reached through `./multipart`
+and nowhere else. A deployment that serves WebSockets installs
+`@hono/node-ws` and `@nestjs/websockets`: those two are the
+optional peers reached through `./ws`. The optional peers are
+only ever loaded by the entrypoint that needs them.
 
 ## Use
 

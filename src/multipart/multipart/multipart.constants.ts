@@ -1,0 +1,35 @@
+/**
+ * The codes and messages multer raises, copied from
+ * `@nestjs/platform-express` so a client sees the same answer
+ * from this adapter and from the platform one.
+ */
+const multerExceptions = {
+  LIMIT_PART_COUNT: 'Too many parts',
+  LIMIT_FILE_SIZE: 'File too large',
+  LIMIT_FILE_COUNT: 'Too many files',
+  LIMIT_FIELD_KEY: 'Field name too long',
+  LIMIT_FIELD_VALUE: 'Field value too long',
+  LIMIT_FIELD_COUNT: 'Too many fields',
+  LIMIT_UNEXPECTED_FILE: 'Unexpected file field',
+  MISSING_FIELD_NAME: 'Field name missing',
+  INVALID_FIELD_NAME: 'Invalid field name',
+  LIMIT_FIELD_NESTING: 'Field name nesting too deep',
+} as const;
+
+type MultipartErrorCode = keyof typeof multerExceptions;
+
+/**
+ * The busboy messages this adapter reports, in the spelling
+ * multer reports them with.
+ */
+const busboyExceptions = {
+  MULTIPART_BOUNDARY_NOT_FOUND: 'Multipart: Boundary not found',
+  MULTIPART_MALFORMED_PART_HEADER: 'Malformed part header',
+  MULTIPART_UNEXPECTED_END_OF_FORM:
+    'Multipart: Unexpected end of form',
+  MULTIPART_UNEXPECTED_END_OF_FILE:
+    'Multipart: Unexpected end of file',
+} as const;
+
+export { busboyExceptions, multerExceptions };
+export type { MultipartErrorCode };

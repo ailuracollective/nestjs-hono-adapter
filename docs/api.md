@@ -5,10 +5,11 @@ classes, options, and types a consumer imports and uses.
 
 ## Entrypoints
 
-| Entrypoint                       | Purpose                             |
-| -------------------------------- | ----------------------------------- |
-| `@ailura/nestjs-hono-adapter`    | HTTP adapter (`ServerAdapter`)      |
-| `@ailura/nestjs-hono-adapter/ws` | WebSocket adapter (`HonoWsAdapter`) |
+| Entrypoint                              | Purpose                             |
+| --------------------------------------- | ----------------------------------- |
+| `@ailura/nestjs-hono-adapter`           | HTTP adapter (`ServerAdapter`)      |
+| `@ailura/nestjs-hono-adapter/multipart` | Upload interceptors (multer-style)  |
+| `@ailura/nestjs-hono-adapter/ws`        | WebSocket adapter (`HonoWsAdapter`) |
 
 ## HTTP Adapter
 
@@ -159,6 +160,64 @@ holding more than one platform should name
 [`NestHonoApplication`](#nesthonoapplication), which narrows the
 adapter instead of widening the contract.
 
+## Uploads
+
+### Interceptors
+
+```ts
+import {
+  FileInterceptor,
+  FilesInterceptor,
+  FileFieldsInterceptor,
+  AnyFilesInterceptor,
+  NoFilesInterceptor,
+  MultipartModule,
+  diskStorage,
+  memoryStorage,
+} from '@ailura/nestjs-hono-adapter/multipart';
+```
+
+The upload interceptors parse a `multipart/form-data` body with
+multer's semantics, so `@UploadedFile()` reads `req.file`,
+`@UploadedFiles()` reads `req.files` and the text fields land in
+`req.body`. They are the counterpart of
+`@nestjs/platform-express`'s `FileInterceptor` family and accept
+the same options.
+
+| Interceptor             | Stores                                            |
+| ----------------------- | ------------------------------------------------- |
+| `FileInterceptor`       | One file in a named field → `req.file`            |
+| `FilesInterceptor`      | Up to `maxCount` files in a named field → array   |
+| `FileFieldsInterceptor` | Files in each of several fields → grouped by name |
+| `AnyFilesInterceptor`   | Every file, any field → array                     |
+| `NoFilesInterceptor`    | Text fields only; a file is a `400`               |
+
+`MultipartModule.register(options)` (and `registerAsync`)
+provides defaults every interceptor in the importing module
+merges over.
+
+### Upload options
+
+| Option            | Type                                            | Default  | Description                               |
+| ----------------- | ----------------------------------------------- | -------- | ----------------------------------------- |
+| `dest`            | `string`                                        | —        | Folder for disk storage when no `storage` |
+| `storage`         | `MultipartStorageEngine`                        | memory   | The engine that stores each file          |
+| `limits`          | `MultipartLimits \| ((req) => MultipartLimits)` | —        | Size and count ceilings, as multer's      |
+| `preservePath`    | `boolean`                                       | `false`  | Keep the whole path a file arrived with   |
+| `defParamCharset` | `string`                                        | `latin1` | Charset for part header values            |
+| `fileFilter`      | `(req, file, cb) => void`                       | —        | Accept or refuse each file                |
+
+`memoryStorage()` keeps each file in `file.buffer`;
+`diskStorage({ destination, filename })` writes it and sets
+`destination`, `filename` and `path`. Both implement multer's
+`_handleFile` / `_removeFile` contract, so an engine written for
+`@nestjs/platform-express` works here unchanged.
+
+This island needs `busboy` (an optional peer) and works where
+Node streams do — the Node and Bun transports. On a fetch host,
+the request path keeps parsing `multipart/form-data` into
+`req.body` and `req.files` through Hono's own parser instead.
+
 ## WebSocket Adapter
 
 ### `HonoWsAdapter`
@@ -214,23 +273,25 @@ namespace is refused.
 
 The request object Nest reads. Key properties:
 
-| Property      | Type                     | Description                                     |
-| ------------- | ------------------------ | ----------------------------------------------- |
-| `method`      | `string`                 | HTTP method                                     |
-| `url`         | `string`                 | The full URL                                    |
-| `originalUrl` | `string`                 | Path plus query string                          |
-| `path`        | `string`                 | The pathname                                    |
-| `hostname`    | `string`                 | The hostname                                    |
-| `protocol`    | `string`                 | `'http'` or `'https'`                           |
-| `secure`      | `boolean`                | Whether the connection is TLS                   |
-| `ip`          | `string \| undefined`    | The client IP                                   |
-| `ips`         | `string[]`               | Forwarded IPs                                   |
-| `headers`     | `Record<string, string>` | Request headers                                 |
-| `query`       | `ParsedQuery`            | Parsed query string                             |
-| `params`      | `Record<string, string>` | Route parameters                                |
-| `body`        | `unknown`                | Parsed request body                             |
-| `rawBody`     | `Buffer \| undefined`    | Raw body bytes (when `rawBody: true`)           |
-| `socket`      | `Socket`                 | The request's socket, as the runtime reports it |
+| Property      | Type                                                         | Description                                     |
+| ------------- | ------------------------------------------------------------ | ----------------------------------------------- |
+| `method`      | `string`                                                     | HTTP method                                     |
+| `url`         | `string`                                                     | The full URL                                    |
+| `originalUrl` | `string`                                                     | Path plus query string                          |
+| `path`        | `string`                                                     | The pathname                                    |
+| `hostname`    | `string`                                                     | The hostname                                    |
+| `protocol`    | `string`                                                     | `'http'` or `'https'`                           |
+| `secure`      | `boolean`                                                    | Whether the connection is TLS                   |
+| `ip`          | `string \| undefined`                                        | The client IP                                   |
+| `ips`         | `string[]`                                                   | Forwarded IPs                                   |
+| `headers`     | `Record<string, string>`                                     | Request headers                                 |
+| `query`       | `ParsedQuery`                                                | Parsed query string                             |
+| `params`      | `Record<string, string>`                                     | Route parameters                                |
+| `body`        | `unknown`                                                    | Parsed request body                             |
+| `rawBody`     | `Buffer \| undefined`                                        | Raw body bytes (when `rawBody: true`)           |
+| `file`        | `unknown`                                                    | The single upload an interceptor stored         |
+| `files`       | `Record<string, unknown> \| readonly unknown[] \| undefined` | The uploads an interceptor stored               |
+| `socket`      | `Socket`                                                     | The request's socket, as the runtime reports it |
 
 ### `TrustProxy`
 

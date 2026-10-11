@@ -10,6 +10,7 @@ static assets, CORS, request-level security and Swagger.
 - [Static assets](#static-assets)
 - [CORS](#cors)
 - [Request-level security](#request-level-security)
+- [Uploads](#uploads)
 - [Swagger](#swagger)
 
 ## Server-sent events
@@ -174,6 +175,40 @@ a method: `AbstractHttpAdapter` declares it only in Nest
 versions published after 12.0.3, and this package compiles
 against `>=11 <13`, so one build has to answer a Nest that
 declares the method and one that does not.
+
+## Uploads
+
+`multipart/form-data` bodies are handled by the `./multipart`
+island, which parses them with multer's semantics on top of
+`busboy` (an optional peer). Import it only where an application
+accepts an upload; the HTTP entrypoint never loads it.
+
+```ts
+import { FileInterceptor } from '@ailura/nestjs-hono-adapter/multipart';
+
+@Post('avatar')
+@UseInterceptors(FileInterceptor('file'))
+upload(@UploadedFile() file: Express.Multer.File) {
+  return { size: file.size };
+}
+```
+
+`FileInterceptor`, `FilesInterceptor`, `FileFieldsInterceptor`,
+`AnyFilesInterceptor` and `NoFilesInterceptor` mirror the
+platform-express names, fill `req.file` / `req.files` /
+`req.body`, and take the same `MulterOptions` (`storage`,
+`limits`, `fileFilter`, `preservePath`, `defParamCharset`).
+`MultipartModule.register()` provides defaults.
+`memoryStorage()` and `diskStorage()` are shipped; an engine
+written for `@nestjs/platform-express` works unchanged.
+
+Importing the island marks the adapter, so the request path
+leaves a multipart body for the interceptor to consume rather
+than parsing it itself. A multipart route **without** an upload
+interceptor therefore reads no `body` and no `files` — the same
+rule `@nestjs/platform-fastify` follows. Serve `busboy` where
+Node streams run (the Node and Bun transports); on a fetch host
+the request path keeps parsing the body into `body` and `files`.
 
 ## Swagger
 

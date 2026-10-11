@@ -49,6 +49,12 @@ interface ParsedBody {
 interface BodyOptions {
   readonly bodyLimit: number | undefined;
   readonly rawBody: boolean;
+  /**
+   * Whether a multipart body is left for the upload island to
+   * consume. A deployment that names no upload interceptor
+   * never sets it, and the body is parsed here as before.
+   */
+  readonly skipMultipart?: boolean;
 }
 
 /** A multipart payload, split into its two halves. */
@@ -239,6 +245,9 @@ function readBody(
   const type = mediaType(context);
   assertWithinLength(context, options.bodyLimit);
   if (type.startsWith('multipart/form-data')) {
+    if (options.skipMultipart === true) {
+      return Promise.resolve(emptyBody());
+    }
     return readMultipart(context);
   }
   return readPayload(context, type, options);

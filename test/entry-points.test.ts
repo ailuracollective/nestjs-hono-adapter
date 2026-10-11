@@ -12,6 +12,17 @@ const WS_ENTRY = path.resolve(
   import.meta.dirname,
   '../src/ws/index.ts',
 );
+const MULTIPART_ENTRY = path.resolve(
+  import.meta.dirname,
+  '../src/multipart/index.ts',
+);
+
+/**
+ * The parser the upload island alone may reach. It is an
+ * optional peer: a deployment that serves no upload never
+ * installs it.
+ */
+const UPLOAD_PARSER = 'busboy';
 
 /**
  * The packages only a deployment that serves websockets needs.
@@ -148,4 +159,18 @@ test('the WebSocket entry point does reach the island peers', async () => {
   const peerFiles = await peersReachedBy(WS_ENTRY);
   const names = peerFiles.map((file) => path.basename(file));
   expect(names).toContain('adapter.ts');
+});
+
+test('the HTTP entry point reaches no upload parser', async () => {
+  expect(await carriersOf(ENTRY, UPLOAD_PARSER)).toStrictEqual(
+    [],
+  );
+});
+
+test('the multipart entry point does reach the upload parser', async () => {
+  const carriers = await carriersOf(
+    MULTIPART_ENTRY,
+    UPLOAD_PARSER,
+  );
+  expect(carriers.length).toBeGreaterThan(0);
 });

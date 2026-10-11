@@ -21,6 +21,12 @@ and the package contents below were taken before the Bun
 transport rewrite and have not been re-measured — they remain
 the comparison for the code structure they describe.
 
+> **Update after this baseline.** The upload island
+> (`./multipart`) was added later. It carries its own ceiling —
+> 3800 B, measured 3580 B — and the multipart seam it needs in
+> `index` moved that entry to 8910 B, ceiling 9000 B. Every
+> other entrypoint is unchanged from the figures below.
+
 ## Environment
 
 | Tool                                  | Version                     |
