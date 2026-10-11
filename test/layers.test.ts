@@ -6,8 +6,9 @@ import { expect, test } from 'bun:test';
 /**
  * The rules that keep `src/` layered, read off the source graph
  * rather than off a file list: `core/` holds the Nest to Hono
- * contract, `features/` the optional capabilities, and the
- * `ws-*` island is a world of its own behind `/ws`.
+ * contract, `features/` the optional capabilities, and the two
+ * islands — the `ws-*` one behind `/ws` and `multipart/` behind
+ * `/multipart` — are worlds of their own.
  *
  * Every rule already holds, so the scan has nothing to observe
  * today. What keeps this file alive is the synthetic crossings
@@ -24,7 +25,7 @@ interface Edge {
 }
 
 /** The layers of the tree, and the root is not one of them. */
-type Layer = 'core' | 'features' | 'ws';
+type Layer = 'core' | 'features' | 'multipart' | 'ws';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const SOURCE = path.join(ROOT, 'src');
@@ -48,6 +49,7 @@ const COMPOSITION_ROOTS = new Set([
  */
 const REQUIRED = [
   ...COMPOSITION_ROOTS,
+  'src/core/multipart.ts',
   'src/features/cors-middleware.ts',
   'src/features/sse.ts',
   'src/features/static-assets.ts',
@@ -56,6 +58,12 @@ const REQUIRED = [
   'src/ws/client.ts',
   'src/ws/server.ts',
   'src/ws/index.ts',
+  'src/multipart/index.ts',
+  'src/multipart/multipart.module.ts',
+  'src/multipart/multipart/multipart.interceptor.factory.ts',
+  'src/multipart/multipart/multipart.parser.ts',
+  'src/multipart/storage/index.ts',
+  'src/multipart/storage/disk.storage.ts',
 ];
 
 /**
@@ -115,6 +123,12 @@ function layerOf(file: string): Layer | undefined {
   if (directory === 'src/ws') {
     return 'ws';
   }
+  if (
+    directory === 'src/multipart' ||
+    directory.startsWith('src/multipart/')
+  ) {
+    return 'multipart';
+  }
   return undefined;
 }
 
@@ -159,6 +173,32 @@ function wsReachesApp(edges: readonly Edge[]): Edge[] {
       (layerOf(edge.to) === 'core' ||
         layerOf(edge.to) === 'features') &&
       !edge.typeOnly,
+  );
+}
+
+/**
+ * The one value edge the upload island is allowed into the
+ * application: the marker `declareMultipart`, which tells the
+ * adapter an interceptor owns a multipart body. Every other
+ * import the island makes into `core/` or `features/` has to be
+ * a type, so the compiler erases it and the island's runtime
+ * graph stays inside `src/multipart/` — the argument rule 4
+ * makes for `/ws`, with the one exception the marker needs.
+ */
+const MULTIPART_VALUE_EDGE = 'src/core/multipart.ts';
+
+/**
+ * The edges the upload island takes into the application as
+ * values, minus the one marker it is allowed to set.
+ */
+function multipartReachesApp(edges: readonly Edge[]): Edge[] {
+  return edges.filter(
+    (edge) =>
+      layerOf(edge.from) === 'multipart' &&
+      (layerOf(edge.to) === 'core' ||
+        layerOf(edge.to) === 'features') &&
+      !edge.typeOnly &&
+      edge.to !== MULTIPART_VALUE_EDGE,
   );
 }
 
@@ -351,6 +391,82 @@ test('the ws island reaches the application through no value', async () => {
   expect(wsReachesApp(await scan(SOURCE))).toStrictEqual([]);
 });
 
+test('the upload island reaching the application is refused when it is a value', () => {
+  const forbidden = crossing(
+    'src/multipart/storage/disk.storage.ts',
+    'src/core/body.ts',
+  );
+  expect(multipartReachesApp([forbidden])).toStrictEqual([
+    forbidden,
+  ]);
+});
+
+test('the marker is the one value edge the island may take', () => {
+  const marker = crossing(
+    'src/multipart/multipart/multipart.interceptor.factory.ts',
+    'src/core/multipart.ts',
+  );
+  expect(multipartReachesApp([marker])).toStrictEqual([]);
+});
+
+test('every other edge the island takes is a type', () => {
+  const erased = crossing(
+    'src/multipart/multipart/multipart.parser.ts',
+    'src/core/request.ts',
+    true,
+  );
+  expect(multipartReachesApp([erased])).toStrictEqual([]);
+});
+
+test('the upload island reaches the application through no value but the marker', async () => {
+  expect(multipartReachesApp(await scan(SOURCE))).toStrictEqual(
+    [],
+  );
+});
+
+test('the edges from the upload island into the application are the marker and types', async () => {
+  const edges = await scan(SOURCE);
+  const intoApp = edges
+    .filter(
+      (edge) =>
+        layerOf(edge.from) === 'multipart' &&
+        (layerOf(edge.to) === 'core' ||
+          layerOf(edge.to) === 'features'),
+    )
+    .toSorted((left, right) =>
+      `${left.from} ${left.to}`.localeCompare(
+        `${right.from} ${right.to}`,
+      ),
+    );
+  expect(intoApp).toStrictEqual([
+    {
+      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
+      to: 'src/core/context.ts',
+      typeOnly: true,
+    },
+    {
+      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
+      to: 'src/core/multipart.ts',
+      typeOnly: false,
+    },
+    {
+      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
+      to: 'src/core/request.ts',
+      typeOnly: true,
+    },
+    {
+      from: 'src/multipart/multipart/multipart.parser.ts',
+      to: 'src/core/context.ts',
+      typeOnly: true,
+    },
+    {
+      from: 'src/multipart/multipart/multipart.parser.ts',
+      to: 'src/core/request.ts',
+      typeOnly: true,
+    },
+  ]);
+});
+
 test('the edges from ws into the application are types', async () => {
   const edges = await scan(SOURCE);
   const intoApp = edges.filter(
@@ -391,6 +507,7 @@ test('the walk reads an import out of every layer', async () => {
   expect(layers.toSorted()).toStrictEqual([
     'core',
     'features',
+    'multipart',
     'ws',
   ]);
 });

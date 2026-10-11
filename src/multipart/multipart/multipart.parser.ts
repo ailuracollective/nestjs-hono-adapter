@@ -173,13 +173,17 @@ function applyFileFilter(
     return Promise.resolve(true);
   }
   return new Promise((resolve, reject) => {
-    fileFilter(request, file, (error, accept) => {
-      if (error === null) {
-        resolve(accept);
-      } else {
-        reject(error);
-      }
-    });
+    fileFilter(
+      request,
+      file,
+      (error: Error | null | undefined, accept) => {
+        if (error === null || error === undefined) {
+          resolve(accept);
+        } else {
+          reject(error);
+        }
+      },
+    );
   });
 }
 
@@ -392,8 +396,26 @@ async function processMultipart(
   let parseError: unknown = undefined;
   try {
     await new Promise<void>((resolve, reject) => {
+      /**
+       * A client that aborts mid-upload errors the source, and
+       * `pipe` forwards nothing: left alone, that error is
+       * unhandled and this promise never settles. Cancelling
+       * busboy with it destroys the file stream busboy is
+       * filling, so the storage tasks settle and the cleanup
+       * below still runs.
+       */
+      const cancel = (error: unknown): void => {
+        const reason =
+          error instanceof Error
+            ? error
+            : new Error(String(error));
+        source.unpipe(busboy);
+        busboy.destroy(reason);
+        reject(reason);
+      };
       busboy.once('close', resolve);
-      busboy.once('error', reject);
+      busboy.once('error', cancel);
+      source.once('error', cancel);
       source.pipe(busboy);
     });
   } catch (error) {

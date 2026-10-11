@@ -44,13 +44,17 @@ function resolveName(
   file: IncomingMultipartFile,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    resolver(request, file, (error, value) => {
-      if (error === null) {
-        resolve(value);
-      } else {
-        reject(error);
-      }
-    });
+    resolver(
+      request,
+      file,
+      (error: Error | null | undefined, value) => {
+        if (error === null || error === undefined) {
+          resolve(value);
+        } else {
+          reject(error);
+        }
+      },
+    );
   });
 }
 

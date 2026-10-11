@@ -30,7 +30,6 @@ export {
 export type {
   IncomingMultipartFile,
   MultipartField,
-  MultipartFileStream,
   MultipartLimits,
   MultipartOptions,
   MultipartStorageEngine,

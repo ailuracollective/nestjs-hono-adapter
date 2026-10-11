@@ -213,6 +213,12 @@ merges over.
 `_handleFile` / `_removeFile` contract, so an engine written for
 `@nestjs/platform-express` works here unchanged.
 
+The adapter's own `bodyLimit` is checked before the island sees
+the request, so a multipart request whose `Content-Length`
+exceeds it is answered `413` even when `limits.fileSize` is
+larger; a chunked request, which carries no `Content-Length`,
+skips that check.
+
 This island needs `busboy` (an optional peer) and works where
 Node streams do — the Node and Bun transports. On a fetch host,
 the request path keeps parsing `multipart/form-data` into

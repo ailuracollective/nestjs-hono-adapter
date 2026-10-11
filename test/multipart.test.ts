@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 
-import { readFile, rm } from 'node:fs/promises';
+import { readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import {
   Body,
@@ -42,7 +43,21 @@ const directory = path.join(
   'hono-upload-adapter-test',
 );
 
-afterAll(() => rm(directory, { force: true, recursive: true }));
+/** Where an aborted upload writes, so its leftovers are checked. */
+const abortDirectory = path.join(
+  tmpdir(),
+  'hono-upload-adapter-abort-test',
+);
+
+/** How long an aborted upload may take before it counts as hung. */
+const ABORT_DEADLINE = 2000;
+
+afterAll(() =>
+  Promise.all([
+    rm(abortDirectory, { force: true, recursive: true }),
+    rm(directory, { force: true, recursive: true }),
+  ]),
+);
 
 /** What one upload is reported as, so a case can read it. */
 interface FileSummary {
@@ -200,6 +215,18 @@ class UploadController {
       size,
     };
   }
+
+  @Post('aborted')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({ destination: abortDirectory }),
+    }),
+  )
+  public aborted(
+    @UploadedFile() file: UploadedMultipartFile | undefined,
+  ): unknown {
+    return { file: summarize(file) };
+  }
 }
 
 @Module({ controllers: [UploadController] })
@@ -222,6 +249,46 @@ async function upload(
   } finally {
     await probe.close();
   }
+}
+
+/**
+ * Answers with `promise`, or with `'hung'` when it has not
+ * settled within `deadline`, so a request that never answers
+ * fails the case instead of stalling the suite.
+ */
+function withDeadline<Value>(
+  promise: Promise<Value>,
+  deadline: number,
+): Promise<Value | 'hung'> {
+  return Promise.race([
+    promise,
+    delay(deadline, 'hung' as const),
+  ]);
+}
+
+/**
+ * A multipart body that opens one file part and then errors,
+ * which is what a client aborting mid-upload leaves behind: the
+ * first pull delivers the part headers and some content, and
+ * the next one errors the body.
+ */
+function abortingBody(
+  boundary: string,
+): ReadableStream<Uint8Array> {
+  const head =
+    `--${boundary}\r\n` +
+    'Content-Disposition: form-data; name="file"; filename="abort.txt"\r\n' +
+    'Content-Type: text/plain\r\n\r\n';
+  return new ReadableStream<Uint8Array>({
+    pull(controller): void {
+      controller.error(new Error('client aborted'));
+    },
+    start(controller): void {
+      controller.enqueue(
+        new TextEncoder().encode(`${head}partial`),
+      );
+    },
+  });
 }
 
 /**
@@ -433,5 +500,40 @@ describe('disk storage', () => {
       throw new TypeError('disk storage reported no path');
     }
     expect(await readFile(target, 'utf8')).toBe(DISK_CONTENT);
+  });
+});
+
+describe('an aborted upload', () => {
+  test('the request settles and the partial file is removed', async () => {
+    const probe = await startProbe({
+      mode: 'in-process',
+      module: UploadModule,
+    });
+    try {
+      const boundary = 'abort-boundary';
+      const init: RequestInit & { duplex?: string } = {
+        body: abortingBody(boundary),
+        duplex: 'half',
+        headers: {
+          'content-type': `multipart/form-data; boundary=${boundary}`,
+        },
+        method: 'POST',
+      };
+
+      const outcome = await withDeadline(
+        request(probe, '/aborted', init),
+        ABORT_DEADLINE,
+      );
+
+      if (outcome === 'hung') {
+        throw new Error('the aborted upload never answered');
+      }
+      expect(outcome.status).toBeGreaterThanOrEqual(
+        BAD_REQUEST,
+      );
+      expect(await readdir(abortDirectory)).toEqual([]);
+    } finally {
+      await probe.close();
+    }
   });
 });

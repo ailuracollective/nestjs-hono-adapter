@@ -114,11 +114,8 @@
     "ignore": [
       "hono",
       "@hono/node-server",
-      "@hono/node-ws",
       "@nestjs/common",
       "@nestjs/core",
-      "@nestjs/websockets",
-      "@nestjs/microservices",
       "busboy",
       "rxjs",
       "node:buffer",

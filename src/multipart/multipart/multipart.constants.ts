@@ -24,12 +24,22 @@ type MultipartErrorCode = keyof typeof multerExceptions;
  */
 const busboyExceptions = {
   MULTIPART_BOUNDARY_NOT_FOUND: 'Multipart: Boundary not found',
-  MULTIPART_MALFORMED_PART_HEADER: 'Malformed part header',
   MULTIPART_UNEXPECTED_END_OF_FORM:
     'Multipart: Unexpected end of form',
-  MULTIPART_UNEXPECTED_END_OF_FILE:
-    'Multipart: Unexpected end of file',
 } as const;
 
-export { busboyExceptions, multerExceptions };
+/**
+ * Reported when an upload interceptor runs on an adapter that
+ * is not this package's, as
+ * `@nestjs/platform-fastify/multipart` reports a Fastify
+ * adapter it was not written for.
+ */
+const WRONG_ADAPTER_MESSAGE =
+  'File upload interceptors need the Hono adapter from "@ailura/nestjs-hono-adapter".';
+
+export {
+  busboyExceptions,
+  multerExceptions,
+  WRONG_ADAPTER_MESSAGE,
+};
 export type { MultipartErrorCode };

@@ -184,20 +184,27 @@ island, which parses them with multer's semantics on top of
 accepts an upload; the HTTP entrypoint never loads it.
 
 ```ts
-import { FileInterceptor } from '@ailura/nestjs-hono-adapter/multipart';
+import {
+  FileInterceptor,
+  type UploadedMultipartFile,
+} from '@ailura/nestjs-hono-adapter/multipart';
 
 @Post('avatar')
 @UseInterceptors(FileInterceptor('file'))
-upload(@UploadedFile() file: Express.Multer.File) {
+upload(@UploadedFile() file: UploadedMultipartFile) {
   return { size: file.size };
 }
 ```
 
 `FileInterceptor`, `FilesInterceptor`, `FileFieldsInterceptor`,
 `AnyFilesInterceptor` and `NoFilesInterceptor` mirror the
-platform-express names, fill `req.file` / `req.files` /
-`req.body`, and take the same `MulterOptions` (`storage`,
-`limits`, `fileFilter`, `preservePath`, `defParamCharset`).
+platform-express names and fill `req.file` / `req.files` /
+`req.body`, but the types are this package's own:
+`UploadedMultipartFile` and `MultipartOptions` (`storage`,
+`limits`, `fileFilter`, `preservePath`, `defParamCharset`). They
+follow `@nestjs/platform-fastify/multipart`, not
+`@nestjs/platform-express/multer`: only the interceptor function
+names and the option keys match Express.
 `MultipartModule.register()` provides defaults.
 `memoryStorage()` and `diskStorage()` are shipped; an engine
 written for `@nestjs/platform-express` works unchanged.

@@ -18,6 +18,7 @@ import type {
   MultipartOptions,
   MultipartStorageEngine,
 } from '../interfaces/index.ts';
+import { WRONG_ADAPTER_MESSAGE } from './multipart.constants.ts';
 import {
   processMultipart,
   resolveStorage,
@@ -55,9 +56,13 @@ abstract class MultipartInterceptorHost
 
   public onModuleInit(): void {
     const adapter = this.adapterHost?.httpAdapter;
-    if (adapter !== undefined) {
-      declareMultipart(adapter);
+    if (adapter === undefined) {
+      return;
     }
+    if (adapter.getType() !== 'hono') {
+      throw new Error(WRONG_ADAPTER_MESSAGE);
+    }
+    declareMultipart(adapter);
   }
 
   public abstract intercept(

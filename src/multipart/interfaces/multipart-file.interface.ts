@@ -49,21 +49,4 @@ interface IncomingMultipartFile {
   path?: string;
 }
 
-/**
- * The file the streaming interceptor hands to a route handler,
- * whose size is not known up front.
- */
-interface MultipartFileStream {
-  readonly fieldname: string;
-  readonly originalname: string;
-  readonly encoding: string;
-  readonly mimetype: string;
-  /** The bytes, so a handler can stream them itself. */
-  readonly stream: Readable;
-}
-
-export type {
-  IncomingMultipartFile,
-  MultipartFileStream,
-  UploadedMultipartFile,
-};
+export type { IncomingMultipartFile, UploadedMultipartFile };

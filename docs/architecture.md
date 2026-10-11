@@ -56,8 +56,9 @@ Four rules, all enforced by `test/layers.test.ts`:
    `core/hono-lifecycle.ts` and `core/server-adapter.ts`.
 2. `features/` never reaches `features/`.
 3. `features/` never reaches the WebSocket island.
-4. The island reaches `core/` and `features/` **only through
-   type-only imports**.
+4. The islands reach `core/` and `features/` **only through
+   type-only imports**. The upload island has one value edge,
+   `core/multipart.ts`, the marker it sets on the adapter.
 
 Rule 1 has exactly two exceptions because exactly two modules
 are the composition root: they are the ones that turn a
@@ -69,6 +70,13 @@ Rule 4 is the load-bearing one. `src/ws/adapter.ts` does import
 erased at compile time, so the `/ws` subpath never loads the
 HTTP adapter. The moment that becomes a value import, a
 deployment that only serves HTTP pays for a WebSocket stack.
+
+The upload island follows the same rule with one exception it
+can name: `multipart/multipart/multipart.interceptor.factory.ts`
+imports `declareMultipart` from `core/multipart.ts` as a value,
+because marking the adapter is the whole point of the island.
+Its other reaches into `core/` are types, so a deployment that
+serves no upload loads neither the island nor its parser.
 
 One more split is a packaging rule rather than a layer one:
 `core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
@@ -107,7 +115,8 @@ installed. It checks the opposite direction too, because
 `@hono/node-server` is required and reached on purpose: `.`
 serves through it when no transport is named, which is the
 behaviour every deployment had before the transports split.
-`./ws` is the only entrypoint that reaches the island's peers.
+`./ws` is the only entrypoint that reaches the WebSocket peers,
+and `./multipart` the only one that reaches `busboy`.
 
 Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;
@@ -233,13 +242,18 @@ well be that reading it failed.
 
 ## The runtime surface
 
-The core names no runtime; the builtin surface is what Nest and
-the features need wherever they run. Eight builtins are in use:
-`node:buffer`, `node:events`, `node:fs/promises`, `node:http`,
-`node:https`, `node:path`, `node:stream` and `node:util`. Nest's
-own SSE path is a `node:stream` `Writable`, views and static
-assets read the filesystem, and the Node transport builds an
-`http.Server` with `node:https` for TLS.
+The core names no runtime; the builtin surface is what Nest, the
+features and the upload island need wherever they run. Twelve
+builtins are in use: `node:buffer`, `node:crypto`,
+`node:events`, `node:fs`, `node:fs/promises`, `node:http`,
+`node:https`, `node:os`, `node:path`, `node:stream`,
+`node:stream/promises` and `node:util`. Nest's own SSE path is a
+`node:stream` `Writable`, views and static assets read the
+filesystem, the Node transport builds an `http.Server` with
+`node:https` for TLS, and the upload island's disk storage picks
+a random name with `node:crypto` and a directory with `node:os`,
+then writes and removes the file with `node:fs`,
+`node:fs/promises` and `node:stream/promises`.
 `test/node-builtins.test.ts` freezes that set. Adding one is a
 deliberate edit to both the source and the freeze, so the test
 failing is the signal, not an obstacle to route around.
