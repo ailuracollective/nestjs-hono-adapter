@@ -1,5 +1,7 @@
 import type { Server as HttpServer } from 'node:http';
 
+import type { WSContext } from 'hono/ws';
+
 import type { WsMessageHandler } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { AbstractWsAdapter } from '@nestjs/websockets';
@@ -244,20 +246,58 @@ class HonoWsAdapter extends AbstractWsAdapter {
     return server;
   }
 
-  /** Registers the upgrade route one gateway path needs. */
+  /**
+   * Registers the upgrade route one gateway path needs.
+   *
+   * The connection is bound on the first `onMessage` rather
+   * than on `onOpen`. `@hono/node-ws` and `hono/bun` fire
+   * `onOpen` once the socket exists, but a fetch host's helper
+   * need not: Hono runs this factory _before_ the upgrade, so
+   * `@hono/cloudflare-workers` types its helper as
+   * `Omit<WSEvents, 'onOpen'>` and never calls it. `onMessage`
+   * is the first event every helper fires after the handshake,
+   * with the same `WSContext` `onOpen` would have carried, so
+   * binding there answers on a host with no open event at all.
+   *
+   * A client that connects and never sends is not bound until
+   * it does. It holds no socket the gateway can write to
+   * anyway, and the connection that matters — one that carries
+   * a message — is bound before that message is delivered.
+   *
+   * `accept` runs once per connection. Two events can carry the
+   * same socket — `onOpen` then `onMessage`, which is what a
+   * helper with an open event does — and `GatewayServer.accept`
+   * emits `connection` every time, so a second call would hand
+   * Nest the same socket twice and it would bind every handler
+   * a second time. One frame would then answer twice. The
+   * socket is still written on every bind, so the latest one
+   * wins if a helper hands over two.
+   */
   private serve(path: string, server: GatewayServer): void {
     const upgrade = this.support.upgradeWebSocket(() => {
       const client = new HonoSocket();
+      let accepted = false;
+      const bind = (socket: WSContext): void => {
+        client.use(socket);
+        if (!accepted) {
+          accepted = true;
+          server.accept(client);
+        }
+      };
       return {
-        onClose: (): void => {
+        onClose: (_event, socket): void => {
+          bind(socket);
           client.disconnect();
         },
-        onMessage: (event: WsMessageEvent): void => {
+        onMessage: (
+          event: WsMessageEvent,
+          socket: WSContext,
+        ): void => {
+          bind(socket);
           client.deliver(event.data);
         },
         onOpen: (_event, socket): void => {
-          client.use(socket);
-          server.accept(client);
+          bind(socket);
         },
       };
     });
