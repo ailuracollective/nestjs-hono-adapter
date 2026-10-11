@@ -263,13 +263,26 @@ class HonoWsAdapter extends AbstractWsAdapter {
    * it does. It holds no socket the gateway can write to
    * anyway, and the connection that matters — one that carries
    * a message — is bound before that message is delivered.
+   *
+   * `accept` runs once per connection. Two events can carry the
+   * same socket — `onOpen` then `onMessage`, which is what a
+   * helper with an open event does — and `GatewayServer.accept`
+   * emits `connection` every time, so a second call would hand
+   * Nest the same socket twice and it would bind every handler
+   * a second time. One frame would then answer twice. The
+   * socket is still written on every bind, so the latest one
+   * wins if a helper hands over two.
    */
   private serve(path: string, server: GatewayServer): void {
     const upgrade = this.support.upgradeWebSocket(() => {
       const client = new HonoSocket();
+      let accepted = false;
       const bind = (socket: WSContext): void => {
         client.use(socket);
-        server.accept(client);
+        if (!accepted) {
+          accepted = true;
+          server.accept(client);
+        }
       };
       return {
         onClose: (_event, socket): void => {

@@ -55,6 +55,17 @@ const TIMEOUT_MS = 5000;
 /** The correlation an acknowledgement is asked with. */
 const CORRELATION = 7;
 
+/**
+ * How long a case waits before deciding a socket said nothing
+ * more.
+ */
+const QUIET_MS = 150;
+
+/** Waits, without a timer the case has to keep track of. */
+async function quiet(ms: number): Promise<void> {
+  await Bun.sleep(ms);
+}
+
 /** The interface every case binds to. */
 const LOCALHOST = '127.0.0.1';
 
@@ -174,6 +185,42 @@ function ask(
   const request = { data, event: PING, id: correlation };
   socket.send(JSON.stringify(request));
   return pending;
+}
+
+/**
+ * Every frame the socket is sent from now on, in order.
+ *
+ * `expectAnswered` reads the first answer and stops looking,
+ * which hides a second copy of it. A handler bound twice sends
+ * the same answer twice, so only a collector that keeps reading
+ * sees the duplicate.
+ */
+function collect(socket: WebSocket): () => unknown[] {
+  const frames: unknown[] = [];
+  socket.addEventListener('message', (event) => {
+    frames.push(JSON.parse(String(event.data)) as unknown);
+  });
+  return () => frames;
+}
+
+/**
+ * Says the socket answered each frame exactly once.
+ *
+ * A handler bound twice answers every frame twice, and the
+ * extra copies carry the same content, so only counting them
+ * tells the two apart.
+ */
+async function expectOneReplyEach(
+  frames: () => unknown[],
+  sent: number[],
+): Promise<void> {
+  await quiet(QUIET_MS);
+  expect(frames()).toStrictEqual(
+    sent.map((amount) => ({
+      data: { doubled: amount * FACTOR },
+      event: PING,
+    })),
+  );
 }
 
 /** Asks one socket and says it answered as the fixture does. */
@@ -324,7 +371,7 @@ test('a gateway answers on a helper that has no onOpen', async () => {
   }
 });
 
-test('a socket on a helper with no onOpen answers every frame', async () => {
+test('a socket on a helper with no onOpen answers every frame once', async () => {
   const probe = await startGateways(
     new ServerAdapter({
       transport: withoutOnOpen(),
@@ -332,12 +379,14 @@ test('a socket on a helper with no onOpen answers every frame', async () => {
   );
   const socket = await open(socketUrl(probe, GATEWAY_PATH));
   try {
+    const frames = collect(socket);
     await expectAnswered(socket, { amount: INPUT });
     const second = await ask(socket, { amount: INPUT + 1 });
     expect(second).toStrictEqual({
       data: { doubled: (INPUT + 1) * FACTOR },
       event: PING,
     });
+    await expectOneReplyEach(frames, [INPUT, INPUT + 1]);
   } finally {
     socket.close();
     await probe.close();
