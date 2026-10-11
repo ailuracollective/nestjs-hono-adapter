@@ -114,6 +114,7 @@ class ServerAdapter extends HonoLifecycle {
   public constructor(options: ServerAdapterOptions = {}) {
     super(withTransport(options));
     this.views = new ViewRenderer(options.views);
+    this.installMapException();
     this.installSecurityHook();
   }
 
@@ -319,12 +320,9 @@ class ServerAdapter extends HonoLifecycle {
     };
   }
 
-  /**
-   * The framework's errors, mapped where the bridge owns the
-   * rule.
-   */
-  public override mapException(error: unknown): unknown {
-    return mapFrameworkError(error);
+  /** Installed like the hook above, as an own property. */
+  private installMapException(): void {
+    this.mapException = mapFrameworkError;
   }
 
   public override setNotFoundHandler(
@@ -408,17 +406,19 @@ class ServerAdapter extends HonoLifecycle {
 }
 
 /**
- * The member this class declares next to the base rather than
+ * The members this class declares next to the base rather than
  * in it, for the same reason as `beforeClose` above: Nest
- * declares it only from 12.0.3 on, and `noImplicitOverride` has
- * no way to say "only where the base has it". The assigned own
- * property `installSecurityHook` fills in is what satisfies
- * both installs. The signature is this repository's own rather
- * than the base's, so `test/types/route-adapter-compat.ts`
- * holds it to what this repository documents as well as to the
- * base.
+ * declares neither in every version this package supports —
+ * `registerSecurityHook` after 12.0.3, `mapException` only in
+ * 12 — and `noImplicitOverride` has no way to say "only where
+ * the base has it". The own properties their installers assign
+ * satisfy both installs, and the signatures are this
+ * repository's own, held by
+ * `test/types/route-adapter-compat.ts` to what it documents.
  */
 interface ServerAdapter {
+  /** Maps the errors the framework owns. */
+  mapException: (error: unknown) => unknown;
   /** Registers a hook Nest runs for every request. */
   registerSecurityHook: (hook: SecurityHook) => void;
 }
