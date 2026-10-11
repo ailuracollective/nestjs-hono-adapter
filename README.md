@@ -149,6 +149,7 @@ packages branch on.
 | Topic                                                        | What it covers                                                                                             |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | [docs/platform-differences.md](docs/platform-differences.md) | Where Express and Fastify disagree, and how this adapter answers; routes, query strings, bodies, responses |
+| [docs/parity.md](docs/parity.md)                             | What of Nest's four platform packages is implemented here, and what is still missing                       |
 | [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
 | [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
 | [docs/development.md](docs/development.md)                   | Requirements, build and test commands, release process                                                     |
