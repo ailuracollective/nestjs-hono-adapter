@@ -40,11 +40,66 @@ type StaticHandler = (
 /** The host's websocket helper, when it has one. */
 type WebSocketFactory = (app: NestHono) => WebSocketSupport;
 
+/**
+ * The upgrade helper a fetch host publishes for its own
+ * websocket support — `upgradeWebSocket` from
+ * `hono/cloudflare-workers`, `@hono/cloudflare-workers`, or the
+ * Deno and Bun fetch adapters. It is what a deployment has in
+ * hand; this transport's option wants the factory above, and
+ * {@link webSocketFromHost} is the bridge.
+ */
+type HostWebSocket = WebSocketSupport['upgradeWebSocket'];
+
 interface FetchServerOptions {
   /** The host's static-asset middleware, when it has one. */
   readonly serveStatic?: StaticHandler;
   /** The host's websocket helper, when it has one. */
   readonly upgradeWebSocket?: WebSocketFactory;
+}
+
+/**
+ * Nothing for a fetch host to release: it owns its own request
+ * loop, and there is no server the adapter holds an upgrade
+ * listener on.
+ */
+function noDisposer(): void {
+  // A fetch host is handed requests; it does not hold a server.
+}
+
+/**
+ * Builds the `upgradeWebSocket` option from the host's own
+ * upgrade helper.
+ *
+ * The option asks for a factory carrying an `install`, because
+ * a runtime with a server attaches an upgrade listener through
+ * one — `@hono/node-ws` on Node, `hono/bun` on Bun. A fetch
+ * host has no such server, so the `install` it would write can
+ * only ever do nothing. That is this transport's knowledge
+ * rather than the deployment's, and this is where it is said
+ * once:
+ *
+ * ```ts
+ * import { upgradeWebSocket } from 'hono/cloudflare-workers';
+ *
+ * new ServerAdapter({
+ *   transport: fetchServer({
+ *     upgradeWebSocket: webSocketFromHost(
+ *       upgradeWebSocket,
+ *     ),
+ *   }),
+ * });
+ * ```
+ *
+ * The helper is assignable to this option's inner type as it
+ * comes from Hono, with no cast.
+ */
+function webSocketFromHost(
+  upgradeWebSocket: HostWebSocket,
+): WebSocketFactory {
+  return () => ({
+    install: () => noDisposer,
+    upgradeWebSocket,
+  });
 }
 
 /**
@@ -140,10 +195,11 @@ function fetchServer(
   };
 }
 
-export { fetchHandler, fetchServer };
+export { fetchHandler, fetchServer, webSocketFromHost };
 export type {
   FetchHandlerOptions,
   FetchServerOptions,
+  HostWebSocket as FetchHostWebSocket,
   StaticHandler as FetchStaticHandler,
   WebSocketFactory as FetchWebSocketFactory,
 };

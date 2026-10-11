@@ -126,6 +126,27 @@ them passes them to
 capability that was not passed throws rather than answering
 nothing.
 
+`upgradeWebSocket` wants a factory, because a runtime with a
+server attaches an upgrade listener through one. A fetch host
+has no such server, so `webSocketFromHost` fills in that half
+from the helper the host publishes — no `install` to write, and
+the helper goes in as it comes:
+
+```ts
+import { upgradeWebSocket } from 'hono/cloudflare-workers';
+
+import {
+  fetchServer,
+  webSocketFromHost,
+} from '@ailura/nestjs-hono-adapter/fetch';
+
+const adapter = new ServerAdapter({
+  transport: fetchServer({
+    upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
+  }),
+});
+```
+
 ## WebSockets
 
 Gateways have their own Nest adapter, kept behind the `./ws`

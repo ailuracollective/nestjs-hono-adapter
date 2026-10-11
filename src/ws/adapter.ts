@@ -125,8 +125,7 @@ function nodeWebSocket(app: NestHono): WebSocketSupport {
         detachUpgradeListeners(native, before);
       };
     },
-    upgradeWebSocket:
-      node.upgradeWebSocket as unknown as WebSocketSupport['upgradeWebSocket'],
+    upgradeWebSocket: node.upgradeWebSocket,
   };
 }
 

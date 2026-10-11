@@ -387,9 +387,8 @@ function bunWebSocket(app: NestHono): WebSocketSupport {
       }
       return noDisposer;
     },
-    upgradeWebSocket:
-      // oxlint-disable-next-line typescript/no-deprecated -- the same `hono/bun` re-export as above.
-      upgradeWebSocket as unknown as WebSocketSupport['upgradeWebSocket'],
+    // oxlint-disable-next-line typescript/no-deprecated -- the same `hono/bun` re-export as above.
+    upgradeWebSocket,
   };
 }
 
