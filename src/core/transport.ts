@@ -56,19 +56,16 @@ interface StaticOptions {
  * from.
  */
 interface WebSocketEvents {
-  readonly onClose?:
-    | ((event: unknown, socket: WSContext) => void)
-    | undefined;
-  readonly onError?: ((event: unknown) => void) | undefined;
-  readonly onMessage?:
-    | ((
-        event: { readonly data: unknown },
-        socket: WSContext,
-      ) => void)
-    | undefined;
-  readonly onOpen?:
-    | ((event: unknown, socket: WSContext) => void)
-    | undefined;
+  readonly onClose?: (
+    event: unknown,
+    socket: WSContext,
+  ) => void;
+  readonly onError?: (event: unknown) => void;
+  readonly onMessage?: (
+    event: { readonly data: unknown },
+    socket: WSContext,
+  ) => void;
+  readonly onOpen?: (event: unknown, socket: WSContext) => void;
 }
 
 /**

@@ -16,10 +16,15 @@ import { NestFactory } from '@nestjs/core';
 import {
   fetchHandler,
   fetchServer,
+  webSocketFromHost,
 } from '../src/servers/fetch.ts';
-import type { FetchHandlerOptions } from '../src/servers/fetch.ts';
+import type {
+  FetchHandlerOptions,
+  FetchHostWebSocket,
+} from '../src/servers/fetch.ts';
 import { ServerAdapter } from '../src/index.ts';
 import type { TrustProxy } from '../src/index.ts';
+import type { WebSocketSupport } from '../src/core/transport.ts';
 import { ProbeModule, SseModule } from './support.ts';
 
 /** A running application answered through the fetch handler. */
@@ -231,4 +236,62 @@ test('a capability the fetch transport does not port is refused', () => {
   expect(() => {
     upgrade(adapter.getHono());
   }).toThrow(TypeError);
+});
+
+/** A host helper that answers an upgrade with nothing. */
+const idleHelper: FetchHostWebSocket = () => () =>
+  Promise.resolve();
+
+/** The websocket surface the adapter built for one transport. */
+function supportOf(adapter: ServerAdapter): WebSocketSupport {
+  const transport = adapter.getTransport();
+  const factory = transport.createWebSocket;
+  if (factory === undefined) {
+    throw new TypeError(
+      'the transport carried no websocket helper',
+    );
+  }
+  return factory(adapter.getHono());
+}
+
+test('a host helper becomes the option, with nothing to install', () => {
+  const adapter = new ServerAdapter({
+    transport: fetchServer({
+      upgradeWebSocket: webSocketFromHost(idleHelper),
+    }),
+  });
+  const support = supportOf(adapter);
+  expect(support.upgradeWebSocket).toBe(idleHelper);
+  // A fetch host is handed requests, so the `install` this
+  // transport asks for can only ever do nothing — the answer is a
+  // disposer, and calling it is what a real release would do.
+  const release = support.install(adapter.getHttpServer());
+  expect(typeof release).toBe('function');
+  // A fetch host has nothing to release, so the disposer the
+  // transport answered with must do nothing and not throw.
+  release();
+});
+
+test('a route the host helper upgrades answers through the fetch handler', async () => {
+  let reached = 0;
+  const counting: FetchHostWebSocket = () => (context) => {
+    reached += 1;
+    return Promise.resolve(context.json({ upgraded: true }));
+  };
+  const adapter = new ServerAdapter({
+    transport: fetchServer({
+      upgradeWebSocket: webSocketFromHost(counting),
+    }),
+  });
+  // The route an adapter serving gateways would register.
+  adapter.getHono().get(
+    '/ws',
+    supportOf(adapter).upgradeWebSocket(() => ({})),
+  );
+  const answer = await fetchHandler(adapter.getHono())(
+    new Request('http://host.test/ws'),
+  );
+  expect(answer.status).toBe(HttpStatus.OK);
+  expect(await answer.json()).toStrictEqual({ upgraded: true });
+  expect(reached).toBe(1);
 });
