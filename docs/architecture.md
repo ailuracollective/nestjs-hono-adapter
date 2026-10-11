@@ -295,6 +295,16 @@ cost 90 bytes, so `ws` moved from 1430 to 1520. The island is
 its own entrypoint, so a deployment that serves no gateway pays
 none of it.
 
+The instrumentation hooks added a step every request crosses.
+`setOnRequestHook` and `setOnResponseHook` were inherited as
+no-ops, and running them means building the request and response
+pair a hook reads on the way in and again once the chain
+settles. That costs 229 bytes, more than the 50 the 9000-byte
+ceiling left, so `index` moved to 9250. It is the price of the
+feature; a deployment that wants the bytes back can do without
+the response hook, which is the half that runs after the answer
+exists.
+
 The upload island added the multipart seam to `index`: a
 `WeakSet` beside the adapter and one branch in the request path,
 read per request. That is what raised `index` from 8804 to 8910

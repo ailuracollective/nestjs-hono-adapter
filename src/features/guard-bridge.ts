@@ -202,8 +202,9 @@ function hookArgsOf(
 
 /**
  * Holds the chain until the hook calls `done`, which is how a
- * hook reports asynchronously; one that answers the promise it
- * returns instead is waited for just the same.
+ * hook reports asynchronously. A returned thenable also
+ * continues the chain when it resolves; whichever happens first
+ * releases the request.
  */
 async function holdRequest(
   hook: OnRequestHook,
@@ -223,8 +224,15 @@ async function holdRequest(
       }
     },
   );
-  if (outcome instanceof Promise) {
-    await outcome;
+  if (
+    outcome !== null &&
+    (typeof outcome === 'object' ||
+      typeof outcome === 'function') &&
+    'then' in outcome &&
+    typeof outcome.then === 'function'
+  ) {
+    await Promise.race([Promise.resolve(outcome), held]);
+    return;
   }
   await held;
 }
@@ -266,10 +274,10 @@ function instrumentationBridge(
       return next();
     }
     const args = hookArgsOf(context, state.trustProxy);
-    if (onRequest !== undefined) {
-      await holdRequest(onRequest, args);
-    }
     try {
+      if (onRequest !== undefined) {
+        await holdRequest(onRequest, args);
+      }
       // oxlint-disable-next-line node/callback-return -- the response hook runs once the chain has settled, so the result of next() is awaited here rather than returned through: there is nowhere to return it from.
       await next();
     } finally {

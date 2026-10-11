@@ -27,13 +27,6 @@ the comparison for the code structure they describe.
 > `index` moved that entry to 8910 B, ceiling 9000 B. Every
 > other entrypoint is unchanged from the figures below.
 
-> **Update after the websocket island.** `messageParser` in the
-> adapter's constructor, `setMessageParser()` and
-> `bindErrorHandler()` are the `platform-ws` surface the island
-> was missing. They cost 90 B in `ws`: 1420 B before, 1510 B
-> after, against 10 B of headroom, so the ceiling moved from
-> 1430 B to 1520 B. No other entrypoint moved.
-
 > **Update after that.** The instrumentation hooks
 > (`setOnRequestHook()` / `setOnResponseHook()`) were added
 > later, in the step `features/guard-bridge.ts` builds and

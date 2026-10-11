@@ -71,8 +71,14 @@ scripts:
 | Deploy command               | `bun run deploy` |
 | Non-production branch deploy | `bun run preview` |
 
-`preview` is `wrangler versions upload`, not `wrangler preview` —
-the latter rejects this bundle.
+`preview` is `wrangler versions upload` with `WRANGLER_CI_MATCH_TAG`
+unset, not `wrangler preview` — the latter rejects this bundle.
+Workers Builds hands a branch build a tag that belongs to no Worker,
+so wrangler's pre-upload identity check refuses every upload with
+`The name in your wrangler.jsonc file (...) must match the name of
+your Worker`. Dropping the variable skips that check, the workaround
+in [cloudflare/workers-sdk#15682](https://github.com/cloudflare/workers-sdk/issues/15682).
+`env` is POSIX and the Workers Builds host is Linux.
 
 From the repository root instead, name the config:
 

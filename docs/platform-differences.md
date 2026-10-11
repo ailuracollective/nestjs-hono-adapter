@@ -158,10 +158,10 @@ fails rather than writing.
 the way the platform adapters implement them, with one
 difference the transports impose. The request hook is a
 `(request, response, done)` function called at the start of a
-request; it continues the chain by calling `done`, so a hook
-that never calls it holds the request, as it does on Express and
-Fastify. A hook that returns a promise instead is waited for as
-well.
+request. It continues the chain by calling `done` or resolving a
+returned promise or thenable, whichever happens first. A hook
+that returns no thenable holds the request until it calls
+`done`. A thrown error or rejection reaches the error layer.
 
 The response hook is a `(request, response)` function called
 once the chain has settled. Express runs its own from the
