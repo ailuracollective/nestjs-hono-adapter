@@ -7,6 +7,7 @@ import type { Transport } from './transport.ts';
 import {
   createExceptionRunner,
   createRouteHandler,
+  mapFrameworkError,
   runNestHandler,
 } from './handler-bridge.ts';
 import type {
@@ -316,6 +317,14 @@ class ServerAdapter extends HonoLifecycle {
         return next();
       });
     };
+  }
+
+  /**
+   * The framework's errors, mapped where the bridge owns the
+   * rule.
+   */
+  public override mapException(error: unknown): unknown {
+    return mapFrameworkError(error);
   }
 
   public override setNotFoundHandler(
