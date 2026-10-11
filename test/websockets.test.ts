@@ -7,6 +7,7 @@ import { NestFactory } from '@nestjs/core';
 import { createNodeWebSocket } from '@hono/node-ws';
 import type { WSEvents } from 'hono/ws';
 import {
+  BaseWsExceptionFilter,
   ConnectedSocket,
   MessageBody,
   SubscribeMessage,
@@ -490,16 +491,63 @@ test('a handler is handed a socket that can send and says its state', async () =
   }
 });
 
-test('a handler that throws is answered on the client', async () => {
+/**
+ * Whether the installed Nest answers a thrown handler on the
+ * client.
+ *
+ * `BaseWsExceptionFilter` writes through `client.send` from
+ * Nest 12 on, picking the transport by `send` and `readyState`.
+ * Before that it wrote through `client.emit`, which for a
+ * native socket is a local event that never reaches the wire —
+ * the official `@nestjs/platform-ws` behaves the same way on
+ * 11, measured against it directly. Feature-detected rather
+ * than read off a version, so it follows the code that does the
+ * writing.
+ */
+function nestAnswersExceptions(): boolean {
+  const candidate: unknown = Reflect.get(
+    BaseWsExceptionFilter.prototype,
+    'isNativeWebSocket',
+  );
+  return typeof candidate === 'function';
+}
+
+/** What a window that saw no answer resolves to. */
+const NOTHING = Symbol('nothing');
+
+/**
+ * Sends one event and answers what came, or nothing in a
+ * window.
+ */
+async function sendOrNothing(
+  socket: WebSocket,
+  event: string,
+): Promise<unknown> {
+  socket.send(JSON.stringify({ event }));
+  const outcome = await Promise.race([
+    nextMessage(socket),
+    quiet(QUIET_MS).then(() => NOTHING),
+  ]);
+  if (outcome === NOTHING) {
+    return NOTHING;
+  }
+  return outcome;
+}
+
+test('a handler that throws is answered the way Nest answers it', async () => {
   const probe = await startGateways();
   const socket = await open(socketUrl(probe, GATEWAY_PATH));
   try {
-    // The shape `BaseWsExceptionFilter.handleError` writes. Without
-    // a `send` on the socket, Nest takes its Socket.IO branch, and
-    // an `emit` on this emitter never reaches the client.
-    expect(await sendEvent(socket, FAIL)).toMatchObject({
-      event: 'exception',
-    });
+    const answer = await sendOrNothing(socket, FAIL);
+    if (nestAnswersExceptions()) {
+      // The shape `BaseWsExceptionFilter.handleError` writes.
+      expect(answer).toMatchObject({ event: 'exception' });
+      return;
+    }
+    // Nest 11 answers with `client.emit`, which for a native socket
+    // is local: the exception reaches the log and nothing else,
+    // exactly as it does on `@nestjs/platform-ws`.
+    expect(answer).toBe(NOTHING);
   } finally {
     socket.close();
     await probe.close();

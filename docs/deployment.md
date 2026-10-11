@@ -135,6 +135,11 @@ the helper goes in as it comes:
 ```ts
 import { upgradeWebSocket } from 'hono/cloudflare-workers';
 
+import {
+  fetchServer,
+  webSocketFromHost,
+} from '@ailura/nestjs-hono-adapter/fetch';
+
 const adapter = new ServerAdapter({
   transport: fetchServer({
     upgradeWebSocket: webSocketFromHost(upgradeWebSocket),

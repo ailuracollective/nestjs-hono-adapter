@@ -9,9 +9,14 @@
  */
 
 import { expect, test } from 'bun:test';
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, Injectable, Module } from '@nestjs/common';
 import type { Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import {
+  MessageBody,
+  SubscribeMessage,
+  WebSocketGateway,
+} from '@nestjs/websockets';
 
 import {
   fetchHandler,
@@ -25,7 +30,28 @@ import type {
 import { ServerAdapter } from '../src/index.ts';
 import type { TrustProxy } from '../src/index.ts';
 import type { WebSocketSupport } from '../src/core/transport.ts';
+import { HonoWsAdapter } from '../src/ws/index.ts';
 import { ProbeModule, SseModule } from './support.ts';
+
+/** The state a socket is in once it accepts a send. */
+const OPEN_STATE = 1;
+
+/**
+ * How long a case waits for an answer before deciding none
+ * came.
+ */
+const QUIET_MS = 150;
+
+/** What the gateway fixture multiplies by. */
+const DOUBLING = 2;
+
+/** What the gateway fixture is asked with. */
+const INPUT = 3;
+
+/** Waits, without a timer the case has to keep track of. */
+async function quiet(ms: number): Promise<void> {
+  await Bun.sleep(ms);
+}
 
 /** A running application answered through the fetch handler. */
 interface FetchProbe {
@@ -271,27 +297,134 @@ test('a host helper becomes the option, with nothing to install', () => {
   // transport answered with must do nothing and not throw.
   release();
 });
+/** A socket a host helper drives, with the frames it was sent. */
+class DrivenSocket {
+  public readonly sent: string[] = [];
+  public readonly readyState: number = OPEN_STATE;
 
-test('a route the host helper upgrades answers through the fetch handler', async () => {
-  let reached = 0;
-  const counting: FetchHostWebSocket = () => (context) => {
-    reached += 1;
-    return Promise.resolve(context.json({ upgraded: true }));
-  };
+  public close(): void {
+    // The case drives the frames; there is nothing to close.
+  }
+
+  public send(data: string): void {
+    this.sent.push(data);
+  }
+}
+
+/**
+ * A host helper that answers the upgrade and keeps the event
+ * the factory handed it, so a case can push a frame through it
+ * — what a real host does when the client sends one.
+ */
+class DrivenHost {
+  public deliver: ((data: unknown) => void) | undefined =
+    undefined;
+  private readonly socket = new DrivenSocket();
+
+  public readonly helper: FetchHostWebSocket =
+    (createEvents) => (context) => {
+      const { onMessage } = createEvents(context);
+      this.deliver = (data): void => {
+        if (onMessage === undefined) {
+          return;
+        }
+        // The socket stands in for the runtime's own; the events
+        // only read `send`, `close` and `readyState` off it.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a driven socket is not a WSContext.
+        onMessage({ data }, this.socket as never);
+      };
+      return Promise.resolve(
+        new Response(undefined, {
+          status: HttpStatus.SWITCHING_PROTOCOLS,
+        }),
+      );
+    };
+
+  /** The frames the gateway answered with, parsed. */
+  public frames(): unknown[] {
+    return this.socket.sent.map(
+      (frame): unknown => JSON.parse(frame) as unknown,
+    );
+  }
+}
+
+/** A gateway fixture, served through the host helper. */
+@Injectable()
+@WebSocketGateway({ path: '/ws' })
+class PingGateway {
+  @SubscribeMessage('ping')
+  public ping(
+    @MessageBody() data: { readonly amount: number },
+  ): { readonly doubled: number } {
+    return { doubled: data.amount * DOUBLING };
+  }
+}
+
+@Module({ providers: [PingGateway] })
+class GatewayModule {}
+
+/** A gateway running on the fetch transport, and how to stop it. */
+interface GatewayProbe {
+  readonly fetch: (request: Request) => Promise<Response>;
+  close: () => Promise<void>;
+}
+
+/**
+ * Starts a gateway on the fetch transport, over one host
+ * helper.
+ */
+async function startGateway(
+  host: DrivenHost,
+): Promise<GatewayProbe> {
   const adapter = new ServerAdapter({
     transport: fetchServer({
-      upgradeWebSocket: webSocketFromHost(counting),
+      upgradeWebSocket: webSocketFromHost(host.helper),
     }),
   });
-  // The route an adapter serving gateways would register.
-  adapter.getHono().get(
-    '/ws',
-    supportOf(adapter).upgradeWebSocket(() => ({})),
-  );
-  const answer = await fetchHandler(adapter.getHono())(
+  const app = await NestFactory.create(GatewayModule, adapter, {
+    logger: false,
+  });
+  app.useWebSocketAdapter(new HonoWsAdapter(adapter));
+  await app.init();
+  return {
+    close: () => app.close(),
+    fetch: fetchHandler(adapter.getHono()),
+  };
+}
+
+/**
+ * Upgrades, pushes one frame through the gateway, answers what
+ * came.
+ */
+async function frameThrough(
+  probe: GatewayProbe,
+  host: DrivenHost,
+): Promise<unknown[]> {
+  const upgraded = await probe.fetch(
     new Request('http://host.test/ws'),
   );
-  expect(answer.status).toBe(HttpStatus.OK);
-  expect(await answer.json()).toStrictEqual({ upgraded: true });
-  expect(reached).toBe(1);
+  expect(upgraded.status).toBe(HttpStatus.SWITCHING_PROTOCOLS);
+  if (host.deliver === undefined) {
+    throw new TypeError('the upgrade did not reach the host');
+  }
+  host.deliver(
+    JSON.stringify({
+      data: { amount: INPUT },
+      event: 'ping',
+    }),
+  );
+  await quiet(QUIET_MS);
+  return host.frames();
+}
+
+test('a gateway served through the host helper answers a frame', async () => {
+  const host = new DrivenHost();
+  const probe = await startGateway(host);
+  try {
+    expect(await frameThrough(probe, host)).toStrictEqual([
+      { data: { doubled: INPUT * DOUBLING }, event: 'ping' },
+    ]);
+  } finally {
+    await probe.close();
+  }
 });
