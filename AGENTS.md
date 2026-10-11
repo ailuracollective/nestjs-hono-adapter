@@ -94,14 +94,14 @@ adapter).
 The source is layered: `src/core/` holds the request decode,
 response encode, and lifecycle bridge, plus the `Server` and
 `Transport` ports; `src/features/` holds optional capabilities
-(CORS, guards, SSE, static assets, views); `src/servers/` holds
-the runtime transports (`bun.ts`, `node.ts`, `fetch.ts`),
-reached through their subpaths — and the Node one from
-`core/server-adapter.ts`, the adapter's composition root, as the
-transport it serves through by default; `src/multipart/` is the
-upload island behind `./multipart`; and `src/ws/` is the
-WebSocket island behind `./ws`. The layout, import rules, and
-bundle ceilings are written down in
+(CORS, guards, the instrumentation hooks, SSE, static assets,
+views); `src/servers/` holds the runtime transports (`bun.ts`,
+`node.ts`, `fetch.ts`), reached through their subpaths — and the
+Node one from `core/server-adapter.ts`, the adapter's
+composition root, as the transport it serves through by default;
+`src/multipart/` is the upload island behind `./multipart`; and
+`src/ws/` is the WebSocket island behind `./ws`. The layout,
+import rules, and bundle ceilings are written down in
 [docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions

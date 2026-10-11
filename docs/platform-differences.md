@@ -10,6 +10,7 @@ disagree, and how it reads Nest's path, query and body dialects.
 - [Query strings](#query-strings)
 - [Request bodies](#request-bodies)
 - [Responses](#responses)
+- [Instrumentation hooks](#instrumentation-hooks)
 
 ## Where the platform adapters disagree
 
@@ -150,3 +151,29 @@ to `context.res` is sent as well.
 members are installed only once an `@Sse()` route opens its
 stream, so a handler that reaches for one on an ordinary route
 fails rather than writing.
+
+## Instrumentation hooks
+
+`setOnRequestHook()` and `setOnResponseHook()` are implemented
+the way the platform adapters implement them, with one
+difference the transports impose. The request hook is a
+`(request, response, done)` function called at the start of a
+request; it continues the chain by calling `done`, so a hook
+that never calls it holds the request, as it does on Express and
+Fastify. A hook that returns a promise instead is waited for as
+well.
+
+The response hook is a `(request, response)` function called
+once the chain has settled. Express runs its own from the
+`finish` event of the Node response, and only the
+`./node-server` transport has that event, so here it runs as
+soon as the answer exists — before it has reached the client,
+and whether the chain answered or failed. The answer is already
+decided by then, so a failure the response hook raises is logged
+rather than answered: letting it escape would replace a good
+answer with the error one.
+
+Both are handed the same two objects the security hook Nest
+registers is handed: the request Nest reads, and the Node
+response where the transport carries one — the stand-in that
+writes through the Hono context where it does not.
