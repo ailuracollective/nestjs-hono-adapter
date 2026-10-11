@@ -12,6 +12,12 @@ const CLOSE_EVENT = 'close';
 const OPEN_STATE = 1;
 
 /**
+ * The state of a socket this adapter has not bound, or has
+ * lost.
+ */
+const CLOSED_STATE = 3;
+
+/**
  * One frame from a client: the event it names, the payload it
  * carries, and the correlation it asked to have repeated.
  */
@@ -155,16 +161,47 @@ class HonoSocket extends EventEmitter {
     this.emit(CLOSE_EVENT);
   }
 
-  /** Sends one answer, unless the socket is no longer open. */
-  public sendJson(reply: unknown): void {
+  /**
+   * The socket's state, as the WebSocket specification numbers
+   * them. A socket this adapter has not bound reads as closed,
+   * which is what it is: there is nothing to write to.
+   *
+   * Nest reads this together with `send` to tell a native
+   * WebSocket client from a Socket.IO one —
+   * `BaseWsExceptionFilter` picks the transport by that pair —
+   * so a client without them is answered through a Socket.IO
+   * channel it does not have.
+   */
+  public get readyState(): number {
     const { socket } = this;
     if (socket === undefined) {
+      return CLOSED_STATE;
+    }
+    return socket.readyState;
+  }
+
+  /**
+   * Sends what the caller wrote, as the specification's `send`.
+   *
+   * A gateway reaches the client this way through
+   * `@ConnectedSocket()` and through the answer Nest's own
+   * exception filter writes when a handler throws, so it takes
+   * the frame as it is rather than a value to serialize.
+   */
+  public send(data: string): void {
+    const { socket } = this;
+    if (
+      socket === undefined ||
+      socket.readyState !== OPEN_STATE
+    ) {
       return;
     }
-    if (socket.readyState !== OPEN_STATE) {
-      return;
-    }
-    socket.send(JSON.stringify(reply));
+    socket.send(data);
+  }
+
+  /** Sends one answer, unless the socket is no longer open. */
+  public sendJson(reply: unknown): void {
+    this.send(JSON.stringify(reply));
   }
 
   /** Closes the socket from this side. */

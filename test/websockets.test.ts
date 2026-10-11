@@ -1,11 +1,17 @@
 import { expect, test } from 'bun:test';
+import type { Server as HttpServer } from 'node:http';
+
 import { Injectable, Module } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { createNodeWebSocket } from '@hono/node-ws';
+import type { WSEvents } from 'hono/ws';
 import {
+  ConnectedSocket,
   MessageBody,
   SubscribeMessage,
   WebSocketGateway,
+  WsException,
 } from '@nestjs/websockets';
 import {
   firstValueFrom,
@@ -17,8 +23,15 @@ import {
 
 import { bunAdapter } from './bun-adapter.ts';
 import { ServerAdapter } from '../src/index.ts';
+import type { Transport } from '../src/core/transport.ts';
 import { nodeServer } from '../src/servers/node.ts';
 import { HonoWsAdapter } from '../src/ws/index.ts';
+
+/**
+ * The disposer a fake install answers, having nothing to
+ * release.
+ */
+const noDisposer = (): void => undefined;
 
 /** The path the gateway fixture listens on. */
 const GATEWAY_PATH = '/ws';
@@ -44,6 +57,17 @@ const TIMEOUT_MS = 5000;
 /** The correlation an acknowledgement is asked with. */
 const CORRELATION = 7;
 
+/**
+ * How long a case waits before deciding a socket said nothing
+ * more.
+ */
+const QUIET_MS = 150;
+
+/** Waits, without a timer the case has to keep track of. */
+async function quiet(ms: number): Promise<void> {
+  await Bun.sleep(ms);
+}
+
 /** The interface every case binds to. */
 const LOCALHOST = '127.0.0.1';
 
@@ -52,6 +76,53 @@ const ANY_PORT = 0;
 
 /** The other path a gateway fixture listens on. */
 const OTHER_PATH = '/other';
+
+/** The event the fixture reports the socket it was given on. */
+const SOCKET = 'socket';
+
+/**
+ * The event the fixture throws on, to answer through Nest's
+ * filter.
+ */
+const FAIL = 'fail';
+
+/** Narrows what a gateway was handed to the object it is. */
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Reads what the socket a handler was given can do, in the
+ * values the answer carries rather than the names.
+ *
+ * `docs/deployment.md` promises `send`, `close`, `on` and
+ * `once`. Nest's own exception filter identifies a native
+ * WebSocket client by `send` and `readyState` together, so a
+ * socket missing either is answered through a channel it does
+ * not have.
+ */
+function shapeFrom(answer: unknown): Record<string, unknown> {
+  if (!isRecord(answer)) {
+    throw new TypeError(
+      `the answer was not a frame: ${JSON.stringify(answer)}`,
+    );
+  }
+  const { data } = answer;
+  if (!isRecord(data)) {
+    throw new TypeError(
+      `the frame carried no shape: ${JSON.stringify(data)}`,
+    );
+  }
+  return {
+    close: data.close,
+    on: data.on,
+    once: data.once,
+    readyState: data.readyState,
+    send: data.send,
+  };
+}
 
 /** A gateway with one event, answering with a value. */
 @Injectable()
@@ -62,6 +133,25 @@ class PingGateway {
     @MessageBody() data: { readonly amount: number },
   ): { readonly doubled: number } {
     return { doubled: data.amount * FACTOR };
+  }
+
+  @SubscribeMessage(SOCKET)
+  public socket(@ConnectedSocket() socket: unknown): unknown {
+    if (!isRecord(socket)) {
+      throw new TypeError('the socket was not an object');
+    }
+    return {
+      close: typeof socket.close,
+      on: typeof socket.on,
+      once: typeof socket.once,
+      readyState: socket.readyState,
+      send: typeof socket.send,
+    };
+  }
+
+  @SubscribeMessage(FAIL)
+  public fail(): never {
+    throw new WsException('the fixture was asked to fail');
   }
 }
 
@@ -165,6 +255,52 @@ function ask(
   return pending;
 }
 
+/**
+ * Every frame the socket is sent from now on, in order.
+ *
+ * `expectAnswered` reads the first answer and stops looking,
+ * which hides a second copy of it. A handler bound twice sends
+ * the same answer twice, so only a collector that keeps reading
+ * sees the duplicate.
+ */
+function collect(socket: WebSocket): () => unknown[] {
+  const frames: unknown[] = [];
+  socket.addEventListener('message', (event) => {
+    frames.push(JSON.parse(String(event.data)) as unknown);
+  });
+  return () => frames;
+}
+
+/**
+ * Says the socket answered each frame exactly once.
+ *
+ * A handler bound twice answers every frame twice, and the
+ * extra copies carry the same content, so only counting them
+ * tells the two apart.
+ */
+async function expectOneReplyEach(
+  frames: () => unknown[],
+  sent: number[],
+): Promise<void> {
+  await quiet(QUIET_MS);
+  expect(frames()).toStrictEqual(
+    sent.map((amount) => ({
+      data: { doubled: amount * FACTOR },
+      event: PING,
+    })),
+  );
+}
+
+/** Sends one event of the fixture's own and answers what came. */
+function sendEvent(
+  socket: WebSocket,
+  event: string,
+): Promise<unknown> {
+  const pending = nextMessage(socket);
+  socket.send(JSON.stringify({ event }));
+  return pending;
+}
+
 /** Asks one socket and says it answered as the fixture does. */
 async function expectAnswered(
   socket: WebSocket,
@@ -253,4 +389,119 @@ test('closing without a client ever connecting is not an error', async () => {
   const probe = await startGateways();
   await probe.close();
   await probe.close();
+});
+
+/**
+ * The node transport with a websocket helper that has no
+ * `onOpen`, which is what a fetch host passes: Hono runs the
+ * factory before the upgrade, so `@hono/cloudflare-workers`
+ * types its helper as `Omit<WSEvents, 'onOpen'>`. Everything
+ * else is `@hono/node-ws` as it is, so the only difference from
+ * the case above is the missing event.
+ */
+function withoutOnOpen(): Transport {
+  const base = nodeServer();
+  return {
+    createServer: base.createServer,
+    createWebSocket: (app) => {
+      const node = createNodeWebSocket({ app });
+      return {
+        install: (server): (() => void) => {
+          // The same narrowing the island does at src/ws/adapter.ts,
+          // where the adapter's own server is handed to this helper.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the helper only reads a handle off it.
+          node.injectWebSocket(server as unknown as HttpServer);
+          return noDisposer;
+        },
+        upgradeWebSocket: (factory) =>
+          node.upgradeWebSocket((context) => {
+            const events = factory(context);
+            const kept: WSEvents<WebSocket> = {};
+            if (events.onClose) {
+              kept.onClose = events.onClose;
+            }
+            if (events.onError) {
+              kept.onError = events.onError;
+            }
+            if (events.onMessage) {
+              kept.onMessage = events.onMessage;
+            }
+            return kept;
+          }),
+      };
+    },
+    serveStatic: base.serveStatic,
+  };
+}
+
+test('a gateway answers on a helper that has no onOpen', async () => {
+  const probe = await startGateways(
+    new ServerAdapter({
+      transport: withoutOnOpen(),
+    }),
+  );
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    await expectAnswered(socket, { amount: INPUT });
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a socket on a helper with no onOpen answers every frame once', async () => {
+  const probe = await startGateways(
+    new ServerAdapter({
+      transport: withoutOnOpen(),
+    }),
+  );
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    const frames = collect(socket);
+    await expectAnswered(socket, { amount: INPUT });
+    const second = await ask(socket, { amount: INPUT + 1 });
+    expect(second).toStrictEqual({
+      data: { doubled: (INPUT + 1) * FACTOR },
+      event: PING,
+    });
+    await expectOneReplyEach(frames, [INPUT, INPUT + 1]);
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a handler is handed a socket that can send and says its state', async () => {
+  const probe = await startGateways();
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    expect(
+      shapeFrom(await sendEvent(socket, SOCKET)),
+    ).toStrictEqual({
+      close: 'function',
+      on: 'function',
+      once: 'function',
+      readyState: 1,
+      send: 'function',
+    });
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a handler that throws is answered on the client', async () => {
+  const probe = await startGateways();
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    // The shape `BaseWsExceptionFilter.handleError` writes. Without
+    // a `send` on the socket, Nest takes its Socket.IO branch, and
+    // an `emit` on this emitter never reaches the client.
+    expect(await sendEvent(socket, FAIL)).toMatchObject({
+      event: 'exception',
+    });
+  } finally {
+    socket.close();
+    await probe.close();
+  }
 });
