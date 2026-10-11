@@ -27,6 +27,15 @@ the comparison for the code structure they describe.
 > `index` moved that entry to 8910 B, ceiling 9000 B. Every
 > other entrypoint is unchanged from the figures below.
 
+> **Update after that.** The instrumentation hooks
+> (`setOnRequestHook()` / `setOnResponseHook()`) were added
+> later, in the step `features/guard-bridge.ts` builds and
+> `core/hono-lifecycle.ts` mounts. They cost 229 B in `index`:
+> 8950 B before, 9179 B after, against a 9000 B ceiling that
+> left 50 B. The ceiling is a ratchet and the raise is recorded
+> rather than hidden — `index` moved to 9250 B, 71 B of
+> headroom. No other entrypoint moved.
+
 ## Environment
 
 | Tool                                  | Version                     |

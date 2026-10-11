@@ -69,14 +69,31 @@ layer; `createRouteHandler` reads the params before it hands the
 request over, which is what puts this failure where the mapping
 can answer it.
 
-### `setOnRequestHook()` / `setOnResponseHook()` — missing
+### `setOnRequestHook()` / `setOnResponseHook()` — implemented
 
 Both platform adapters implement them, and instrumentation and
-devtools call them. They are inert here, so a hook registered
-through either never runs. The hook is a
-`(request, response, next)` function called at the start of a
-request, and a `(request, response)` function called once the
-response is sent.
+devtools call them. Nothing in Nest calls them itself, so an
+adapter that does not run them is an adapter where a registered
+hook never runs. `src/features/guard-bridge.ts` builds the step
+that runs both, mounted in front of every route.
+
+The request hook is a `(request, response, done)` function
+called at the start of a request. It continues the chain by
+calling `done`, as it does on Express (`next`) and Fastify
+(`done`); one that answers the promise it returns instead is
+waited for just the same, and a failure either way reaches the
+error layer.
+
+The response hook is a `(request, response)` function called
+once the chain has settled, whether it answered or failed.
+Express runs it from the `finish` event, which the Bun and fetch
+transports do not have; the answer already exists by the time it
+runs, so a failure it raises is logged rather than answered.
+
+Both are handed the two objects the security hook Nest registers
+is handed: the request Nest reads, built by `toNestRequest()`,
+and the Node response where the transport carries one — the
+stand-in that writes through the Hono context where it does not.
 
 ### `enableCors()` — narrower than both
 
@@ -218,30 +235,27 @@ document them as unsupported rather than to emulate them.
 
 Ordered by what it costs and what it unblocks.
 
-1. **The instrumentation hooks.** `setOnRequestHook()` and
-   `setOnResponseHook()` as Hono middleware, honouring the
-   `(request, response, next)` contract.
-2. **The WebSocket parser and error handling.** `messageParser`
+1. **The WebSocket parser and error handling.** `messageParser`
    in the constructor and in `setMessageParser()`, and an error
    listener on the gateway server.
-3. **The upload island's leftovers.** The streaming interceptor
+2. **The upload island's leftovers.** The streaming interceptor
    above; the `.oxlintrc.json` block that disables around 35
    rules for the whole `src/multipart/**` region, where a
    per-file scope would be narrower; and the `fileFilter`,
    `registerAsync`, malformed-boundary and `__proto__` cases
    `test/multipart.test.ts` does not yet cover.
-4. **Signature breadth.** The CORS delegate, the Fastify form of
+3. **Signature breadth.** The CORS delegate, the Fastify form of
    `useStaticAssets()`, the object form of `setViewEngine()`,
    and the server options `create()` currently drops.
-5. **`inject()`.** An in-process request helper for tests, on
+4. **`inject()`.** An in-process request helper for tests, on
    top of Hono's `app.request()`.
-6. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+5. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-7. **Write down the non-goals.** `useMultipart()`, the Express
+6. **Write down the non-goals.** `useMultipart()`, the Express
    settings API and the Fastify route decorators, in
    [docs/platform-differences.md](platform-differences.md) or
    here.
-8. **Settle one loose sentence.** `docs/architecture.md` says a
+7. **Settle one loose sentence.** `docs/architecture.md` says a
    transport's modules are the only ones that reach the builtins
    a runtime owns; `features/views` and `features/static-assets`
    reach `node:fs/promises` too, and the upload island's disk

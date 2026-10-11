@@ -10,7 +10,14 @@ import type { Transport } from './transport.ts';
 import type { TrustProxy } from './request.ts';
 import { corsBridge } from '../features/cors-middleware.ts';
 import type { CorsOptions } from '../features/cors-middleware.ts';
-import { guardBridge } from '../features/guard-bridge.ts';
+import {
+  guardBridge,
+  instrumentationBridge,
+} from '../features/guard-bridge.ts';
+import type {
+  OnRequestHook,
+  OnResponseHook,
+} from '../features/guard-bridge.ts';
 import { RouteAdapter } from './route-adapter.ts';
 import { mountSse } from '../features/sse.ts';
 
@@ -67,6 +74,10 @@ abstract class HonoLifecycle extends RouteAdapter {
   protected bodyParsingEnabled = false;
   protected rawBodyEnabled: boolean;
   protected corsOptions: CorsOptions | undefined;
+  /** The hook the instrumentation registered for a request. */
+  private onRequestHook: OnRequestHook | undefined;
+  /** The hook the instrumentation registered for an answer. */
+  private onResponseHook: OnResponseHook | undefined;
   private closing = false;
   private forceCloseConnections = false;
   private return503OnClosing = false;
@@ -87,8 +98,10 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   /**
-   * CORS and the closing refusal are one middleware rather than
-   * two: each mount is a step every request pays for, and an
+   * The steps every request crosses before it reaches a route:
+   * the instrumentation hooks, then CORS and the closing
+   * refusal — which are one middleware rather than two, because
+   * each mount is a step every request pays for and an
    * application that configured neither should pay for
    * neither.
    */
@@ -96,6 +109,11 @@ abstract class HonoLifecycle extends RouteAdapter {
     const cors = corsBridge(() => this.corsOptions);
     hono.use(
       '*',
+      instrumentationBridge({
+        onRequest: () => this.onRequestHook,
+        onResponse: () => this.onResponseHook,
+        trustProxy: this.trustProxy,
+      }),
       guardBridge({
         closing: () => this.return503OnClosing && this.closing,
         cors,
@@ -141,6 +159,31 @@ abstract class HonoLifecycle extends RouteAdapter {
    */
   public isRouteOrderSensitive(): boolean {
     return false;
+  }
+
+  /**
+   * Registers the hook Nest's instrumentation runs at the start
+   * of every request. It is handed the request Nest reads, the
+   * response the transport writes to, and the `done` it calls
+   * to continue: a hook that never calls it holds the request,
+   * as it does on Express and Fastify. A failure it throws — or
+   * returns as a rejected promise — is thrown onto the path the
+   * exception layer already owns.
+   */
+  public override setOnRequestHook(hook: OnRequestHook): void {
+    this.onRequestHook = hook;
+  }
+
+  /**
+   * Registers the hook Nest's instrumentation runs once the
+   * response exists. The answer is already decided by then, so
+   * a failure it raises is logged rather than answered: letting
+   * it escape would replace a good answer with the error one.
+   */
+  public override setOnResponseHook(
+    hook: OnResponseHook,
+  ): void {
+    this.onResponseHook = hook;
   }
 
   /** Reads the shutdown options Nest hands the adapter. */
