@@ -7,3 +7,4 @@ coverage/
 .atl/
 odd/
 .codegraph/
+.wrangler/
