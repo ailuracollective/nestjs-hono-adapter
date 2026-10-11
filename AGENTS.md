@@ -193,10 +193,10 @@ A pull request must:
 
 ## Documentation
 
-Documentation lives in `docs/` (architecture)
-and in the README. A change to public behavior or configuration
-updates the documentation in the same change. A generated
-changelog is not edited by hand.
+Documentation lives in `docs/` (architecture) and in the README.
+A change to public behavior or configuration updates the
+documentation in the same change. A generated changelog is not
+edited by hand.
 
 "Documented" means: a comment in the source for internal
 contracts, a page in `docs/` for architecture and layering
