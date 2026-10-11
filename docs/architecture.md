@@ -272,9 +272,19 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has a 9000-byte ceiling and a measurement of 8910,
+`index` has a 9250-byte ceiling and a measurement of 9179,
 `bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
 `multipart` 3800/3580 and `ws` 1430/1420.
+
+The instrumentation hooks added a step every request crosses.
+`setOnRequestHook` and `setOnResponseHook` were inherited as
+no-ops, and running them means building the request and response
+pair a hook reads on the way in and again once the chain settles.
+That costs 229 bytes, more than the 50 the 9000-byte ceiling
+left, so `index` moved to 9250. It is the price of the feature;
+a deployment that wants the bytes back can do without the
+response hook, which is the half that runs after the answer
+exists.
 
 The upload island added the multipart seam to `index`: a
 `WeakSet` beside the adapter and one branch in the request path,
