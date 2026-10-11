@@ -171,9 +171,13 @@ rather than half served: a gateway with its own `port`, because
 every gateway is served on the HTTP adapter's own server, and a
 `namespace`, because the path is the whole address here.
 `@ConnectedSocket()` receives the socket, with the `send`,
-`close`, `on` and `once` Nest's contract declares. `@Ack()` is
-not wired: the acknowledgement travels back as the echoed `id`,
-which is what a client without a parser expects.
+`close`, `on`, `once` and `readyState` Nest's contract declares
+— the pair `send` and `readyState` is how Nest tells a native
+WebSocket client from a Socket.IO one, and without both a
+handler that throws is answered through a channel this socket
+does not have. `@Ack()` is not wired: the acknowledgement
+travels back as the echoed `id`, which is what a client without
+a parser expects.
 
 A client is bound to its gateway on the first frame it sends,
 rather than when the socket opens. That difference is invisible

@@ -7,9 +7,11 @@ import { NestFactory } from '@nestjs/core';
 import { createNodeWebSocket } from '@hono/node-ws';
 import type { WSEvents } from 'hono/ws';
 import {
+  ConnectedSocket,
   MessageBody,
   SubscribeMessage,
   WebSocketGateway,
+  WsException,
 } from '@nestjs/websockets';
 import {
   firstValueFrom,
@@ -75,6 +77,53 @@ const ANY_PORT = 0;
 /** The other path a gateway fixture listens on. */
 const OTHER_PATH = '/other';
 
+/** The event the fixture reports the socket it was given on. */
+const SOCKET = 'socket';
+
+/**
+ * The event the fixture throws on, to answer through Nest's
+ * filter.
+ */
+const FAIL = 'fail';
+
+/** Narrows what a gateway was handed to the object it is. */
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Reads what the socket a handler was given can do, in the
+ * values the answer carries rather than the names.
+ *
+ * `docs/deployment.md` promises `send`, `close`, `on` and
+ * `once`. Nest's own exception filter identifies a native
+ * WebSocket client by `send` and `readyState` together, so a
+ * socket missing either is answered through a channel it does
+ * not have.
+ */
+function shapeFrom(answer: unknown): Record<string, unknown> {
+  if (!isRecord(answer)) {
+    throw new TypeError(
+      `the answer was not a frame: ${JSON.stringify(answer)}`,
+    );
+  }
+  const { data } = answer;
+  if (!isRecord(data)) {
+    throw new TypeError(
+      `the frame carried no shape: ${JSON.stringify(data)}`,
+    );
+  }
+  return {
+    close: data.close,
+    on: data.on,
+    once: data.once,
+    readyState: data.readyState,
+    send: data.send,
+  };
+}
+
 /** A gateway with one event, answering with a value. */
 @Injectable()
 @WebSocketGateway({ path: GATEWAY_PATH })
@@ -84,6 +133,25 @@ class PingGateway {
     @MessageBody() data: { readonly amount: number },
   ): { readonly doubled: number } {
     return { doubled: data.amount * FACTOR };
+  }
+
+  @SubscribeMessage(SOCKET)
+  public socket(@ConnectedSocket() socket: unknown): unknown {
+    if (!isRecord(socket)) {
+      throw new TypeError('the socket was not an object');
+    }
+    return {
+      close: typeof socket.close,
+      on: typeof socket.on,
+      once: typeof socket.once,
+      readyState: socket.readyState,
+      send: typeof socket.send,
+    };
+  }
+
+  @SubscribeMessage(FAIL)
+  public fail(): never {
+    throw new WsException('the fixture was asked to fail');
   }
 }
 
@@ -221,6 +289,16 @@ async function expectOneReplyEach(
       event: PING,
     })),
   );
+}
+
+/** Sends one event of the fixture's own and answers what came. */
+function sendEvent(
+  socket: WebSocket,
+  event: string,
+): Promise<unknown> {
+  const pending = nextMessage(socket);
+  socket.send(JSON.stringify({ event }));
+  return pending;
 }
 
 /** Asks one socket and says it answered as the fixture does. */
@@ -387,6 +465,41 @@ test('a socket on a helper with no onOpen answers every frame once', async () =>
       event: PING,
     });
     await expectOneReplyEach(frames, [INPUT, INPUT + 1]);
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a handler is handed a socket that can send and says its state', async () => {
+  const probe = await startGateways();
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    expect(
+      shapeFrom(await sendEvent(socket, SOCKET)),
+    ).toStrictEqual({
+      close: 'function',
+      on: 'function',
+      once: 'function',
+      readyState: 1,
+      send: 'function',
+    });
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a handler that throws is answered on the client', async () => {
+  const probe = await startGateways();
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    // The shape `BaseWsExceptionFilter.handleError` writes. Without
+    // a `send` on the socket, Nest takes its Socket.IO branch, and
+    // an `emit` on this emitter never reaches the client.
+    expect(await sendEvent(socket, FAIL)).toMatchObject({
+      event: 'exception',
+    });
   } finally {
     socket.close();
     await probe.close();
