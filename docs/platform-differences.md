@@ -66,7 +66,9 @@ by, and the name a route gave it is not carried over:
 `@Get('files/*rest')` fills `req.params['*']` with
 `reports/2024/q1.csv` for `/files/reports/2024/q1.csv`. Hono
 matches a wildcard without reporting what it stood for, so the
-adapter reads the capture out of the path itself.
+adapter reads the capture out of the path itself. A wildcard
+whose escape stands for no character cannot be decoded:
+`/files/%FF` is a `400`, the answer Express gives for it.
 
 Middleware mounted for every method — `app.use(fn)` and a
 `MiddlewareConsumer` without a method — answers the path it was

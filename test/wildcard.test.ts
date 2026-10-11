@@ -145,3 +145,17 @@ test('a request that reached no route is still refused', async () => {
     await probe.close();
   }
 });
+
+test('a wildcard carrying a malformed escape is a bad request', async () => {
+  const probe = await startProbe(WILDCARD_PROBE);
+  try {
+    // `%FF` is a well-formed escape that stands for no
+    // character, so decoding the wildcard throws where the
+    // handler would have read it. Express answers that with a
+    // 400, and an error the filters do not know would be a 500.
+    const response = await request(probe, `${TREE_PATH}/%FF`);
+    expect(response.status).toBe(HttpStatus.BAD_REQUEST);
+  } finally {
+    await probe.close();
+  }
+});

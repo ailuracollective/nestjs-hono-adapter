@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import type { Next } from 'hono';
 
 import { readBody } from './body.ts';
@@ -185,6 +185,13 @@ function createRouteHandler(
 ): HonoRouteHandler {
   return async (context, next) => {
     const request = await prepareRequest(context, options);
+    // Reading the params warms the getter that decodes a
+    // wildcard, so an escape that stands for no character
+    // throws here — outside the proxy Nest wraps every route
+    // handler in. Inside it the proxy answers the failure
+    // itself and the error layer never sees it, which is what
+    // would turn Express's `400` into a `500`.
+    void request.params;
     const started = interceptor(context, () =>
       options.pendingStatus(context),
     );
@@ -213,6 +220,26 @@ async function runNestHandler(
 }
 
 /**
+ * What the exception layer is handed before the filters see it:
+ * the two errors the framework itself raises become the `400`
+ * Express answers them with, and everything else is returned
+ * unchanged so it keeps the shape the filters expect.
+ *
+ * A wildcard throws the `URIError` when the params getter
+ * decodes it and the escape stands for no character, and a body
+ * the JSON parser refuses is the `SyntaxError`.
+ */
+function mapFrameworkError(error: unknown): unknown {
+  if (
+    error instanceof SyntaxError ||
+    error instanceof URIError
+  ) {
+    return new BadRequestException(error.message);
+  }
+  return error;
+}
+
+/**
  * Builds the runner for the exception layer. The payload is not
  * read again here: the failure may well be that reading it
  * failed, and a second attempt would replace the answer with
@@ -236,6 +263,7 @@ function createExceptionRunner(
 export {
   createExceptionRunner,
   createRouteHandler,
+  mapFrameworkError,
   runNestHandler,
 };
 export type {

@@ -47,18 +47,27 @@ implemented, and `bindClientConnect()` is inherited.
 
 ## HTTP adapter
 
-### `mapException()` — missing
+### `mapException()` — implemented
 
-Nest calls it from the error layer before a filter sees the
-error. Express maps a `SyntaxError` or a `URIError` to a
-`BadRequestException`; Fastify maps a `FastifyError` to an
-`HttpException`. This adapter keeps the base identity.
+Nest hands `mapException()` every error the error layer
+receives, before the filters see it. Express maps a
+`SyntaxError` or a `URIError` to a `BadRequestException` and
+Fastify maps its own `FastifyError` to an `HttpException`; this
+adapter mirrors Express, and returns anything else unchanged.
 
-That matters because `decodeURIComponent()` runs on a wildcard
-capture (`src/core/params.ts`) and on query values
-(`src/core/query.ts`), so a request carrying a malformed
-percent-encoding reaches the filters as a raw `URIError` and is
-answered `500` where Express answers `400`.
+The `URIError` is the one that carries. A wildcard is
+percent-decoded when the params are read (`paramsOf` in
+`src/core/params.ts`), so a path whose escape stands for no
+character — `/files/%FF` — is a `400` where it used to be a
+`500`. Query values decode themselves and keep the raw text when
+that fails (`src/core/query.ts`), so they never raise it.
+
+Where the decode fails matters as much as the mapping. Nest
+wraps every route handler in a proxy that answers a failure
+itself, so an error raised inside it never reaches the error
+layer; `createRouteHandler` reads the params before it hands the
+request over, which is what puts this failure where the mapping
+can answer it.
 
 ### `setOnRequestHook()` / `setOnResponseHook()` — missing
 
@@ -209,32 +218,30 @@ document them as unsupported rather than to emulate them.
 
 Ordered by what it costs and what it unblocks.
 
-1. **`mapException()`.** Small, and it turns a `500` into the
-   `400` Express already answers.
-2. **The instrumentation hooks.** `setOnRequestHook()` and
+1. **The instrumentation hooks.** `setOnRequestHook()` and
    `setOnResponseHook()` as Hono middleware, honouring the
    `(request, response, next)` contract.
-3. **The WebSocket parser and error handling.** `messageParser`
+2. **The WebSocket parser and error handling.** `messageParser`
    in the constructor and in `setMessageParser()`, and an error
    listener on the gateway server.
-4. **The upload island's leftovers.** The streaming interceptor
+3. **The upload island's leftovers.** The streaming interceptor
    above; the `.oxlintrc.json` block that disables around 35
    rules for the whole `src/multipart/**` region, where a
    per-file scope would be narrower; and the `fileFilter`,
    `registerAsync`, malformed-boundary and `__proto__` cases
    `test/multipart.test.ts` does not yet cover.
-5. **Signature breadth.** The CORS delegate, the Fastify form of
+4. **Signature breadth.** The CORS delegate, the Fastify form of
    `useStaticAssets()`, the object form of `setViewEngine()`,
    and the server options `create()` currently drops.
-6. **`inject()`.** An in-process request helper for tests, on
+5. **`inject()`.** An in-process request helper for tests, on
    top of Hono's `app.request()`.
-7. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+6. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-8. **Write down the non-goals.** `useMultipart()`, the Express
+7. **Write down the non-goals.** `useMultipart()`, the Express
    settings API and the Fastify route decorators, in
    [docs/platform-differences.md](platform-differences.md) or
    here.
-9. **Settle one loose sentence.** `docs/architecture.md` says a
+8. **Settle one loose sentence.** `docs/architecture.md` says a
    transport's modules are the only ones that reach the builtins
    a runtime owns; `features/views` and `features/static-assets`
    reach `node:fs/promises` too, and the upload island's disk

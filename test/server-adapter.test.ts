@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
-import { HttpStatus } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+} from '@nestjs/common';
 
 import { bunAdapter } from './bun-adapter.ts';
 import {
@@ -126,4 +129,29 @@ test('the adapter reports itself to Nest', async () => {
   } finally {
     await probe.close();
   }
+});
+
+test('an error the framework raised is mapped to a bad request', () => {
+  const adapter = bunAdapter();
+  const mapped = adapter.mapException(
+    new URIError('URI malformed'),
+  );
+  // A `BadRequestException` is the 400 the filters answer,
+  // and the message is carried over from the error that raised
+  // it.
+  expect(mapped).toBeInstanceOf(BadRequestException);
+  expect(mapped).toMatchObject({ message: 'URI malformed' });
+});
+
+test('an invalid JSON body is mapped to a bad request too', () => {
+  const adapter = bunAdapter();
+  expect(
+    adapter.mapException(new SyntaxError('Unexpected token')),
+  ).toBeInstanceOf(BadRequestException);
+});
+
+test('an error of no known shape is passed through unchanged', () => {
+  const adapter = bunAdapter();
+  const error = new Error('nothing the framework owns');
+  expect(adapter.mapException(error)).toBe(error);
 });
