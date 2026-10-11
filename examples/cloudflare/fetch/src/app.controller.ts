@@ -26,6 +26,13 @@ export class AppController {
     return `Hello ${name ?? 'world'}!`;
   }
 
+  @Get('query')
+  public query(
+    @Query() query: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return query;
+  }
+
   @Post('echo')
   public echo(@Body() body: unknown): { received: unknown } {
     return { received: body };

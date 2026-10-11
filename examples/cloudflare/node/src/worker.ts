@@ -23,7 +23,7 @@ const PORT = 8787;
 // roughly a third of the CPU an answer costs — so the default stays.
 const adapter = new ServerAdapter({
   transport: nodeServer({ overrideGlobalObjects: false }),
-  trustProxy: true,
+  trustProxy: false,
   rawBody: true,
   bodyLimit: 1024,
 });

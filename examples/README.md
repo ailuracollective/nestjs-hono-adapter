@@ -12,6 +12,7 @@ so every route sits under `/v1` unless it says otherwise:
 | ------------------ | -------------------------------------------- |
 | `GET /v1/health`   | `{ ok: true, where: 'workers' }`            |
 | `GET /v1/hello?name=` | `Hello <name>!`                         |
+| `GET /v1/query?foo=bar` | `{ foo: 'bar' }`, all query parameters |
 | `GET /v2/hello`    | `{ from: 'v2' }`, the versioned controller   |
 | `POST /v1/echo`    | the body, echoed back                        |
 | `POST /v1/raw`     | the byte count Nest kept, with `rawBody: true` |
@@ -101,8 +102,8 @@ A fetch host has no socket, so `req.ip` is empty unless the host names
 one. The fetch Worker passes a `clientAddress` resolver that reads
 `cf-connecting-ip`, which Cloudflare sets and strips from clients.
 
-`trustProxy` stays off there on purpose: with it on, `x-forwarded-for`
-is read in place of the host's address.
+`trustProxy` stays off in both examples so `x-forwarded-for` cannot
+replace the host's address or the Node socket address.
 
 Both folders are Bun workspace members, so an install from anywhere
 hoists `node_modules` to the root — where the `src/` imports resolve
