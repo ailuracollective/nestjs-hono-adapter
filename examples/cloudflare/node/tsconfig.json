@@ -14,8 +14,16 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
+    "paths": {
+      "@ailura/nestjs-hono-adapter": [
+        "../../../src/index.ts"
+      ],
+      "@ailura/nestjs-hono-adapter/servers/node": [
+        "../../../src/servers/node.ts"
+      ]
+    }
   },
   "include": [
     "src/**/*.ts"
-  ],
+  ]
 }

@@ -63,8 +63,8 @@ part of the repository and that an agent may edit:
   `features/`, `servers/` and `ws/`.
 - `test/` — the test suite, including fixtures and probes.
 - `docs/` — architecture and documentation.
-- `examples/` — runnable Cloudflare Workers, Vercel, Cloud Run,
-  and container examples.
+- `examples/` — runnable Cloudflare Workers examples, one per
+  transport that runs on a Worker.
 
 An agent must not touch `dist/`, `node_modules/`, or `bun.lock`
 (except via `bun install`). There is no subdirectory
