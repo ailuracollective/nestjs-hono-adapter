@@ -210,7 +210,16 @@ per process, in `src/core/express-surface.ts`:
   context, as Express does for chaining.
 - `res.send(body)` answers the body through the same writer
   every other answer goes through, honouring a status Nest set
-  first and falling back to `200`.
+  first and falling back to `200`. A **string** goes out as
+  `text/html`, which is what Express reads `res.send(html)` as
+  and what a module handing over a page means it to be. A type
+  declared through `res.type()` is left alone.
+
+The string reading is the surface's, not the adapter's: the body
+a Nest _handler returns_ is labelled by the writer, which is the
+Fastify reading [the differences table](platform-differences.md)
+records. The two are separate paths, and only the one serving a
+module that registers a route this way follows Express here.
 
 The install is guarded on the prototype already answering
 `send`, so a second application in the same process, or a

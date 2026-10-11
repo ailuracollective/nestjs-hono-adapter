@@ -27,6 +27,12 @@ import { ResponseWriter } from './response-writer.ts';
 const writer = new ResponseWriter();
 
 /**
+ * The type Express reads a string body written with `send()`
+ * as.
+ */
+const HTML_CONTENT_TYPE = 'text/html; charset=UTF-8';
+
+/**
  * Sets the type of the answer, as given. Express also expands a
  * shorthand such as `json` through a media type table; no
  * module registering a route this way uses one.
@@ -37,12 +43,37 @@ function type(this: NestContext, value: string): NestContext {
 }
 
 /**
+ * Labels a string body as the document Express reads it as.
+ * `res.send()` has no other way to say so, and a type the
+ * caller declared through `res.type()` is left alone: that is
+ * the caller's own answer, under the same rule every other
+ * answer follows.
+ */
+function labelAsHtml(context: NestContext): void {
+  if (context.res.headers.has('content-type')) {
+    return;
+  }
+  context.header('content-type', HTML_CONTENT_TYPE);
+}
+
+/**
  * Answers the body, ending the request. The status Nest asked
  * for through the adapter comes first and `200` is the
  * fallback, and the body goes through the writer every other
  * answer does, so the headers recorded so far travel with it.
+ *
+ * A string goes out as `text/html` unless a type was declared
+ * first. That is Express's own reading of `res.send(html)` and
+ * it is what the surface exists to reproduce: a module that
+ * registers a route here and hands over a page means it as a
+ * document. The answer a Nest handler _returns_ is labelled by
+ * the writer instead, which is the Fastify reading
+ * `docs/platform-differences.md` records.
  */
 function send(this: NestContext, body: unknown): NestContext {
+  if (typeof body === 'string') {
+    labelAsHtml(this);
+  }
   writer.reply(this, body);
   return this;
 }

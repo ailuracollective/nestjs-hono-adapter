@@ -34,6 +34,7 @@ when it moves to this adapter.
 | Situation                                      | This adapter                                          | Express                                      | Fastify                    |
 | ---------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- | -------------------------- |
 | A handler returns a string                     | `text/plain`                                          | `text/html`                                  | `text/plain`               |
+| `res.send('…')` on a route a module registered | `text/html`                                           | `text/html`                                  | —                          |
 | A handler returns raw bytes                    | `application/octet-stream`                            | serialised as JSON                           | `application/octet-stream` |
 | `GET /users/` for `/users`                     | 404                                                   | matches                                      | 404                        |
 | A redirect carries a body                      | no                                                    | yes                                          | no                         |
@@ -123,6 +124,12 @@ with, because serialising them as JSON is the one answer that
 loses them. `@Header()`, `@HttpCode()`, `@Redirect()` and
 `StreamableFile` are all honoured, and a declared `Content-Type`
 always wins over the inferred one.
+
+The `res.send()` row above is a different path: a module that
+registers a route on the adapter itself is handed the Hono
+context as an Express-shaped `res`, and that surface reads a
+string the way Express does. See
+[the Swagger section](features.md#what-the-adapter-provides).
 
 `@Res()` works, and so does `@Res({ passthrough: true })`:
 Hono's own response helpers (`json`, `text`, `html`, `body`,
