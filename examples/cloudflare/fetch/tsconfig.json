@@ -14,13 +14,6 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-
-    /**
-     * The adapter is aliased to the repository source, and the
-     * transport under the `/servers/*` specifier
-     * `wrangler.jsonc` uses, so the example runs from a fresh clone
-     * with no build step. The paths are relative to this file.
-     */
     "paths": {
       "@ailura/nestjs-hono-adapter": ["../../../src/index.ts"],
       "@ailura/nestjs-hono-adapter/servers/fetch": ["../../../src/servers/fetch.ts"]
