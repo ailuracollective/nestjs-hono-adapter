@@ -6,6 +6,13 @@
 * add comprehensive tests for NestJS integration with various modules ([1ef6c9e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/1ef6c9ec2d77a5615c5d1751cc480a5b663422c2))
 
 
+## [1.5.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.4.1...v1.5.0) (2026-10-11)
+
+
+### Features
+
+* Crear PR para NestJS Hono Adapter ([#88](https://github.com/ailuracollective/nestjs-hono-adapter/issues/88)) ([29b478e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/29b478ef55c9f9824c848e8690b5878f06b76eef))
+
 ## [1.4.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.4.0...v1.4.1) (2026-10-11)
 
 
