@@ -2,6 +2,8 @@ import { EventEmitter } from 'node:events';
 
 import type { WSContext } from 'hono/ws';
 
+import type { Logger } from '@nestjs/common';
+
 /** The event a frame from the client arrives on. */
 const MESSAGE_EVENT = 'message';
 
@@ -88,6 +90,36 @@ function parseFrame(raw: unknown): WsFrame | undefined {
     return parseText(new TextDecoder().decode(raw));
   }
   return frameFrom(raw);
+}
+
+/**
+ * Reads a frame from what the socket delivered. `parseFrame` is
+ * the built-in one; a deployment replaces it to speak a dialect
+ * the built-in reader does not understand, and the built-in one
+ * stays reachable so the two can be told apart.
+ */
+type MessageParser = (raw: unknown) => WsFrame | undefined;
+
+/**
+ * Reads one frame with the parser in use. A parser the
+ * application replaced the built-in one with throws on its own
+ * bug, so it is reported; the built-in one reads
+ * client-controlled input, and reporting that would turn a
+ * public socket into a log flood target.
+ */
+function readFrame(
+  raw: unknown,
+  parser: MessageParser,
+  logger: Logger,
+): WsFrame | undefined {
+  try {
+    return parser(raw);
+  } catch (error) {
+    if (parser !== parseFrame) {
+      logger.error(error);
+    }
+    return undefined;
+  }
 }
 
 /** Repeats the correlation the client asked for, when it did. */
@@ -220,6 +252,7 @@ export {
   HonoSocket,
   isReply,
   parseFrame,
+  readFrame,
   toReply,
 };
-export type { WsFrame, WsReply };
+export type { MessageParser, WsFrame, WsReply };

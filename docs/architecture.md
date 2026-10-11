@@ -274,17 +274,26 @@ The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
 `index` has a 9250-byte ceiling and a measurement of 9179,
 `bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
-`multipart` 3800/3580 and `ws` 1430/1420.
+`multipart` 3800/3580 and `ws` 1520/1510.
 
 The instrumentation hooks added a step every request crosses.
 `setOnRequestHook` and `setOnResponseHook` were inherited as
 no-ops, and running them means building the request and response
-pair a hook reads on the way in and again once the chain settles.
-That costs 229 bytes, more than the 50 the 9000-byte ceiling
-left, so `index` moved to 9250. It is the price of the feature;
-a deployment that wants the bytes back can do without the
-response hook, which is the half that runs after the answer
+pair a hook reads on the way in and again once the chain
+settles. That costs 229 bytes, more than the 50 the 9000-byte
+ceiling left, so `index` moved to 9250. It is the price of the
+feature; a deployment that wants the bytes back can do without
+the response hook, which is the half that runs after the answer
 exists.
+
+The websocket island gained the two pieces of `platform-ws`'s
+surface it was missing: the frame parser a deployment can
+replace (`messageParser` in the constructor, and
+`setMessageParser()`) and `bindErrorHandler()`, which attaches
+the error listeners a path and its sockets need. Together they
+cost 90 bytes, so `ws` moved from 1430 to 1520. The island is
+its own entrypoint, so a deployment that serves no gateway pays
+none of it.
 
 The upload island added the multipart seam to `index`: a
 `WeakSet` beside the adapter and one branch in the request path,
@@ -341,3 +350,13 @@ statements per function than the house style allows. The
 type-safety rules stay on everywhere else. Relaxing a rule for
 one file rather than for the region is preferred when a
 single-file exception is enough.
+
+Two later exceptions follow the same rule. `test/**` carries a
+700-line ceiling rather than 400, because an end-to-end suite
+holds its fixtures, its gateways and its cases in one file and
+grows as they do; `test/websockets.test.ts` is the largest of
+them. And `src/ws/adapter.ts` carries 450, the value the two
+files above it take: it is the island's composition point, where
+the `AbstractWsAdapter` members it implements meet the
+`platform-ws` surface — the frame parser and the error handlers
+— that a consumer of that adapter reads.

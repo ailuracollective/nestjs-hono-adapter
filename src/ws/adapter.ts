@@ -30,19 +30,29 @@ import {
   MESSAGE_EVENT,
   isReply,
   parseFrame,
+  readFrame,
   toReply,
 } from './client.ts';
-import type { WsFrame } from './client.ts';
-import { GatewayServer } from './server.ts';
+import type { MessageParser, WsFrame } from './client.ts';
+import { CONNECTION_EVENT, GatewayServer } from './server.ts';
 
 /** The port a gateway asks for when it keeps the HTTP one. */
 const UNDERLYING_PORT = 0;
+
+/** The event a socket, or the server itself, fails on. */
+const ERROR_EVENT = 'error';
 
 /** The path a gateway listens on when it named none. */
 const ROOT_PATH = '/';
 
 /** The event Node reports a protocol upgrade on. */
 const UPGRADE_EVENT = 'upgrade';
+
+/** What a deployment may hand the adapter when it builds one. */
+interface HonoWsAdapterOptions {
+  /** Reads the frames every gateway of this adapter receives. */
+  readonly messageParser?: MessageParser;
+}
 
 /** What Nest passes to `create()` for one gateway. */
 interface HonoGatewayOptions {
@@ -149,8 +159,12 @@ class HonoWsAdapter extends AbstractWsAdapter {
   private readonly logger = new Logger(HonoWsAdapter.name);
   private detach: (() => void) | undefined;
   private injected = false;
+  private parser: MessageParser;
 
-  public constructor(httpAdapter: ServerAdapter) {
+  public constructor(
+    httpAdapter: ServerAdapter,
+    options: HonoWsAdapterOptions = {},
+  ) {
     super(httpAdapter);
     this.adapter = httpAdapter;
     const app = httpAdapter.getHono();
@@ -158,6 +172,7 @@ class HonoWsAdapter extends AbstractWsAdapter {
       httpAdapter.getTransport().createWebSocket ??
       nodeWebSocket;
     this.support = factory(app);
+    this.parser = options.messageParser ?? parseFrame;
   }
 
   public override create(
@@ -214,6 +229,36 @@ class HonoWsAdapter extends AbstractWsAdapter {
     return Promise.resolve();
   }
 
+  /**
+   * Replaces the reader of incoming frames, as `platform-ws`
+   * does.
+   */
+  public setMessageParser(parser: MessageParser): void {
+    this.parser = parser;
+  }
+
+  /**
+   * Attaches the error listeners every path needs, as
+   * `platform-ws` does, and answers the server so a caller can
+   * chain the call. A failure on the server or on one of its
+   * sockets is reported rather than thrown: an emitter that
+   * raises `error` with no listener throws it out of the event
+   * loop instead.
+   */
+  public bindErrorHandler(
+    server: GatewayServer,
+  ): GatewayServer {
+    server.on(ERROR_EVENT, (error: unknown) => {
+      this.logger.error(error);
+    });
+    server.on(CONNECTION_EVENT, (socket: HonoSocket) => {
+      socket.on(ERROR_EVENT, (error: unknown) => {
+        this.logger.error(error);
+      });
+    });
+    return server;
+  }
+
   private release(): void {
     const servers = [...this.servers.values()];
     this.servers.clear();
@@ -238,7 +283,7 @@ class HonoWsAdapter extends AbstractWsAdapter {
     if (known !== undefined) {
       return known;
     }
-    const server = new GatewayServer();
+    const server = this.bindErrorHandler(new GatewayServer());
     this.servers.set(path, server);
     this.serve(path, server);
     this.inject();
@@ -320,7 +365,7 @@ class HonoWsAdapter extends AbstractWsAdapter {
     byEvent: ReadonlyMap<string, WsMessageHandler>,
     transform: (data: unknown) => Observable<unknown>,
   ): Observable<unknown> {
-    const frame = parseFrame(raw);
+    const frame = readFrame(raw, this.parser, this.logger);
     if (frame === undefined) {
       return EMPTY;
     }
@@ -386,4 +431,4 @@ class HonoWsAdapter extends AbstractWsAdapter {
 }
 
 export { HonoWsAdapter };
-export type { HonoGatewayOptions };
+export type { HonoGatewayOptions, HonoWsAdapterOptions };

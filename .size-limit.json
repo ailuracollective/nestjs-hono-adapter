@@ -89,7 +89,7 @@
   {
     "name": "ws",
     "path": "dist/ws/index.js",
-    "limit": 1430,
+    "limit": 1520,
     "brotli": true,
     "ignore": [
       "hono",

@@ -140,20 +140,30 @@ here, although Hono's own `app.request()` could back one.
 
 Against `@nestjs/platform-ws`:
 
-### `setMessageParser()` — missing
+### `setMessageParser()` — implemented
 
 Nest 12's `WsAdapter` accepts a `messageParser` in its
 constructor and exposes `setMessageParser()` for a deployment
-whose frames are not JSON. The frame parser here is fixed
-(`parseFrame()` in `src/ws/client.ts`), so a custom format
-cannot be plugged in.
+whose frames are not JSON. `HonoWsAdapter` takes the same option
+and exposes the same method, and reads every frame with the
+parser in use; `parseFrame()` in `src/ws/client.ts` is the
+built-in one.
 
-### `bindErrorHandler()` — missing
+A parser that throws is an application bug and is reported. The
+built-in one reads client-controlled input, so its failures stay
+quiet: reporting those would turn a public socket into a log
+flood target. Either way the frame is dropped, as it is on
+`platform-ws`.
 
-`WsAdapter` attaches an error listener to the server and to
-every socket, so a socket failure is logged. `GatewayServer`
-(`src/ws/server.ts`) is an `EventEmitter` with no `error`
-handling, and an `'error'` event with no listener throws.
+### `bindErrorHandler()` — implemented
+
+`WsAdapter.bindErrorHandler(server)` attaches an error listener
+to the server and to every socket it hands over, so a failure is
+logged rather than thrown: an `EventEmitter` that raises `error`
+with no listener throws it out of the event loop.
+`HonoWsAdapter.bindErrorHandler()` attaches the same pair to a
+`GatewayServer` and answers it, and `create()` calls it for
+every path.
 
 ### `create()` options — partially honoured
 
@@ -235,27 +245,24 @@ document them as unsupported rather than to emulate them.
 
 Ordered by what it costs and what it unblocks.
 
-1. **The WebSocket parser and error handling.** `messageParser`
-   in the constructor and in `setMessageParser()`, and an error
-   listener on the gateway server.
-2. **The upload island's leftovers.** The streaming interceptor
+1. **The upload island's leftovers.** The streaming interceptor
    above; the `.oxlintrc.json` block that disables around 35
    rules for the whole `src/multipart/**` region, where a
    per-file scope would be narrower; and the `fileFilter`,
    `registerAsync`, malformed-boundary and `__proto__` cases
    `test/multipart.test.ts` does not yet cover.
-3. **Signature breadth.** The CORS delegate, the Fastify form of
+2. **Signature breadth.** The CORS delegate, the Fastify form of
    `useStaticAssets()`, the object form of `setViewEngine()`,
    and the server options `create()` currently drops.
-4. **`inject()`.** An in-process request helper for tests, on
+3. **`inject()`.** An in-process request helper for tests, on
    top of Hono's `app.request()`.
-5. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+4. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-6. **Write down the non-goals.** `useMultipart()`, the Express
+5. **Write down the non-goals.** `useMultipart()`, the Express
    settings API and the Fastify route decorators, in
    [docs/platform-differences.md](platform-differences.md) or
    here.
-7. **Settle one loose sentence.** `docs/architecture.md` says a
+6. **Settle one loose sentence.** `docs/architecture.md` says a
    transport's modules are the only ones that reach the builtins
    a runtime owns; `features/views` and `features/static-assets`
    reach `node:fs/promises` too, and the upload island's disk
