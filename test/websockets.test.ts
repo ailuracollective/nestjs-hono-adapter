@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test';
+import type { Server as HttpServer } from 'node:http';
+
 import { Injectable, Module } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { createNodeWebSocket } from '@hono/node-ws';
+import type { WSEvents } from 'hono/ws';
 import {
   MessageBody,
   SubscribeMessage,
@@ -17,8 +21,15 @@ import {
 
 import { bunAdapter } from './bun-adapter.ts';
 import { ServerAdapter } from '../src/index.ts';
+import type { Transport } from '../src/core/transport.ts';
 import { nodeServer } from '../src/servers/node.ts';
 import { HonoWsAdapter } from '../src/ws/index.ts';
+
+/**
+ * The disposer a fake install answers, having nothing to
+ * release.
+ */
+const noDisposer = (): void => undefined;
 
 /** The path the gateway fixture listens on. */
 const GATEWAY_PATH = '/ws';
@@ -253,4 +264,82 @@ test('closing without a client ever connecting is not an error', async () => {
   const probe = await startGateways();
   await probe.close();
   await probe.close();
+});
+
+/**
+ * The node transport with a websocket helper that has no
+ * `onOpen`, which is what a fetch host passes: Hono runs the
+ * factory before the upgrade, so `@hono/cloudflare-workers`
+ * types its helper as `Omit<WSEvents, 'onOpen'>`. Everything
+ * else is `@hono/node-ws` as it is, so the only difference from
+ * the case above is the missing event.
+ */
+function withoutOnOpen(): Transport {
+  const base = nodeServer();
+  return {
+    createServer: base.createServer,
+    createWebSocket: (app) => {
+      const node = createNodeWebSocket({ app });
+      return {
+        install: (server): (() => void) => {
+          // The same narrowing the island does at src/ws/adapter.ts,
+          // where the adapter's own server is handed to this helper.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the helper only reads a handle off it.
+          node.injectWebSocket(server as unknown as HttpServer);
+          return noDisposer;
+        },
+        upgradeWebSocket: (factory) =>
+          node.upgradeWebSocket((context) => {
+            const events = factory(context);
+            const kept: WSEvents<WebSocket> = {};
+            if (events.onClose) {
+              kept.onClose = events.onClose;
+            }
+            if (events.onError) {
+              kept.onError = events.onError;
+            }
+            if (events.onMessage) {
+              kept.onMessage = events.onMessage;
+            }
+            return kept;
+          }),
+      };
+    },
+    serveStatic: base.serveStatic,
+  };
+}
+
+test('a gateway answers on a helper that has no onOpen', async () => {
+  const probe = await startGateways(
+    new ServerAdapter({
+      transport: withoutOnOpen(),
+    }),
+  );
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    await expectAnswered(socket, { amount: INPUT });
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a socket on a helper with no onOpen answers every frame', async () => {
+  const probe = await startGateways(
+    new ServerAdapter({
+      transport: withoutOnOpen(),
+    }),
+  );
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    await expectAnswered(socket, { amount: INPUT });
+    const second = await ask(socket, { amount: INPUT + 1 });
+    expect(second).toStrictEqual({
+      data: { doubled: (INPUT + 1) * FACTOR },
+      event: PING,
+    });
+  } finally {
+    socket.close();
+    await probe.close();
+  }
 });

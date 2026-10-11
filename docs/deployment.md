@@ -175,6 +175,17 @@ every gateway is served on the HTTP adapter's own server, and a
 not wired: the acknowledgement travels back as the echoed `id`,
 which is what a client without a parser expects.
 
+A client is bound to its gateway on the first frame it sends,
+rather than when the socket opens. That difference is invisible
+where the helper fires an open event — `@hono/node-ws` and
+`hono/bun` both do — and it is what makes a fetch host work:
+Hono runs the event factory _before_ the upgrade, so a helper
+there has no socket to hand an open event and
+`@hono/cloudflare-workers` omits `onOpen` entirely. A client
+that connects and never sends is not bound; it holds nothing the
+gateway could write to, and a client that sends is bound before
+its frame is delivered.
+
 ## Microservices
 
 A microservice transport is Nest's own and never passes through

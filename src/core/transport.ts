@@ -45,6 +45,15 @@ interface StaticOptions {
  * websocket helper describes them. The socket is Hono's own
  * `WSContext`, which each helper builds over its runtime's
  * connection.
+ *
+ * `onMessage` carries it as a second argument because every
+ * helper passes it there — `@hono/node-ws` and `hono/bun` also
+ * fire `onOpen`, but a fetch host's helper cannot: Hono runs
+ * the factory before the upgrade, so `@hono/cloudflare-workers`
+ * types its helper as `Omit<WSEvents, 'onOpen'>`. The message
+ * is the first event after the handshake on every helper, so it
+ * is where a consumer without an open event reads the socket
+ * from.
  */
 interface WebSocketEvents {
   readonly onClose?:
@@ -52,7 +61,10 @@ interface WebSocketEvents {
     | undefined;
   readonly onError?: ((event: unknown) => void) | undefined;
   readonly onMessage?:
-    | ((event: { readonly data: unknown }) => void)
+    | ((
+        event: { readonly data: unknown },
+        socket: WSContext,
+      ) => void)
     | undefined;
   readonly onOpen?:
     | ((event: unknown, socket: WSContext) => void)
