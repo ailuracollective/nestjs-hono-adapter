@@ -1,107 +1,78 @@
 # Examples
 
-One Nest application behind a transport, grouped by platform.
+| Folder                    | Transport | Worker entry    |
+| ------------------------- | --------- | --------------- |
+| `examples/cloudflare/fetch` | fetch    | `src/worker.ts` |
+| `examples/cloudflare/node`  | node     | `src/worker.ts` |
 
-| Runtime            | Fetch | Node | Bun |
-| ------------------ | ----- | ---- | --- |
-| Cloudflare Workers | ✔️   | ✔️   | ❌  |
+Both serve the same routes:
 
-`examples/cloudflare/fetch` and `examples/cloudflare/node` are the two
-folders. Both run the same application: `/health`, `/hello?name=`,
-`/echo` and the `/stream` SSE route, and both document themselves —
-`/docs-json` is the OpenAPI document, `/reference` the Scalar API
-reference. The node one adds `/debug-env`, which reads the
-`cloudflare:node` request binding the adapter never exposes itself.
+| Route        | Answer                                    |
+| ------------ | ----------------------------------------- |
+| `GET /health`  | `{ ok: true, where: 'workers' }`        |
+| `GET /hello?name=` | `Hello <name>!`                     |
+| `POST /echo`   | the body, echoed back                    |
+| `GET /stream`  | three SSE frames, 100 ms apart         |
+| `GET /docs-json` | the OpenAPI document                   |
+| `GET /reference` | the Scalar API reference              |
 
-## Deploying to Cloudflare
+The node one adds `GET /debug-env`, which reports the
+`cloudflare:node` request binding.
 
-Both folders build, but the alias decides **where** the build has to
-run. The transport alias points at `src/servers/`, so the repository
-has to be present, and its dependencies installed, for the bundler to
-read the library's own imports out of the tree.
-
-The two example folders are Bun workspace members of the repository
-root, so an install run anywhere — the root or an example — hoists
-`node_modules` to the root, the directory the library's imports under
-`src/` resolve against.
-
-A Worker Builds project therefore takes the example folder as its root
-directory, which lets Wrangler find `wrangler.jsonc` without a
-`--config` flag. The folder's `package.json` carries the two commands:
-
-| Setting                      | Value                           |
-| ---------------------------- | ------------------------------- |
-| Root directory               | `examples/cloudflare/fetch`     |
-| Build command                | `bun install --frozen-lockfile` |
-| Deploy command               | `bun run deploy`                |
-| Non-production branch deploy | `bun run preview`               |
-
-and the node pairing takes `examples/cloudflare/node` as its root.
-
-The scripts are `wrangler deploy` and `wrangler versions upload`. Use
-`versions upload`, not `wrangler preview`: the latter is an open beta
-command, and its preview runtime rejects this bundle with a
-`createRequire` error whatever the root.
-
-From the repository root instead, name the configuration file:
-
-| Setting        | Value                                                    |
-| -------------- | -------------------------------------------------------- |
-| Root directory | the repository root                                      |
-| Build command  | `bun install --frozen-lockfile`                          |
-| Deploy command | `bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc` |
-
-Were the examples not workspace members, an install landing in the
-example folder would leave the library's imports with nothing to
-resolve against, and the build would fail on `@nestjs/common` and
-`hono`, every one of them from a file under `src/`. That is why the
-workspace matters here.
-
-## The transports
-
-A real project installs the package and imports one subpath:
+## Run it
 
 ```sh
-bun add @ailura/nestjs-hono-adapter hono
+bun install
+bun run --cwd examples/cloudflare/fetch dev
 ```
+
+Swap `fetch` for `node` for the other one.
+
+## Deploy it
+
+Root directory is the example folder. Its `package.json` carries the
+scripts:
+
+| Setting                      | Value           |
+| ---------------------------- | --------------- |
+| Root directory               | `examples/cloudflare/fetch` |
+| Build command                | `bun install --frozen-lockfile` |
+| Deploy command               | `bun run deploy` |
+| Non-production branch deploy | `bun run preview` |
+
+`preview` is `wrangler versions upload`, not `wrangler preview` —
+the latter rejects this bundle.
+
+From the repository root instead, name the config:
+
+```sh
+bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc
+```
+
+## The transport import
+
+A project imports a published subpath:
 
 ```ts
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
-import { bunServer } from '@ailura/nestjs-hono-adapter/bun-server';
-// or:
-import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
-// or, for a fetch host (Workers, Vercel Functions, Deno):
 import { fetchServer } from '@ailura/nestjs-hono-adapter/fetch';
 
-new ServerAdapter({ transport: bunServer() });
+new ServerAdapter({ transport: fetchServer() });
 ```
 
-That snippet is what you write. A folder here does not write it — it
-reaches the same code under this repository's own layout:
+These folders import `.../servers/fetch` instead, which is **not** in
+the package's `exports` map. `wrangler.jsonc` and `tsconfig.json` each
+alias it to `src/servers/fetch.ts`, which is why it resolves from a
+fresh clone with no build. Do not copy that spelling.
 
-```ts
-import { fetchServer } from '@ailura/nestjs-hono-adapter/servers/fetch';
-```
+The thirteen optional peers Nest and `@nestjs/swagger` name inside lazy
+`import()`s are aliased to `src/stub-optional-peers.ts`, an empty
+module. See the comment there for what they are.
 
-`/servers/*` is not in the package's `exports` map and no install would
-answer it. `wrangler.jsonc` and `tsconfig.json` alias each one to the
-source under `src/servers/`, which is the whole reason it resolves: a
-folder runs from a fresh clone, with no build step and no `dist/`, and
-the alias stands in for the install that has not happened. Do not copy
-that spelling into a project.
+Both folders are Bun workspace members, so an install from anywhere
+hoists `node_modules` to the root — where the `src/` imports resolve
+against.
 
-The rest of `alias` is the part a project does copy: the optional
-peers Nest and `@nestjs/swagger` name inside lazy `import()`s — the
-HTTP and WebSocket platforms, the validation and serialization
-packages, and the five microservice transports — mapped to
-`src/stub-optional-peers.ts` so the bundler resolves them on the way to
-branches these Workers never take. Installing them instead would drag
-express and eight clients into a Worker that reaches for none of them.
+## Why there is no Bun folder
 
-## Why the Bun column is ❌
-
-`workerd` has no `Bun` global, and `bunServer()` reaches for one
-through `hono/bun`, so a Worker pairing the two fails on import rather
-than on the transport. Serve through the fetch or the node transport
-instead.
-
+`workerd` has no `Bun` global, and `bunServer()` reads one at import.
