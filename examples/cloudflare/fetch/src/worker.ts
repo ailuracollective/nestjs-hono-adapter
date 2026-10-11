@@ -16,7 +16,7 @@ import { AppModule } from './app.module.ts';
 
 const adapter = new ServerAdapter({
   transport: fetchServer(),
-  trustProxy: true,
+  trustProxy: false,
 });
 
 const app = await NestFactory.create<NestHonoApplication>(
@@ -45,4 +45,9 @@ app.use(
 
 await app.init();
 
-export default { fetch: fetchHandler(adapter.getHono()) };
+export default {
+  fetch: fetchHandler(adapter.getHono(), {
+    clientAddress: (request) =>
+      request.headers.get('cf-connecting-ip') ?? undefined,
+  }),
+};

@@ -19,6 +19,18 @@ Both serve the same routes:
 The node one adds `GET /debug-env`, which reports the
 `cloudflare:node` request binding.
 
+The fetch one adds two, both about the host:
+
+| Route          | Answer                                          |
+| -------------- | ----------------------------------------------- |
+| `GET /whoami`  | the client address, from `cf-connecting-ip`      |
+| `GET /private` | needs `x-api-token: let-me-in`, else 401         |
+
+```sh
+curl localhost:8787/whoami
+curl -H 'x-api-token: let-me-in' localhost:8787/private
+```
+
 ## Run it
 
 ```sh
@@ -64,6 +76,15 @@ These folders import `.../servers/fetch` instead, which is **not** in
 the package's `exports` map. `wrangler.jsonc` and `tsconfig.json` each
 alias it to `src/servers/fetch.ts`, which is why it resolves from a
 fresh clone with no build. Do not copy that spelling.
+
+## The client address
+
+A fetch host has no socket, so `req.ip` is empty unless the host names
+one. The fetch Worker passes a `clientAddress` resolver that reads
+`cf-connecting-ip`, which Cloudflare sets and strips from clients.
+
+`trustProxy` stays off there on purpose: with it on, `x-forwarded-for`
+is read in place of the host's address.
 
 The thirteen optional peers Nest and `@nestjs/swagger` name inside lazy
 `import()`s are aliased to `src/stub-optional-peers.ts`, an empty

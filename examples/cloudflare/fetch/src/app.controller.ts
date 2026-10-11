@@ -4,10 +4,14 @@ import {
   Get,
   Post,
   Query,
+  Req,
   Sse,
+  UseGuards,
 } from '@nestjs/common';
 import { interval, map, take } from 'rxjs';
 import type { Observable } from 'rxjs';
+
+import { TokenGuard } from './token.guard.ts';
 
 @Controller()
 export class AppController {
@@ -32,5 +36,18 @@ export class AppController {
       take(3),
       map((index) => ({ data: `frame-${index}` })),
     );
+  }
+
+  @Get('whoami')
+  public whoami(@Req() request: { ip?: string }): {
+    ip: string | null;
+  } {
+    return { ip: request.ip ?? null };
+  }
+
+  @Get('private')
+  @UseGuards(TokenGuard)
+  public private_(): { secret: string } {
+    return { secret: 'only with x-api-token: let-me-in' };
   }
 }
