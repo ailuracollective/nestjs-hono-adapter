@@ -1,5 +1,5 @@
 {
-  "name": "@ailura/nestjs-hono-adapter/examples/cloudflare/fetch",
+  "name": "@ailura/nestjs-hono-adapter-example-cloudflare-fetch",
   "private": true,
   "type": "module",
   "scripts": {

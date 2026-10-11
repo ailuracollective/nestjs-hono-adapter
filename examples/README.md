@@ -17,23 +17,37 @@ reference.
 Both folders build, but the alias decides **where** the build has to
 run. The transport alias points at `src/servers/`, so the repository
 has to be present, and its dependencies installed, for the bundler to
-read the library's own imports out of the tree. A Worker Builds
-project therefore takes the repository root, not the example:
+read the library's own imports out of the tree.
 
-| Setting         | Value                                                    |
-| --------------- | -------------------------------------------------------- |
-| Root directory  | the repository root — **not** `examples/cloudflare/…`      |
-| Build command   | `bun install --frozen-lockfile`                           |
-| Deploy command  | `bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc` |
+The two example folders are Bun workspace members of the repository
+root, so an install run anywhere — the root or an example — hoists
+`node_modules` to the root, the directory the library's imports under
+`src/` resolve against. Either root directory therefore builds.
 
-and for the node pairing, `…/node/wrangler.jsonc` in the deploy
-command.
+From the repository root:
 
-Installs that land in the example folder instead leave the library's
-imports with nothing to resolve against, and the build fails on
-`@nestjs/common` and `hono` — nine times between them — every one of
-them from a file under `src/`. That is the whole reason the root
-matters here.
+| Setting        | Value                                                    |
+| -------------- | -------------------------------------------------------- |
+| Root directory | the repository root                                      |
+| Build command  | `bun install --frozen-lockfile`                          |
+| Deploy command | `bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc` |
+
+or from the example itself:
+
+| Setting        | Value                           |
+| -------------- | ------------------------------- |
+| Root directory | `examples/cloudflare/fetch`     |
+| Build command  | `bun install --frozen-lockfile` |
+| Deploy command | `bunx wrangler deploy`          |
+
+and for the node pairing, `…/node/wrangler.jsonc`, or the node folder,
+in the deploy command.
+
+Were the examples not workspace members, an install landing in the
+example folder would leave the library's imports with nothing to
+resolve against, and the build would fail on `@nestjs/common` and
+`hono`, every one of them from a file under `src/`. That is why the
+workspace matters here.
 
 ## The transports
 

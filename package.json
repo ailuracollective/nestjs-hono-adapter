@@ -20,6 +20,9 @@
     "type": "git",
     "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
   },
+  "workspaces": [
+    "examples/cloudflare/*"
+  ],
   "files": [
     "dist",
     "src"
