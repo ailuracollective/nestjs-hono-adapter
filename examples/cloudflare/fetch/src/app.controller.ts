@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Header,
   Post,
   Query,
   Sse,
@@ -12,32 +11,18 @@ import type { Observable } from 'rxjs';
 
 @Controller()
 export class AppController {
-
   @Get('health')
   public health(): { ok: boolean; where: string } {
     return { ok: true, where: 'workers' };
   }
 
-  @Get('plain')
-  @Header('x-plain', 'yes')
-  public plain(): string {
-    return 'plain-text';
-  }
-
-  @Get('query')
-  public query(
-    @Query() query: Record<string, unknown>,
-  ): Record<string, unknown> {
-    return query;
+  @Get('hello')
+  public hello(@Query('name') name?: string): string {
+    return `Hello ${name ?? 'world'}!`;
   }
 
   @Post('echo')
   public echo(@Body() body: unknown): { received: unknown } {
-    return { received: body };
-  }
-
-  @Post('form')
-  public form(@Body() body: unknown): { received: unknown } {
     return { received: body };
   }
 
