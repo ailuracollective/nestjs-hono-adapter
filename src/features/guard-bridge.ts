@@ -202,9 +202,9 @@ function hookArgsOf(
 
 /**
  * Holds the chain until the hook calls `done`, which is how a
- * hook reports asynchronously. A returned thenable is awaited
- * instead, and its resolution continues the chain without
- * `done`.
+ * hook reports asynchronously. A returned thenable also
+ * continues the chain when it resolves; whichever happens first
+ * releases the request.
  */
 async function holdRequest(
   hook: OnRequestHook,
@@ -231,7 +231,7 @@ async function holdRequest(
     'then' in outcome &&
     typeof outcome.then === 'function'
   ) {
-    await Promise.resolve(outcome);
+    await Promise.race([Promise.resolve(outcome), held]);
     return;
   }
   await held;

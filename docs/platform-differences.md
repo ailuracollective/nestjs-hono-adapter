@@ -159,9 +159,9 @@ the way the platform adapters implement them, with one
 difference the transports impose. The request hook is a
 `(request, response, done)` function called at the start of a
 request. It continues the chain by calling `done` or resolving a
-returned promise or thenable. A hook that returns no thenable
-holds the request until it calls `done`. A thrown error or
-rejection reaches the error layer.
+returned promise or thenable, whichever happens first. A hook
+that returns no thenable holds the request until it calls
+`done`. A thrown error or rejection reaches the error layer.
 
 The response hook is a `(request, response)` function called
 once the chain has settled. Express runs its own from the

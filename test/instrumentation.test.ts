@@ -76,6 +76,31 @@ test('the route waits for the hook to continue', async () => {
   expect(order).toStrictEqual(['hook', 'continued', 'route']);
 });
 
+test('done releases the route while the hook promise is pending', async () => {
+  const { promise, resolve } =
+    Promise.withResolvers<undefined>();
+  const order: string[] = [];
+  const app = probeApp(
+    {
+      onRequest: (_request, _response, done) => {
+        order.push('hook');
+        done();
+        return promise;
+      },
+    },
+    order,
+  );
+  const pending = app.request('/ping');
+  try {
+    await Bun.sleep(0);
+    expect(order).toStrictEqual(['hook', 'route']);
+    await pending;
+  } finally {
+    resolve();
+    await pending;
+  }
+});
+
 test.each([
   {
     name: 'promise',

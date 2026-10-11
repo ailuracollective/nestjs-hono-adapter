@@ -134,9 +134,9 @@ opt-in and fallback behavior.
 packages branch on.
 
 `setOnRequestHook()` continues the request when the hook calls
-`done` or its returned promise or thenable resolves.
-`setOnResponseHook()` runs when the chain settles, including
-when the request hook throws or rejects. See
+`done` or its returned promise or thenable resolves, whichever
+happens first. `setOnResponseHook()` runs when the chain
+settles, including when the request hook throws or rejects. See
 [instrumentation hooks](docs/platform-differences.md#instrumentation-hooks).
 
 ## Options
