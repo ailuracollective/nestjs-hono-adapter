@@ -22,26 +22,33 @@ read the library's own imports out of the tree.
 The two example folders are Bun workspace members of the repository
 root, so an install run anywhere — the root or an example — hoists
 `node_modules` to the root, the directory the library's imports under
-`src/` resolve against. Either root directory therefore builds.
+`src/` resolve against.
 
-From the repository root:
+A Worker Builds project therefore takes the example folder as its root
+directory, which lets Wrangler find `wrangler.jsonc` without a
+`--config` flag. The folder's `package.json` carries the two commands:
+
+| Setting                      | Value                           |
+| ---------------------------- | ------------------------------- |
+| Root directory               | `examples/cloudflare/fetch`     |
+| Build command                | `bun install --frozen-lockfile` |
+| Deploy command               | `bun run deploy`                |
+| Non-production branch deploy | `bun run preview`               |
+
+and the node pairing takes `examples/cloudflare/node` as its root.
+
+The scripts are `wrangler deploy` and `wrangler versions upload`. Use
+`versions upload`, not `wrangler preview`: the latter is an open beta
+command, and its preview runtime rejects this bundle with a
+`createRequire` error whatever the root.
+
+From the repository root instead, name the configuration file:
 
 | Setting        | Value                                                    |
 | -------------- | -------------------------------------------------------- |
 | Root directory | the repository root                                      |
 | Build command  | `bun install --frozen-lockfile`                          |
 | Deploy command | `bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc` |
-
-or from the example itself:
-
-| Setting        | Value                           |
-| -------------- | ------------------------------- |
-| Root directory | `examples/cloudflare/fetch`     |
-| Build command  | `bun install --frozen-lockfile` |
-| Deploy command | `bunx wrangler deploy`          |
-
-and for the node pairing, `…/node/wrangler.jsonc`, or the node folder,
-in the deploy command.
 
 Were the examples not workspace members, an install landing in the
 example folder would leave the library's imports with nothing to

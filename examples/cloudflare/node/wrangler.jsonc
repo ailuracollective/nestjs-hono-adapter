@@ -1,5 +1,5 @@
 {
-  "name": "ailura-nestjs-hono",
+  "name": "ailura-nestjs-hono-node",
   "main": "./src/worker.ts",
   "compatibility_date": "2026-08-04",
   "compatibility_flags": [
