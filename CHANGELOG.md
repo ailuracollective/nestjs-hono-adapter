@@ -6,6 +6,13 @@
 * add comprehensive tests for NestJS integration with various modules ([1ef6c9e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/1ef6c9ec2d77a5615c5d1751cc480a5b663422c2))
 
 
+## [1.4.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.4.0...v1.4.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* pass the oxfmt check on AGENTS.md ([4f403ca](https://github.com/ailuracollective/nestjs-hono-adapter/commit/4f403ca5b4e241175d166774f415d6a5eb1dab59))
+
 ## [1.4.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.3.0...v1.4.0) (2026-10-10)
 
 
