@@ -6,6 +6,18 @@
 * add comprehensive tests for NestJS integration with various modules ([1ef6c9e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/1ef6c9ec2d77a5615c5d1751cc480a5b663422c2))
 
 
+## [1.5.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.4.1...v1.5.0) (2026-10-11)
+
+
+### Features
+
+* Crear PR para NestJS Hono Adapter ([#86](https://github.com/ailuracollective/nestjs-hono-adapter/issues/86)) ([91ddadc](https://github.com/ailuracollective/nestjs-hono-adapter/commit/91ddadc978c2e843d4fbc7f262639802c3bfdc9b))
+
+
+### Reverts
+
+* remove Snyk badge from README ([54018f9](https://github.com/ailuracollective/nestjs-hono-adapter/commit/54018f9d73daf66d2565bc1584d4db0014bc40d5))
+
 ## [1.4.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.4.0...v1.4.1) (2026-10-11)
 
 
