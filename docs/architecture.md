@@ -272,9 +272,16 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has a 9250-byte ceiling and a measurement of 9179,
+`index` has a 9300-byte ceiling and a measurement of 9271,
 `bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
-`multipart` 3800/3580 and `ws` 1520/1510.
+`multipart` 3800/3580 and `ws` 1550/1532.
+
+Bounding the response hook's wait requires a timer, cleanup, and
+rejection handling that remains active after timeout. With that
+fix, `index` measures 9271 bytes, so its ceiling moves from 9250
+to 9300. Forwarding transport errors through each WebSocket
+client, including safe reporting before binding, brings `ws` to
+1532 bytes, so its ceiling moves from 1520 to 1550.
 
 The instrumentation hooks added a step every request crosses.
 `setOnRequestHook` and `setOnResponseHook` were inherited as

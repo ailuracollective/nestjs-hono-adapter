@@ -136,7 +136,9 @@ packages branch on.
 `setOnRequestHook()` continues the request when the hook calls
 `done` or its returned promise or thenable resolves, whichever
 happens first. `setOnResponseHook()` runs when the chain
-settles, including when the request hook throws or rejects. See
+settles, including when the request hook throws or rejects. It
+waits up to one second for response-hook work before releasing
+the response; later rejections are still logged. See
 [instrumentation hooks](docs/platform-differences.md#instrumentation-hooks).
 
 ## Options

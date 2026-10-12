@@ -333,6 +333,15 @@ class HonoWsAdapter extends AbstractWsAdapter {
           bind(socket);
           client.disconnect();
         },
+        onError: (event): void => {
+          if (!accepted) {
+            // No connection listener exists before the first socket event.
+            client.once(ERROR_EVENT, (error: unknown) => {
+              this.logger.error(error);
+            });
+          }
+          client.emit(ERROR_EVENT, event);
+        },
         onMessage: (
           event: WsMessageEvent,
           socket: WSContext,

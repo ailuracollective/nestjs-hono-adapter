@@ -82,6 +82,12 @@ interface InstrumentationState {
   readonly trustProxy: TrustProxy;
 }
 
+/**
+ * Maximum time a response hook may hold the middleware, in
+ * milliseconds.
+ */
+const RESPONSE_HOOK_TIMEOUT_MS = 1000;
+
 /** Reports a failure that can no longer change the answer. */
 const logger = new Logger('Instrumentation');
 
@@ -243,6 +249,23 @@ async function holdRequest(
  * answered: letting it escape would replace a good answer with
  * the error one.
  */
+async function runResponseHook(
+  hook: OnResponseHook,
+  args: HookArgs,
+): Promise<void> {
+  try {
+    await hook(args.request, args.response);
+  } catch (error: unknown) {
+    logger.error('The response hook failed.', error);
+  }
+}
+
+/**
+ * Allows header changes before sending, but releases the
+ * middleware after a bounded wait. The work keeps its own
+ * rejection handler even when the timeout wins; settled hooks
+ * leave no timer behind.
+ */
 async function reportAnswered(
   hook: OnResponseHook | undefined,
   args: HookArgs,
@@ -250,10 +273,13 @@ async function reportAnswered(
   if (hook === undefined) {
     return;
   }
+  const { promise, resolve } =
+    Promise.withResolvers<undefined>();
+  const timer = setTimeout(resolve, RESPONSE_HOOK_TIMEOUT_MS);
   try {
-    await hook(args.request, args.response);
-  } catch (error: unknown) {
-    logger.error('The response hook failed.', error);
+    await Promise.race([runResponseHook(hook, args), promise]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
