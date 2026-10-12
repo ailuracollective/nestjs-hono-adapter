@@ -197,10 +197,11 @@ upload(@UploadedFile() file: UploadedMultipartFile) {
 ```
 
 `FileInterceptor`, `FilesInterceptor`, `FileFieldsInterceptor`,
-`AnyFilesInterceptor` and `NoFilesInterceptor` mirror the
-platform-express names and fill `req.file` / `req.files` /
-`req.body`, but the types are this package's own:
-`UploadedMultipartFile` and `MultipartOptions` (`storage`,
+`AnyFilesInterceptor`, `NoFilesInterceptor` and
+`FileStreamInterceptor` mirror the platform-express names and
+fill `req.file` / `req.files` / `req.body`, but the types are
+this package's own: `UploadedMultipartFile`,
+`MultipartFileStream` and `MultipartOptions` (`storage`,
 `limits`, `fileFilter`, `preservePath`, `defParamCharset`). They
 follow `@nestjs/platform-fastify/multipart`, not
 `@nestjs/platform-express/multer`: only the interceptor function
@@ -208,6 +209,40 @@ names and the option keys match Express.
 `MultipartModule.register()` provides defaults.
 `memoryStorage()` and `diskStorage()` are shipped; an engine
 written for `@nestjs/platform-express` works unchanged.
+
+`FileStreamInterceptor` is the one that stores nothing, the
+counterpart of Fastify's interceptor of the same name: the
+handler is handed a `MultipartFileStream` whose `stream` carries
+the bytes as they arrive, so a file larger than memory or disk
+is piped straight through instead of being held.
+
+```ts
+import { createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+
+import {
+  FileStreamInterceptor,
+  type MultipartFileStream,
+} from '@ailura/nestjs-hono-adapter/multipart';
+
+@Post('ingest')
+@UseInterceptors(FileStreamInterceptor('file'))
+async ingest(@UploadedFile() file: MultipartFileStream) {
+  await pipeline(file.stream, createWriteStream('/tmp/ingest'));
+  return { name: file.originalname };
+}
+```
+
+Only what the handler reads is taken from the client, and
+whatever it leaves unread is discarded once the handler has
+answered, so a client that is still uploading is never left
+hanging. The text fields must precede the file in the form: the
+parts that follow it are read and discarded rather than parsed.
+Because the size is not known when the handler runs,
+`MaxFileSizeValidator` and the magic-number check of
+`FileTypeValidator` do not apply; `limits.fileSize` is enforced
+on the stream instead, which errors with a
+`PayloadTooLargeException`.
 
 Importing the island marks the adapter, so the request path
 leaves a multipart body for the interceptor to consume rather
