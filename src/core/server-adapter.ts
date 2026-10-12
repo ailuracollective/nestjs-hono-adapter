@@ -1,4 +1,4 @@
-import type { CorsOptions } from '../features/cors-middleware.ts';
+import type { CorsConfig } from '../features/cors-middleware.ts';
 import { toByteLimit } from './body.ts';
 import { toNestRequest } from './request.ts';
 import type { NestHandler, NestRequest } from './request.ts';
@@ -24,7 +24,10 @@ import { nodeServer } from '../servers/node.ts';
 import { mountStaticAssets } from '../features/static-assets.ts';
 import type { StaticAssetsOptions } from '../features/static-assets.ts';
 import { ViewRenderer } from '../features/views.ts';
-import type { ViewOptions } from '../features/views.ts';
+import type {
+  EngineConfig,
+  ViewOptions,
+} from '../features/views.ts';
 
 /** The options the adapter itself reads. */
 interface ServerAdapterOptions extends Omit<
@@ -186,8 +189,8 @@ class ServerAdapter extends HonoLifecycle {
     return this.views.render(response, view, options);
   }
 
-  /** Names the engine, by the extension it renders. */
-  public override setViewEngine(engine: string): this {
+  /** Configures the views, by name or by Fastify's options. */
+  public override setViewEngine(engine: EngineConfig): this {
     this.views.useEngine(engine);
     return this;
   }
@@ -205,17 +208,14 @@ class ServerAdapter extends HonoLifecycle {
     return this;
   }
 
-  /**
-   * Serves the files in a directory, under the prefix asked
-   * for.
-   */
+  /** Serves the directories named, in either transport's form. */
   public override useStaticAssets(
-    path: string | readonly string[],
+    path: StaticAssetsOptions | string | readonly string[],
     options?: StaticAssetsOptions,
   ): this {
     mountStaticAssets({
       hono: this.hono,
-      options: options ?? {},
+      options,
       path,
       transport: this.transport,
     });
@@ -229,7 +229,7 @@ class ServerAdapter extends HonoLifecycle {
    * is called on it, and only then does it listen. Until then
    * no origin is allowed.
    */
-  public override enableCors(options?: CorsOptions): void {
+  public override enableCors(options?: CorsConfig): void {
     this.corsOptions = options ?? {};
   }
 
@@ -432,7 +432,7 @@ declare module '@nestjs/common' {
   interface INestApplication<TServer> {
     /** Serves the files in a directory, at the prefix asked for. */
     useStaticAssets: (
-      path: string | readonly string[],
+      path: StaticAssetsOptions | string | readonly string[],
       options?: StaticAssetsOptions,
     ) => this;
     /** Names the directories a view is read from. */
@@ -440,7 +440,7 @@ declare module '@nestjs/common' {
       directory: string | readonly string[],
     ) => this;
     /** Names the view engine, by the extension it renders. */
-    setViewEngine: (engine: string) => this;
+    setViewEngine: (engine: EngineConfig) => this;
   }
 }
 

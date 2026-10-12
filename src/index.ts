@@ -38,12 +38,17 @@ export type {
    */
   NodeEnv,
 } from './core/context.ts';
-export type { CorsOptions } from './features/cors-middleware.ts';
+export type {
+  CorsConfig,
+  CorsOptions,
+} from './features/cors-middleware.ts';
 export type { ParsedQuery } from './core/query.ts';
 export type { StaticAssetsOptions } from './features/static-assets.ts';
 export type {
+  EngineConfig,
   ViewData,
   ViewEngine,
+  ViewEngineOptions,
   ViewOptions,
 } from './features/views.ts';
 export type {

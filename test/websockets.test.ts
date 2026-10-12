@@ -680,3 +680,21 @@ test('a failure on a path or its socket is reported, not thrown', () => {
     socket.emit('error', new Error('the socket failed'));
   }).not.toThrow();
 });
+
+/**
+ * A gateway option upstream reads and hands on is refused, not
+ * dropped.
+ */
+test('a gateway option the adapter cannot serve is refused', () => {
+  const adapter = new HonoWsAdapter(bunAdapter());
+
+  expect(() => {
+    adapter.create(ANY_PORT, { namespace: '/chat' });
+  }).toThrow(TypeError);
+  expect(() => {
+    adapter.create(ANY_PORT, { perMessageDeflate: true });
+  }).toThrow(TypeError);
+  expect(() => {
+    adapter.create(ANY_PORT, { server: new GatewayServer() });
+  }).toThrow(TypeError);
+});

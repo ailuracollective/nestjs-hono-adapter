@@ -27,6 +27,23 @@ the comparison for the code structure they describe.
 > `index` moved that entry to 8910 B, ceiling 9000 B. Every
 > other entrypoint is unchanged from the figures below.
 
+> **Update after that — signature breadth.** The second item of
+> the backlog in `docs/parity.md` added the signature forms the
+> platform adapters accept: a per-request delegate for
+> `enableCors()`, Fastify's single-argument `useStaticAssets()`
+> with the root inside its options, and Fastify's options object
+> for `setViewEngine()`. Together they cost 483 B in `index`:
+> 9271 B before, 9754 B after, against a 9300 B ceiling that
+> left 29 B — so the raise is 454 B, the smallest that fits, and
+> it is recorded in `docs/architecture.md`. Reading a CORS
+> delegate is what makes it the larger half, because the bridge
+> has to build the request a delegate is handed. `index` moves
+> to 9760 B, 6 B of headroom. Refusing the `create()` options
+> this adapter cannot serve, rather than dropping them, cost 11
+> B in `ws` and moved no ceiling: 1543 B inside its unchanged
+> 1550 B. `bun-server`, `node-server`, `fetch` and `multipart`
+> are untouched.
+
 > **Update after that.** The instrumentation hooks
 > (`setOnRequestHook()` / `setOnResponseHook()`) were added
 > later, in the step `features/guard-bridge.ts` builds and

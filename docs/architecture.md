@@ -272,9 +272,23 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has a 9300-byte ceiling and a measurement of 9271,
+`index` has a 9760-byte ceiling and a measurement of 9754,
 `bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
-`multipart` 3800/3580 and `ws` 1550/1532.
+`multipart` 3800/3653 and `ws` 1550/1543.
+
+The signature forms the platform adapters accept arrived next.
+`enableCors()` reads a per-request delegate, which means the
+CORS bridge builds the request a delegate is handed;
+`useStaticAssets()` reads Fastify's single options object with
+the root inside it as well as Express's path; and
+`setViewEngine()` reads Fastify's options object as well as
+Express's engine name. The three cost 483 bytes, more than the
+29 the 9300-byte ceiling left, so `index` moves to 9760. That is
+the smallest raise that fits: the forms are 454 bytes past the
+old ceiling. The same change refuses the `create()` options the
+WebSocket adapter cannot serve instead of dropping them, which
+costs 11 bytes in `ws` and needs no raise: it measures 1543
+inside its unchanged 1550-byte ceiling.
 
 Bounding the response hook's wait requires a timer, cleanup, and
 rejection handling that remains active after timeout. With that
@@ -301,16 +315,6 @@ the error listeners a path and its sockets need. Together they
 cost 90 bytes, so `ws` moved from 1430 to 1520. The island is
 its own entrypoint, so a deployment that serves no gateway pays
 none of it.
-
-The instrumentation hooks added a step every request crosses.
-`setOnRequestHook` and `setOnResponseHook` were inherited as
-no-ops, and running them means building the request and response
-pair a hook reads on the way in and again once the chain
-settles. That costs 229 bytes, more than the 50 the 9000-byte
-ceiling left, so `index` moved to 9250. It is the price of the
-feature; a deployment that wants the bytes back can do without
-the response hook, which is the half that runs after the answer
-exists.
 
 The upload island added the multipart seam to `index`: a
 `WeakSet` beside the adapter and one branch in the request path,

@@ -4,7 +4,10 @@ import { Hono } from 'hono';
 
 import type { NestEnv } from '../src/core/context.ts';
 import { corsBridge } from '../src/features/cors-middleware.ts';
-import type { CorsOptions } from '../src/features/cors-middleware.ts';
+import type {
+  CorsConfig,
+  CorsOptions,
+} from '../src/features/cors-middleware.ts';
 
 const ALLOWED = 'https://child.example.com';
 const FOREIGN = 'https://somewhere.else.example';
@@ -31,12 +34,12 @@ const SERVER_ERROR = 500;
  * than through the middleware the bridge builds, because the
  * bridge is the path a deployment actually takes.
  */
-function bridged(options: CorsOptions): Hono<NestEnv> {
+function bridged(options: CorsConfig): Hono<NestEnv> {
   const hono = new Hono<NestEnv>();
 
   hono.use(
     '*',
-    corsBridge(() => options),
+    corsBridge(() => options, false),
   );
   hono.onError((_error, context) =>
     context.text('failed', SERVER_ERROR),
@@ -301,4 +304,34 @@ test('a preflight asked to continue reaches the router', async () => {
   expect(
     response.headers.get('access-control-allow-origin'),
   ).toBe(ALLOWED);
+});
+
+test('a delegate decides the options for each request', async () => {
+  const response = await bridged((request, answer) => {
+    // oxlint-disable-next-line unicorn/no-null -- the callback reports "no error" as null, the way Nest and the cors package define it.
+    answer(null, { origin: [request.headers.origin ?? ''] });
+  }).request('/', {
+    headers: { origin: ALLOWED },
+  });
+
+  expect(
+    response.headers.get('access-control-allow-origin'),
+  ).toBe(ALLOWED);
+});
+
+/**
+ * The delegate's answer is what applies: the credentials it
+ * names are in the response, and nothing else named them.
+ */
+test('the options a delegate answers are the ones applied', async () => {
+  const response = await bridged((_request, answer) => {
+    // oxlint-disable-next-line unicorn/no-null -- the callback reports "no error" as null, the way Nest and the cors package define it.
+    answer(null, { credentials: true, origin: [ALLOWED] });
+  }).request('/', {
+    headers: { origin: ALLOWED },
+  });
+
+  expect(
+    response.headers.get('access-control-allow-credentials'),
+  ).toBe('true');
 });

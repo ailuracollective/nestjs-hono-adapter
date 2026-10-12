@@ -28,6 +28,47 @@ interface ViewOptions {
 }
 
 /**
+ * The view configuration a Fastify deployment is built with,
+ * declared here because this adapter has no Fastify to take the
+ * type from. The fields it has no counterpart for are refused
+ * rather than ignored, so a deployment finds out at startup
+ * instead of from a quietly different answer.
+ */
+interface ViewEngineOptions {
+  readonly asyncProperyName?: string;
+  readonly charset?: string;
+  readonly defaultContext?: Record<string, unknown>;
+  readonly engine?: Readonly<Record<string, unknown>>;
+  readonly includeViewExtension?: boolean;
+  readonly layout?: string;
+  readonly maxCache?: number;
+  readonly options?: object;
+  readonly production?: boolean;
+  readonly propertyName?: string;
+  readonly root?: string;
+  readonly templates?: string | readonly string[];
+  readonly viewExt?: string;
+}
+
+/**
+ * What `setViewEngine()` takes: the extension Express names, or
+ * the options object Fastify takes.
+ */
+type EngineConfig = string | ViewEngineOptions;
+
+/** The fields of such a configuration this adapter reads. */
+const VIEW_FIELDS = new Set([
+  'defaultContext',
+  'engine',
+  'includeViewExtension',
+  'maxCache',
+  'production',
+  'root',
+  'templates',
+  'viewExt',
+]);
+
+/**
  * The value a handler returned, as the object a template reads.
  * A handler returning nothing yields an empty object rather
  * than a refusal: what an absent variable means is the
@@ -66,6 +107,109 @@ function directoriesOf(
   }
 
   return toDirectories(directory);
+}
+
+/**
+ * The first field of such a configuration that cannot be
+ * honoured.
+ */
+function refusedField(
+  options: ViewEngineOptions,
+): string | undefined {
+  for (const name of Object.keys(options)) {
+    if (!VIEW_FIELDS.has(name)) {
+      return name;
+    }
+  }
+
+  return undefined;
+}
+
+/** The directories such a configuration names. */
+function directoriesFrom(
+  options: ViewEngineOptions,
+): readonly string[] {
+  const { root, templates } = options;
+  if (root !== undefined) {
+    return [root];
+  }
+  if (templates === undefined) {
+    return [];
+  }
+
+  return toDirectories(templates);
+}
+
+/** Whether an engine is the renderer this adapter calls. */
+function isEngine(value: unknown): value is ViewEngine {
+  return typeof value === 'function';
+}
+
+/** Whether an engine renders from the source, as `render` does. */
+function isRenderEngine(
+  value: unknown,
+): value is { render: ViewEngine } {
+  return isRecord(value) && typeof value.render === 'function';
+}
+
+/** The one renderer such a configuration names. */
+function namedEngine(
+  engines: Readonly<Record<string, unknown>>,
+): unknown {
+  const named = Object.values(engines);
+  if (named.length !== 1) {
+    throw new TypeError(
+      'setViewEngine() renders with one engine, so name one.',
+    );
+  }
+
+  return named[0];
+}
+
+/** The renderer a named engine is, when it renders from source. */
+function asEngine(engine: unknown): ViewEngine {
+  if (isEngine(engine)) {
+    return engine;
+  }
+  if (isRenderEngine(engine)) {
+    return (
+      source: string,
+      data: ViewData,
+    ): string | Promise<string> => engine.render(source, data);
+  }
+
+  throw new TypeError(
+    'setViewEngine() renders from the template source, so an ' +
+      'engine must be a function of (source, data) or expose ' +
+      'that as render().',
+  );
+}
+
+/**
+ * The renderer such a configuration names. The adapter renders
+ * from the template's source rather than from its path, so an
+ * engine is read when it is that function or exposes one.
+ */
+function engineFrom(
+  engines: Readonly<Record<string, unknown>> | undefined,
+): ViewEngine | undefined {
+  if (engines === undefined) {
+    return undefined;
+  }
+
+  return asEngine(namedEngine(engines));
+}
+
+/**
+ * The data a template reads: what the deployment named as its
+ * default context, and then the handler's own, which wins.
+ */
+function withDefaults(
+  defaults: ViewData,
+  data: ViewData,
+): ViewData {
+  // oxlint-disable-next-line prefer-object-spread -- the spread that would satisfy the rule is refused by oxc/no-rest-spread-properties.
+  return Object.assign({}, defaults, data);
 }
 
 /** The extension a view engine names. */
@@ -118,17 +262,28 @@ async function readFrom(
  * request.
  */
 class ViewRenderer {
-  private readonly engine: ViewEngine | undefined;
+  private engine: ViewEngine | undefined;
   private directories: readonly string[] = [];
   private extension = '';
+  private context: ViewData = {};
 
   public constructor(views: ViewOptions | undefined) {
     this.engine = engineOf(views);
     this.directories = directoriesOf(views);
   }
 
+  /** Configures the views, by name or by Fastify's own options. */
+  public useEngine(engine: EngineConfig): void {
+    if (typeof engine === 'string') {
+      this.nameEngine(engine);
+      return;
+    }
+
+    this.useOptions(engine);
+  }
+
   /** Names the engine, by the extension it renders. */
-  public useEngine(name: string): void {
+  private nameEngine(name: string): void {
     if (this.engine === undefined) {
       throw new TypeError(
         'The adapter renders with the engine it was given, so ' +
@@ -144,6 +299,42 @@ class ViewRenderer {
     directory: string | readonly string[],
   ): void {
     this.directories = toDirectories(directory);
+  }
+
+  /** Configures the views the way Fastify is configured. */
+  public useOptions(options: ViewEngineOptions): void {
+    const refused = refusedField(options);
+    if (refused !== undefined) {
+      throw new TypeError(
+        `setViewEngine() cannot honour the ${refused} option.`,
+      );
+    }
+
+    this.apply(options);
+  }
+
+  /** Reads the fields such a configuration names onto the views. */
+  private apply(options: ViewEngineOptions): void {
+    const engine = engineFrom(options.engine);
+    if (engine !== undefined) {
+      this.engine = engine;
+    }
+    const directories = directoriesFrom(options);
+    if (directories.length > 0) {
+      this.directories = directories;
+    }
+
+    this.applyNames(options);
+  }
+
+  /** Reads the names such a configuration carries. */
+  private applyNames(options: ViewEngineOptions): void {
+    if (options.viewExt !== undefined) {
+      this.extension = toExtension(options.viewExt);
+    }
+    if (options.defaultContext !== undefined) {
+      this.context = options.defaultContext;
+    }
   }
 
   /** Renders one view into the response Nest handed over. */
@@ -165,7 +356,10 @@ class ViewRenderer {
       this.directoriesFor(),
       0,
     );
-    const html = await engine(source, asData(options));
+    const html = await engine(
+      source,
+      withDefaults(this.context, asData(options)),
+    );
     response.html(html);
   }
 
@@ -180,4 +374,10 @@ class ViewRenderer {
 }
 
 export { ViewRenderer };
-export type { ViewData, ViewEngine, ViewOptions };
+export type {
+  EngineConfig,
+  ViewData,
+  ViewEngine,
+  ViewEngineOptions,
+  ViewOptions,
+};

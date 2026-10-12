@@ -58,8 +58,12 @@ interface HonoWsAdapterOptions {
 interface HonoGatewayOptions {
   /** The path the gateway listens on. */
   readonly path?: string;
-  /** The namespace the gateway asked for. */
-  readonly namespace?: string;
+  /**
+   * Whatever else the gateway asked for, which upstream reads
+   * as `server` and `namespace` and this adapter refuses beyond
+   * the path, because it serves the HTTP adapter's own server.
+   */
+  readonly [option: string]: unknown;
 }
 
 /**
@@ -431,9 +435,12 @@ class HonoWsAdapter extends AbstractWsAdapter {
           'cannot be honoured.',
       );
     }
-    if (options.namespace !== undefined) {
+    const refused = Object.keys(options).find(
+      (name) => name !== 'path',
+    );
+    if (refused !== undefined) {
       throw new TypeError(
-        'HonoWsAdapter does not support WebSocket namespaces.',
+        `HonoWsAdapter cannot honour the gateway option ${refused}.`,
       );
     }
   }
