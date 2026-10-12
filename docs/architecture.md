@@ -248,20 +248,30 @@ builtins are in use: `node:buffer`, `node:crypto`,
 `node:events`, `node:fs`, `node:fs/promises`, `node:http`,
 `node:https`, `node:os`, `node:path`, `node:stream`,
 `node:stream/promises` and `node:util`. Nest's own SSE path is a
-`node:stream` `Writable`, views and static assets read the
-filesystem, the Node transport builds an `http.Server` with
-`node:https` for TLS, and the upload island's disk storage picks
-a random name with `node:crypto` and a directory with `node:os`,
-then writes and removes the file with `node:fs`,
-`node:fs/promises` and `node:stream/promises`.
-`test/node-builtins.test.ts` freezes that set. Adding one is a
-deliberate edit to both the source and the freeze, so the test
-failing is the signal, not an obstacle to route around.
+`node:stream` `Writable`, views read the filesystem with
+`node:fs/promises` and `node:path`, the Node transport builds an
+`http.Server` with `node:https` for TLS, and the upload island's
+disk storage picks a random name with `node:crypto` and a
+directory with `node:os`, then names the file with `node:path`
+and writes and removes it with `node:fs`, `node:fs/promises` and
+`node:stream/promises`. Static assets are not on that list:
+`features/static-assets.ts` imports no builtin at all and leaves
+the reading to the transport's `serveStatic()`, so the
+filesystem is reached for them by whichever transport serves
+them. `test/node-builtins.test.ts` freezes that set. Adding one
+is a deliberate edit to both the source and the freeze, so the
+test failing is the signal, not an obstacle to route around.
 
 Type-only imports count toward the frozen set, because a
 type-only import still couples a module's types to the platform.
-A transport's modules are the only ones that reach the builtins
-a runtime owns.
+The builtins are reached from more than the transports: `core/`
+takes `node:buffer`, `node:events` and `node:stream` as values
+and `node:http` as types, the CORS bridge takes `node:util`, and
+views and the island's disk storage take the filesystem ones.
+What only a transport does is **build** a server, and that
+narrower claim does hold: `servers/node.ts` is the only module
+that calls `node:https`, and every other `node:http` import in
+`src/` is a type.
 
 ## The bundle budget
 

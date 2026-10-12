@@ -149,7 +149,9 @@ exist.
 Fastify's explicit opt-in for `@fastify/multipart`. Here a body
 is read on demand through Hono's `parseBody()`, and the upload
 interceptors (see [File uploads](#file-uploads)) are the
-supported path, so there is nothing to turn on.
+supported path, so there is nothing to turn on. It is recorded
+as a non-goal in
+[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 ### `inject()` — missing
 
@@ -293,8 +295,10 @@ are no-ops.
 
 They describe Fastify's own route options — a JSON schema, a
 route config, a constraint — and a Hono equivalent would be a
-different feature rather than a port. The recommendation is to
-document them as unsupported rather than to emulate them.
+different feature rather than a port. They are recorded as
+unsupported in
+[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)
+rather than emulated.
 
 ## Backlog
 
@@ -310,12 +314,10 @@ Ordered by what it costs and what it unblocks.
    top of Hono's `app.request()`.
 3. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-4. **Write down the non-goals.** `useMultipart()`, the Express
-   settings API and the Fastify route decorators, in
-   [docs/platform-differences.md](platform-differences.md) or
-   here.
-5. **Settle one loose sentence.** `docs/architecture.md` says a
-   transport's modules are the only ones that reach the builtins
-   a runtime owns; `features/views` and `features/static-assets`
-   reach `node:fs/promises` too, and the upload island's disk
-   storage reaches four of them.
+
+The non-goals and the runtime surface are written down:
+[docs/platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)
+records `useMultipart()`, the Express settings API and the
+Fastify route decorators, and
+[docs/architecture.md](architecture.md#the-runtime-surface)
+records which layer reaches which builtin.
