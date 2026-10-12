@@ -187,6 +187,26 @@ the `id` echoed when it asked for one. A handler that returns an
 observable is subscribed per connection and unsubscribed when
 that connection closes, so nothing leaks between clients.
 
+A deployment whose frames are not JSON reads them its own way:
+
+```ts
+const ws = new HonoWsAdapter(adapter, {
+  messageParser: (raw) => ({ event: String(raw), data: {} }),
+});
+ws.setMessageParser(otherParser); // or later
+```
+
+The parser takes what the socket delivered and answers a
+`{ event, data }`, or nothing, which drops the frame. One that
+throws is reported and the frame is dropped as well; the
+built-in reader reads client-controlled input, so its failures
+stay quiet rather than filling the log.
+`bindErrorHandler(server)` attaches the error listeners
+`platform-ws` attaches — on the path's server and on every
+socket it hands over — and `create()` calls it for every path,
+so a failing socket is logged rather than thrown out of the
+event loop.
+
 What cannot be honoured is refused when the gateway starts
 rather than half served: a gateway with its own `port`, because
 every gateway is served on the HTTP adapter's own server, and a

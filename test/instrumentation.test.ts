@@ -1,5 +1,5 @@
-import { expect, test } from 'bun:test';
-import { HttpStatus } from '@nestjs/common';
+import { expect, spyOn, test } from 'bun:test';
+import { HttpStatus, Logger } from '@nestjs/common';
 import { Hono } from 'hono';
 
 import type { NestEnv } from '../src/index.ts';
@@ -239,4 +239,49 @@ test('a request hook rejection reaches the error path', async () => {
   expect(response.status).toBe(
     HttpStatus.INTERNAL_SERVER_ERROR,
   );
+});
+
+test('an async response hook can change headers before completion', async () => {
+  const { promise, resolve } =
+    Promise.withResolvers<undefined>();
+  const app = probeApp({
+    onResponse: async (_request, response) => {
+      await promise;
+      response.setHeader('x-hook', 'complete');
+    },
+  });
+  const pending = app.request('/ping');
+  await Bun.sleep(0);
+  resolve();
+  const response = await pending;
+  expect(response.headers.get('x-hook')).toBe('complete');
+});
+
+/** Checks that middleware completion preserved the route answer. */
+async function expectPong(response: Response): Promise<void> {
+  expect(response.status).toBe(HttpStatus.OK);
+  expect(await response.text()).toBe('pong');
+}
+
+test('a pending response hook releases the answer and logs a later rejection', async () => {
+  const { promise, reject } =
+    Promise.withResolvers<undefined>();
+  const failure = new Error('after the response');
+  const logged = spyOn(
+    Logger.prototype,
+    'error',
+  ).mockImplementation((): void => undefined);
+  try {
+    const response = await probeApp({
+      onResponse: () => promise,
+    }).request('/ping');
+    await expectPong(response);
+    reject(failure);
+    await Bun.sleep(0);
+    expect(logged.mock.calls).toStrictEqual([
+      ['The response hook failed.', failure],
+    ]);
+  } finally {
+    logged.mockRestore();
+  }
 });

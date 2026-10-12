@@ -119,6 +119,18 @@ The thirteen optional peers Nest and `@nestjs/swagger` name inside lazy
 `import()`s are aliased to `src/stub-optional-peers.ts`, an empty
 module. See the comment there for what they are.
 
+The `node:module` specifier is aliased to `src/stub-node-module.ts` in
+both folders. `@nestjs/swagger` builds a `require` at module scope with
+`createRequire(import.meta.url)`, and a bundled Worker leaves
+`import.meta.url` undefined
+([workerd#6986](https://github.com/cloudflare/workerd/issues/6986)), so
+the call throws before the Worker boots. The shim defaults the argument
+to a file URL. The `define` in `wrangler.jsonc` hides the same thing
+for `wrangler deploy` and `wrangler versions upload`, but
+`wrangler preview` ignores `define`, so the alias is what keeps
+`npx wrangler preview` — the command Workers Builds resets preview
+branches to — working.
+
 ## Constructor injection
 
 `BoomFilter` takes a `HttpAdapterHost` and names it with `@Inject`,

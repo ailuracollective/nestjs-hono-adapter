@@ -35,4 +35,4 @@ class GatewayServer extends EventEmitter {
   }
 }
 
-export { GatewayServer };
+export { CONNECTION_EVENT, GatewayServer };

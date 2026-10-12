@@ -9,5 +9,8 @@
  * ESM re-export resolves eagerly and would load them anyway.
  */
 export { HonoWsAdapter } from './adapter.ts';
-export type { HonoGatewayOptions } from './adapter.ts';
-export type { HonoSocket } from './client.ts';
+export type {
+  HonoGatewayOptions,
+  HonoWsAdapterOptions,
+} from './adapter.ts';
+export type { HonoSocket, MessageParser } from './client.ts';

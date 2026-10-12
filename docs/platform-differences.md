@@ -171,7 +171,11 @@ soon as the answer exists — before it has reached the client,
 and whether the chain answered or failed. The answer is already
 decided by then, so a failure the response hook raises is logged
 rather than answered: letting it escape would replace a good
-answer with the error one.
+answer with the error one. The middleware waits up to one second
+for the hook, so a pending promise cannot hold the response
+indefinitely. Header changes must finish within that window. The
+hook is not cancelled on timeout, and later rejections are still
+logged.
 
 Both are handed the same two objects the security hook Nest
 registers is handed: the request Nest reads, and the Node

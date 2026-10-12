@@ -140,20 +140,30 @@ here, although Hono's own `app.request()` could back one.
 
 Against `@nestjs/platform-ws`:
 
-### `setMessageParser()` — missing
+### `setMessageParser()` — implemented
 
 Nest 12's `WsAdapter` accepts a `messageParser` in its
 constructor and exposes `setMessageParser()` for a deployment
-whose frames are not JSON. The frame parser here is fixed
-(`parseFrame()` in `src/ws/client.ts`), so a custom format
-cannot be plugged in.
+whose frames are not JSON. `HonoWsAdapter` takes the same option
+and exposes the same method, and reads every frame with the
+parser in use; `parseFrame()` in `src/ws/client.ts` is the
+built-in one.
 
-### `bindErrorHandler()` — missing
+A parser that throws is an application bug and is reported. The
+built-in one reads client-controlled input, so its failures stay
+quiet: reporting those would turn a public socket into a log
+flood target. Either way the frame is dropped, as it is on
+`platform-ws`.
 
-`WsAdapter` attaches an error listener to the server and to
-every socket, so a socket failure is logged. `GatewayServer`
-(`src/ws/server.ts`) is an `EventEmitter` with no `error`
-handling, and an `'error'` event with no listener throws.
+### `bindErrorHandler()` — implemented
+
+`WsAdapter.bindErrorHandler(server)` attaches an error listener
+to the server and to every socket it hands over, so a failure is
+logged rather than thrown: an `EventEmitter` that raises `error`
+with no listener throws it out of the event loop.
+`HonoWsAdapter.bindErrorHandler()` attaches the same pair to a
+`GatewayServer` and answers it, and `create()` calls it for
+every path.
 
 ### `create()` options — partially honoured
 

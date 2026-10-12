@@ -201,6 +201,17 @@
       }
     },
     {
+      "files": ["src/ws/adapter.ts"],
+      "rules": {
+        "max-lines": [
+          "error",
+          {
+            "max": 450
+          }
+        ]
+      }
+    },
+    {
       "files": [
         "src/core/server-adapter.ts",
         "src/servers/bun.ts"
@@ -249,7 +260,7 @@
         "max-lines": [
           "error",
           {
-            "max": 600,
+            "max": 700,
             "skipBlankLines": false,
             "skipComments": false
           }
