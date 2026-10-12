@@ -311,46 +311,129 @@
       }
     },
     {
-      "files": ["src/multipart/**/*.ts"],
+      "files": ["src/multipart/index.ts"],
       "rules": {
-        "import/max-dependencies": "off",
+        "import/group-exports": "off"
+      }
+    },
+    {
+      "files": [
+        "src/multipart/interceptors/any-files.interceptor.ts",
+        "src/multipart/interceptors/file-fields.interceptor.ts",
+        "src/multipart/interceptors/file.interceptor.ts",
+        "src/multipart/interceptors/no-files.interceptor.ts"
+      ],
+      "rules": {
+        "import/no-relative-parent-imports": "off"
+      }
+    },
+    {
+      "files": [
+        "src/multipart/interceptors/files.interceptor.ts"
+      ],
+      "rules": {
         "import/no-relative-parent-imports": "off",
-        "import/group-exports": "off",
+        "oxc/no-rest-spread-properties": "off"
+      }
+    },
+    {
+      "files": ["src/multipart/multipart/append-field.util.ts"],
+      "rules": {
         "init-declarations": "off",
-        "max-classes-per-file": "off",
-        "max-lines": "off",
-        "max-lines-per-function": "off",
         "max-params": "off",
         "max-statements": "off",
         "no-continue": "off",
         "no-magic-numbers": "off",
         "no-ternary": "off",
-        "no-underscore-dangle": "off",
-        "node/callback-return": "off",
-        "node/no-sync": "off",
         "oxc/no-optional-chaining": "off",
-        "oxc/no-rest-spread-properties": "off",
-        "prefer-destructuring": "off",
         "prefer-named-capture-group": "off",
+        "sort-keys": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "unicorn/no-array-for-each": "off",
+        "unicorn/no-array-reduce": "off",
+        "unicorn/prefer-number-coercion": "off",
+        "unicorn/switch-case-braces": "off"
+      }
+    },
+    {
+      "files": [
+        "src/multipart/multipart/multipart.constants.ts"
+      ],
+      "rules": {
+        "sort-keys": "off"
+      }
+    },
+    {
+      "files": [
+        "src/multipart/multipart/multipart.interceptor.factory.ts"
+      ],
+      "rules": {
+        "import/max-dependencies": "off",
+        "import/no-relative-parent-imports": "off",
+        "max-classes-per-file": "off",
+        "oxc/no-optional-chaining": "off"
+      }
+    },
+    {
+      "files": ["src/multipart/multipart/multipart.parser.ts"],
+      "rules": {
+        "import/max-dependencies": "off",
+        "import/no-relative-parent-imports": "off",
+        "max-lines": "off",
+        "max-lines-per-function": "off",
+        "max-params": "off",
+        "max-statements": "off",
+        "no-continue": "off",
+        "no-ternary": "off",
+        "no-underscore-dangle": "off",
+        "oxc/no-optional-chaining": "off",
         "prefer-object-spread": "off",
         "promise/always-return": "off",
         "promise/avoid-new": "off",
         "promise/prefer-await-to-then": "off",
-        "sort-keys": "off",
-        "typescript/explicit-function-return-type": "off",
-        "typescript/no-misused-promises": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-type-assertion": "off",
-        "typescript/no-unnecessary-type-assertion": "off",
         "typescript/prefer-promise-reject-errors": "off",
-        "typescript/strict-void-return": "off",
-        "unicorn/no-array-for-each": "off",
-        "unicorn/no-array-reduce": "off",
-        "unicorn/no-null": "off",
         "unicorn/no-useless-switch-case": "off",
         "unicorn/no-useless-undefined": "off",
-        "unicorn/prefer-number-coercion": "off",
         "unicorn/switch-case-braces": "off"
+      }
+    },
+    {
+      "files": ["src/multipart/multipart/multipart.utils.ts"],
+      "rules": {
+        "import/no-relative-parent-imports": "off",
+        "max-statements": "off",
+        "no-ternary": "off",
+        "oxc/no-rest-spread-properties": "off"
+      }
+    },
+    {
+      "files": ["src/multipart/storage/disk.storage.ts"],
+      "rules": {
+        "import/no-relative-parent-imports": "off",
+        "init-declarations": "off",
+        "max-lines-per-function": "off",
+        "max-params": "off",
+        "node/callback-return": "off",
+        "node/no-sync": "off",
+        "prefer-destructuring": "off",
+        "promise/avoid-new": "off",
+        "typescript/explicit-function-return-type": "off",
+        "typescript/no-misused-promises": "off",
+        "typescript/strict-void-return": "off",
+        "unicorn/no-null": "off",
+        "unicorn/no-useless-undefined": "off"
+      }
+    },
+    {
+      "files": ["src/multipart/storage/memory.storage.ts"],
+      "rules": {
+        "import/no-relative-parent-imports": "off",
+        "unicorn/no-null": "off"
       }
     }
   ],

@@ -226,6 +226,33 @@ What is still missing is the streaming interceptor
 `MultipartFileStream` type was exported with nothing to produce
 it, and the review had it removed rather than left dead.
 
+The exemption the island carried is narrower now: one block over
+`src/multipart/**` that turned off around 35 rules became ten
+blocks over thirteen files, and the nine files that need none of
+those rules carry them again. The cases the suite was missing —
+`fileFilter`, `registerAsync`, a malformed boundary and a
+`__proto__` field name — are covered, and each was proven by
+mutation, so it fails when the behaviour it pins is removed.
+
+The streaming interceptor stays unimplemented, and the reason is
+not only the deadlock the first attempt ran into. Upstream
+`processStream` walks `req.parts()` and returns on the first
+file of the field it was asked for, leaving the iterator
+suspended so the handler reads a live stream; the interceptor
+then drains the rest, either before answering or from
+`reply.raw`'s `close` when the handler answers with a
+`StreamableFile`. Three seams are missing here. The parser
+consumes the whole body before `next.handle()`, so there is no
+live stream to hand over. The adapter is fetch-backed, so
+`context.req.raw` is a Web `Request` and the only post-response
+hook runs before the `Response` reaches Hono, not when the
+socket closes. And discarding a Web body is not the safe
+`raw.resume()`: cancelling `request.raw.body` reads to the
+client as an aborted request, which is the race upstream drains
+to avoid. The ceiling settles it — `./multipart` sits at 3.64 kB
+of 3.8 kB, and the three pieces cost several hundred bytes
+minified, so this is a ceiling decision rather than a port.
+
 ## Fastify route decorators
 
 `@nestjs/platform-fastify/decorators` publishes
@@ -245,27 +272,24 @@ document them as unsupported rather than to emulate them.
 
 Ordered by what it costs and what it unblocks.
 
-1. **The WebSocket parser and error handling.** `messageParser`
-   in the constructor and in `setMessageParser()`, and an error
-   listener on the gateway server.
-2. **The upload island's leftovers.** The streaming interceptor
-   above; the `.oxlintrc.json` block that disables around 35
-   rules for the whole `src/multipart/**` region, where a
-   per-file scope would be narrower; and the `fileFilter`,
-   `registerAsync`, malformed-boundary and `__proto__` cases
-   `test/multipart.test.ts` does not yet cover.
-3. **Signature breadth.** The CORS delegate, the Fastify form of
+1. **The upload island's streaming interceptor.** The island's
+   last leftover: `FileStreamInterceptor` and the
+   `processStream` behind it. The reconnaissance recorded above
+   finds it blocked on three seams that do not exist here, and
+   on the `./multipart` ceiling, so it needs a deliberate
+   decision about that ceiling before it can be written.
+2. **Signature breadth.** The CORS delegate, the Fastify form of
    `useStaticAssets()`, the object form of `setViewEngine()`,
    and the server options `create()` currently drops.
-4. **`inject()`.** An in-process request helper for tests, on
+3. **`inject()`.** An in-process request helper for tests, on
    top of Hono's `app.request()`.
-5. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+4. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-6. **Write down the non-goals.** `useMultipart()`, the Express
+5. **Write down the non-goals.** `useMultipart()`, the Express
    settings API and the Fastify route decorators, in
    [docs/platform-differences.md](platform-differences.md) or
    here.
-7. **Settle one loose sentence.** `docs/architecture.md` says a
+6. **Settle one loose sentence.** `docs/architecture.md` says a
    transport's modules are the only ones that reach the builtins
    a runtime owns; `features/views` and `features/static-assets`
    reach `node:fs/promises` too, and the upload island's disk

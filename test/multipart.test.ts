@@ -16,12 +16,16 @@ import {
 } from '@nestjs/common';
 import { afterAll, describe, expect, test } from 'bun:test';
 
-import type { UploadedMultipartFile } from '../src/multipart/index.ts';
+import type {
+  MultipartOptions,
+  UploadedMultipartFile,
+} from '../src/multipart/index.ts';
 import {
   AnyFilesInterceptor,
   FileFieldsInterceptor,
   FileInterceptor,
   FilesInterceptor,
+  MultipartModule,
   NoFilesInterceptor,
   diskStorage,
 } from '../src/multipart/index.ts';
@@ -36,6 +40,15 @@ const OVER_LIMIT = 'too long';
 const DISK_CONTENT = 'on disk';
 const MAX_FILES = 3;
 const GALLERY = 2;
+
+/** The field name that would reach the prototype chain. */
+const FORBIDDEN_FIELD = '__proto__';
+
+/** What a polluted object would answer with, if it were one. */
+const POLLUTED = 'polluted';
+
+/** A nested name whose second step reaches the same chain. */
+const NESTED_FORBIDDEN = 'nested[__proto__]';
 
 /** Where disk storage writes, created by the engine itself. */
 const directory = path.join(
@@ -80,6 +93,21 @@ function summarize(
     size: file.size,
   };
 }
+
+/**
+ * Accepts a text part and skips anything else. Multer's filter
+ * is callback-shaped, so the answer travels through the
+ * callback it is handed rather than a return value.
+ */
+/* oxlint-disable promise/prefer-await-to-callbacks, unicorn/no-null -- multer's fileFilter answers through the callback it is handed and spells "no error" as null, so a case that drives it cannot be written without either. */
+const textOnly: NonNullable<MultipartOptions['fileFilter']> = (
+  _request,
+  file,
+  callback,
+) => {
+  callback(null, file.mimetype === 'text/plain');
+};
+/* oxlint-enable promise/prefer-await-to-callbacks, unicorn/no-null */
 
 /** What one part is named and typed as, when not the default. */
 interface PartOptions {
@@ -227,10 +255,38 @@ class UploadController {
   ): unknown {
     return { file: summarize(file) };
   }
+
+  @Post('filtered')
+  @UseInterceptors(
+    FileInterceptor('file', { fileFilter: textOnly }),
+  )
+  public filtered(
+    @UploadedFile() file: UploadedMultipartFile | undefined,
+  ): unknown {
+    return {
+      file: summarize(file),
+      hasFile: file !== undefined,
+    };
+  }
 }
 
 @Module({ controllers: [UploadController] })
 class UploadModule {}
+
+/**
+ * The same controller over a module whose limits arrive from
+ * `registerAsync` rather than from a route's own argument, so a
+ * case can tell the two sources apart.
+ */
+@Module({
+  controllers: [UploadController],
+  imports: [
+    MultipartModule.registerAsync({
+      useFactory: () => ({ limits: { fileSize: LIMIT } }),
+    }),
+  ],
+})
+class AsyncUploadModule {}
 
 /** Sends one form to a route of a fresh application. */
 async function upload(
@@ -535,5 +591,110 @@ describe('an aborted upload', () => {
     } finally {
       await probe.close();
     }
+  });
+});
+
+describe('a file filter', () => {
+  test('a refused file is skipped and the request still answers', async () => {
+    const form = filePart('binary', { type: 'image/png' });
+
+    const result = await upload('/filtered', form);
+
+    expect(result.status).toBe(CREATED);
+    expect(result.body).toEqual({ hasFile: false });
+  });
+
+  test('an accepted file is stored', async () => {
+    const result = await upload('/filtered', filePart('text'));
+
+    expect(result.status).toBe(CREATED);
+    expect(result.body).toMatchObject({
+      file: { mimetype: 'text/plain', size: 'text'.length },
+      hasFile: true,
+    });
+  });
+});
+
+describe('module options from registerAsync', () => {
+  test('a limit the route never named is enforced', async () => {
+    const probe = await startProbe({
+      mode: 'in-process',
+      module: AsyncUploadModule,
+    });
+    try {
+      const result = await request(probe, '/single', {
+        body: filePart(OVER_LIMIT),
+        method: 'POST',
+      });
+
+      expect(result.status).toBe(TOO_LARGE);
+    } finally {
+      await probe.close();
+    }
+  });
+
+  test('the same upload passes when no module names a limit', async () => {
+    const result = await upload(
+      '/single',
+      filePart(OVER_LIMIT),
+    );
+
+    expect(result.status).toBe(CREATED);
+  });
+});
+
+describe('a malformed multipart body', () => {
+  test('a boundary the body never names is refused with 400', async () => {
+    const probe = await startProbe({
+      mode: 'in-process',
+      module: UploadModule,
+    });
+    try {
+      const result = await request(probe, '/single', {
+        body: 'a body that never names the boundary it declared',
+        headers: {
+          'content-type':
+            'multipart/form-data; boundary=----absent',
+        },
+        method: 'POST',
+      });
+
+      expect(result.status).toBe(BAD_REQUEST);
+      expect(result.body).toMatchObject({
+        statusCode: BAD_REQUEST,
+      });
+    } finally {
+      await probe.close();
+    }
+  });
+});
+
+describe('a field name that would reach the prototype', () => {
+  test('__proto__ is refused with 400 and pollutes nothing', async () => {
+    const form = new FormData();
+    form.append(FORBIDDEN_FIELD, POLLUTED);
+
+    const result = await upload('/single', form);
+
+    expect(result.status).toBe(BAD_REQUEST);
+    expect(result.body).toMatchObject({
+      message: `Invalid field name - ${FORBIDDEN_FIELD}`,
+      statusCode: BAD_REQUEST,
+    });
+    expect(
+      ({} as Record<string, unknown>)[POLLUTED],
+    ).toBeUndefined();
+  });
+
+  test('a nested step onto the same chain is refused too', async () => {
+    const form = new FormData();
+    form.append(NESTED_FORBIDDEN, POLLUTED);
+
+    const result = await upload('/single', form);
+
+    expect(result.status).toBe(BAD_REQUEST);
+    expect(
+      ({} as Record<string, unknown>)[POLLUTED],
+    ).toBeUndefined();
   });
 });
