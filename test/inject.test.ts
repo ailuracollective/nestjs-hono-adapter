@@ -122,8 +122,8 @@ beforeAll(async () => {
 });
 
 /**
- * Closes the application the cases built, so nothing outlives
- * them.
+ * Intentionally leaves the application open to avoid disrupting
+ * other applications served in the same test process.
  */
 afterAll(() => {
   // The application is left open: closing one in a process that is
@@ -169,6 +169,23 @@ test('defaults to GET when the call names no method', async () => {
   expect(body).toEqual({ pong: true });
 });
 
+test.each([
+  { method: 'GET', payload: { ignored: true }, url: '/ping' },
+  { body: { ignored: true }, method: 'get', url: '/ping' },
+  { method: 'HEAD', payload: { ignored: true }, url: '/ping' },
+  { body: { ignored: true }, method: 'head', url: '/ping' },
+])('ignores the body for $method', async (options) => {
+  const application = await app();
+  const answer = await application.inject(options);
+  expect(answer.statusCode).toBe(HttpStatus.OK);
+  if (options.method.toUpperCase() === 'HEAD') {
+    expect(answer.body).toBe('');
+  } else {
+    const body: unknown = answer.json();
+    expect(body).toEqual({ pong: true });
+  }
+});
+
 test('reads the method out of the string form', async () => {
   const application = await app();
   const answer = await application.inject({
@@ -187,6 +204,22 @@ test('takes the url as the object form', async () => {
   });
   const body: unknown = answer.json();
   expect(body).toEqual({ look: '1' });
+});
+
+test.each([
+  '/query?look=1',
+  'query?look=1',
+  './query?look=1#fragment',
+  'https://example.test/query?look=1#fragment',
+])('resolves %s before appending a query', async (url) => {
+  const application = await app();
+  const answer = await application.inject({
+    query: { added: '2' },
+    url,
+  });
+  expect(answer.statusCode).toBe(HttpStatus.OK);
+  const body: unknown = answer.json();
+  expect(body).toEqual({ added: '2', look: '1' });
 });
 
 test('sends a query given as a record', async () => {

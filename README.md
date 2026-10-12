@@ -133,6 +133,12 @@ opt-in and fallback behavior.
 `getType()` answers `hono`, which is the value ecosystem
 packages branch on.
 
+For in-process tests, call `await app.init()` before
+`app.inject()`. String targets accept relative paths and
+absolute URLs; the `query` option appends to the existing query.
+GET and HEAD ignore `payload` and `body`; other methods send
+them as the request body.
+
 `setOnRequestHook()` continues the request when the hook calls
 `done` or its returned promise or thenable resolves, whichever
 happens first. `setOnResponseHook()` runs when the chain

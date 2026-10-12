@@ -211,9 +211,9 @@ function toTarget(asked: InjectOptions): Target {
  *
  * The request is built as a Web `Request` and driven through
  * Hono's own `app.request()`, the in-process path the fetch
- * transport already takes: nothing is bound to a port, and
- * Nest's initialization happens on the first call, so a suite
- * that never listens still reaches its routes.
+ * transport already takes, with nothing bound to a port. The
+ * application must already be initialized with `await
+ * app.init()`; the inject runner does not start it.
  */
 function createInject(app: NestHono): InjectRunner {
   return async (options = {}): Promise<InjectResponse> => {

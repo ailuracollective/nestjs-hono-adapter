@@ -75,14 +75,6 @@ function withQuery(url: string, query: string): string {
   return `${url}?${query}`;
 }
 
-/** The path a relative target names, with its leading slash. */
-function withSlash(path: string): string {
-  if (path.startsWith('/')) {
-    return path;
-  }
-  return `/${path}`;
-}
-
 /** The origin the object form of a target names. */
 function originOf(target: InjectUrl): string {
   const { hostname, port, protocol } = target;
@@ -101,7 +93,9 @@ function toUrl(
 ): string {
   const appended = askedQuery(query);
   if (typeof target === 'string') {
-    return withQuery(`${ORIGIN}${withSlash(target)}`, appended);
+    const url = new URL(target, ORIGIN);
+    url.search = mergeQueries(url.search.slice(1), appended);
+    return url.toString();
   }
   const { pathname, query: inner } = target;
   const merged = mergeQueries(askedQuery(inner), appended);
@@ -218,12 +212,13 @@ function send(
   target: Target,
 ): Promise<Response> {
   const headers = toHeaders(asked);
-  const body = toBody(asked.payload ?? asked.body, headers);
   const init: RequestInit = {
-    body,
     headers,
     method: target.method,
   };
+  if (target.method !== 'GET' && target.method !== 'HEAD') {
+    init.body = toBody(asked.payload ?? asked.body, headers);
+  }
   if (asked.signal !== undefined) {
     init.signal = asked.signal;
   }
