@@ -282,9 +282,20 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has a 9760-byte ceiling and a measurement of 9754,
+`index` has a 10880-byte ceiling and a measurement of 10827,
 `bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
 `multipart` 4250/4206 and `ws` 1550/1543.
+
+**`inject()`.** Fastify's in-process request helper costs 1073
+bytes in `index` — 9754 before, 10827 after — against a
+9760-byte ceiling that left 6, so `index` moves to 10880. The
+feature is read on the first call and on Hono's own
+`app.request()`, which is what makes it reach a route without a
+port; it lives in `src/core/` rather than in `src/features/`
+because it is not optional — the member is on every adapter, and
+a feature it cannot be split into two files across would meet
+the layer's import rule either way. See
+[bundle-baseline.md](bundle-baseline.md) for the measurement.
 
 The signature forms the platform adapters accept arrived next.
 `enableCors()` reads a per-request delegate, which means the

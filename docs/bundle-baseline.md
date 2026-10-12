@@ -73,6 +73,21 @@ the comparison for the code structure they describe.
 > `bun-server` 981 B, `node-server` 511 B, `fetch` 418 B and
 > `ws` 1543 B, each inside its unchanged ceiling.
 
+> **Update after that — `inject()`.** The second item of the
+> backlog in `docs/parity.md` added Fastify's in-process request
+> helper. It costs 1073 B in `index`: 9754 B before, 10827 B
+> after, against a 9760 B ceiling that left 6 B, so the raise is
+> 1120 B, to 10880 B, and it is recorded in
+> `docs/architecture.md`. Both call forms, the request options
+> light-my-request declares, the refusal of the four it cannot
+> honour and the whole answer shape are what the bytes buy; the
+> two modules it splits into hold no runtime dependency the
+> bundle did not already carry, because `node:buffer` and
+> `node:stream` arrive with the body and response encoders.
+> Every other entrypoint is untouched: `bun-server` 981 B,
+> `node-server` 511 B, `fetch` 418 B, `multipart` 4206 B and
+> `ws` 1543 B, each inside its unchanged ceiling.
+
 ## Environment
 
 | Tool                                  | Version                     |
