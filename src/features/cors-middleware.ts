@@ -4,6 +4,11 @@ import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 
 import type { NestContext, NestEnv } from '../core/context.ts';
+import { toNestRequest } from '../core/request.ts';
+import type {
+  NestRequest,
+  TrustProxy,
+} from '../core/request.ts';
 
 /** The origins a deployment may allow. */
 type AllowedOrigins =
@@ -46,6 +51,26 @@ interface CorsOptions {
   readonly origin?: AllowedOrigins | OriginCallback;
   readonly preflightContinue?: boolean;
 }
+
+/** What a delegate answers with: an error, or its options. */
+type CorsAnswer = (
+  error: Error | null,
+  options: CorsOptions,
+) => void;
+
+/**
+ * The per-request form Express accepts and Fastify's options
+ * are commonly decided by: the delegate is handed the request
+ * and answers the options to use for it, where the plain form
+ * names one set for the whole service.
+ */
+type CorsOptionsDelegate = (
+  request: NestRequest,
+  answer: CorsAnswer,
+) => void;
+
+/** What a deployment configured CORS with. */
+type CorsConfig = CorsOptions | CorsOptionsDelegate;
 
 /** What a browser may call. */
 const ALLOWED_METHODS = [
@@ -189,6 +214,42 @@ function askOrigin(
 const askResolvedOrigin = promisify(askOrigin);
 
 /**
+ * Reads the options a delegate decides for one request. It
+ * answers through a second argument rather than by returning,
+ * so its answer is awaited here, the way the origin callback's
+ * is.
+ */
+function askOptions(
+  delegate: CorsOptionsDelegate,
+  request: NestRequest,
+  answer: CorsAnswer,
+): void {
+  delegate(request, answer);
+}
+
+const askDecidedOptions = promisify(askOptions);
+
+/**
+ * The options that apply to this request: the configured ones,
+ * or the ones a delegate decides for it. That second form is
+ * the one Express hands straight to the cors package.
+ */
+function resolveOptions(
+  config: CorsConfig,
+  context: NestContext,
+  trustProxy: TrustProxy,
+): Promise<CorsOptions> {
+  if (typeof config !== 'function') {
+    return Promise.resolve(config);
+  }
+
+  return askDecidedOptions(
+    config,
+    toNestRequest(context, { trustProxy }),
+  );
+}
+
+/**
  * The origin this request is allowed, or the configured value
  * itself when no callback decides it.
  */
@@ -305,14 +366,20 @@ async function forwardPreflight(
  * expects.
  */
 function corsBridge(
-  handler: () => CorsOptions | undefined,
+  handler: () => CorsConfig | undefined,
+  trustProxy: TrustProxy,
 ): MiddlewareHandler<NestEnv> {
   return async (context, next) => {
-    const options = handler();
-    if (options === undefined) {
+    const config = handler();
+    if (config === undefined) {
       return next();
     }
 
+    const options = await resolveOptions(
+      config,
+      context,
+      trustProxy,
+    );
     const allowed = await resolveOrigin(
       options.origin,
       context.req.header('origin'),
@@ -328,4 +395,4 @@ function corsBridge(
 }
 
 export { corsBridge };
-export type { CorsOptions };
+export type { CorsConfig, CorsOptions };

@@ -32,8 +32,22 @@ interface StaticAssetsOptions {
    */
   readonly prefix?: string;
   readonly redirect?: boolean;
+  /**
+   * The directories to serve, which Fastify names here in its
+   * first argument rather than Express's second one.
+   */
+  readonly root?: string | readonly string[];
   readonly setHeaders?: unknown;
 }
+
+/**
+ * What a call names first: the directories, as Express does, or
+ * the options, as Fastify does with the root inside them.
+ */
+type StaticAssetsTarget =
+  | StaticAssetsOptions
+  | string
+  | readonly string[];
 
 /** The index file a directory request is answered with. */
 const DEFAULT_INDEX = 'index.html';
@@ -183,8 +197,81 @@ function withoutPrefix(
 interface StaticTarget {
   readonly hono: NestHono;
   readonly transport: Transport;
-  readonly path: string | readonly string[];
-  readonly options: StaticAssetsOptions;
+  /** What the call named first, in either transport's form. */
+  readonly path?: StaticAssetsTarget;
+  /**
+   * What the call named second, which is Express's form. The
+   * Fastify form carries its options in the first argument.
+   */
+  readonly options?: StaticAssetsOptions | undefined;
+}
+
+/**
+ * Whether a call named its directories first, as Express does,
+ * rather than the options Fastify names with the root inside.
+ * Written as a guard because a readonly array is not narrowed
+ * by the array test alone.
+ */
+function namesPathFirst(
+  path: StaticAssetsTarget,
+): path is string | readonly string[] {
+  return typeof path === 'string' || Array.isArray(path);
+}
+
+/** The directories a call named, in either transport's form. */
+function directoriesOf(
+  target: StaticTarget,
+): readonly string[] {
+  const { path } = target;
+  if (path === undefined) {
+    return [];
+  }
+  if (namesPathFirst(path)) {
+    return toDirectories(path);
+  }
+  if (path.root === undefined) {
+    return [];
+  }
+
+  return toDirectories(path.root);
+}
+
+/** The options a call named, in either transport's form. */
+function optionsOf(target: StaticTarget): StaticAssetsOptions {
+  const { options, path } = target;
+  if (options !== undefined) {
+    return options;
+  }
+  if (path === undefined || namesPathFirst(path)) {
+    return {};
+  }
+
+  return path;
+}
+
+/** Refuses a call that named nothing to serve. */
+function assertDirectories(
+  directories: readonly string[],
+): void {
+  if (directories.length === 0) {
+    throw new TypeError(
+      'useStaticAssets() named no directory: name them first, ' +
+        'as Express does, or set root, as Fastify does.',
+    );
+  }
+}
+
+/** The paths one directory's assets answer. */
+function mountsFor(
+  options: StaticAssetsOptions,
+): readonly string[] {
+  const { prefix } = options;
+  if (prefix === undefined || prefix === '') {
+    // A deployment that named no prefix answers every path.
+    return ['/*'];
+  }
+
+  return [prefix, `${prefix}/*`];
 }
 
 /** The transport options one directory is served with. */
@@ -233,20 +320,15 @@ function directoryHandler(
  * it answer.
  */
 function mountStaticAssets(target: StaticTarget): void {
-  const { hono, transport, path, options } = target;
+  const { hono, transport } = target;
+  const directories = directoriesOf(target);
+  const options = optionsOf(target);
   assertNoHooks(options);
   assertNoOtherModes(options);
+  assertDirectories(directories);
 
-  // A deployment that named no prefix has its assets answer
-  // every path.
-  const { prefix } = options;
-  let mounts: readonly string[] = ['/*'];
-  if (prefix !== undefined && prefix !== '') {
-    mounts = [prefix, `${prefix}/*`];
-  }
-
-  for (const directory of toDirectories(path)) {
-    for (const mount of mounts) {
+  for (const directory of directories) {
+    for (const mount of mountsFor(options)) {
       hono.use(
         mount,
         directoryHandler(directory, transport, options),
@@ -256,4 +338,4 @@ function mountStaticAssets(target: StaticTarget): void {
 }
 
 export { mountStaticAssets };
-export type { StaticAssetsOptions };
+export type { StaticAssetsOptions, StaticAssetsTarget };

@@ -208,17 +208,23 @@ so a failing socket is logged rather than thrown out of the
 event loop.
 
 What cannot be honoured is refused when the gateway starts
-rather than half served: a gateway with its own `port`, because
-every gateway is served on the HTTP adapter's own server, and a
-`namespace`, because the path is the whole address here.
-`@ConnectedSocket()` receives the socket, with the `send`,
-`close`, `on`, `once` and `readyState` Nest's contract declares
-— the pair `send` and `readyState` is how Nest tells a native
-WebSocket client from a Socket.IO one, and without both a
-handler that throws is answered through a channel this socket
-does not have. `@Ack()` is not wired: the acknowledgement
-travels back as the echoed `id`, which is what a client without
-a parser expects.
+rather than half served, and every option but `path` is one of
+them. A gateway with its own `port` would need a second HTTP
+listener, where every gateway is served on the HTTP adapter's
+own server. A `namespace` has no counterpart, because the path
+is the whole address here — upstream refuses one too, and points
+at `@nestjs/platform-socket.io`. A `server` cannot be driven by
+this transport, and the WebSocket server options
+(`perMessageDeflate`, `maxPayload` and the rest) cannot be
+passed to a server this adapter does not build. Each refusal
+names the option it read. `@ConnectedSocket()` receives the
+socket, with the `send`, `close`, `on`, `once` and `readyState`
+Nest's contract declares — the pair `send` and `readyState` is
+how Nest tells a native WebSocket client from a Socket.IO one,
+and without both a handler that throws is answered through a
+channel this socket does not have. `@Ack()` is not wired: the
+acknowledgement travels back as the echoed `id`, which is what a
+client without a parser expects.
 
 A client is bound to its gateway on the first frame it sends,
 rather than when the socket opens. That difference is invisible

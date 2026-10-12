@@ -9,7 +9,7 @@ import type { Server } from './server.ts';
 import type { Transport } from './transport.ts';
 import type { TrustProxy } from './request.ts';
 import { corsBridge } from '../features/cors-middleware.ts';
-import type { CorsOptions } from '../features/cors-middleware.ts';
+import type { CorsConfig } from '../features/cors-middleware.ts';
 import {
   guardBridge,
   instrumentationBridge,
@@ -73,7 +73,7 @@ abstract class HonoLifecycle extends RouteAdapter {
   protected bodyLimit: number;
   protected bodyParsingEnabled = false;
   protected rawBodyEnabled: boolean;
-  protected corsOptions: CorsOptions | undefined;
+  protected corsOptions: CorsConfig | undefined;
   /** The hook the instrumentation registered for a request. */
   private onRequestHook: OnRequestHook | undefined;
   /** The hook the instrumentation registered for an answer. */
@@ -106,7 +106,10 @@ abstract class HonoLifecycle extends RouteAdapter {
    * neither.
    */
   private installGuards(hono: NestHono): void {
-    const cors = corsBridge(() => this.corsOptions);
+    const cors = corsBridge(
+      () => this.corsOptions,
+      this.trustProxy,
+    );
     hono.use(
       '*',
       instrumentationBridge({

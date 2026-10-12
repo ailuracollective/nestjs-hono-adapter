@@ -95,25 +95,46 @@ is handed: the request Nest reads, built by `toNestRequest()`,
 and the Node response where the transport carries one — the
 stand-in that writes through the Hono context where it does not.
 
-### `enableCors()` — narrower than both
+### `enableCors()` — both signatures
 
-Express accepts `CorsOptions | CorsOptionsDelegate` and Fastify
-accepts a function, so an origin can be decided per request.
-`src/features/cors-middleware.ts` takes `CorsOptions` alone.
+Both are accepted: the fixed `CorsOptions`, and the
+`CorsOptionsDelegate` Express takes, whose callback is handed
+the request and answers the options that apply to it. A delegate
+runs per request inside the CORS bridge, which is why it builds
+the request a delegate reads — the same request bag a guard is
+handed, built with `toNestRequest()`. `options.origin` keeps
+working, and a delegate may combine the two.
 
-### `useStaticAssets()` — Express signature only
+### `useStaticAssets()` — both signatures
 
-Express takes `(path, options)`, Fastify takes `(options)` with
-the root inside it. `src/features/static-assets.ts` implements
-the first, so a consumer arriving from Fastify has to change the
-call.
+Express takes `(path, options)` and Fastify takes `(options)`
+with the root inside it; both are read, so neither consumer has
+to change the call. The first argument decides: a string or an
+array of them names the directories, anything else is the
+options object, and `root` inside it does the same. `prefix`,
+`index`, `maxAge` and the rest keep their meaning in either
+form. A call that names no directory at all is refused rather
+than serving nothing. A `URL` root is not accepted, because
+`FastifyStaticOptions['root']` allows one where the directories
+here are filesystem paths.
 
-### `setViewEngine()` — string only
+### `setViewEngine()` — both signatures
 
-Fastify also accepts an options object (`FastifyViewOptions`)
-and Express a string. Only the string form is implemented; the
-engine itself is configured through the `views` adapter option
-(`ViewOptions`).
+Express's engine name and Fastify's options object
+(`FastifyViewOptions`) are both read. From the object the
+adapter takes `root` or `templates` as the directories,
+`viewExt` as the extension, and `defaultContext` as data the
+handler's own overrides. The `engine` it names has to be a
+single engine — the function itself, or the `render` an engine
+such as `ejs` or `pug` exposes — because this adapter compiles
+from the template's source rather than from its path.
+`includeViewExtension`, `maxCache` and `production` are accepted
+and inert, since the adapter has no cache and always reads the
+template it was named. Every other field Fastify defines
+(`charset`, `layout`, `options`, `propertyName`,
+`asyncProperyName`) is refused by name rather than ignored. The
+engine the adapter was constructed with (`ViewOptions.engine`)
+still works on its own.
 
 ### `setLocal()`, `set()`, `enable()`, `disable()`, `engine()` — missing
 
@@ -165,13 +186,20 @@ with no listener throws it out of the event loop.
 `GatewayServer` and answers it, and `create()` calls it for
 every path.
 
-### `create()` options — partially honoured
+### `create()` options — `path` only, the rest refused
 
-`WsAdapter` passes the server options through (`noServer`,
-`perMessageDeflate`, `maxPayload`, and so on) and accepts a
-`server` to attach to. Only `path` is read here; a non-zero
-`port` and a `namespace` are refused rather than dropped, which
-is documented in [docs/deployment.md](deployment.md#websockets).
+`platform-ws` reads `server`, `path` and `namespace` out of the
+options and hands everything else to its own `ws.Server`; it
+refuses a namespace too, with the same advice to use
+`@nestjs/platform-socket.io`. Only `path` can be honoured here.
+A non-zero `port` would need a second HTTP listener; a `server`
+would have to be driven by this adapter's transport; a namespace
+has no counterpart; and the WebSocket server options cannot be
+passed on, because the transport builds its support from the
+Hono application alone
+(`createWebSocket?: (app) => WebSocketSupport`). All of them are
+refused by name rather than dropped, which is documented in
+[docs/deployment.md](deployment.md#websockets).
 
 ### `forceCloseConnections` — not honoured
 
@@ -278,18 +306,15 @@ Ordered by what it costs and what it unblocks.
    finds it blocked on three seams that do not exist here, and
    on the `./multipart` ceiling, so it needs a deliberate
    decision about that ceiling before it can be written.
-2. **Signature breadth.** The CORS delegate, the Fastify form of
-   `useStaticAssets()`, the object form of `setViewEngine()`,
-   and the server options `create()` currently drops.
-3. **`inject()`.** An in-process request helper for tests, on
+2. **`inject()`.** An in-process request helper for tests, on
    top of Hono's `app.request()`.
-4. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+3. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-5. **Write down the non-goals.** `useMultipart()`, the Express
+4. **Write down the non-goals.** `useMultipart()`, the Express
    settings API and the Fastify route decorators, in
    [docs/platform-differences.md](platform-differences.md) or
    here.
-6. **Settle one loose sentence.** `docs/architecture.md` says a
+5. **Settle one loose sentence.** `docs/architecture.md` says a
    transport's modules are the only ones that reach the builtins
    a runtime owns; `features/views` and `features/static-assets`
    reach `node:fs/promises` too, and the upload island's disk
