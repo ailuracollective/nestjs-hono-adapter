@@ -23,7 +23,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-examples-${{ github.workflow }}-${{ github.ref }}
+  group:
+    cloudflare-examples-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,7 +33,8 @@ jobs:
     # A pull request from a fork has no secrets to deploy with.
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name ==
+      github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -58,16 +60,21 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Workers Previews need wrangler >= 4.136.3; the repo pins 4.136.2.
           wranglerVersion: '4.149.0'
-          workingDirectory: examples/cloudflare/${{ matrix.example }}
+          workingDirectory:
+            examples/cloudflare/${{ matrix.example }}
           packageManager: bun
-          command: ${{ github.event_name == 'pull_request' && format('preview --name pr-{0}', github.event.pull_request.number) || 'deploy' }}
+          command:
+            ${{ github.event_name == 'pull_request' &&
+            format('preview --name pr-{0}',
+            github.event.pull_request.number) || 'deploy' }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
       - name: Comment the preview URL
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
           PREVIEW_URL: ${{ steps.cf.outputs.preview-url }}
-          PREVIEW_DEPLOYMENT_URL: ${{ steps.cf.outputs.preview-deployment-url }}
+          PREVIEW_DEPLOYMENT_URL:
+            ${{ steps.cf.outputs.preview-deployment-url }}
           EXAMPLE: ${{ matrix.example }}
         with:
           script: |
