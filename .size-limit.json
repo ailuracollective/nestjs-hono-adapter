@@ -109,7 +109,7 @@
   {
     "name": "multipart",
     "path": "dist/multipart/index.js",
-    "limit": 3800,
+    "limit": 4250,
     "brotli": true,
     "ignore": [
       "hono",

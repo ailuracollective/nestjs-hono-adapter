@@ -1,4 +1,9 @@
-import { Inject, mixin, Optional } from '@nestjs/common';
+import {
+  Inject,
+  mixin,
+  Optional,
+  StreamableFile,
+} from '@nestjs/common';
 import type {
   CallHandler,
   ExecutionContext,
@@ -7,6 +12,7 @@ import type {
   Type,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { catchError, concatMap, from, of } from 'rxjs';
 import type { Observable } from 'rxjs';
 
 import type { NestContext } from '../../core/context.ts';
@@ -14,6 +20,7 @@ import { declareMultipart } from '../../core/multipart.ts';
 import type { NestRequest } from '../../core/request.ts';
 import { MULTIPART_MODULE_OPTIONS } from '../files.constants.ts';
 import type {
+  MultipartFileStream,
   MultipartModuleOptions,
   MultipartOptions,
   MultipartStorageEngine,
@@ -21,6 +28,7 @@ import type {
 import { WRONG_ADAPTER_MESSAGE } from './multipart.constants.ts';
 import {
   processMultipart,
+  processStream,
   resolveStorage,
   validateLimits,
 } from './multipart.parser.ts';
@@ -120,4 +128,124 @@ function createMultipartInterceptor(
   return mixin(MixinInterceptor);
 }
 
-export { createMultipartInterceptor };
+/**
+ * Whether the answer already reads the upload: a
+ * `StreamableFile` built from the very stream the handler was
+ * handed drains the body itself while the response is written,
+ * so discarding first would take the bytes out from under it.
+ */
+function keepsUpload(
+  result: unknown,
+  file: MultipartFileStream | undefined,
+): boolean {
+  return (
+    result instanceof StreamableFile &&
+    file !== undefined &&
+    result.getStream() === file.stream
+  );
+}
+
+/** The error to hand on, when what arrived was not one. */
+function asError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  return new Error(String(error));
+}
+
+/** Discards what the handler left unread, then answers. */
+async function afterDrain(
+  drain: () => Promise<void>,
+  result: unknown,
+): Promise<unknown> {
+  await drain();
+  return result;
+}
+
+/** Discards what the handler left unread, then fails. */
+async function afterDrainFailure(
+  drain: () => Promise<void>,
+  error: unknown,
+): Promise<never> {
+  await drain();
+  throw asError(error);
+}
+
+/**
+ * One answer: passed on when it reads the upload itself, and
+ * discarded before it goes out when it does not.
+ */
+function answer(
+  result: unknown,
+  file: MultipartFileStream | undefined,
+  drain: () => Promise<void>,
+): Observable<unknown> {
+  if (keepsUpload(result, file)) {
+    return of(result);
+  }
+  return from(afterDrain(drain, result));
+}
+
+/**
+ * Builds the interceptor a streaming upload decorator exports.
+ * It parses a multipart body as far as the file the decorator
+ * named and hands it over unread, so the handler can pipe it
+ * somewhere instead of holding it, as
+ * `@nestjs/platform-fastify` does.
+ *
+ * Whatever the handler leaves unread is discarded before the
+ * answer goes out, as multer discards it: answering while a
+ * client is still uploading makes Node.js close the connection
+ * under it (EPIPE or ECONNRESET on the client) when it is not
+ * kept alive, and leaves a kept-alive one with an unread body.
+ * An answer that streams the upload itself is the exception,
+ * because it drains the body as it is written; there is a test
+ * for each.
+ */
+function createMultipartStreamInterceptor(
+  fieldName: string,
+  localOptions?: MultipartOptions,
+): Type<NestInterceptor> {
+  class MixinInterceptor extends MultipartInterceptorHost {
+    public constructor(
+      @Optional()
+      @Inject(MULTIPART_MODULE_OPTIONS)
+      options: MultipartModuleOptions = {},
+      @Optional()
+      @Inject(HttpAdapterHost)
+      adapterHost?: HttpAdapterHost,
+    ) {
+      super(options, adapterHost, localOptions);
+    }
+
+    public async intercept(
+      context: ExecutionContext,
+      next: CallHandler,
+    ): Promise<Observable<unknown>> {
+      const http = context.switchToHttp();
+      const parsed = await processStream(
+        http.getResponse<NestContext>(),
+        http.getRequest<NestRequest>(),
+        fieldName,
+        this.options,
+      );
+      if (parsed === undefined) {
+        return next.handle();
+      }
+      return next.handle().pipe(
+        concatMap((result: unknown) =>
+          answer(result, parsed.file, parsed.drain),
+        ),
+        catchError((error: unknown) =>
+          from(afterDrainFailure(parsed.drain, error)),
+        ),
+      );
+    }
+  }
+  return mixin(MixinInterceptor);
+}
+
+export {
+  createMultipartInterceptor,
+  createMultipartStreamInterceptor,
+};

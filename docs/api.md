@@ -167,6 +167,7 @@ adapter instead of widening the contract.
 ```ts
 import {
   FileInterceptor,
+  FileStreamInterceptor,
   FilesInterceptor,
   FileFieldsInterceptor,
   AnyFilesInterceptor,
@@ -191,6 +192,19 @@ the same options.
 | `FileFieldsInterceptor` | Files in each of several fields → grouped by name |
 | `AnyFilesInterceptor`   | Every file, any field → array                     |
 | `NoFilesInterceptor`    | Text fields only; a file is a `400`               |
+| `FileStreamInterceptor` | One file in a named field → a live stream         |
+
+`FileStreamInterceptor(fieldName, localOptions?)` is the
+streaming member of the family, the counterpart of
+`@nestjs/platform-fastify/multipart`'s interceptor of the same
+name, and it stores nothing: `@UploadedFile()` reads a
+`MultipartFileStream`, whose `stream` carries the bytes as they
+arrive. Only what the handler reads is taken from the client,
+and whatever it leaves unread is discarded once the handler has
+answered, so a client that is still uploading is never left
+hanging. Its options type omits `dest` and `storage`, because
+nothing is stored, and `limits.fileSize` is enforced on the
+stream rather than on the request.
 
 `MultipartModule.register(options)` (and `registerAsync`)
 provides defaults every interceptor in the importing module
@@ -275,29 +289,42 @@ namespace is refused.
 | `immutable` | `boolean`          | `false`      | Mark the cache as immutable (requires `maxAge`)      |
 | `redirect`  | `boolean`          | `true`       | Redirect directory requests to the index             |
 
+### `MultipartFileStream`
+
+What `FileStreamInterceptor` hands the handler instead of a
+stored file.
+
+| Property       | Type       | Description                             |
+| -------------- | ---------- | --------------------------------------- |
+| `fieldname`    | `string`   | Field name the file arrived under       |
+| `originalname` | `string`   | Name of the file on the client, as sent |
+| `encoding`     | `string`   | Transfer encoding the part declared     |
+| `mimetype`     | `string`   | Media type the part declared            |
+| `stream`       | `Readable` | The bytes, live from the request        |
+
 ### `NestRequest`
 
 The request object Nest reads. Key properties:
 
-| Property      | Type                                                         | Description                                     |
-| ------------- | ------------------------------------------------------------ | ----------------------------------------------- |
-| `method`      | `string`                                                     | HTTP method                                     |
-| `url`         | `string`                                                     | The full URL                                    |
-| `originalUrl` | `string`                                                     | Path plus query string                          |
-| `path`        | `string`                                                     | The pathname                                    |
-| `hostname`    | `string`                                                     | The hostname                                    |
-| `protocol`    | `string`                                                     | `'http'` or `'https'`                           |
-| `secure`      | `boolean`                                                    | Whether the connection is TLS                   |
-| `ip`          | `string \| undefined`                                        | The client IP                                   |
-| `ips`         | `string[]`                                                   | Forwarded IPs                                   |
-| `headers`     | `Record<string, string>`                                     | Request headers                                 |
-| `query`       | `ParsedQuery`                                                | Parsed query string                             |
-| `params`      | `Record<string, string>`                                     | Route parameters                                |
-| `body`        | `unknown`                                                    | Parsed request body                             |
-| `rawBody`     | `Buffer \| undefined`                                        | Raw body bytes (when `rawBody: true`)           |
-| `file`        | `unknown`                                                    | The single upload an interceptor stored         |
-| `files`       | `Record<string, unknown> \| readonly unknown[] \| undefined` | The uploads an interceptor stored               |
-| `socket`      | `Socket`                                                     | The request's socket, as the runtime reports it |
+| Property      | Type                                                         | Description                                                         |
+| ------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `method`      | `string`                                                     | HTTP method                                                         |
+| `url`         | `string`                                                     | The full URL                                                        |
+| `originalUrl` | `string`                                                     | Path plus query string                                              |
+| `path`        | `string`                                                     | The pathname                                                        |
+| `hostname`    | `string`                                                     | The hostname                                                        |
+| `protocol`    | `string`                                                     | `'http'` or `'https'`                                               |
+| `secure`      | `boolean`                                                    | Whether the connection is TLS                                       |
+| `ip`          | `string \| undefined`                                        | The client IP                                                       |
+| `ips`         | `string[]`                                                   | Forwarded IPs                                                       |
+| `headers`     | `Record<string, string>`                                     | Request headers                                                     |
+| `query`       | `ParsedQuery`                                                | Parsed query string                                                 |
+| `params`      | `Record<string, string>`                                     | Route parameters                                                    |
+| `body`        | `unknown`                                                    | Parsed request body                                                 |
+| `rawBody`     | `Buffer \| undefined`                                        | Raw body bytes (when `rawBody: true`)                               |
+| `file`        | `unknown`                                                    | The upload an interceptor stored, or the live stream it handed over |
+| `files`       | `Record<string, unknown> \| readonly unknown[] \| undefined` | The uploads an interceptor stored                                   |
+| `socket`      | `Socket`                                                     | The request's socket, as the runtime reports it                     |
 
 ### `TrustProxy`
 

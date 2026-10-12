@@ -5,6 +5,7 @@ export type {
 } from './files-upload-module.interface.ts';
 export type {
   IncomingMultipartFile,
+  MultipartFileStream,
   UploadedMultipartFile,
 } from './multipart-file.interface.ts';
 export type {

@@ -53,6 +53,26 @@ the comparison for the code structure they describe.
 > rather than hidden — `index` moved to 9250 B, 71 B of
 > headroom. No other entrypoint moved.
 
+> **Update after that — the streaming upload seam.** The first
+> item of the backlog in `docs/parity.md` added the streaming
+> form of the upload interceptor: `FileStreamInterceptor`, the
+> `processStream()` the parser gains beside
+> `processMultipart()`, and the `MultipartFileStream` it hands
+> over. All of it lands in the upload island, and `multipart`
+> grew 553 B with it: 3653 B before, 4206 B after, against a
+> 3800 B ceiling that left 147 B.
+>
+> The raise is 450 B, to 4250 B, and it is recorded in
+> `docs/architecture.md`; the island carries the seam and
+> nothing else does. Reading the body rather than cancelling it
+> — the discard that lets a client finish uploading — and
+> keeping the parts that follow the one being taken out of
+> `req.body` are the two halves of it, with the file-size limit
+> moved onto the stream, which is what the handler can act on.
+> Every other entrypoint is untouched: `index` 9754 B,
+> `bun-server` 981 B, `node-server` 511 B, `fetch` 418 B and
+> `ws` 1543 B, each inside its unchanged ceiling.
+
 ## Environment
 
 | Tool                                  | Version                     |

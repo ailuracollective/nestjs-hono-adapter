@@ -14,6 +14,7 @@ export {
   FileFieldsInterceptor,
   FileInterceptor,
   FilesInterceptor,
+  FileStreamInterceptor,
   NoFilesInterceptor,
 } from './interceptors/index.ts';
 export type {
@@ -30,6 +31,7 @@ export {
 export type {
   IncomingMultipartFile,
   MultipartField,
+  MultipartFileStream,
   MultipartLimits,
   MultipartOptions,
   MultipartStorageEngine,
