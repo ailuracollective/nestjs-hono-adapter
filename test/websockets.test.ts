@@ -1,7 +1,7 @@
-import { expect, test } from 'bun:test';
+import { expect, spyOn, test } from 'bun:test';
 import type { Server as HttpServer } from 'node:http';
 
-import { Injectable, Module } from '@nestjs/common';
+import { Injectable, Logger, Module } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { createNodeWebSocket } from '@hono/node-ws';
@@ -605,23 +605,67 @@ test('setMessageParser() replaces the reader in place', async () => {
   }
 });
 
-test('a parser that throws drops the frame', async () => {
+/**
+ * Watches the adapter's logger, so a case can tell a failure it
+ * reported from one it only threw.
+ */
+function watchLogger(): {
+  readonly restore: () => void;
+  readonly seen: unknown[];
+} {
+  const seen: unknown[] = [];
+  const spy = spyOn(
+    Logger.prototype,
+    'error',
+  ).mockImplementation((message: unknown) => {
+    seen.push(message);
+  });
+  return {
+    restore: () => {
+      spy.mockRestore();
+    },
+    seen,
+  };
+}
+
+/**
+ * Opens a gateway whose parser throws, sends one frame, and
+ * answers what the socket saw, whether it stayed open, and what
+ * the adapter reported.
+ */
+async function parseFailureProbe(failure: Error): Promise<{
+  readonly frames: unknown[];
+  readonly open: boolean;
+  readonly reported: unknown[];
+}> {
+  const watched = watchLogger();
   const probe = await startGateways(bunAdapter(), {
     messageParser: () => {
-      throw new Error('a parser the application replaced');
+      throw failure;
     },
   });
   const socket = await open(socketUrl(probe, GATEWAY_PATH));
-  try {
-    const frames = collect(socket);
-    socket.send(JSON.stringify({ amount: INPUT, event: PING }));
-    await quiet(QUIET_MS);
-    expect(frames()).toStrictEqual([]);
-    expect(socket.readyState).toBe(WebSocket.OPEN);
-  } finally {
-    socket.close();
-    await probe.close();
-  }
+  const frames = collect(socket);
+  socket.send(JSON.stringify({ amount: INPUT, event: PING }));
+  await quiet(QUIET_MS);
+  const stayedOpen = socket.readyState === WebSocket.OPEN;
+  await probe.close();
+  watched.restore();
+  return {
+    frames: frames(),
+    open: stayedOpen,
+    reported: watched.seen,
+  };
+}
+
+test('a parser that throws drops the frame and is reported', async () => {
+  const failure = new Error(
+    'a parser the application replaced',
+  );
+  const outcome = await parseFailureProbe(failure);
+  expect(outcome.frames).toStrictEqual([]);
+  expect(outcome.open).toBe(true);
+  expect(outcome.reported).toContain(failure);
 });
 
 test('a failure on a path or its socket is reported, not thrown', () => {
