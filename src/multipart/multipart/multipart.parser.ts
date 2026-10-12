@@ -238,6 +238,24 @@ function configFor(
 }
 
 /**
+ * Busboy refuses a content type with no boundary by throwing
+ * from its own constructor, synchronously. The guard around the
+ * parse below therefore never sees that failure, and neither
+ * does the mapping at the end of it: it has to be mapped here,
+ * where it is raised, or a boundaryless request answers 500
+ * where Express and Fastify answer 400.
+ */
+function createBusboy(
+  config: BusboyConfig,
+): ReturnType<typeof Busboy> {
+  try {
+    return Busboy(config);
+  } catch (error: unknown) {
+    throw transformException(error);
+  }
+}
+
+/**
  * Stores one file and answers the shape multer gives it: a file
  * without a name is ignored, a file the filter refuses is
  * drained and skipped, and one busboy truncated at `fileSize`
@@ -313,7 +331,7 @@ async function processMultipart(
   }
 
   const limits = resolveLimits(request, options);
-  const busboy = Busboy(
+  const busboy = createBusboy(
     configFor(contentType, limits, options),
   );
   const source = Readable.fromWeb(
