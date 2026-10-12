@@ -153,11 +153,23 @@ supported path, so there is nothing to turn on. It is recorded
 as a non-goal in
 [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
-### `inject()` — missing
+### `inject()` — implemented
 
 Fastify's light-my-request in-process testing helper, reached as
-`app.inject()`. A test suite that used it has no equivalent
-here, although Hono's own `app.request()` could back one.
+`app.inject()`. It is declared on the adapter and answers
+through Hono's own `app.request()`, so a suite reaches its
+routes without binding a port. Both call forms are read — the
+options object and the `'GET /path'` string — along with
+`url`/`path`, `method`, `headers`, `query`, `payload`/`body`,
+`cookies` and `signal`. The answer carries `statusCode`,
+`statusMessage`, `headers` (with `set-cookie` as a list),
+`rawPayload`, `payload`, `body`, `json()`, `stream()` and
+`cookies`. Four options - `remoteAddress`, `authority`,
+`Request` and `payloadAsStream` — are refused by name rather
+than ignored, and `raw` and `trailers` are absent rather than
+faked, as
+[platform-differences.md](platform-differences.md#what-inject-does-not-carry)
+records.
 
 ## WebSocket adapter
 
@@ -329,9 +341,7 @@ rather than emulated.
 
 Ordered by what it costs and what it unblocks.
 
-1. **`inject()`.** An in-process request helper for tests, on
-   top of Hono's `app.request()`.
-2. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+1. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
 
 The non-goals and the runtime surface are written down:

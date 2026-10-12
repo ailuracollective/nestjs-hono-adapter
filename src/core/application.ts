@@ -11,6 +11,7 @@
 import type { Server as NativeServer } from 'node:http';
 import type { INestApplication } from '@nestjs/common';
 
+import type { InjectRunner } from './inject.ts';
 import type { Server } from './server.ts';
 import type { NestHono } from './context.ts';
 import type { ServerAdapter } from './server-adapter.ts';
@@ -53,6 +54,25 @@ interface NestHonoApplication extends INestApplication<
    * cast.
    */
   getHttpAdapter: () => ServerAdapter;
+  /**
+   * Answers a request inside the process, without a port: the
+   * helper `@nestjs/platform-fastify` publishes as
+   * `app.inject()` and a suite uses to reach its routes without
+   * listening.
+   *
+   * It is declared here because that is where the surface is
+   * reached — `NestFactory.create` returns the application
+   * behind a proxy that forwards a property the adapter
+   * carries, so the method runs on the adapter with no cast.
+   * The type also holds for `getHttpAdapter()`, which is typed
+   * as the adapter itself.
+   *
+   * Unlike Fastify's, the answer carries no `raw` Node request
+   * and response and no `trailers`: this adapter answers
+   * through the Fetch API and opens no socket. See
+   * [platform-differences.md](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/platform-differences.md).
+   */
+  inject: InjectRunner;
 }
 
 declare module '@nestjs/common' {

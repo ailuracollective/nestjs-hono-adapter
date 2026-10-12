@@ -21,6 +21,11 @@ export type {
   WebSocketSupport,
 } from './core/transport.ts';
 export type { NestHonoApplication } from './core/application.ts';
+export type {
+  InjectCookie,
+  InjectOptions,
+  InjectResponse,
+} from './core/inject.ts';
 export type { ParsedBody } from './core/body.ts';
 export type {
   NestHandler,

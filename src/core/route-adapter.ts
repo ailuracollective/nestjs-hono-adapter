@@ -3,12 +3,14 @@ import type { VersioningOptions } from '@nestjs/common';
 import { AbstractHttpAdapter } from '@nestjs/core';
 
 import type { Server } from './server.ts';
-import type { NestContext } from './context.ts';
+import type { NestContext, NestHono } from './context.ts';
 import type { NestHandler, NestRequest } from './request.ts';
 import { createVersionFilter } from './version-filter.ts';
 import type { VersionValue } from './version-filter.ts';
 import { asVersionedRoute } from './versioned-route.ts';
 import type { VersionedRoute } from './versioned-route.ts';
+import { createInject } from './inject.ts';
+import type { InjectRunner } from './inject.ts';
 
 /**
  * Nest's verb enum mapped onto HTTP method names, for the one
@@ -101,6 +103,22 @@ abstract class RouteAdapter extends AbstractHttpAdapter<
   NestRequest,
   NestContext
 > {
+  /**
+   * Answers an in-process request, as Fastify's `app.inject()`
+   * does, without binding a port: the entry point a suite uses
+   * to reach its routes without listening.
+   *
+   * It is an own property rather than a method because
+   * `NestFactory.create` returns the application behind a proxy
+   * that forwards a property the adapter carries, so this is
+   * what makes `app.inject()` work without a cast to the
+   * adapter first. The application is asked for on each call
+   * rather than captured, so a runner built before a subclass
+   * finished constructing still reaches the one being served.
+   */
+  public inject: InjectRunner = (options) =>
+    createInject(this.getInstance<NestHono>())(options);
+
   /** Registers one route with the underlying framework. */
   protected abstract register(
     method: string,

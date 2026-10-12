@@ -217,3 +217,31 @@ needs seams this adapter does not have, and a `./socket-io`
 subpath is recorded in
 [parity.md](parity.md#nestplatform-socketio--missing-entirely)
 for the same reason on the fetch transport.
+
+## What `inject()` does not carry
+
+Fastify's `app.inject()` is implemented here, with four
+differences a suite should read before it moves.
+
+- **`raw` and `trailers` are absent, not empty.** The answer is
+  a Web `Response` read through the Fetch API: there is no Node
+  request and response object behind it to hand back, and no
+  header block after the body. Everything else light-my-request
+  reports is there: `statusCode`, `statusMessage`, `headers`,
+  `rawPayload`, `payload`, `body`, `json()`, `stream()` and
+  `cookies`, attributes included.
+- **The builder and the callback form are not implemented.**
+  `inject().get('/path').end()` and `inject(options, cb)` belong
+  to light-my-request's `Chain`; the options object and the
+  `'GET /path'` string are the two entry points here.
+- **The application has to be initialized.** `inject()` answers
+  from the routes Nest has registered, so a suite calls
+  `await app.init()` (or `listen()`) first, as it does for the
+  fetch transport. Fastify's helper starts the instance it is
+  handed; this one has no application to start.
+- **Four options are refused rather than ignored**, because each
+  describes a socket this call never opens: `remoteAddress`,
+  `authority`, `Request` and `payloadAsStream` throw naming
+  themselves instead of answering something wrong. `simulate`,
+  `validate`, `autoStart` and `server` describe how a socket is
+  driven; they are accepted and change nothing.
