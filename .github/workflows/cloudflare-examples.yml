@@ -39,7 +39,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      deployments: write
       pull-requests: write
     strategy:
       fail-fast: false
@@ -66,26 +65,31 @@ jobs:
             ${{ github.event_name == 'pull_request' &&
             format('preview --name pr-{0}',
             github.event.pull_request.number) || 'deploy' }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
       - name: Comment the preview URL
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' && !cancelled()
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
+          EXAMPLE: ${{ matrix.example }}
+          OUTCOME: ${{ steps.cf.outcome }}
           PREVIEW_URL: ${{ steps.cf.outputs.preview-url }}
           PREVIEW_DEPLOYMENT_URL:
             ${{ steps.cf.outputs.preview-deployment-url }}
-          EXAMPLE: ${{ matrix.example }}
         with:
           script: |
             const marker = `<!-- cloudflare-examples:${process.env.EXAMPLE} -->`;
             const url = process.env.PREVIEW_URL || process.env.PREVIEW_DEPLOYMENT_URL;
+            const passed = process.env.OUTCOME === 'success';
+            const detail = passed
+              ? url
+                ? `🔗 ${url}`
+                : 'Deployed, but no URL was reported.'
+              : 'The deployment failed. See the workflow run for the logs.';
             const body = [
               marker,
-              `### Cloudflare preview — \`${process.env.EXAMPLE}\``,
+              `### ${passed ? '✅' : '❌'} Cloudflare preview — \`${process.env.EXAMPLE}\``,
               '',
-              url
-                ? `🔗 ${url}`
-                : 'Preview deployed, but no URL was reported.',
+              detail,
             ].join('\n');
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
