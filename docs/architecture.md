@@ -248,20 +248,30 @@ builtins are in use: `node:buffer`, `node:crypto`,
 `node:events`, `node:fs`, `node:fs/promises`, `node:http`,
 `node:https`, `node:os`, `node:path`, `node:stream`,
 `node:stream/promises` and `node:util`. Nest's own SSE path is a
-`node:stream` `Writable`, views and static assets read the
-filesystem, the Node transport builds an `http.Server` with
-`node:https` for TLS, and the upload island's disk storage picks
-a random name with `node:crypto` and a directory with `node:os`,
-then writes and removes the file with `node:fs`,
-`node:fs/promises` and `node:stream/promises`.
-`test/node-builtins.test.ts` freezes that set. Adding one is a
-deliberate edit to both the source and the freeze, so the test
-failing is the signal, not an obstacle to route around.
+`node:stream` `Writable`, views read the filesystem with
+`node:fs/promises` and `node:path`, the Node transport builds an
+`http.Server` with `node:https` for TLS, and the upload island's
+disk storage picks a random name with `node:crypto` and a
+directory with `node:os`, then names the file with `node:path`
+and writes and removes it with `node:fs`, `node:fs/promises` and
+`node:stream/promises`. Static assets are not on that list:
+`features/static-assets.ts` imports no builtin at all and leaves
+the reading to the transport's `serveStatic()`, so the
+filesystem is reached for them by whichever transport serves
+them. `test/node-builtins.test.ts` freezes that set. Adding one
+is a deliberate edit to both the source and the freeze, so the
+test failing is the signal, not an obstacle to route around.
 
 Type-only imports count toward the frozen set, because a
 type-only import still couples a module's types to the platform.
-A transport's modules are the only ones that reach the builtins
-a runtime owns.
+The builtins are reached from more than the transports: `core/`
+takes `node:buffer`, `node:events` and `node:stream` as values
+and `node:http` as types, the CORS bridge takes `node:util`, and
+views and the island's disk storage take the filesystem ones.
+What only a transport does is **build** a server, and that
+narrower claim does hold: `servers/node.ts` is the only module
+that calls `node:https`, and every other `node:http` import in
+`src/` is a type.
 
 ## The bundle budget
 
@@ -274,7 +284,7 @@ The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
 `index` has a 9760-byte ceiling and a measurement of 9754,
 `bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
-`multipart` 3800/3653 and `ws` 1550/1543.
+`multipart` 4250/4206 and `ws` 1550/1543.
 
 The signature forms the platform adapters accept arrived next.
 `enableCors()` reads a per-request delegate, which means the
@@ -324,6 +334,31 @@ entrypoint, so its parser and storage are counted against
 `multipart` alone and never against a deployment that serves no
 upload.
 
+The streaming interceptor is the same island's second seam, and
+it stays there. `FileStreamInterceptor` hands a file part over
+as a live `MultipartFileStream` and discards what the handler
+leaves; that costs 553 bytes in `multipart` — 3653 to 4206 —
+past the 3800-byte ceiling that left 147. The ceiling moves to
+4250, which leaves the 44 bytes of headroom `bun-server` runs
+with. The raise is deliberate and belongs to this entrypoint
+alone: the island may become its own package, so a design that
+reads as one beats one that shaves bytes, and no deployment that
+serves no upload pays any of it. Three pieces the reconnaissance
+in [parity.md](parity.md#file-uploads) calls missing are closed
+inside the island. Busboy hands the part over while it is still
+parsing, so the handler reads a live stream and the parts after
+it are read but not parsed; the discard reads the Web body
+rather than cancelling it, because a cancelled body reaches the
+client as an aborted request; and the drain upstream defers to
+the socket `close` runs before the answer goes out here, unless
+the answer is built from the very stream the handler was handed
+— `StreamableFile.getStream()` makes that checkable, and an
+answer that reads the upload drains the body as it is written.
+The interceptor reads `catchError`, `concatMap`, `from` and `of`
+from `rxjs` as values; it is a peer the island's consumers
+already have, so the gate leaves it out and this entrypoint is
+charged nothing for it.
+
 The transport split moved weight between entrypoints rather than
 out of the package. `index` serves through the Node transport by
 default, so `node-server`'s server-building half is reachable
@@ -370,7 +405,12 @@ callbacks, and its request-shaped parser has more parameters and
 statements per function than the house style allows. The
 type-safety rules stay on everywhere else. Relaxing a rule for
 one file rather than for the region is preferred when a
-single-file exception is enough.
+single-file exception is enough, which is also why
+`FileStreamInterceptor` sits in
+`interceptors/file.interceptor.ts` beside the buffered one
+rather than in a file of its own: file names, not directories,
+are what those blocks name, so a new file would mean a new
+exception rather than a moved one.
 
 Two later exceptions follow the same rule. `test/**` carries a
 700-line ceiling rather than 400, because an end-to-end suite

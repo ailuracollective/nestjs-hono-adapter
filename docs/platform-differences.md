@@ -11,6 +11,7 @@ disagree, and how it reads Nest's path, query and body dialects.
 - [Request bodies](#request-bodies)
 - [Responses](#responses)
 - [Instrumentation hooks](#instrumentation-hooks)
+- [What this adapter does not implement](#what-this-adapter-does-not-implement)
 
 ## Where the platform adapters disagree
 
@@ -181,3 +182,38 @@ Both are handed the same two objects the security hook Nest
 registers is handed: the request Nest reads, and the Node
 response where the transport carries one — the stand-in that
 writes through the Hono context where it does not.
+
+## What this adapter does not implement
+
+Three platform APIs have no counterpart here. They are recorded
+rather than emulated, because each one describes a framework
+this adapter is not: an equivalent would be a different feature,
+not a port, and a silent no-op would be worse than a named gap.
+
+- **`useMultipart()`** is Fastify's explicit opt-in for
+  `@fastify/multipart`. There is nothing to turn on here: a body
+  is read on demand through Hono's `parseBody()`, and the upload
+  interceptors behind `./multipart` are the supported path.
+- **The Express settings API** — `setLocal()`, `set()`,
+  `enable()`, `disable()` and `engine()`, reached through
+  `NestExpressApplication`. `setBaseViewsDir()` and
+  `setViewEngine()` are implemented directly, so views work, but
+  the generic settings bag they would write into does not exist
+  and nothing here reads it.
+- **The Fastify route decorators** — `@RouteSchema()`,
+  `@RouteConfig()` and `@RouteConstraints()`, which write the
+  metadata keys `__fastify_route_schema__`,
+  `__fastify_route_config__` and
+  `__fastify_route_constraints__`. Only `FastifyAdapter` reads
+  those keys, and nothing in `src/` does, so on this adapter the
+  three are no-ops: they neither fail nor change a route. A Hono
+  equivalent would be a new feature, not a port of these.
+
+Two more are deliberately absent for a reason that is not
+architectural, and each is documented where it belongs:
+`FileStreamInterceptor` is recorded in
+[parity.md](parity.md#file-uploads), because the streaming path
+needs seams this adapter does not have, and a `./socket-io`
+subpath is recorded in
+[parity.md](parity.md#nestplatform-socketio--missing-entirely)
+for the same reason on the fetch transport.

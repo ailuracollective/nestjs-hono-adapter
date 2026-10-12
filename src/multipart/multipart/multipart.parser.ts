@@ -1,4 +1,7 @@
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import Busboy from 'busboy';
 import type { BusboyConfig } from 'busboy';
 import { Readable } from 'node:stream';
@@ -8,6 +11,7 @@ import type { NestRequest } from '../../core/request.ts';
 import type {
   IncomingMultipartFile,
   MultipartField,
+  MultipartFileStream,
   MultipartLimits,
   MultipartOptions,
   MultipartStorageEngine,
@@ -18,7 +22,10 @@ import {
   memoryStorage,
 } from '../storage/index.ts';
 import { appendField } from './append-field.util.ts';
-import { busboyExceptions } from './multipart.constants.ts';
+import {
+  busboyExceptions,
+  multerExceptions,
+} from './multipart.constants.ts';
 import { MultipartError } from './multipart.error.ts';
 import { transformException } from './multipart.utils.ts';
 
@@ -476,8 +483,289 @@ async function processMultipart(
   request.body = body;
 }
 
+/**
+ * A promise and the two ways to settle it, so a parse running
+ * from busboy callbacks can announce its outcome to the
+ * caller.
+ */
+interface Pending {
+  promise: Promise<void>;
+  resolve: () => void;
+  reject: (reason: unknown) => void;
+}
+
+/** One promise, settled from outside. */
+function pending(): Pending {
+  let settle: (() => void) | undefined = undefined;
+  let refuse: ((reason: unknown) => void) | undefined =
+    undefined;
+  const promise = new Promise<void>((resolve, reject) => {
+    settle = resolve;
+    refuse = reject;
+  });
+  return {
+    promise,
+    reject: (reason) => refuse?.(reason),
+    resolve: () => settle?.(),
+  };
+}
+
+/**
+ * Reads and discards whatever is left of the body.
+ *
+ * Busboy is detached first, the way multer detaches the raw
+ * request before resuming it: the bytes that follow the part
+ * the handler was handed interest nobody, and leaving them
+ * unread is what makes a client that is still uploading fail
+ * with EPIPE or ECONNRESET, once a connection that is not kept
+ * alive closes under it. The body is read rather than
+ * cancelled, and deliberately so: a Web body that is cancelled
+ * instead of read reaches the client as an aborted request,
+ * which is the failure this avoids.
+ */
+function drainBody(
+  source: Readable,
+  busboy: ReturnType<typeof Busboy>,
+): Promise<void> {
+  source.unpipe(busboy);
+  if (source.readableEnded || source.destroyed) {
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    const done = (): void => {
+      resolve();
+    };
+    source.once('end', done);
+    source.once('close', done);
+    source.once('error', done);
+    source.resume();
+  });
+}
+
+/** What a streaming parse leaves for the interceptor. */
+interface StreamParse {
+  /**
+   * The file the form named, or undefined when the body carried
+   * none in that field. Its stream is live: only what the
+   * handler reads is taken from the client.
+   */
+  file: MultipartFileStream | undefined;
+  /**
+   * Discards whatever is left of the body, so a client that is
+   * still uploading can finish. Answers with the promise of the
+   * first call, so calling it twice is safe.
+   */
+  drain: () => Promise<void>;
+}
+
+/**
+ * Parses a multipart body as far as the first file in
+ * `fieldName` and hands that file over as a live stream.
+ *
+ * The streaming counterpart of `processMultipart`: nothing is
+ * stored, `req.body` holds the text fields that preceded the
+ * file, and the parts that follow it are read but not parsed,
+ * as `@nestjs/platform-fastify` leaves them. What the handler
+ * does not read is discarded by `drain`, which the interceptor
+ * calls once the handler has answered.
+ *
+ * A body that is not multipart is left untouched, and answers
+ * undefined so the caller drains nothing: such a body belongs
+ * to the request path, not to this island.
+ */
+async function processStream(
+  context: NestContext,
+  request: NestRequest,
+  fieldName: string,
+  options: MultipartOptions,
+): Promise<StreamParse | undefined> {
+  const contentType = context.req.header('content-type') ?? '';
+  if (!isMultipart(contentType)) {
+    return undefined;
+  }
+  const web = context.req.raw.body;
+  if (web === null) {
+    throw new BadRequestException(
+      busboyExceptions.MULTIPART_UNEXPECTED_END_OF_FORM,
+    );
+  }
+
+  const limits = resolveLimits(request, options);
+  const busboy = createBusboy(
+    configFor(contentType, limits, options),
+  );
+  const source = Readable.fromWeb(
+    web as unknown as Parameters<typeof Readable.fromWeb>[0],
+  );
+  const body: Record<string, unknown> = Object.create(null);
+  request.body = body;
+  request.file = undefined;
+  request.files = undefined;
+
+  /**
+   * What settles the wait below: the file arriving, the parse
+   * ending without one, or a failure in between.
+   */
+  const ready = pending();
+  let handed: MultipartFileStream | undefined = undefined;
+  let taken = false;
+  let failure: unknown = undefined;
+
+  const fail = (error: unknown): void => {
+    if (failure !== undefined) {
+      return;
+    }
+    failure = error;
+    /**
+     * A reader already holding the stream has to fail too:
+     * after the handover the parse runs on its own, so an abort
+     * that arrives later can reach the handler this way only.
+     */
+    if (handed !== undefined && !handed.stream.destroyed) {
+      handed.stream.destroy(
+        error instanceof Error
+          ? error
+          : new Error(String(error)),
+      );
+    }
+    ready.reject(error);
+  };
+
+  /**
+   * Takes one file part. A part with no filename is a text
+   * field busboy reports as a file, and a part the filter
+   * refuses is discarded, both as the storing path treats them:
+   * the parse carries on looking for the field that was asked
+   * for.
+   */
+  const handOver = async (
+    name: string,
+    stream: Readable & { truncated?: boolean },
+    info: {
+      filename?: string | undefined;
+      encoding: string;
+      mimeType: string;
+    },
+  ): Promise<void> => {
+    const originalname = info.filename ?? '';
+    if (originalname === '') {
+      taken = false;
+      stream.resume();
+      return;
+    }
+    const file: IncomingMultipartFile = {
+      encoding: info.encoding,
+      fieldname: name,
+      mimetype: info.mimeType,
+      originalname: decodeFormDataName(originalname),
+      stream,
+    };
+    if (!(await applyFileFilter(options, request, file))) {
+      taken = false;
+      stream.resume();
+      return;
+    }
+    /**
+     * Busboy stops at `fileSize` in silence, where the storing
+     * path notices afterwards and fails the request. Here the
+     * handler is the only one that can notice, so its read is
+     * failed instead, with the answer Express and Fastify
+     * give.
+     */
+    const refuse = (): void => {
+      stream.destroy(
+        new PayloadTooLargeException(
+          multerExceptions.LIMIT_FILE_SIZE,
+        ),
+      );
+    };
+    if (stream.truncated === true) {
+      refuse();
+    } else {
+      stream.once('limit', refuse);
+    }
+    handed = {
+      encoding: file.encoding,
+      fieldname: file.fieldname,
+      mimetype: file.mimetype,
+      originalname: file.originalname,
+      stream,
+    };
+    request.file = handed;
+    ready.resolve();
+  };
+
+  busboy.on('field', (name, value, info) => {
+    if (taken || failure !== undefined) {
+      return;
+    }
+    try {
+      appendTextField(body, name, value, info, limits);
+    } catch (error: unknown) {
+      fail(error);
+    }
+  });
+
+  busboy.on('file', (name, stream, info) => {
+    if (taken || failure !== undefined) {
+      stream.resume();
+      return;
+    }
+    if (name !== fieldName) {
+      stream.resume();
+      fail(new MultipartError('LIMIT_UNEXPECTED_FILE', name));
+      return;
+    }
+    /**
+     * Marked before anything awaits, and cleared only when the
+     * take is abandoned: busboy reads on while the filter
+     * decides, and the parts that follow the one being taken
+     * are not the handler's to see, as they are not in
+     * Fastify's streaming interceptor.
+     */
+    taken = true;
+    void handOver(name, stream, info).catch(fail);
+  });
+
+  busboy.on('partsLimit', () => {
+    fail(new MultipartError('LIMIT_PART_COUNT'));
+  });
+  busboy.on('filesLimit', () => {
+    fail(new MultipartError('LIMIT_FILE_COUNT'));
+  });
+  busboy.on('fieldsLimit', () => {
+    fail(new MultipartError('LIMIT_FIELD_COUNT'));
+  });
+  /**
+   * A form with no file in the asked-for field ends the parse,
+   * and the wait below has to end with it rather than hang.
+   */
+  busboy.once('close', () => {
+    ready.resolve();
+  });
+  busboy.once('error', fail);
+  source.once('error', fail);
+
+  source.pipe(busboy);
+
+  let drain: Promise<void> | undefined = undefined;
+  const discard = (): Promise<void> => {
+    drain ??= drainBody(source, busboy);
+    return drain;
+  };
+
+  try {
+    await ready.promise;
+  } catch (error: unknown) {
+    await discard();
+    throw transformException(error);
+  }
+  return { drain: discard, file: handed };
+}
+
 export {
   processMultipart,
+  processStream,
   resolveStorage,
   validateLimits,
   type FileStrategy,

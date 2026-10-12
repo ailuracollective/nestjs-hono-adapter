@@ -149,7 +149,9 @@ exist.
 Fastify's explicit opt-in for `@fastify/multipart`. Here a body
 is read on demand through Hono's `parseBody()`, and the upload
 interceptors (see [File uploads](#file-uploads)) are the
-supported path, so there is nothing to turn on.
+supported path, so there is nothing to turn on. It is recorded
+as a non-goal in
+[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 ### `inject()` — missing
 
@@ -248,11 +250,12 @@ an adapter it was not written for. And an `undefined` error from
 a file filter or a name resolver counts as a failure, where disk
 storage used to store nothing and still report success.
 
-What is still missing is the streaming interceptor
+What was missing until this change is the streaming interceptor
 `@nestjs/platform-fastify/multipart` publishes:
 `FileStreamInterceptor`, and the `processStream` behind it. The
 `MultipartFileStream` type was exported with nothing to produce
-it, and the review had it removed rather than left dead.
+it, and the review had it removed rather than left dead; the
+interceptor produces it now.
 
 The exemption the island carried is narrower now: one block over
 `src/multipart/**` that turned off around 35 rules became ten
@@ -262,24 +265,48 @@ those rules carry them again. The cases the suite was missing —
 `__proto__` field name — are covered, and each was proven by
 mutation, so it fails when the behaviour it pins is removed.
 
-The streaming interceptor stays unimplemented, and the reason is
-not only the deadlock the first attempt ran into. Upstream
+The streaming interceptor is implemented, and the three seams
+the reconnaissance found are closed by one design. Upstream
 `processStream` walks `req.parts()` and returns on the first
 file of the field it was asked for, leaving the iterator
 suspended so the handler reads a live stream; the interceptor
 then drains the rest, either before answering or from
 `reply.raw`'s `close` when the handler answers with a
-`StreamableFile`. Three seams are missing here. The parser
-consumes the whole body before `next.handle()`, so there is no
-live stream to hand over. The adapter is fetch-backed, so
-`context.req.raw` is a Web `Request` and the only post-response
-hook runs before the `Response` reaches Hono, not when the
-socket closes. And discarding a Web body is not the safe
-`raw.resume()`: cancelling `request.raw.body` reads to the
-client as an aborted request, which is the race upstream drains
-to avoid. The ceiling settles it — `./multipart` sits at 3.64 kB
-of 3.8 kB, and the three pieces cost several hundred bytes
-minified, so this is a ceiling decision rather than a port.
+`StreamableFile`.
+
+Here `processStream()` sits beside `processMultipart()` in the
+island's parser and feeds busboy from the Web body, so the first
+seam closes on the fact that busboy emits a file part while it
+is still parsing: the handler is handed busboy's own stream
+rather than a stored file. The take is marked synchronously,
+before anything awaits, so the parts that follow the one being
+taken are read and not parsed — the contract upstream documents.
+A file in any other field is a `400`, as upstream answers one.
+
+The second seam is answered differently rather than solved.
+`context.req.raw` is a Web `Request` and there is no socket
+`close` to hang the drain on, so an answer that is a
+`StreamableFile` is drained before it goes out — unless it is
+built from the very stream the handler was handed, which
+`StreamableFile.getStream()` makes checkable and which the
+response drains itself as it is written. Upstream defers that
+drain to the socket and warns that answering with an unrelated
+`StreamableFile` before the upload is read fails on a connection
+that is not kept alive; draining first is stricter, never later.
+
+The third seam is why the discard reads rather than cancels:
+cancelling `request.raw.body` reaches the client as an aborted
+request, so the drain unpipes busboy, resumes the source and
+reads the rest into nothing, which is `raw.resume()` by another
+name. A client that aborts mid-upload has its error carried onto
+the stream the handler is reading, so the read fails rather than
+hangs.
+
+The ceiling decision the reconnaissance left open was taken, as
+the first item of the backlog asked: `./multipart` moved from
+3800 B to 4250 B for 553 B of measured growth, recorded in
+[bundle-baseline.md](bundle-baseline.md) and justified in
+[architecture.md](architecture.md#the-bundle-budget).
 
 ## Fastify route decorators
 
@@ -293,29 +320,23 @@ are no-ops.
 
 They describe Fastify's own route options — a JSON schema, a
 route config, a constraint — and a Hono equivalent would be a
-different feature rather than a port. The recommendation is to
-document them as unsupported rather than to emulate them.
+different feature rather than a port. They are recorded as
+unsupported in
+[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)
+rather than emulated.
 
 ## Backlog
 
 Ordered by what it costs and what it unblocks.
 
-1. **The upload island's streaming interceptor.** The island's
-   last leftover: `FileStreamInterceptor` and the
-   `processStream` behind it. The reconnaissance recorded above
-   finds it blocked on three seams that do not exist here, and
-   on the `./multipart` ceiling, so it needs a deliberate
-   decision about that ceiling before it can be written.
-2. **`inject()`.** An in-process request helper for tests, on
+1. **`inject()`.** An in-process request helper for tests, on
    top of Hono's `app.request()`.
-3. **Decide on Socket.IO.** Either a `./socket-io` subpath for
+2. **Decide on Socket.IO.** Either a `./socket-io` subpath for
    the Node and Bun transports, or a written non-goal.
-4. **Write down the non-goals.** `useMultipart()`, the Express
-   settings API and the Fastify route decorators, in
-   [docs/platform-differences.md](platform-differences.md) or
-   here.
-5. **Settle one loose sentence.** `docs/architecture.md` says a
-   transport's modules are the only ones that reach the builtins
-   a runtime owns; `features/views` and `features/static-assets`
-   reach `node:fs/promises` too, and the upload island's disk
-   storage reaches four of them.
+
+The non-goals and the runtime surface are written down:
+[docs/platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)
+records `useMultipart()`, the Express settings API and the
+Fastify route decorators, and
+[docs/architecture.md](architecture.md#the-runtime-surface)
+records which layer reaches which builtin.
