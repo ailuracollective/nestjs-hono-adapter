@@ -34,7 +34,7 @@ import {
   socketUrl,
   startGateways,
   withoutOnOpen,
-} from './support.test.ts';
+} from './support.ts';
 
 test('a gateway answers on the Hono server', async () => {
   const probe = await startGateways();

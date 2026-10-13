@@ -18,11 +18,12 @@ import { expect, test } from 'bun:test';
  * checking nothing at all.
  */
 
-/** One relative import, and whether it is a type. */
+/** One source import, and whether it is a type or the marker. */
 interface Edge {
   readonly from: string;
   readonly to: string;
   readonly typeOnly: boolean;
+  readonly markerOnly?: boolean;
 }
 
 /** The layers of the tree, and the root is not one of them. */
@@ -35,6 +36,8 @@ type Layer =
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const SOURCE = path.join(ROOT, 'packages', 'core', 'src');
+const CORE_PACKAGE = '@ailura/nestjs-hono-adapter-core';
+const CORE_ENTRY = 'packages/core/src/index.ts';
 
 /**
  * The two core modules that may name a feature, because they
@@ -73,17 +76,17 @@ const REQUIRED = [
  * apart.
  */
 const SPECIFIER =
-  /^[ \t]*(?:import|export)[ \t]+(?<typeOnly>type\b[ \t]*)?[^;]*?\bfrom\s+'(?<module>[^']+)'/gmu;
+  /^[ \t]*(?<statement>import|export)[ \t]+(?<typeOnly>type\b[ \t]*)?(?<bindings>[^;]*?)\bfrom\s+'(?<module>[^']+)'/gmu;
 
-/** The relative module a match named, and none for a package. */
-function relativeOf(
+/** The relative module or core package a match named. */
+function moduleOf(
   groups: Record<string, string> | undefined,
 ): string | undefined {
   if (groups === undefined) {
     return undefined;
   }
   const { module = '' } = groups;
-  if (!module.startsWith('.')) {
+  if (module !== CORE_PACKAGE && !module.startsWith('.')) {
     return undefined;
   }
   return module;
@@ -119,7 +122,10 @@ const ISLANDS: Readonly<Record<string, Layer>> = {
 /** The layer a source path belongs to, and none for the roots. */
 function layerOf(file: string): Layer | undefined {
   const directory = path.dirname(file);
-  if (directory === 'packages/core/src/core') {
+  if (
+    file === CORE_ENTRY ||
+    directory === 'packages/core/src/core'
+  ) {
     return 'core';
   }
   if (directory.startsWith('packages/multipart/src/')) {
@@ -131,11 +137,15 @@ function layerOf(file: string): Layer | undefined {
   return ISLANDS[directory];
 }
 
-/** The edges a core module takes into a feature. */
+/**
+ * The edges a core module takes into a feature, excluding the
+ * facade.
+ */
 function coreReachesFeature(edges: readonly Edge[]): Edge[] {
   return edges.filter(
     (edge) =>
       layerOf(edge.from) === 'core' &&
+      edge.from !== CORE_ENTRY &&
       layerOf(edge.to) === 'features' &&
       !COMPOSITION_ROOTS.has(edge.from),
   );
@@ -199,7 +209,8 @@ function multipartReachesApp(edges: readonly Edge[]): Edge[] {
       (layerOf(edge.to) === 'core' ||
         layerOf(edge.to) === 'features') &&
       !edge.typeOnly &&
-      edge.to !== MULTIPART_VALUE_EDGE,
+      edge.to !== MULTIPART_VALUE_EDGE &&
+      !(edge.to === CORE_ENTRY && edge.markerOnly === true),
   );
 }
 
@@ -244,21 +255,37 @@ async function sourceFiles(
   return [...nested.flat(), ...here];
 }
 
-/** The relative imports of one file, resolved against it. */
-async function edgesFrom(file: string): Promise<Edge[]> {
-  const source = await readFile(path.join(ROOT, file), 'utf8');
+/** The local imports in source text, resolved against its file. */
+function edgesIn(source: string, file: string): Edge[] {
   const found: Edge[] = [];
   for (const match of source.matchAll(SPECIFIER)) {
-    const module = relativeOf(match.groups);
+    const module = moduleOf(match.groups);
     if (module !== undefined) {
+      let target = CORE_ENTRY;
+      if (module.startsWith('.')) {
+        target = path.join(path.dirname(file), module);
+      }
+      const { bindings = '', statement = '' } =
+        match.groups ?? {};
       found.push({
         from: file,
-        to: path.join(path.dirname(file), module),
+        markerOnly:
+          statement === 'import' &&
+          /^\s*\{\s*declareMultipart(?:\s+as\s+[\w$]+)?\s*,?\s*\}\s*$/u.test(
+            bindings,
+          ),
+        to: target,
         typeOnly: typeOnlyOf(match.groups),
       });
     }
   }
   return found;
+}
+
+/** The local imports of one file, resolved against it. */
+async function edgesFrom(file: string): Promise<Edge[]> {
+  const source = await readFile(path.join(ROOT, file), 'utf8');
+  return edgesIn(source, file);
 }
 
 /** The repository-relative source files of a tree, or a failure. */
@@ -323,6 +350,53 @@ async function refusalOf(root: string): Promise<string> {
   }
   return '';
 }
+
+test.each(['', 'type '])(
+  'core package imports are scanned with their type flag (%s)',
+  (type) => {
+    const source = `import ${type}{ ServerAdapter } from '${CORE_PACKAGE}';`;
+    const ws = edgesIn(source, 'packages/ws/src/adapter.ts');
+    expect(ws).toHaveLength(1);
+    expect(ws[0]).toMatchObject({
+      to: CORE_ENTRY,
+      typeOnly: type !== '',
+    });
+    expect(wsReachesApp(ws)).toHaveLength(Number(type === ''));
+    const socketIo = edgesIn(
+      source,
+      'packages/socket-io/src/adapter.ts',
+    );
+    expect(socketIoReachesApp(socketIo)).toHaveLength(1);
+    const multipart = edgesIn(
+      source,
+      'packages/multipart/src/multipart/multipart.parser.ts',
+    );
+    expect(multipartReachesApp(multipart)).toHaveLength(
+      Number(type === ''),
+    );
+  },
+);
+
+test.each([
+  ['import { declareMultipart }', true],
+  ['import { declareMultipart as mark, }', true],
+  ['import { ServerAdapter }', false],
+  ['import { declareMultipart, ServerAdapter }', false],
+  ['import * as core', false],
+  ['export { declareMultipart }', false],
+] as const)(
+  'the multipart package marker exception checks its binding: %s',
+  (binding, allowed) => {
+    const edges = edgesIn(
+      `${binding} from '${CORE_PACKAGE}';`,
+      'packages/multipart/src/multipart/multipart.interceptor.factory.ts',
+    );
+    expect(edges).toHaveLength(1);
+    expect(multipartReachesApp(edges)).toHaveLength(
+      Number(!allowed),
+    );
+  },
+);
 
 test('core reaching a feature is refused', () => {
   const forbidden = crossing(
@@ -514,13 +588,16 @@ test('the upload island takes the application as a package', async () => {
     path.join(ROOT, 'packages', 'multipart', 'package.json'),
     'utf8',
   );
-  expect(intoApp).toStrictEqual([]);
+  expect(intoApp.length).toBeGreaterThan(0);
+  expect(intoApp.every((edge) => edge.to === CORE_ENTRY)).toBe(
+    true,
+  );
   expect(manifest).toContain(
     '@ailura/nestjs-hono-adapter-core',
   );
 });
 
-test('the ws island takes the application as a package, not as edges', async () => {
+test('the ws island takes the application as a package through types', async () => {
   const edges = await scanAll();
   const intoApp = edges.filter(
     (edge) =>
@@ -532,7 +609,12 @@ test('the ws island takes the application as a package, not as edges', async () 
     path.join(ROOT, 'packages', 'ws', 'package.json'),
     'utf8',
   );
-  expect(intoApp).toStrictEqual([]);
+  expect(intoApp.length).toBeGreaterThan(0);
+  expect(
+    intoApp.every(
+      (edge) => edge.to === CORE_ENTRY && edge.typeOnly,
+    ),
+  ).toBe(true);
   expect(manifest).toContain(
     '@ailura/nestjs-hono-adapter-core',
   );

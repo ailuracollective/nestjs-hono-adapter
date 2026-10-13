@@ -129,10 +129,11 @@ down in [docs/architecture.md](docs/architecture.md).
 ## Repository-specific conventions
 
 - **Releases use release-please with OIDC trusted publishing.**
-  release-please opens a release pull request per package on
-  every push to `main`; merging one creates that package's tag
-  and GitHub release, authored by the AiluraKitty account
-  through `AILURA_RELEASE_TOKEN`. The release then fires
+  release-please opens one combined pull request for packages
+  with pending releases on every push to `main`; merging it
+  creates the corresponding tags and GitHub releases for those
+  packages, authored by the AiluraKitty account through
+  `AILURA_RELEASE_TOKEN`. The release then fires
   `.github/workflows/publish.yml`, which publishes to npm with a
   short-lived OIDC token (no stored npm token). See
   `release-please-config.json` and
