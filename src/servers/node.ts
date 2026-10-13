@@ -94,8 +94,12 @@ function adaptListen(native: HttpServer): void {
  * Replaces `close` with the promise the port answers through,
  * draining the connections the server still holds when asked. A
  * server that never listened has nothing to close, so that
- * error is not propagated, and a Node caller that passed a
- * callback of its own still can.
+ * error is not propagated.
+ *
+ * A Node caller that passes a callback of its own is answered
+ * through it, the way `server.close` answers, and the returned
+ * promise settles either way rather than rejecting into a
+ * caller that is not looking at it.
  */
 function adaptClose(native: HttpServer): void {
   const close = native.close.bind(native);
@@ -108,14 +112,12 @@ function adaptClose(native: HttpServer): void {
     closeActiveConnections = false,
   ): Promise<void> => {
     if (typeof closeActiveConnections === 'function') {
+      const answer = closeActiveConnections;
       // oxlint-disable-next-line promise/avoid-new -- a Node caller's callback is settled from outside this body, which is what a deferred is; an `async` form would resolve before it answers.
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         close((error?: Error) => {
-          if (error === undefined) {
-            resolve();
-          } else {
-            reject(error);
-          }
+          answer(error);
+          resolve();
         });
       });
       return;
