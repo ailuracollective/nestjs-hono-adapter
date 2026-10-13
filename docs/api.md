@@ -60,7 +60,7 @@ The server is named as both the port every transport implements
 and Node's own `http.Server`, so a caller that reached for
 `closeAllConnections()` or listened for `'upgrade'` — both of
 which worked before the transports split — still compiles. Only
-the default (Node) transport answers a real `http.Server`.
+the Node transport answers a real `http.Server`.
 
 `NestFactory.create()` types what it answers as whatever the
 type argument says, defaulting to `INestApplication`. That
@@ -79,15 +79,14 @@ same type argument.
 
 ### `ServerAdapterOptions`
 
-| Option                  | Type                            | Default        | Description                                                                      |
-| ----------------------- | ------------------------------- | -------------- | -------------------------------------------------------------------------------- |
-| `bodyLimit`             | `number`                        | `1 MiB`        | Largest request body in bytes; `0` removes the limit                             |
-| `rawBody`               | `boolean`                       | `false`        | Keep the bytes that were read in `NestRequest.rawBody`                           |
-| `secureHeaders`         | `boolean \| object`             | `true`         | Install `hono/secure-headers` with defaults or with the given options            |
-| `overrideGlobalObjects` | `boolean`                       | `true`         | Read only when `transport` is left out; `nodeServer()` takes its own             |
-| `transport`             | `Transport`                     | `nodeServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()`   |
-| `trustProxy`            | `boolean \| number \| string[]` | `false`        | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                  |
-| `views`                 | `ViewOptions`                   | —              | The engine a `@Render()` handler renders with, and where templates are read from |
+| Option          | Type                            | Default       | Description                                                                      |
+| --------------- | ------------------------------- | ------------- | -------------------------------------------------------------------------------- |
+| `bodyLimit`     | `number`                        | `1 MiB`       | Largest request body in bytes; `0` removes the limit                             |
+| `rawBody`       | `boolean`                       | `false`       | Keep the bytes that were read in `NestRequest.rawBody`                           |
+| `secureHeaders` | `boolean \| object`             | `true`        | Install `hono/secure-headers` with defaults or with the given options            |
+| `transport`     | `Transport`                     | `bunServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()`   |
+| `trustProxy`    | `boolean \| number \| string[]` | `false`       | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                  |
+| `views`         | `ViewOptions`                   | —             | The engine a `@Render()` handler renders with, and where templates are read from |
 
 ### Transports
 
@@ -101,22 +100,23 @@ with:
 | `@ailura/nestjs-hono-adapter/node-server` | `nodeServer(options?)`  | `@hono/node-server`                            |
 | `@ailura/nestjs-hono-adapter/fetch`       | `fetchServer(options?)` | A fetch host (Workers, Vercel Functions, Deno) |
 
-`nodeServer` is the transport the adapter serves through when
-`transport` is left out, so `new ServerAdapter()` keeps working
-wherever `@hono/node-server` does — on Node and on Bun. It takes
-one option, `overrideGlobalObjects` (default `false`): whether
+`bunServer` is the transport the adapter serves through when
+`transport` is left out, so `new ServerAdapter()` serves through
+`Bun.serve`. A deployment on Node names `nodeServer()`, which
+runs on Node and on Bun. It takes one option,
+`overrideGlobalObjects` (default `false`): whether
 `@hono/node-server` may replace the global `Request` and
 `Response` with its lighter classes. It is off by default
 because the replacement is process-wide and not restored; the
-transport the adapter picks itself passes `true`, which is the
-behaviour every deployment had before the transports split, and
-which `ServerAdapterOptions.overrideGlobalObjects` still
-reaches.
+old implicit Node default passed `true`, so a deployment that
+relied on it asks for it by name now, and the adapter carries no
+switch of its own.
 
 A transport carries a websocket helper only where the runtime
-has one. `nodeServer` names none, so the `/ws` island falls back
-to `@hono/node-ws`: an application that serves no WebSocket
-never installs it.
+has one. `nodeServer` names none, and the Bun transport names
+one only where `hono/bun` loads — on Node it carries none — so
+the `/ws` island falls back to `@hono/node-ws` in both places:
+an application that serves no WebSocket never installs it.
 
 `fetchServer` takes no port: `close()` does nothing, `listen()`
 rejects naming the fetch host, and the deployment exports the

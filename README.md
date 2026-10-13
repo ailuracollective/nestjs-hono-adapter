@@ -5,7 +5,7 @@
 [![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
 [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
-[![bundle size](https://img.shields.io/badge/bundle%20size-≤10kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/core/.size-limit.json)
+[![bundle size](https://img.shields.io/badge/bundle%20size-≤12kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/core/.size-limit.json)
 [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-hono-adapter)](https://socket.dev/npm/package/@ailura/nestjs-hono-adapter)
 [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json)
 [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
@@ -13,9 +13,10 @@
 An HTTP adapter that runs a NestJS application on
 [Hono](https://hono.dev), with no Express or Fastify underneath.
 The core is runtime-neutral; a **transport** decides how it is
-served. The default is `@hono/node-server`, which runs on Node
-and on Bun alike and is what this package has always served
-through; `bunServer()` opts into Bun's own server instead.
+served. The default is `bunServer()`, Bun's own server; a
+deployment on Node names `nodeServer()` for `@hono/node-server`,
+and a host that serves a Web `Request`/`Response` names
+`fetchServer()`.
 
 **Problem**: Nest has no official Hono adapter. The two
 published alternatives target Nest 11 and answer incorrectly —
@@ -49,8 +50,8 @@ pnpm add @ailura/nestjs-hono-adapter hono
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
 are peer dependencies, so the application decides their
-versions. `@hono/node-server` is what the adapter serves through
-when no transport is named, so it is required.
+versions. `@hono/node-server` is what `nodeServer()` serves
+through; the default transport is Bun's own server.
 
 The three optional capabilities live in their own packages:
 `@ailura/nestjs-platform-hono-multipart` for uploads (installs
@@ -64,10 +65,11 @@ of the others.
 
 ### Migrating from the old subpaths
 
-`@ailura/nestjs-hono-adapter@1.4.1` published five entrypoints:
-`.`, `./bun-server`, `./node-server`, `./fetch` and `./ws`. The
-four it keeps are unchanged; exactly one breaks. `./ws` moves to
-its own package:
+Two things break a deployment that tracked
+`@ailura/nestjs-hono-adapter@1.4.1`: `./ws` moved, and the
+default transport is no longer the Node one.
+
+`./ws` moves to its own package:
 
 | Old import                       | Install and import                |
 | -------------------------------- | --------------------------------- |
@@ -75,6 +77,31 @@ its own package:
 
 The new package is the whole import path: drop the trailing
 subpath.
+
+The zero-configuration bootstrap serves through `bunServer()`,
+Bun's own server, where it served through `@hono/node-server`
+before. A deployment on Node names the transport it always
+served through, which is one import:
+
+```ts
+import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
+
+new ServerAdapter({ transport: nodeServer() });
+```
+
+`ServerAdapterOptions.overrideGlobalObjects` left with that
+default: it existed only to configure the implicit Node one. The
+Node transport keeps its own and defaults it to `false`, where
+the implicit default passed `true`, so a deployment that relied
+on `@hono/node-server` replacing the global `Request` and
+`Response` now asks for it by name:
+`nodeServer({ overrideGlobalObjects: true })`.
+
+One more consequence: the Bun transport resolves `hono/bun` in a
+top-level await so the root entrypoint still imports on Node,
+and that makes the package ESM only. A `require()` of it throws;
+an `import` works, on Node and on Bun, and `ServerAdapter` and
+`nodeServer()` work there.
 
 `./multipart` and `./socket-io` were added on `main` after 1.4.1
 and were never published, so nobody has to migrate for them. A
@@ -114,26 +141,25 @@ app.enableCors({
 await app.listen(3000);
 ```
 
-Leaving `transport` out serves through `@hono/node-server` on
-Node and on Bun — the runtime every deployment was served by
-before the transports split — with `overrideGlobalObjects` on,
-as it always was:
+Leaving `transport` out serves through Bun's own server:
 
 ```ts
 new ServerAdapter();
 ```
 
-The same transport, named, is where that option lives too; the
-`ServerAdapterOptions.overrideGlobalObjects` spelling is kept,
-and is read only when no transport is named:
+A deployment on Node names the transport it served through
+before:
 
 ```ts
 import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
 
-new ServerAdapter({
-  transport: nodeServer({ overrideGlobalObjects: true }),
-});
+new ServerAdapter({ transport: nodeServer() });
 ```
+
+`nodeServer()` takes `overrideGlobalObjects` (default `false`),
+which asks `@hono/node-server` to replace the process's
+`Request` and `Response` with its lighter classes:
+`nodeServer({ overrideGlobalObjects: true })`.
 
 On a host that serves a Web `Request`, such as Cloudflare
 Workers, Vercel Functions or Deno, the fetch transport takes no
@@ -221,9 +247,10 @@ the raw-body setting, leaving the existing size limit intact.
 
 ## Requirements
 
-- Bun 1.2+ (toolchain), or Node 22.12+.
-- `@hono/node-server`, which both serve through by default;
-  `bunServer()` replaces it with Bun's own server.
+- Bun 1.2+ (toolchain, and the runtime the default transport
+  serves on), or Node 22.12+.
+- `@hono/node-server`, which `nodeServer()` serves through; the
+  default transport is Bun's own server.
 - Nest 11 or 12.
 - Hono 4.
 

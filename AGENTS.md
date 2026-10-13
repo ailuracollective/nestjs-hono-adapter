@@ -96,15 +96,15 @@ The stack is Bun (runtime and package manager), TypeScript
 framework being adapted). The core is runtime-neutral: a
 `Transport` serves through Bun's own server,
 `@hono/node-server`, or a fetch host's Web `Request`/`Response`;
-each transport lives behind its own subpath, and the Node one is
-the default, so a bootstrap that names none keeps working on
-Node and on Bun. The adapter, `@ailura/nestjs-hono-adapter`,
-publishes four entrypoints: `.` (the adapter), `./bun-server`,
-`./node-server` and `./fetch`. Each optional capability is its
-own package with a single entrypoint: WebSockets in
-`@ailura/nestjs-platform-hono-ws`, uploads in
-`@ailura/nestjs-platform-hono-multipart` and Socket.IO in
-`@ailura/nestjs-platform-hono-socket-io`.
+each transport lives behind its own subpath, and a bootstrap
+that names none gets Bun's own server, so a deployment on Node
+names `nodeServer()`. The adapter,
+`@ailura/nestjs-hono-adapter`, publishes four entrypoints: `.`
+(the adapter), `./bun-server`, `./node-server` and `./fetch`.
+Each optional capability is its own package with a single
+entrypoint: WebSockets in `@ailura/nestjs-platform-hono-ws`,
+uploads in `@ailura/nestjs-platform-hono-multipart` and
+Socket.IO in `@ailura/nestjs-platform-hono-socket-io`.
 
 The adapter's implementation is `packages/core`:
 `packages/core/src/core/` holds the request decode, response
@@ -113,7 +113,7 @@ ports; `packages/core/src/features/` holds optional capabilities
 (CORS, guards, the instrumentation hooks, SSE, static assets,
 views); `packages/core/src/servers/` holds the runtime
 transports (`bun.ts`, `node.ts`, `fetch.ts`), reached through
-their subpaths — and the Node one from `core/server-adapter.ts`,
+their subpaths — and the Bun one from `core/server-adapter.ts`,
 the adapter's composition root, as the transport it serves
 through by default. The repository root is only the private Bun
 workspace root: no published package, no `src/`, no exports. The

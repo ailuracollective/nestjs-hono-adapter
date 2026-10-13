@@ -14,8 +14,8 @@ the Hono API, WebSockets and microservices.
 
 Pass TLS options to Nest and the adapter hands them to the
 transport it was given, which serves over `https`: the options
-become `@hono/node-server`'s `serverOptions` on the default
-transport, and `Bun.serve`'s own with `bunServer()`.
+become `Bun.serve`'s own on the default transport, and
+`@hono/node-server`'s `serverOptions` with `nodeServer()`.
 
 ```ts
 await NestFactory.create(AppModule, new ServerAdapter(), {
@@ -24,10 +24,10 @@ await NestFactory.create(AppModule, new ServerAdapter(), {
 ```
 
 `getHttpServer()` returns the server Nest drives — Node's own
-`http.Server` on the default transport, with `listen` and
-`close` adapted onto it in place — so an application can read
-its address, attach a listener, or call `closeAllConnections()`
-as it did before the transports split.
+`http.Server` on the Node transport, with `listen` and `close`
+adapted onto it in place — so an application can read its
+address, attach a listener, or call `closeAllConnections()` as
+it did before the transports split.
 
 `trustProxy` decides how much of a proxy's word the deployment
 believes, and the levels are the ones Fastify reads from
@@ -156,13 +156,14 @@ Gateways have their own Nest adapter, in
 never resolves `@nestjs/websockets`: it is an optional peer, and
 it is not installed for the routes above. The upgrade is served
 by the transport when it carries a websocket helper — `hono/bun`
-with `bunServer()`, whatever host a `fetchServer()` was handed —
-and by `@hono/node-ws` otherwise, which includes the default
-(Node) transport. A deployment that installs the ws package
-resolves the optional peer `@hono/node-ws`, because that
-entrypoint eagerly imports it even when the transport provides
-its own WebSocket helper; one that does not install it never
-resolves it.
+with `bunServer()` where Bun is present, whatever host a
+`fetchServer()` was handed — and by `@hono/node-ws` otherwise,
+which includes `nodeServer()` and the default transport on a
+Node runtime. A deployment that installs the ws package resolves
+the optional peer `@hono/node-ws`, because that entrypoint
+eagerly imports it even when the transport provides its own
+WebSocket helper; one that does not install it never resolves
+it.
 
 ```ts
 import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
