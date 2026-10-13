@@ -224,17 +224,17 @@ class HonoIoAdapter extends AbstractWsAdapter {
   }
 
   /**
-   * Lets every client go and closes socket.io, without waiting
-   * for a shared HTTP server to answer. A standalone gateway's
-   * listener belongs to this adapter and is closed here.
+   * Closes socket.io, and closes the server with it only when
+   * this adapter opened that server. A standalone gateway's
+   * listener is ours, which is what `ownedServers` records; the
+   * server an attached gateway shares belongs to the transport,
+   * so the adapter lets the clients go and leaves that listener
+   * to be closed where it was opened.
    *
-   * Socket.io's own `close()` waits for `httpServer.close()`,
-   * and this adapter's Node transport answers that call with a
-   * promise whose callback is never invoked (issue #121), so
-   * awaiting it would hang the application's shutdown. The
-   * sockets are closed here instead, the way `./ws` closes the
-   * ones on its paths, and the transport that owns the server
-   * closes it once this returns.
+   * The sockets are closed here, the way `./ws` closes the ones
+   * on its paths, rather than by awaiting socket.io's own
+   * `close()`, which ends by closing whatever server it is
+   * attached to.
    *
    * Nest hands this the namespace a namespaced gateway was
    * bound to as well as the server itself, and only the server
