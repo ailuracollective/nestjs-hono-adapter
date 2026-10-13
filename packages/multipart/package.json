@@ -38,6 +38,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.compat.json",
+    "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
