@@ -174,6 +174,12 @@ locals, including keys such as `__proto__`.
 | `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                                                                                                                   |
 | `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from                                                                                                     |
 
+`app.useBodyParser()` accepts `json`, `urlencoded`, `text` and
+`raw`; unsupported parser names are rejected. Parsing follows
+the request's content type, and `limit` applies to every parser
+and route. Omitting `limit` still enables parsing and applies
+the raw-body setting, leaving the existing size limit intact.
+
 ## Documentation
 
 | Topic                                                        | What it covers                                                                                             |

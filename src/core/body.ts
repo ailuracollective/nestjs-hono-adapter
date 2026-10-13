@@ -5,6 +5,11 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 
+import {
+  assertIdentity,
+  charsetOf,
+  textOf,
+} from './body-encoding.ts';
 import type { NestContext } from './context.ts';
 import { parseQuery } from './query.ts';
 import type { NestRequest } from './request.ts';
@@ -189,12 +194,11 @@ async function readBytes(
   return new Uint8Array(await answer.arrayBuffer());
 }
 
-function textOf(bytes: Uint8Array): string {
-  return new TextDecoder('utf-8').decode(bytes);
-}
-
-function parseJson(bytes: Uint8Array): unknown {
-  const text = textOf(bytes).trim();
+function parseJson(
+  bytes: Uint8Array,
+  charset: string,
+): unknown {
+  const text = textOf(bytes, charset).trim();
   if (text === '') {
     return {};
   }
@@ -205,15 +209,19 @@ function parseJson(bytes: Uint8Array): unknown {
   }
 }
 
-function parseBytes(bytes: Uint8Array, type: string): unknown {
+function parseBytes(
+  bytes: Uint8Array,
+  type: string,
+  charset: string,
+): unknown {
   if (JSON_TYPE.test(type)) {
-    return parseJson(bytes);
+    return parseJson(bytes, charset);
   }
   if (type === 'application/x-www-form-urlencoded') {
-    return parseQuery(textOf(bytes));
+    return parseQuery(textOf(bytes, charset));
   }
   if (type.startsWith('text/')) {
-    return textOf(bytes);
+    return textOf(bytes, charset);
   }
   if (bytes.byteLength === 0) {
     return undefined;
@@ -282,7 +290,7 @@ async function readPayload(
 ): Promise<ParsedBody> {
   const bytes = await readBytes(context, options.bodyLimit);
   const parsed: ParsedBody = {
-    body: parseBytes(bytes, type),
+    body: parseBytes(bytes, type, charsetOf(context)),
     files: undefined,
     rawBody: undefined,
   };
@@ -309,6 +317,7 @@ function readBody(
   }
   const type = mediaType(context);
   assertWithinLength(context, options.bodyLimit);
+  assertIdentity(context);
   if (type.startsWith('multipart/form-data')) {
     if (options.skipMultipart === true) {
       return Promise.resolve(emptyBody());

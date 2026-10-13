@@ -297,7 +297,7 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11260-byte ceiling and a measurement of 11255,
+`index` has an 11480-byte ceiling and a measurement of 11469,
 `bun-server` 1024/981, `node-server` 560/506, `fetch` 480/418,
 `multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
 
@@ -470,6 +470,23 @@ converter, which joins it with a comma, so the one header that
 cannot be folded is handed to the constructor as pairs instead.
 Every other repeated header still folds, and a record with no
 repeated `set-cookie` is still written straight through.
+
+Reading what the payload declares about itself costs 214 bytes
+in `index` — 11255 before, 11469 after — past the 11260-byte
+ceiling that left 5, so `index` moves to 11480. The bytes are
+the `charset` parameter parser, the decoder table for the family
+the platform reads, the two refusals, and the module boundary
+that keeps `body.ts` under its line ceiling now that it also
+counts a streamed body; what they buy is an answer the other
+adapters already give, where a UTF-16LE JSON body decodes rather
+than failing and a charset or content encoding this adapter
+cannot read is refused with the platform's 415 instead of being
+handed to `JSON.parse`.
+
+Creating charset decoders on demand and rejecting unsupported
+`useBodyParser()` names require a small increase in `index`. Its
+ceiling moves from 11480 to 11500 bytes to cover these checks;
+the other entrypoint ceilings stay as declared.
 
 Two consequences worth knowing before you write code:
 
