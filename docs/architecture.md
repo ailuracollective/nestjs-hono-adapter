@@ -83,10 +83,14 @@ serves no upload loads neither the island nor its parser.
 The socket.io island goes one step further, which is why it has
 a rule of its own: it names nothing in `core/` or `features/` at
 all. Nest hands the adapter the server it already built, so
-`socket-io/io-adapter.ts` needs no port and no composition root
-— its runtime graph is `socket.io` and the three modules behind
-`./socket-io`, and `test/layers.test.ts` refuses both the value
-edge and the type edge that would change that.
+`packages/socket-io/src/io-adapter.ts` needs no port and no
+composition root — its runtime graph is `socket.io` and the
+three modules behind `./socket-io`, and `test/layers.test.ts`
+refuses both the value edge and the type edge that would change
+that. The island is the first capability to move out of `src/`:
+it lives in the `packages/socket-io` workspace package, and
+`src/socket-io/index.ts` re-exports it so the `./socket-io`
+subpath a deployment already imports keeps resolving.
 
 One more split is a packaging rule rather than a layer one:
 `core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
@@ -400,7 +404,10 @@ carries, 1256 to 1368, ceiling 1400.
 
 `socket-io` is the seventh entrypoint, and the first one added
 with a ceiling of its own rather than a raise: 950 bytes,
-measured at 916. Nothing in it is charged to `index`, because
+measured at 916. When the island moved into `packages/socket-io`
+and the subpath became a re-export of it, the entrypoint stayed
+at 948 bytes under the same 950 ceiling: resolution changed, the
+bytes did not. Nothing in it is charged to `index`, because
 `./socket-io` is reached only by a deployment that names it, and
 `socket.io` is an optional peer the gate leaves out of the
 measurement the way it leaves out `@hono/node-ws`. The island is

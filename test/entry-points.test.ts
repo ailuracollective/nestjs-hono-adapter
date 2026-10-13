@@ -20,7 +20,7 @@ const MULTIPART_ENTRY = path.resolve(
 );
 const SOCKET_IO_ENTRY = path.resolve(
   import.meta.dirname,
-  '../src/socket-io/index.ts',
+  '../packages/socket-io/src/index.ts',
 );
 
 /**

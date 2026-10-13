@@ -64,8 +64,6 @@ const REQUIRED = [
   'src/ws/server.ts',
   'src/ws/index.ts',
   'src/socket-io/index.ts',
-  'src/socket-io/io-adapter.ts',
-  'src/socket-io/refusal.ts',
   'src/multipart/index.ts',
   'src/multipart/multipart.module.ts',
   'src/multipart/multipart/multipart.interceptor.factory.ts',
@@ -136,7 +134,12 @@ function layerOf(file: string): Layer | undefined {
   if (directory.startsWith('src/multipart/')) {
     return 'multipart';
   }
-  if (directory.startsWith('src/socket-io/')) {
+  if (
+    directory.startsWith('src/socket-io/') ||
+    directory.startsWith(
+      path.join('packages', 'socket-io', 'src'),
+    )
+  ) {
     return 'socket-io';
   }
   return ISLANDS[directory];
@@ -286,9 +289,12 @@ async function readTree(root: string): Promise<string[]> {
 }
 
 /** The edges of a tree, once it has been shown to be the tree. */
-async function scan(root: string): Promise<Edge[]> {
+async function scan(
+  root: string,
+  expected: readonly string[] = REQUIRED,
+): Promise<Edge[]> {
   const files = await readTree(root);
-  const missing = REQUIRED.filter(
+  const missing = expected.filter(
     (name) => !files.includes(name),
   );
   if (missing.length > 0) {
@@ -572,7 +578,13 @@ test('the edges from ws into the application are types', async () => {
 });
 
 test('the walk reads an import out of every layer', async () => {
-  const edges = await scan(SOURCE);
+  const edges = [
+    ...(await scan(SOURCE)),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'socket-io', 'src'),
+      [],
+    )),
+  ];
   const layers = [
     ...new Set(edges.map((edge) => layerOf(edge.from))),
   ].filter((layer) => layer !== undefined);

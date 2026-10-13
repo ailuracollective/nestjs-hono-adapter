@@ -99,7 +99,12 @@
   },
   "overrides": [
     {
-      "files": ["src/**/*.ts", "test/**/*.ts"],
+      "files": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "packages/*/src/**/*.ts",
+        "packages/*/test/**/*.ts"
+      ],
       "env": {
         "builtin": true,
         "node": true
@@ -117,14 +122,20 @@
       }
     },
     {
-      "files": ["src/**/*.ts"],
+      "files": ["src/**/*.ts", "packages/*/src/**/*.ts"],
       "rules": {
         "class-methods-use-this": "off",
         "promise/prefer-await-to-callbacks": "off"
       }
     },
     {
-      "files": ["test/**/*.ts"],
+      "files": ["src/*/index.ts", "packages/*/src/index.ts"],
+      "rules": {
+        "oxc/no-barrel-file": "off"
+      }
+    },
+    {
+      "files": ["test/**/*.ts", "packages/*/test/**/*.ts"],
       "rules": {
         "class-methods-use-this": "off",
         "import/max-dependencies": [
@@ -255,7 +266,7 @@
       }
     },
     {
-      "files": ["test/**/*.ts"],
+      "files": ["test/**/*.ts", "packages/*/test/**/*.ts"],
       "rules": {
         "max-lines": [
           "error",
