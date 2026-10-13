@@ -5,6 +5,18 @@
   "label": "release/pending",
   "release-label": "release/tagged",
   "packages": {
-    ".": {}
+    ".": {},
+    "packages/socket-io": {
+      "component": "socket-io",
+      "include-component-in-tag": true
+    },
+    "packages/ws": {
+      "component": "ws",
+      "include-component-in-tag": true
+    },
+    "packages/multipart": {
+      "component": "multipart",
+      "include-component-in-tag": true
+    }
   }
 }
