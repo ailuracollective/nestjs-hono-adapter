@@ -163,15 +163,24 @@ function bounded(
 }
 
 /**
- * Reads the payload through the ceiling above: a request that
- * declares no `Content-Length` cannot make the process hold
- * more than the limit, and the rest of a body over it is
- * cancelled rather than drained.
+ * Reads an unconsumed payload through the ceiling above: a
+ * request that declares no `Content-Length` cannot make the
+ * process hold more than the limit, and the rest of a body over
+ * it is cancelled rather than drained. If earlier Hono
+ * middleware already read it, its cached bytes are checked
+ * against the limit before they are returned.
  */
 async function readBytes(
   context: NestContext,
   limit: number | undefined,
 ): Promise<Uint8Array> {
+  if (context.req.raw.bodyUsed) {
+    const bytes = new Uint8Array(
+      await context.req.arrayBuffer(),
+    );
+    assertWithinSize(bytes.byteLength, limit);
+    return bytes;
+  }
   const { body } = context.req.raw;
   if (body === null) {
     return new Uint8Array();

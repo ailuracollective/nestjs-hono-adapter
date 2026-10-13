@@ -5,8 +5,10 @@ import { toByteLimit } from '../src/core/body.ts';
 import {
   MarkerFilter,
   jsonRequest,
+  startAdapter,
   startProbe,
 } from './support.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { request } from './probe.ts';
 
 /** A limit small enough that one longer body crosses it. */
@@ -73,6 +75,54 @@ test('a JSON body reaches the handler that asked for it', async () => {
     );
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({ hello: 'world' });
+  } finally {
+    await probe.close();
+  }
+});
+
+test.each(['arrayBuffer', 'text'] as const)(
+  'a body read with %s by Hono middleware reaches the controller',
+  async (read) => {
+    const adapter = bunAdapter();
+    adapter.getHono().use('*', async (context, next) => {
+      await context.req[read]();
+      return next();
+    });
+    const probe = await startAdapter(adapter, {
+      mode: 'in-process',
+    });
+    try {
+      const response = await request(
+        probe,
+        '/echo',
+        jsonRequest({ hello: 'world' }),
+      );
+      expect(response.status).toBe(HttpStatus.CREATED);
+      expect(response.body).toStrictEqual({ hello: 'world' });
+    } finally {
+      await probe.close();
+    }
+  },
+);
+
+test('a cached body without a declared length still obeys the limit', async () => {
+  const adapter = bunAdapter({ bodyLimit: BODY_LIMIT });
+  adapter.getHono().use('*', async (context, next) => {
+    await context.req.arrayBuffer();
+    return next();
+  });
+  const probe = await startAdapter(adapter, {
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(
+      probe,
+      '/echo',
+      jsonRequest({
+        text: 'x'.repeat(BODY_LIMIT + BODY_LIMIT),
+      }),
+    );
+    expect(response.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
   } finally {
     await probe.close();
   }

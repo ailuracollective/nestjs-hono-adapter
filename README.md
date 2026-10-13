@@ -165,14 +165,14 @@ accepts a string. View data combines
 handler data in that order. Configuring defaults preserves
 locals, including keys such as `__proto__`.
 
-| Option          | Type                            | Default | Effect                                                                           |
-| --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------- |
-| `bodyLimit`     | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                            |
-| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                           |
-| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options       |
-| `transport`     | `Transport`                     | —       | The runtime: `bunServer()`, `nodeServer()` or `fetchServer()`                    |
-| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`               |
-| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from |
+| Option          | Type                            | Default | Effect                                                                                                                                                                               |
+| --------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `bodyLimit`     | `number`                        | `1 MiB` | Largest non-multipart request body, in bytes; `0` removes the limit. Multipart parsing uses upload-route `limits` when `./multipart` is enabled; declared lengths are still checked. |
+| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                                                                                                                               |
+| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options                                                                                                           |
+| `transport`     | `Transport`                     | —       | The runtime: `bunServer()`, `nodeServer()` or `fetchServer()`                                                                                                                        |
+| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                                                                                                                   |
+| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from                                                                                                     |
 
 ## Documentation
 
