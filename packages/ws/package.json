@@ -1,5 +1,5 @@
 {
-  "name": "@ailura/nestjs-hono-adapter-ws",
+  "name": "@ailura/nestjs-platform-hono-ws",
   "version": "1.4.1",
   "description": "WebSocket gateway adapter for @ailura/nestjs-hono-adapter.",
   "keywords": [
@@ -36,13 +36,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.compat.json",
+    "build": "tsc -p tsconfig.build.json",
     "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
-    "@ailura/nestjs-hono-adapter-core": ">=1.4.1 <2",
+    "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
     "@hono/node-ws": "^1.3.1",
     "@nestjs/common": ">=11 <13",
     "@nestjs/websockets": ">=11 <13",
@@ -50,7 +50,7 @@
     "rxjs": "^7.8.2"
   },
   "peerDependenciesMeta": {
-    "@ailura/nestjs-hono-adapter-core": {
+    "@ailura/nestjs-hono-adapter": {
       "optional": true
     },
     "@hono/node-ws": {

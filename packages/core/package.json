@@ -1,7 +1,7 @@
 {
-  "name": "@ailura/nestjs-hono-adapter-core",
+  "name": "@ailura/nestjs-hono-adapter",
   "version": "1.4.1",
-  "description": "The core of @ailura/nestjs-hono-adapter: a NestJS HTTP adapter that runs an application on Hono.",
+  "description": "A NestJS HTTP adapter that runs an application on Hono.",
   "keywords": [
     "adapter",
     "bun",

@@ -1,5 +1,5 @@
 {
-  "name": "@ailura/nestjs-hono-adapter-multipart",
+  "name": "@ailura/nestjs-platform-hono-multipart",
   "version": "1.4.1",
   "description": "The upload island of @ailura/nestjs-hono-adapter: multer-shaped multipart parsing, in its own package.",
   "keywords": [
@@ -37,13 +37,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.compat.json",
+    "build": "tsc -p tsconfig.build.json",
     "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
-    "@ailura/nestjs-hono-adapter-core": ">=1.4.1 <2",
+    "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
     "@nestjs/common": ">=11 <13",
     "busboy": "^1.6.0"
   },

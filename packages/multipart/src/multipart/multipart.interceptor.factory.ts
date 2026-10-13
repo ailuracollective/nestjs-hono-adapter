@@ -15,11 +15,11 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { catchError, concatMap, from, of } from 'rxjs';
 import type { Observable } from 'rxjs';
 
-import { declareMultipart } from '@ailura/nestjs-hono-adapter-core';
+import { declareMultipart } from '@ailura/nestjs-hono-adapter';
 import type {
   NestContext,
   NestRequest,
-} from '@ailura/nestjs-hono-adapter-core';
+} from '@ailura/nestjs-hono-adapter';
 import { MULTIPART_MODULE_OPTIONS } from '../files.constants.ts';
 import type {
   MultipartFileStream,

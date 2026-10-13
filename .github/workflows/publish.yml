@@ -30,8 +30,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       # release-please cuts one independent release per package, so nothing
       # here or in release-please-config.json enforces the one order that
-      # matters: core before the root and before multipart, which peers on
-      # it (ws peers on it optionally; socket-io does not name it).
+      # matters: core before multipart, which peers on it (ws peers on it
+      # optionally; socket-io does not name it).
       - name: Resolve the released package
         id: package
         env:
@@ -41,8 +41,7 @@ jobs:
             socket-io-v*) echo "dir=./packages/socket-io" >> "$GITHUB_OUTPUT" ;;
             ws-v*) echo "dir=./packages/ws" >> "$GITHUB_OUTPUT" ;;
             multipart-v*) echo "dir=./packages/multipart" >> "$GITHUB_OUTPUT" ;;
-            core-v*) echo "dir=./packages/core" >> "$GITHUB_OUTPUT" ;;
-            v*) echo "dir=." >> "$GITHUB_OUTPUT" ;;
+            v*) echo "dir=./packages/core" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::no package is configured for tag '$TAG'"
               exit 1

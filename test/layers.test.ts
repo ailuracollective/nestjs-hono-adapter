@@ -36,7 +36,7 @@ type Layer =
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const SOURCE = path.join(ROOT, 'packages', 'core', 'src');
-const CORE_PACKAGE = '@ailura/nestjs-hono-adapter-core';
+const CORE_PACKAGE = '@ailura/nestjs-hono-adapter';
 const CORE_ENTRY = 'packages/core/src/index.ts';
 
 /**
@@ -592,9 +592,7 @@ test('the upload island takes the application as a package', async () => {
   expect(intoApp.every((edge) => edge.to === CORE_ENTRY)).toBe(
     true,
   );
-  expect(manifest).toContain(
-    '@ailura/nestjs-hono-adapter-core',
-  );
+  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
 test('the ws island takes the application as a package through types', async () => {
@@ -615,9 +613,7 @@ test('the ws island takes the application as a package through types', async () 
       (edge) => edge.to === CORE_ENTRY && edge.typeOnly,
     ),
   ).toBe(true);
-  expect(manifest).toContain(
-    '@ailura/nestjs-hono-adapter-core',
-  );
+  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
 test('the walk reads an import out of every layer', async () => {

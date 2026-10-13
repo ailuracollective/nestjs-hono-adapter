@@ -4,9 +4,10 @@
  * `@nestjs/websockets`: it is an optional peer, and it is not
  * needed to run the HTTP adapter.
  *
- * It is published as the `@ailura/nestjs-hono-adapter/ws`
- * subpath rather than re-exported from `index.ts`, because an
- * ESM re-export resolves eagerly and would load them anyway.
+ * It ships as `@ailura/nestjs-platform-hono-ws` rather than
+ * re-exported from the core's `index.ts`, because an ESM
+ * re-export resolves eagerly and the core would load them
+ * anyway.
  */
 export { HonoWsAdapter } from './adapter.ts';
 export type { HonoGatewayOptions } from './server.ts';

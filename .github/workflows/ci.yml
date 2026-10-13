@@ -5,21 +5,23 @@ name: CI
     branches: [main]
     paths:
       - '.github/workflows/**'
-      - 'src/**'
       - 'packages/**'
       - 'test/**'
       - 'tsconfig.json'
       - '.size-limit.json'
+      - '.oxfmtrc.json'
+      - '.oxlintrc.json'
       - 'package.json'
       - 'bun.lock'
   pull_request:
     paths:
       - '.github/workflows/**'
-      - 'src/**'
       - 'packages/**'
       - 'test/**'
       - 'tsconfig.json'
       - '.size-limit.json'
+      - '.oxfmtrc.json'
+      - '.oxlintrc.json'
       - 'package.json'
       - 'bun.lock'
 

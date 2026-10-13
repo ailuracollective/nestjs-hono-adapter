@@ -1,7 +1,7 @@
 [
   {
     "name": "index",
-    "path": "dist/index.js",
+    "path": "packages/core/dist/index.js",
     "limit": 11550,
     "brotli": true,
     "ignore": [
@@ -24,7 +24,7 @@
   },
   {
     "name": "bun-server",
-    "path": "dist/servers/bun.js",
+    "path": "packages/core/dist/servers/bun.js",
     "limit": 1024,
     "brotli": true,
     "ignore": [
@@ -44,7 +44,7 @@
   },
   {
     "name": "node-server",
-    "path": "dist/servers/node.js",
+    "path": "packages/core/dist/servers/node.js",
     "limit": 560,
     "brotli": true,
     "ignore": [
@@ -68,7 +68,7 @@
   },
   {
     "name": "fetch",
-    "path": "dist/servers/fetch.js",
+    "path": "packages/core/dist/servers/fetch.js",
     "limit": 500,
     "brotli": true,
     "ignore": [
@@ -88,11 +88,11 @@
   },
   {
     "name": "multipart",
-    "path": "dist/multipart/index.js",
+    "path": "packages/multipart/dist/index.js",
     "limit": 4250,
     "brotli": true,
     "ignore": [
-      "@ailura/nestjs-hono-adapter-core",
+      "@ailura/nestjs-hono-adapter",
       "hono",
       "@hono/node-server",
       "@nestjs/common",
@@ -114,7 +114,7 @@
   },
   {
     "name": "ws",
-    "path": "dist/ws/index.js",
+    "path": "packages/ws/dist/index.js",
     "limit": 1550,
     "brotli": true,
     "ignore": [
@@ -132,7 +132,7 @@
   },
   {
     "name": "socket-io",
-    "path": "dist/socket-io/index.js",
+    "path": "packages/socket-io/dist/index.js",
     "limit": 950,
     "brotli": true,
     "ignore": [

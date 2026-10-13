@@ -7,7 +7,6 @@ name: Cloudflare examples
     paths:
       - '.github/workflows/cloudflare-examples.yml'
       - 'examples/**'
-      - 'src/**'
       - 'packages/core/**'
       - 'package.json'
       - 'bun.lock'
@@ -16,7 +15,6 @@ name: Cloudflare examples
     paths:
       - '.github/workflows/cloudflare-examples.yml'
       - 'examples/**'
-      - 'src/**'
       - 'packages/core/**'
       - 'package.json'
       - 'bun.lock'

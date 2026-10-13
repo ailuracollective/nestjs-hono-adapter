@@ -4,9 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
-      "@ailura/nestjs-hono-adapter-core": [
-        "../core/dist/index.d.ts"
-      ]
+      "@ailura/nestjs-hono-adapter": ["../core/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]
