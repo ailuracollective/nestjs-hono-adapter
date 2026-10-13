@@ -6,20 +6,19 @@ migration. This page is the baseline later changes are compared
 against: it records what was measured, how, and what the
 evidence supports. It does not propose the implementation.
 
-The transport split moved the measurements, and making the Node
-transport the default moved `index` back up: `index` 8804 B,
-`bun-server` 981 B, `node-server` 511 B, `fetch` 437 B and `ws`
-1368 B; the ceilings are 8900 B, 1024 B, 560 B, 480 B and 1400
-B. The two raises are deliberate and are the price of the
-default: `index` carries the Node transport again (+380 B
-against the 8424 B of the split) because `new ServerAdapter()`
-has to keep serving, and `ws` carries the `@hono/node-ws`
-fallback the transport no longer does (+112 B). `node-server`
-fell by 176 B, because Node's own `http.Server` is what it hands
-back now instead of a wrapper around it. The per-feature deltas
-and the package contents below were taken before the Bun
-transport rewrite and have not been re-measured — they remain
-the comparison for the code structure they describe.
+The zero-configuration bootstrap serves through Bun's own
+server, so `index` carries the Bun transport instead of the Node
+one. The gate reads: `index` 11944 B, `bun-server` 1003 B,
+`node-server` 506 B, `fetch` 496 B, `multipart` 4200 B, `ws`
+1543 B and `socket-io` 948 B; the ceilings are 12000 B, 1024 B,
+560 B, 500 B, 4250 B, 1550 B and 950 B. `index` moved from 11530
+B for the transport it now carries by default and the
+conditional `hono/bun` resolution that keeps the module loadable
+on Node, `bun-server` from 981 B for the same conditional
+import, and the capability packages are unchanged. The
+per-feature deltas and the package contents below were taken
+before the Bun transport rewrite and have not been re-measured —
+they remain the comparison for the code structure they describe.
 
 > **Update after this baseline.** The upload island
 > (`./multipart`) was added later. It carries its own ceiling —
@@ -165,16 +164,19 @@ npm pack --dry-run
 
 | Entrypoint    | Ceiling | Measured | Headroom                |
 | ------------- | ------- | -------- | ----------------------- |
-| `index`       | 8900 B  | 8804 B   | 96 B (98.9% of ceiling) |
-| `bun-server`  | 1024 B  | 981 B    | 43 B (95.8% of ceiling) |
-| `node-server` | 560 B   | 511 B    | 49 B (91.3% of ceiling) |
-| `fetch`       | 480 B   | 437 B    | 54 B (88.8% of ceiling) |
-| `ws`          | 1400 B  | 1368 B   | 32 B (97.7% of ceiling) |
+| `index`       | 12000 B | 11944 B  | 56 B (99.5% of ceiling) |
+| `bun-server`  | 1024 B  | 1003 B   | 21 B (98.0% of ceiling) |
+| `node-server` | 560 B   | 506 B    | 54 B (90.4% of ceiling) |
+| `fetch`       | 500 B   | 496 B    | 4 B (99.2% of ceiling)  |
+| `multipart`   | 4250 B  | 4200 B   | 50 B (98.8% of ceiling) |
+| `ws`          | 1550 B  | 1543 B   | 7 B (99.5% of ceiling)  |
+| `socket-io`   | 950 B   | 948 B    | 2 B (99.8% of ceiling)  |
 
-All five pass today, and the headroom is still thin on `index`
-and `ws` — 96 and 32 bytes — which is the premise of issue #66.
-The `node-server` ceiling was lowered from 720 B to 560 B in the
-same edit, so the win is recorded rather than absorbed.
+All seven pass today, and the headroom is thin on several of
+them — `socket-io` 2 bytes, `fetch` 4, `ws` 7 — which is what
+issue #66 was about. The `node-server` ceiling was lowered from
+720 B to 560 B with the transport split, so the win is recorded
+rather than absorbed.
 
 ## Published package contents
 

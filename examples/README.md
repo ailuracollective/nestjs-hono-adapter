@@ -143,4 +143,5 @@ parameter needs the decorator.
 
 ## Why there is no Bun folder
 
-`workerd` has no `Bun` global, and `bunServer()` reads one at import.
+`workerd` has no `Bun` global, so it cannot run `Bun.serve`, which
+is what `bunServer()` serves through.

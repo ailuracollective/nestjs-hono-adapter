@@ -65,12 +65,13 @@ const IN_PROCESS_ENV: Bindings = {
 
 /**
  * The Web classes the process started with. `@hono/node-server`
- * replaces `Request` and `Response` process-wide when the
- * default transport builds a server, and never puts them back.
- * `bun test` runs every file in one process, so a file that
- * starts an application on that transport would otherwise leave
- * every later probe answering with the lightweight class, which
- * `Bun.serve` refuses with the `"Welcome to Bun!"` body.
+ * replaces `Request` and `Response` process-wide when a Node
+ * transport with the global override on builds a server, and
+ * never puts them back. `bun test` runs every file in one
+ * process, so a file that starts an application on that
+ * transport would otherwise leave every later probe answering
+ * with the lightweight class, which `Bun.serve` refuses with
+ * the `"Welcome to Bun!"` body.
  */
 const PROCESS_REQUEST = globalThis.Request;
 const PROCESS_RESPONSE = globalThis.Response;

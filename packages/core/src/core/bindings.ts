@@ -108,10 +108,10 @@ interface Bindings {
   readonly incoming?: Incoming | undefined;
   /**
    * The Node response `@hono/node-server` attaches, which the
-   * security hook Nest registers is handed, and which the
-   * default transport keeps carrying so `context.env.outgoing`
-   * reads what it read before the transports split. The Bun and
-   * fetch transports leave it unset.
+   * security hook Nest registers is handed, and which the Node
+   * transport keeps carrying so `context.env.outgoing` reads
+   * what it read before the transports split. The Bun and fetch
+   * transports leave it unset.
    */
   readonly outgoing?: ServerResponse | undefined;
   readonly server?: unknown;

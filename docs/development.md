@@ -11,9 +11,9 @@ How to build, test and release the packages.
 
 ## Requirements
 
-- Bun 1.2 or later, for the toolchain.
-- Node 22.12 or later to run on Node, where `@hono/node-server`
-  is the default transport; the same transport runs on Bun.
+- Bun 1.2 or later, for the toolchain and the default transport.
+- Node 22.12 or later to run on Node, where the Node transport
+  serves through `@hono/node-server`.
 - Nest 11 or 12.
 - Hono 4.
 

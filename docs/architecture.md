@@ -110,16 +110,17 @@ source tree: it lives in the `packages/socket-io` workspace
 package, published as `@ailura/nestjs-platform-hono-socket-io`.
 
 One more split is a packaging rule rather than a layer one:
-`core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
-transport imports the ports it implements. There is one
-exception, taken deliberately and held by
-`test/entry-points.test.ts`: `core/server-adapter.ts` — the
-composition root the layer rules already name — imports
-`servers/node.ts`, to hand the adapter the transport it serves
-through when a deployment names none. That is what keeps
-`new ServerAdapter()`, the bootstrap this package published
-with, working unchanged; the cost is that `.` requires
-`@hono/node-server`, which it always did.
+`core/` never imports `servers/fetch.ts`, and imports
+`servers/bun.ts` only from the composition root; a transport
+imports the ports it implements. That one exception is taken
+deliberately and held by `test/entry-points.test.ts`:
+`core/server-adapter.ts` — the composition root the layer rules
+already name — imports `servers/bun.ts`, to hand the adapter the
+transport it serves through when a deployment names none. That
+is what keeps `new ServerAdapter()`, the bootstrap this package
+published with, served; the cost is that `.` resolves `hono/bun`
+in a top-level await, which keeps the module loadable on Node
+and makes the package ESM only, so a `require()` of it throws.
 
 `packages/core/src/core/application.ts` is the one module whose
 entire contents are types: the interface a bootstrap hands to
@@ -163,10 +164,10 @@ what to install instead.
 from the neutral entrypoints. It fails if `.` reaches
 `@hono/node-ws` or `@nestjs/websockets`, the optional peer
 dependencies: a deployment that serves HTTP must not need either
-installed. It checks the opposite direction too, because
-`@hono/node-server` is required and reached on purpose: `.`
-serves through it when no transport is named, which is the
-behaviour every deployment had before the transports split.
+installed. It checks the opposite direction too, because the
+default transport's module is reached on purpose: `.` resolves
+`hono/bun` through the Bun transport's dynamic import, which is
+why the guard reads both import shapes.
 `@ailura/nestjs-platform-hono-ws` is the only package that
 reaches the WebSocket peers,
 `@ailura/nestjs-platform-hono-socket-io` the only one that
@@ -190,10 +191,10 @@ difference.
 ## The compatibility face
 
 Names that carry the shape the package published before the
-transports split, so a deployment that never names a transport
-keeps compiling and keeps working:
+transports split, so a deployment that names `nodeServer()`
+keeps compiling and keeps working as it did:
 
-- `getHttpServer()` is `Server & http.Server`, and the default
+- `getHttpServer()` is `Server & http.Server`, and the Node
   transport hands back Node's own server with `listen` and
   `close` adapted in place: `closeAllConnections()` and an
   `'upgrade'` listener are still there.
@@ -208,22 +209,23 @@ keeps compiling and keeps working:
   where the transport provides it, as it was.
 
 `@hono/node-server` was a required peer before the split and is
-one again, and `engines` still names Node: the package is served
-by Node's server on either runtime, so the manifest did not have
-to move to accommodate the new transports.
+one again, and `engines` still names Node: the Node transport is
+what answers an `http.Server`, and a deployment that names it
+runs on Node or on Bun.
 
-`ServerAdapterOptions.overrideGlobalObjects` is read on that
-default path and is still on by default, so `@hono/node-server`
-replaces the process's `Request` and `Response` with its lighter
-classes, exactly as it did before the split. The replacement is
-process-wide and not restored, so the suite does not depend on
-it: `test/probe.ts` puts the process's own classes back before
-every request, and `packages/core/test/isolation.test.ts` holds
-that a case may serve the plain `new ServerAdapter()` in process
-without answering for the files beside it.
-`packages/core/test/node-server.test.ts` still serves the same
-default transport with the switch off and pins the wiring beside
-it.
+`ServerAdapterOptions.overrideGlobalObjects` left with the
+implicit default it configured. The Node transport carries the
+option itself and defaults it to `false`, where the old default
+path passed `true`; a deployment that relied on the replacement
+names it as `nodeServer({ overrideGlobalObjects: true })`. The
+replacement is process-wide and not restored, so the suite does
+not depend on it: `test/probe.ts` puts the process's own classes
+back before every request, and
+`packages/core/test/isolation.test.ts` holds that a case may
+serve the plain `new ServerAdapter()` in process without
+answering for the files beside it.
+`packages/core/test/node-server.test.ts` serves the Node
+transport with the switch off and pins the wiring beside it.
 
 ## The adapter chain
 
@@ -358,9 +360,9 @@ it last; CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11550-byte ceiling and a measurement of 11530,
+`index` has a 12000-byte ceiling and a measurement of 11944,
 twenty bytes of it the published multipart marker, which a
-public export keeps alive; `bun-server` 1024/981, `node-server`
+public export keeps alive; `bun-server` 1024/1003, `node-server`
 560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1550/1543
 and `socket-io` 950/948. The entry names are unchanged; the
 first four measure `packages/core/dist`, and `multipart`, `ws`
@@ -455,11 +457,11 @@ already have, so the gate leaves it out and this entrypoint is
 charged nothing for it.
 
 The transport split moved weight between entrypoints rather than
-out of the package. `index` serves through the Node transport by
-default, so `node-server`'s server-building half is reachable
-from it again, and its bytes are back in the neutral entrypoint:
-8424 to 8804, ceiling 8500 to 8900. That raise is taken here
-deliberately, as the price of not breaking
+out of the package. `index` served through the Node transport by
+default at the split, so `node-server`'s server-building half is
+reachable from it again, and its bytes are back in the neutral
+entrypoint: 8424 to 8804, ceiling 8500 to 8900. That raise is
+taken here deliberately, as the price of not breaking
 `new ServerAdapter()`, and it is the number to watch. In
 exchange `node-server` lost its `NodeServer` wrapper — it hands
 back Node's own `http.Server` with `listen` and `close` adapted
@@ -570,6 +572,17 @@ answers with an `Error`.
 
 Throwing the same refusal when no callback is supplied brings
 `fetch` to 496 bytes, so its ceiling moves from 490 to 500.
+
+Serving through Bun when no transport is named rebuilt the
+neutral entrypoint around the Bun transport. `index` carries a
+transport by default, and the one it carries now is `bun.ts`
+rather than `node.ts`, plus the conditional `hono/bun`
+resolution that keeps the module loadable on Node: 11530 to
+11944, past the 11550-byte ceiling, so `index` moves to 12000.
+`bun-server` grew 981 to 1003 for the same conditional import,
+inside its unchanged 1024-byte ceiling. `node-server` and
+`fetch` did not move, and the three capability packages are
+unchanged.
 
 Two consequences worth knowing before you write code:
 
