@@ -42,6 +42,7 @@ exactly:
 "build": "bun run build:core && bun run build:packages",
 "build:core": "bun run --filter @ailura/nestjs-hono-adapter build",
 "build:packages": "bun run --filter @ailura/nestjs-platform-hono-socket-io --filter @ailura/nestjs-platform-hono-ws --filter @ailura/nestjs-platform-hono-multipart build",
+"size": "bun run build && bun run --filter './packages/*' size",
 "test": "bun run build:core && bun test",
 "typecheck": "bun run build:core && tsc -p test/tsconfig.json"
 ```
@@ -57,6 +58,10 @@ through `node_modules/@ailura/nestjs-hono-adapter` →
 yet. The `ws` and `multipart` projects read the adapter's
 declarations from `packages/core/dist`, which is why it builds
 first.
+
+Each package also carries its own `"size": "size-limit"` script
+and a `.size-limit.json` beside its `package.json`; the root's
+`size` builds once and fans out to all four.
 
 Each package carries its own behaviour tests under
 `packages/<name>/test/` and has its own `test` script; the

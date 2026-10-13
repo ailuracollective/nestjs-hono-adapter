@@ -147,8 +147,9 @@ and bundle ceilings are written down in
   the human-readable reference and the templates implement it.
 - **The size gate is a product constraint.** Each public
   entrypoint is bundled the way a consumer resolves it, and CI
-  fails when a ceiling in `.size-limit.json` is exceeded. This
-  is a gate, not a report.
+  fails when a ceiling in a package's `.size-limit.json` is
+  exceeded. Each package carries its own beside its
+  `package.json`. This is a gate, not a report.
 - **The compat matrix tests NestJS 11 and 12 on Bun.** Every
   Nest package moves together; a mixed install is what a
   WebSocket or microservice case would fail on.
@@ -177,7 +178,7 @@ bun run format:check  # oxfmt --check .
 bun run typecheck     # build:core, then tsc for test
 bun run test          # build:core, then bun test
 bun run build         # build:core, then build:packages
-bun run size          # build + size-limit
+bun run size          # build, then each package's size-limit
 ```
 
 ## Testing and validation
@@ -190,8 +191,8 @@ bun run check
 
 This runs lint, format check, typecheck, test, build, and the
 size gate in sequence. A failure in any step fails the whole
-command. The size gate fails when a bundle ceiling in
-`.size-limit.json` is exceeded.
+command. The size gate fails when a bundle ceiling in a
+package's `.size-limit.json` is exceeded.
 
 The compat matrix in CI additionally runs
 `bun run typecheck && bun test && bun run build` against NestJS
@@ -231,8 +232,10 @@ rules, and a README section for user-facing behavior.
 - [docs/architecture.md](docs/architecture.md) — the layer map,
   import rules, and Node boundary. Read before editing the
   adapter.
-- [.size-limit.json](.size-limit.json) — the bundle ceilings the
-  size gate enforces.
+- [packages/core/.size-limit.json](packages/core/.size-limit.json)
+  — the adapter's bundle ceilings; `packages/ws`,
+  `packages/socket-io` and `packages/multipart` each carry their
+  own beside their `package.json`.
 - [release-please-config.json](release-please-config.json) — the
   release-please configuration.
 - [.release-please-manifest.json](.release-please-manifest.json)

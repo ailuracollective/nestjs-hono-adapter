@@ -314,7 +314,8 @@ That work is merged: `@ailura/nestjs-platform-hono-multipart`
 the two storage engines, the interfaces and
 `packages/multipart/test/multipart.test.ts`, with `busboy` as an
 optional peer of the adapter and a required one of the multipart
-package, and a ceiling of its own in `.size-limit.json`.
+package, and a ceiling of its own in
+`packages/multipart/.size-limit.json`.
 
 A review before the merge closed three things. An aborted upload
 now cancels the parse instead of leaving an unhandled error on

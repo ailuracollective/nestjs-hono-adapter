@@ -346,10 +346,15 @@ type.
 
 ## The bundle budget
 
-`.size-limit.json` holds a ceiling per entrypoint, measured by
-`size-limit` as a consumer would see it: bundled, minified,
-brotlied, with peers external. `bun run check` runs it last, and
-CI runs it again as its own job.
+Each package holds its own `.size-limit.json` beside its
+`package.json`: `packages/core` carries the four adapter
+entrypoints, and `packages/ws`, `packages/socket-io` and
+`packages/multipart` carry their single one, each with a path
+relative to the package. `size-limit` measures an entrypoint as
+a consumer would see it: bundled, minified, brotlied, with peers
+external. The root `size` script runs the build and then
+`bun run --filter './packages/*' size`, and `bun run check` runs
+it last; CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
