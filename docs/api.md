@@ -109,12 +109,12 @@ has one. `nodeServer` names none, so the `/ws` island falls back
 to `@hono/node-ws`: an application that serves no WebSocket
 never installs it.
 
-`fetchServer` takes no port: `listen()` and `close()` do
-nothing, and the deployment exports the handler. Static assets
-and WebSockets are host-specific, so a host that has them passes
-`serveStatic` and `upgradeWebSocket`; asking for one without
-passing it throws. `fetchHandler(app)` wraps the Hono
-application as the `fetch` a host exports:
+`fetchServer` takes no port: `close()` does nothing, `listen()`
+rejects naming the fetch host, and the deployment exports the
+handler. Static assets and WebSockets are host-specific, so a
+host that has them passes `serveStatic` and `upgradeWebSocket`;
+asking for one without passing it throws. `fetchHandler(app)`
+wraps the Hono application as the `fetch` a host exports:
 
 ```ts
 const adapter = new ServerAdapter({
