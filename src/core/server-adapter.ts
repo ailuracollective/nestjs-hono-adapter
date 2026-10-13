@@ -147,13 +147,17 @@ class ServerAdapter extends HonoLifecycle {
     return this.writer.isHeadersSent(response);
   }
 
-  /** Renders one view with the engine the deployment gave. */
-  public override render(
+  /**
+   * Renders one view with the engine the deployment gave, on
+   * the status Nest recorded for the route.
+   */
+  public override async render(
     response: NestContext,
     view: string,
     options: unknown,
   ): Promise<void> {
-    return this.views.render(response, view, options);
+    const html = await this.views.render(view, options);
+    this.writer.view(response, html);
   }
 
   /** Configures the views, by name or by Fastify's options. */

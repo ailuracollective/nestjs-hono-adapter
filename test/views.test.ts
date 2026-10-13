@@ -40,6 +40,23 @@ test('a view is rendered with the engine the deployment gave', async () => {
   }
 });
 
+test('a view carries the status the route declared', async () => {
+  const probe = await startProbe({
+    adapter: { views: { directory: FIXTURES, engine } },
+    configure: (app) => {
+      app.setViewEngine(ENGINE);
+    },
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(probe, '/view/accepted');
+    expect(response.status).toBe(HttpStatus.ACCEPTED);
+    expect(response.text).toBe('hello Nest\n');
+  } finally {
+    await probe.close();
+  }
+});
+
 test('a view directory named on the application is read from', async () => {
   const probe = await startProbe({
     adapter: { views: { engine } },

@@ -11,6 +11,9 @@ import { buildResponse } from './response.ts';
  */
 const PENDING_STATUS = Symbol('pendingStatus');
 
+/** The label Hono's own `html()` helper gives a rendered page. */
+const HTML_CONTENT_TYPE = 'text/html; charset=UTF-8';
+
 /**
  * A context with somewhere to keep the status. Written as an
  * interface extending the context rather than a bare record so
@@ -72,6 +75,18 @@ class ResponseWriter {
       message,
       this.resolve(response),
     );
+  }
+
+  /**
+   * Writes a rendered view, with the label Hono's own `html()`
+   * helper gives a page and whatever status the route declared.
+   * Both go through the reply path, so a handler annotated
+   * `@HttpCode()` answers with its status instead of the `200`
+   * the page would otherwise carry.
+   */
+  public view(response: NestContext, html: string): void {
+    response.header('content-type', HTML_CONTENT_TYPE);
+    this.reply(response, html);
   }
 
   public redirect(
