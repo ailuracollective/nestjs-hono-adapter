@@ -407,3 +407,38 @@ test('closing an attached gateway leaves the shared listener open', async () => 
     await within(closed, 'shared listener shutdown');
   }
 });
+
+/**
+ * The clients of an attached gateway, which is the case the
+ * early return serves: that listener is not ours to close, so
+ * the close cannot lean on socket.io's own `close()` to let the
+ * clients go. It has to do that itself, and this is what fails
+ * if it ever stops.
+ */
+/** The port a listening server answers on. */
+function portOf(
+  listener: ReturnType<typeof createServer>,
+): number {
+  const address = listener.address();
+  if (address === null || typeof address === 'string') {
+    throw new TypeError('the listener answered with no port');
+  }
+  return address.port;
+}
+
+test('closing an attached gateway disconnects its clients', async () => {
+  const listener = await listeningServer();
+  try {
+    const adapter = new HonoIoAdapter(listener);
+    const io = adapter.createIOServer(ANY_PORT);
+    await disconnectGateway(adapter, io, {
+      namespace: '',
+      port: portOf(listener),
+    });
+    expect(listener.listening).toBe(true);
+  } finally {
+    const closed = once(listener, 'close');
+    listener.close();
+    await within(closed, 'shared listener shutdown');
+  }
+});

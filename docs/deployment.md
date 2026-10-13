@@ -267,13 +267,14 @@ transport serves through `Bun.serve`, whose server is not one,
 and a fetch host has no server at all. The adapter refuses both
 when the gateway starts, naming the transport to serve through
 instead, rather than failing inside socket.io. Its `close()`
-lets the clients go without waiting for the HTTP server, because
-the Node transport answers `close(callback)` without ever
-invoking the callback (issue #121). Port zero requests
-attachment and is refused when no Node server is available. An
-explicit nonzero gateway port opens a separate listener, which
-the adapter owns and closes during shutdown, including when the
-gateway uses a namespace.
+closes the listener a standalone gateway opened, and only that
+one: the server an attached gateway shares belongs to the
+transport, which closes it in its own shutdown, so the adapter
+lets the clients go and leaves that listener alone. Port zero
+requests attachment and is refused when no Node server is
+available. An explicit nonzero gateway port opens a separate
+listener, which the adapter owns and closes during shutdown,
+including when the gateway uses a namespace.
 
 ## Microservices
 
