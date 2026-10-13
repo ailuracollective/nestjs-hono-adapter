@@ -53,7 +53,7 @@ interface CallbackClose {
 @Module({})
 class QuietModule {}
 
-/** True when the work settled inside the budget. */
+/** True when the work completed successfully inside the budget. */
 async function settled(
   work: Promise<unknown>,
 ): Promise<boolean> {
@@ -61,10 +61,7 @@ async function settled(
     undefined;
   try {
     return await Promise.race([
-      work.then(
-        () => true,
-        () => true,
-      ),
+      work.then(() => true),
       // oxlint-disable-next-line promise/avoid-new -- the timeout is settled from outside this body, which is what a deferred is.
       new Promise<boolean>((resolve) => {
         timer = setTimeout(() => {
@@ -121,5 +118,7 @@ test('the callback receives the error of a server that never listened', async ()
 
 test('the boolean the Nest lifecycle passes still closes the server', async () => {
   const { app } = await serving();
-  expect(await settled(app.close())).toBe(true);
+  const close = app.close();
+  expect(await settled(close)).toBe(true);
+  expect(close).resolves.toBeUndefined();
 });
