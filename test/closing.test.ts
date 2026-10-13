@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 
 import type { NestEnv } from '../src/index.ts';
-import { guardBridge } from '../src/features/guard-bridge.ts';
+import { guardStep } from '../src/features/front-steps.ts';
 import { startProbe } from './support.ts';
 
 /** The answer a request gets once the server is closing. */
@@ -32,7 +32,7 @@ function probeApp(isClosing: () => boolean): Hono<NestEnv> {
   const app = new Hono<NestEnv>();
   app.use(
     '*',
-    guardBridge({
+    guardStep({
       closing: isClosing,
       cors: noCorsStep,
       corsEnabled: noCorsEnabled,

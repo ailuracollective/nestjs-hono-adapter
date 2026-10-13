@@ -118,7 +118,10 @@ in [docs/architecture.md](docs/architecture.md).
   `.github/workflows/release.yml`.
 - **The toolchain is Bun.** Install, test, and build all run
   through Bun; `bun install --frozen-lockfile` is the only
-  supported install command.
+  supported install command. `bun.lock` stays at
+  `lockfileVersion: 1` — the Cloudflare build image reads no
+  other — and CI fails when it changes; see
+  [docs/development.md](docs/development.md#the-lockfile-format-the-build-image-reads).
 - **The issue contract is prose only.** This repository carries
   `.github/ISSUE_STANDARD.md` but not `.github/CONTRACT.yml` or
   `scripts/validate_contract.py`: no tool here validates the

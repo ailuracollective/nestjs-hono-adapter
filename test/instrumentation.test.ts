@@ -3,11 +3,11 @@ import { HttpStatus, Logger } from '@nestjs/common';
 import { Hono } from 'hono';
 
 import type { NestEnv } from '../src/index.ts';
-import { instrumentationBridge } from '../src/features/guard-bridge.ts';
+import { instrumentationStep } from '../src/features/front-steps.ts';
 import type {
   OnRequestHook,
   OnResponseHook,
-} from '../src/features/guard-bridge.ts';
+} from '../src/features/front-steps.ts';
 
 /** What the instrumentation step is configured with. */
 interface ProbeHooks {
@@ -26,7 +26,7 @@ function probeApp(
   const app = new Hono<NestEnv>();
   app.use(
     '*',
-    instrumentationBridge({
+    instrumentationStep({
       onRequest: () => hooks.onRequest,
       onResponse: () => hooks.onResponse,
       trustProxy: false,

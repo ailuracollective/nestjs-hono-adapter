@@ -46,7 +46,7 @@ the comparison for the code structure they describe.
 
 > **Update after that.** The instrumentation hooks
 > (`setOnRequestHook()` / `setOnResponseHook()`) were added
-> later, in the step `features/guard-bridge.ts` builds and
+> later, in the step `features/front-steps.ts` builds and
 > `core/hono-lifecycle.ts` mounts. They cost 229 B in `index`:
 > 8950 B before, 9179 B after, against a 9000 B ceiling that
 > left 50 B. The ceiling is a ratchet and the raise is recorded
@@ -214,7 +214,7 @@ runs through the composition root:
 | Feature                       | Value-imported by        | Used                                           | Wiring                     |
 | ----------------------------- | ------------------------ | ---------------------------------------------- | -------------------------- |
 | `features/cors-middleware.ts` | `core/hono-lifecycle.ts` | `installGuards()`, called from the constructor | unconditional              |
-| `features/guard-bridge.ts`    | `core/hono-lifecycle.ts` | `installGuards()`, called from the constructor | unconditional              |
+| `features/front-steps.ts`     | `core/hono-lifecycle.ts` | `installGuards()`, called from the constructor | unconditional              |
 | `features/sse.ts`             | `core/hono-lifecycle.ts` | class field initializer                        | unconditional              |
 | `features/views.ts`           | `core/server-adapter.ts` | `new ViewRenderer(...)` in the constructor     | unconditional              |
 | `features/static-assets.ts`   | `core/server-adapter.ts` | inside a setup method                          | opt-in call, static import |
@@ -235,7 +235,7 @@ configuration. Baseline in this replication: 8446 B
 | ---------------------------- | ------ | ------- |
 | baseline                     | 8446 B | —       |
 | `cors-middleware.ts` stubbed | 7999 B | −447 B  |
-| `guard-bridge.ts` stubbed    | 8344 B | −102 B  |
+| `front-steps.ts` stubbed     | 8344 B | −102 B  |
 | `sse.ts` stubbed             | 7511 B | −935 B  |
 | `static-assets.ts` stubbed   | 7954 B | −492 B  |
 | `views.ts` stubbed           | 8128 B | −318 B  |
@@ -285,7 +285,7 @@ sites:
 | Scenario               | Entry chunk | All chunks (what the gate measures) |
 | ---------------------- | ----------- | ----------------------------------- |
 | baseline               | 8446 B      | 8446 B                              |
-| `guard-bridge` lazy    | 8373 B      | 8619 B                              |
+| `front-steps` lazy     | 8373 B      | 8619 B                              |
 | all five features lazy | 5713 B      | 10180 B                             |
 
 The entry chunk shrinks — by 2.7 kB when all five are lazy — but
