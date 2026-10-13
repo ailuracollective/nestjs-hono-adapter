@@ -124,17 +124,17 @@ platform adapters inflate `gzip` and `deflate`; this one reads
 the bytes as sent, so a client that compresses its payload
 reaches them and not this adapter.
 
-`app.useBodyParser('json', false, { limit: '1kb' })` accepts `json`,
-`urlencoded`, `text` and `raw` parser names; any other name is
-refused when the call is made. Parsing is selected by the
-request's content type. The call sets one limit for the adapter,
-so the size applies to every parser and every route, and it
-replaces the `bodyLimit` option. The limit is the one option it
-reads: any other — `inflate`, `verify`, `extended`, `strict` —
-is refused by name when the call is made, rather than accepted
-and dropped. Called without a `limit` it still enables body
-parsing and applies the `rawBody` argument; only the existing
-size limit is unchanged.
+`app.useBodyParser('json', false, { limit: '1kb' })` accepts
+`json`, `urlencoded`, `text` and `raw` parser names; any other
+name is refused when the call is made. Parsing is selected by
+the request's content type. The call sets one limit for the
+adapter, so the size applies to every parser and every route,
+and it replaces the `bodyLimit` option. The limit is the one
+option it reads: any other — `inflate`, `verify`, `extended`,
+`strict` — is refused by name when the call is made, rather than
+accepted and dropped. Called without a `limit` it still enables
+body parsing and applies the `rawBody` argument; only the
+existing size limit is unchanged.
 
 With `rawBody: true` — the adapter option, or the same option on
 `NestFactory.create` — `NestRequest.rawBody` holds the bytes
