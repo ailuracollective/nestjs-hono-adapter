@@ -93,10 +93,12 @@ await app.init();
 export default { fetch: fetchHandler(adapter.getHono()) };
 ```
 
-`listen()` and `close()` do nothing; the request carrier Nest's
-SSE path reads is synthesized from the request's signal. There
-is no native socket, so `raw` is the carrier. By default the
-carrier has no address, and `cf-connecting-ip` is ignored.
+`close()` does nothing, and `listen()` rejects naming the fetch
+host: the host owns the request loop, so there is no port to
+open. The request carrier Nest's SSE path reads is synthesized
+from the request's signal. There is no native socket, so `raw`
+is the carrier. By default the carrier has no address, and
+`cf-connecting-ip` is ignored.
 
 Pass `fetchHandler(app, { clientAddress })` to resolve a trusted
 address supplied by the host. The resolver's result is used as

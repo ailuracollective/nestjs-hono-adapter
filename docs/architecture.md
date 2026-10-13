@@ -297,8 +297,8 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11480-byte ceiling and a measurement of 11469,
-`bun-server` 1024/981, `node-server` 560/506, `fetch` 480/418,
+`index` has an 11500-byte ceiling and a measurement of 11491,
+`bun-server` 1024/981, `node-server` 560/506, `fetch` 490/487,
 `multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
 
 **`inject()`.** Fastify's in-process request helper costs 1073
@@ -487,6 +487,14 @@ Creating charset decoders on demand and rejecting unsupported
 `useBodyParser()` names require a small increase in `index`. Its
 ceiling moves from 11480 to 11500 bytes to cover these checks;
 the other entrypoint ceilings stay as declared.
+
+Answering `listen()` with the reason it cannot run costs 69
+bytes in `fetch` — 418 before, 487 after — past its 480-byte
+ceiling, so `fetch` moves to 490. Almost all of it is the
+message: a fetch host hands the adapter its requests, so a
+deployment that waits on `listen()` waits forever, and Nest
+settles that promise only from the callback this transport now
+answers with an `Error`.
 
 Two consequences worth knowing before you write code:
 

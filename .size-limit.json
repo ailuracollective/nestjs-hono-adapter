@@ -69,7 +69,7 @@
   {
     "name": "fetch",
     "path": "dist/servers/fetch.js",
-    "limit": 480,
+    "limit": 490,
     "brotli": true,
     "ignore": [
       "hono",

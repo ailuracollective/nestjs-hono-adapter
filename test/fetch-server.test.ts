@@ -101,6 +101,28 @@ test('a route answers through the fetch handler', async () => {
   }
 });
 
+test('listen() answers with the reason instead of waiting', async () => {
+  const adapter = new ServerAdapter({
+    transport: fetchServer(),
+  });
+  const app = await NestFactory.create(ProbeModule, adapter, {
+    logger: false,
+  });
+  try {
+    let refusal = '';
+    try {
+      await app.listen(0);
+    } catch (error) {
+      if (error instanceof Error) {
+        refusal = error.message;
+      }
+    }
+    expect(refusal).toContain('fetch host');
+  } finally {
+    await app.close();
+  }
+});
+
 test('untrusted fetch headers cannot supply the client address', async () => {
   const probe = await startFetch(ProbeModule);
   try {
