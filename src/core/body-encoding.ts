@@ -12,14 +12,18 @@ const CHARSET = 'charset';
 const DEFAULT_CHARSET = 'utf8';
 
 /**
- * The decoders this adapter reads, keyed by the label without
- * its dashes: the UTF family `body-parser` admits, and only the
- * part of it this runtime decodes. Anything else is refused.
+ * The decoder labels this adapter reads, keyed by charset
+ * without dashes: the UTF family `body-parser` admits, and only
+ * the part of it this runtime decodes. Anything else is
+ * refused.
  */
-const DECODERS = new Map<string, TextDecoder>([
-  ['utf16be', new TextDecoder('utf-16be')],
-  ['utf16le', new TextDecoder('utf-16le')],
-  ['utf8', new TextDecoder()],
+const DECODERS = new Map<
+  string,
+  'utf-16be' | 'utf-16le' | 'utf8'
+>([
+  ['utf16be', 'utf-16be'],
+  ['utf16le', 'utf-16le'],
+  ['utf8', 'utf8'],
 ]);
 
 /** The value a `content-type` header gives a parameter. */
@@ -66,41 +70,28 @@ function assertIdentity(context: NestContext): void {
 }
 
 /**
- * The exception a charset that cannot be decoded is answered
- * with.
- */
-function unsupportedCharset(
-  charset: string,
-): UnsupportedMediaTypeException {
-  return new UnsupportedMediaTypeException(
-    `Unsupported charset "${charset}"`,
-  );
-}
-
-/**
- * The decoder a declared charset names, refused with the 415
+ * Decodes text with its declared charset, refused with the 415
  * `body-parser` answers one it does not read with. The label is
  * matched without its dashes, so `utf-8` and `utf8` are the
  * same charset, and only the family this runtime decodes is
  * read.
  */
-function decoderFor(charset: string): TextDecoder {
-  let label = charset;
-  if (label === '') {
-    label = DEFAULT_CHARSET;
-  }
-  const decoder = DECODERS.get(
-    label.replaceAll('-', '').toLowerCase(),
-  );
-  if (decoder === undefined) {
-    throw unsupportedCharset(charset);
-  }
-  return decoder;
-}
-
-/** Decodes text with the charset its request declared. */
 function textOf(bytes: Uint8Array, charset: string): string {
-  return decoderFor(charset).decode(bytes);
+  const decoder = DECODERS.get(
+    (charset || DEFAULT_CHARSET)
+      .replaceAll('-', '')
+      .toLowerCase(),
+  );
+  try {
+    if (decoder !== undefined) {
+      return new TextDecoder(decoder).decode(bytes);
+    }
+  } catch {
+    // The runtime may not support every label in the registry.
+  }
+  throw new UnsupportedMediaTypeException(
+    `Unsupported charset "${charset}"`,
+  );
 }
 
 export { assertIdentity, charsetOf, textOf };

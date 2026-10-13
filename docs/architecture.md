@@ -483,6 +483,11 @@ than failing and a charset or content encoding this adapter
 cannot read is refused with the platform's 415 instead of being
 handed to `JSON.parse`.
 
+Creating charset decoders on demand and rejecting unsupported
+`useBodyParser()` names require a small increase in `index`. Its
+ceiling moves from 11480 to 11500 bytes to cover these checks;
+the other entrypoint ceilings stay as declared.
+
 Two consequences worth knowing before you write code:
 
 - **Extracting a helper costs bytes.** The bundler does not

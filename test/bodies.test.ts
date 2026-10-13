@@ -16,6 +16,7 @@ import {
 } from './support.ts';
 import { bunAdapter } from './bun-adapter.ts';
 import { request } from './probe.ts';
+import type { Probe } from './probe.ts';
 
 /** A limit small enough that one longer body crosses it. */
 const BODY_LIMIT = 16;
@@ -88,6 +89,15 @@ interface DeclaredCase {
  */
 async function declaredCases(): Promise<DeclaredCase[]> {
   return [
+    {
+      body: Buffer.from(JSON_BODY, 'utf16le').swap16(),
+      headers: {
+        'content-type': 'application/json; charset=utf-16be',
+      },
+      name: 'a UTF-16BE JSON body is decoded',
+      status: HttpStatus.CREATED,
+      value: { hello: 'world' },
+    },
     {
       body: Buffer.from(JSON_BODY, 'utf16le'),
       headers: {
@@ -444,6 +454,81 @@ test('a socket reader honours what the payload declares', async () => {
  */
 type CallerOptions = BodyParserOptions &
   Record<string, unknown>;
+
+/** A parser configuration must preserve the adapter's limit. */
+async function assertLimit(probe: Probe): Promise<void> {
+  const oversized = await request(
+    probe,
+    '/echo',
+    jsonRequest({ text: 'x'.repeat(BODY_LIMIT) }),
+  );
+  expect(oversized.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
+}
+
+/** A raw-body response also proves the payload was accepted. */
+async function assertRaw(
+  probe: Probe,
+  expected: string,
+): Promise<void> {
+  const raw = await request(
+    probe,
+    '/raw',
+    jsonRequest({ name: 'note' }),
+  );
+  expect(raw.status).toBe(HttpStatus.CREATED);
+  expect(raw.body).toStrictEqual({ raw: expected });
+}
+
+test.each(['json', 'urlencoded', 'text', 'raw', undefined])(
+  'a %s parser call without a limit enables parsing and raw bytes',
+  async (type) => {
+    const probe = await startProbe({
+      adapter: { bodyLimit: BODY_LIMIT },
+      application: { bodyParser: false },
+      mode: 'in-process',
+    });
+    try {
+      probe.adapter.useBodyParser(type, true);
+      const parsed = await request(
+        probe,
+        '/echo',
+        jsonRequest({ name: 'note' }),
+      );
+      expect(parsed.body).toStrictEqual({ name: 'note' });
+      await assertRaw(probe, '{"name":"note"}');
+      await assertLimit(probe);
+    } finally {
+      await probe.close();
+    }
+  },
+);
+
+test.each(['yaml', 'multipart', '', 'JSON'])(
+  'an unsupported %s parser leaves adapter state unchanged',
+  async (type) => {
+    const probe = await startProbe({
+      adapter: { bodyLimit: BODY_LIMIT },
+      application: { bodyParser: false },
+      mode: 'in-process',
+    });
+    try {
+      expect(() => {
+        probe.adapter.useBodyParser(type, true, { limit: 1 });
+      }).toThrow(TypeError);
+      const unparsed = await request(
+        probe,
+        '/echo',
+        jsonRequest({ name: 'note' }),
+      );
+      expect(unparsed.text).toBe('');
+      probe.adapter.registerParserMiddleware();
+      await assertRaw(probe, '');
+      await assertLimit(probe);
+    } finally {
+      await probe.close();
+    }
+  },
+);
 
 test('refuses a parser option it cannot honour', async () => {
   const probe = await startProbe({ mode: 'in-process' });

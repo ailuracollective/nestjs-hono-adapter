@@ -231,16 +231,23 @@ class ServerAdapter extends HonoLifecycle {
 
   /**
    * `app.useBodyParser()` reaches the adapter here. Every
-   * parser reads the same payload, so the type is not branched
-   * on; the size limit is the one option it reads. An option it
+   * parser reads the same payload, selected by content type;
+   * unsupported parser names are refused before state changes.
+   * The size limit is the one option it reads. An option it
    * cannot carry out — `inflate`, `verify`, `extended` — is
    * refused by name here rather than accepted and dropped.
    */
   public useBodyParser(
-    _type?: string,
+    type?: string,
     rawBody?: boolean,
     options?: BodyParserOptions,
   ): void {
+    if (
+      type !== undefined &&
+      !['json', 'urlencoded', 'text', 'raw'].includes(type)
+    ) {
+      throw new TypeError(`Unsupported parser "${type}"`);
+    }
     for (const name of Object.keys(options ?? {})) {
       if (name !== 'limit') {
         throw new TypeError(
