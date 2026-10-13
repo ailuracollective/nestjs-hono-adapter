@@ -225,20 +225,26 @@ the path.
 
 `WsAdapter` refuses a namespace and has no acknowledgement
 callback either; the reply travels back as the echoed `id`.
-These are only a gap against Socket.IO.
+These are only a gap against Socket.IO, and `./socket-io` closes
+it without changing `./ws`.
 
-### `@nestjs/platform-socket.io` — missing entirely
+### `@nestjs/platform-socket.io` — implemented, behind `./socket-io`
 
-No `IoAdapter`, no `createIOServer()`, no `mapPayload()`, and
-therefore no namespaces, no rooms, no broadcasting and no
-acknowledgement callbacks. A consumer that used
-`@nestjs/platform-socket.io` cannot move to this adapter.
+`HonoIoAdapter` is the counterpart of that package's
+`IoAdapter`: `create()`, `createIOServer()`, `mapPayload()`,
+`bindMessageHandlers()`, `bindClientDisconnect()` and `close()`,
+so a gateway keeps its namespaces, its rooms, its broadcasts and
+its acknowledgement callbacks. It is a new subpath beside
+`./ws`, not a change to it.
 
-It is feasible on the Node and Bun transports, where
-`getHttpServer()` answers a real `http.Server` for `socket.io`
-to attach to; it is not feasible on the `fetchServer()`
-transport, where there is no socket. It would be a new subpath
-beside `./ws`, not a change to it.
+It attaches to a Node `http.Server`, and only the Node transport
+answers with one: `./node-server` runs on Node and on Bun, so a
+Bun deployment that wants socket.io serves through it. The Bun
+transport serves through `Bun.serve`, whose server carries `on`,
+`listen` and `close` but never fires a Node request event, and
+the fetch transport has no server at all; the adapter refuses
+both by name instead of failing inside socket.io. That is the
+one thing a consumer moving from Fastify has to change.
 
 ## File uploads
 
@@ -341,8 +347,10 @@ rather than emulated.
 
 Ordered by what it costs and what it unblocks.
 
-1. **Decide on Socket.IO.** Either a `./socket-io` subpath for
-   the Node and Bun transports, or a written non-goal.
+The one item this list carried — whether to support Socket.IO —
+is settled: it is `./socket-io`, a subpath of its own, and the
+section above records what it covers and the one transport it
+needs. Nothing else the reconnaissance found is outstanding.
 
 The non-goals and the runtime surface are written down:
 [docs/platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)

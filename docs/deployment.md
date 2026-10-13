@@ -237,6 +237,40 @@ that connects and never sends is not bound; it holds nothing the
 gateway could write to, and a client that sends is bound before
 its frame is delivered.
 
+### Socket.IO
+
+Socket.IO is a protocol of its own rather than a WebSocket, so
+it has an adapter and a subpath of its own:
+
+```ts
+import { NestFactory } from '@nestjs/core';
+import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
+import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
+import { HonoIoAdapter } from '@ailura/nestjs-hono-adapter/socket-io';
+
+const adapter = new ServerAdapter({ transport: nodeServer() });
+const app = await NestFactory.create(AppModule, adapter);
+app.useWebSocketAdapter(new HonoIoAdapter(app));
+await app.listen(3000);
+```
+
+`HonoIoAdapter` is the counterpart of
+`@nestjs/platform-socket.io`'s `IoAdapter`, so a gateway keeps
+its namespaces, its rooms, its broadcasts and its
+acknowledgement callbacks. Install `socket.io` beside
+`@nestjs/websockets`: it is an optional peer reached through
+`./socket-io` and nowhere else.
+
+It attaches to a Node `http.Server`, which is what
+`./node-server` answers with on Node and on Bun. The Bun
+transport serves through `Bun.serve`, whose server is not one,
+and a fetch host has no server at all. The adapter refuses both
+when the gateway starts, naming the transport to serve through
+instead, rather than failing inside socket.io. Its `close()`
+lets the clients go without waiting for the HTTP server, because
+the Node transport answers `close(callback)` without ever
+invoking the callback (issue #121).
+
 ## Microservices
 
 A microservice transport is Nest's own and never passes through

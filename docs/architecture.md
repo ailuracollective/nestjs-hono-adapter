@@ -59,6 +59,8 @@ Four rules, all enforced by `test/layers.test.ts`:
 4. The islands reach `core/` and `features/` **only through
    type-only imports**. The upload island has one value edge,
    `core/multipart.ts`, the marker it sets on the adapter.
+5. The socket.io island reaches `core/` and `features/` not at
+   all, as a value or as a type.
 
 Rule 1 has exactly two exceptions because exactly two modules
 are the composition root: they are the ones that turn a
@@ -77,6 +79,14 @@ imports `declareMultipart` from `core/multipart.ts` as a value,
 because marking the adapter is the whole point of the island.
 Its other reaches into `core/` are types, so a deployment that
 serves no upload loads neither the island nor its parser.
+
+The socket.io island goes one step further, which is why it has
+a rule of its own: it names nothing in `core/` or `features/` at
+all. Nest hands the adapter the server it already built, so
+`socket-io/io-adapter.ts` needs no port and no composition root
+— its runtime graph is `socket.io` and the three modules behind
+`./socket-io`, and `test/layers.test.ts` refuses both the value
+edge and the type edge that would change that.
 
 One more split is a packaging rule rather than a layer one:
 `core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
@@ -101,11 +111,12 @@ time rather than leaving to review.
 
 ## Entrypoints and isolation
 
-The `exports` map in `package.json` exposes six specifiers: `.`,
-`./bun-server`, `./node-server`, `./fetch`, `./multipart` and
-`./ws`. It exposes nothing else, so no consumer can reach an
-internal module by path — which is what makes it safe to move
-files between regions without it being a breaking change.
+The `exports` map in `package.json` exposes seven specifiers:
+`.`, `./bun-server`, `./node-server`, `./fetch`, `./multipart`,
+`./ws` and `./socket-io`. It exposes nothing else, so no
+consumer can reach an internal module by path — which is what
+makes it safe to move files between regions without it being a
+breaking change.
 
 `test/entry-points.test.ts` walks the import graph transitively
 from the neutral entrypoints. It fails if `.` reaches
@@ -116,7 +127,8 @@ installed. It checks the opposite direction too, because
 serves through it when no transport is named, which is the
 behaviour every deployment had before the transports split.
 `./ws` is the only entrypoint that reaches the WebSocket peers,
-and `./multipart` the only one that reaches `busboy`.
+`./socket-io` the only one that reaches `socket.io`, and
+`./multipart` the only one that reaches `busboy`.
 
 Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;
@@ -383,6 +395,18 @@ in place — so it fell from 687 to 511 and its ceiling to 560.
 `ws` gained the `@hono/node-ws` fallback the transport no longer
 carries, 1256 to 1368, ceiling 1400.
 
+`socket-io` is the seventh entrypoint, and the first one added
+with a ceiling of its own rather than a raise: 950 bytes,
+measured at 916. Nothing in it is charged to `index`, because
+`./socket-io` is reached only by a deployment that names it, and
+`socket.io` is an optional peer the gate leaves out of the
+measurement the way it leaves out `@hono/node-ws`. The island is
+three modules — the adapter, the refusal that names the
+transport a deployment must serve through instead, and the
+entrypoint that re-exports both — and the 34 bytes of headroom
+left under the ceiling are in the range the other entries keep,
+from `ws`'s 10 to `fetch`'s 62.
+
 Two consequences worth knowing before you write code:
 
 - **Extracting a helper costs bytes.** The bundler does not
@@ -401,7 +425,7 @@ product.
 
 | File                                 | What it holds                       |
 | ------------------------------------ | ----------------------------------- |
-| `test/layers.test.ts`                | the four dependency rules           |
+| `test/layers.test.ts`                | the five dependency rules           |
 | `test/entry-points.test.ts`          | subpath isolation                   |
 | `test/node-builtins.test.ts`         | the frozen builtin set              |
 | `test/types/application-surface.ts`  | the types a consumer reads through  |

@@ -60,7 +60,7 @@ This file covers the whole repository. The directories that are
 part of the repository and that an agent may edit:
 
 - `src/` — the adapter source, layered into `core/`,
-  `features/`, `servers/`, `multipart/` and `ws/`.
+  `features/`, `servers/`, `multipart/`, `ws/` and `socket-io/`.
 - `test/` — the test suite, including fixtures and probes.
 - `docs/` — architecture and documentation.
 - `examples/` — runnable Cloudflare Workers examples, one per
@@ -86,10 +86,10 @@ framework being adapted). The core is runtime-neutral: a
 `@hono/node-server`, or a fetch host's Web `Request`/`Response`;
 each transport lives behind its own subpath, and the Node one is
 the default, so a bootstrap that names none keeps working on
-Node and on Bun. The package publishes six entrypoints: `.` (the
-adapter), `./bun-server`, `./node-server`, `./fetch`,
-`./multipart` (upload interceptors) and `./ws` (the WebSocket
-adapter).
+Node and on Bun. The package publishes seven entrypoints: `.`
+(the adapter), `./bun-server`, `./node-server`, `./fetch`,
+`./multipart` (upload interceptors), `./ws` (the WebSocket
+adapter) and `./socket-io` (the Socket.IO adapter).
 
 The source is layered: `src/core/` holds the request decode,
 response encode, and lifecycle bridge, plus the `Server` and
@@ -99,10 +99,11 @@ views); `src/servers/` holds the runtime transports (`bun.ts`,
 `node.ts`, `fetch.ts`), reached through their subpaths — and the
 Node one from `core/server-adapter.ts`, the adapter's
 composition root, as the transport it serves through by default;
-`src/multipart/` is the upload island behind `./multipart`; and
-`src/ws/` is the WebSocket island behind `./ws`. The layout,
-import rules, and bundle ceilings are written down in
-[docs/architecture.md](docs/architecture.md).
+`src/multipart/` is the upload island behind `./multipart`;
+`src/ws/` is the WebSocket island behind `./ws`; and
+`src/socket-io/` is the Socket.IO island behind `./socket-io`.
+The layout, import rules, and bundle ceilings are written down
+in [docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 

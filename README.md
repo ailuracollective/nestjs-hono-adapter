@@ -54,8 +54,12 @@ when no transport is named, so it is required. A deployment that
 serves uploads installs `busboy`, reached through `./multipart`
 and nowhere else. A deployment that serves WebSockets installs
 `@hono/node-ws` and `@nestjs/websockets`: those two are the
-optional peers reached through `./ws`. The optional peers are
-only ever loaded by the entrypoint that needs them.
+optional peers reached through `./ws`. A deployment that runs a
+gateway on socket.io installs `socket.io` and
+`@nestjs/websockets`, reached through `./socket-io` and nowhere
+else; that island needs the Node transport, which
+`./node-server` provides on Node and on Bun. The optional peers
+are only ever loaded by the entrypoint that needs them.
 
 ## Use
 

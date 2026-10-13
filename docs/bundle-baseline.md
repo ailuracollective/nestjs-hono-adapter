@@ -88,6 +88,25 @@ the comparison for the code structure they describe.
 > `node-server` 511 B, `fetch` 418 B, `multipart` 4206 B and
 > `ws` 1543 B, each inside its unchanged ceiling.
 
+> **Update after that — `./socket-io`.** The last item of the
+> backlog in `docs/parity.md` added the socket.io island: the
+> `HonoIoAdapter` behind a seventh subpath, and the refusal that
+> names the transport to serve through when socket.io cannot
+> attach to the server a transport answered with. It is a new
+> entrypoint rather than a raise, so its ceiling is set here
+> rather than moved: 950 B, measured at 916 B, which leaves the
+> 34 B of headroom the other entries keep between `ws`'s 10 B
+> and `fetch`'s 62 B. Nothing in it is charged to `index`,
+> because `./socket-io` is reached only by a deployment that
+> names it, and `socket.io` is an optional peer the gate leaves
+> out of the measurement the way it leaves out `@hono/node-ws`.
+> The `index` figure reads 10856 B where the entry above
+> recorded 10827 B: nothing in this change reaches that bundle,
+> so the refinement merged after it is what grew it. Every other
+> entrypoint is untouched: `index` 10856 B, `bun-server` 981 B,
+> `node-server` 511 B, `fetch` 418 B, `multipart` 4206 B and
+> `ws` 1543 B, each inside its unchanged ceiling.
+
 ## Environment
 
 | Tool                                  | Version                     |
