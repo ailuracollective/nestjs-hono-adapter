@@ -110,6 +110,100 @@ test("Fastify's options object configures the views", async () => {
   }
 });
 
+test('locals survive default context configuration and later renders', async () => {
+  const defaults = Object.freeze({
+    extra: 'first',
+    name: 'default',
+    title: 'default',
+  });
+  const probe = await startProbe({
+    adapter: {
+      views: {
+        directory: FIXTURES,
+        engine: (_source, data) => JSON.stringify(data),
+      },
+    },
+    configure: (app) => {
+      app.setLocal('title', 'local');
+      app.setLocal('before', 'kept');
+      app.setViewEngine({
+        defaultContext: defaults,
+        viewExt: ENGINE,
+      });
+      app.setLocal('after', 'added');
+    },
+    mode: 'in-process',
+  });
+  try {
+    const first = await request(probe, '/view');
+    expect(JSON.parse(first.text)).toStrictEqual({
+      after: 'added',
+      before: 'kept',
+      extra: 'first',
+      name: 'Nest',
+      title: 'local',
+    });
+    probe.app.setViewEngine({
+      defaultContext: { extra: 'second', name: 'new default' },
+    });
+    probe.app.setLocal('title', 'updated');
+    const second = await request(probe, '/view');
+    expect(JSON.parse(second.text)).toStrictEqual({
+      after: 'added',
+      before: 'kept',
+      extra: 'second',
+      name: 'Nest',
+      title: 'updated',
+    });
+  } finally {
+    await probe.close();
+  }
+});
+
+// oxlint-disable-next-line unicorn/no-null -- a null local must be stored as data too.
+test.each([{ injected: true }, 'ordinary data', null])(
+  '__proto__ is passed to the engine as an own local: %j',
+  async (value) => {
+    const probe = await startProbe({
+      adapter: {
+        views: {
+          directory: FIXTURES,
+          engine: (_source, data) =>
+            JSON.stringify([
+              Object.hasOwn(data, '__proto__'),
+              Object.getPrototypeOf(data) === Object.prototype,
+              data,
+            ]),
+        },
+      },
+      configure: (app) => {
+        app.setLocal('__proto__', value);
+        app.setViewEngine({
+          defaultContext: { title: 'default' },
+          viewExt: ENGINE,
+        });
+        app.setLocal('title', 'local');
+      },
+      mode: 'in-process',
+    });
+    try {
+      const response = await request(probe, '/view');
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(JSON.parse(response.text)).toStrictEqual([
+        true,
+        true,
+        Object.fromEntries([
+          ['__proto__', value],
+          ['name', 'Nest'],
+          ['title', 'local'],
+        ]),
+      ]);
+    } finally {
+      await probe.close();
+    }
+  },
+);
+
 test('a field the adapter cannot honour is refused', () => {
   const adapter = bunAdapter();
 

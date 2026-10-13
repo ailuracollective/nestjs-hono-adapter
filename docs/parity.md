@@ -136,13 +136,45 @@ template it was named. Every other field Fastify defines
 engine the adapter was constructed with (`ViewOptions.engine`)
 still works on its own.
 
-### `setLocal()`, `set()`, `enable()`, `disable()`, `engine()` — missing
+### `setLocal()`, `set()`, `enable()`, `disable()` — implemented
 
-These are Express application settings reached through
-`NestExpressApplication`, and they have no Hono counterpart.
-`setBaseViewsDir()` and `setViewEngine()` are implemented
-directly, so views work; the generic settings API does not
-exist.
+Express reaches its application settings through
+`NestExpressApplication`; here they are on the adapter and on
+the application `NestFactory.create()` hands back.
+
+`setLocal(key, value)` stores locals separately from the
+`defaultContext` configured through `setViewEngine()`. Every
+render combines defaults, locals, and handler data in that
+order, so reconfiguring defaults preserves locals and a local
+set after startup reaches the next template. Special keys such
+as `__proto__` are passed as own data properties.
+
+`set(name, value)` reaches the two settings that name behaviour
+here: `view engine` delegates to `setViewEngine()` and `views`
+to `setBaseViewsDir()`. `views` accepts a string or a string
+array, searched in order; `view engine` accepts a string.
+`enable(name)` and `disable(name)` call it with `true` and
+`false`. Every other name is refused by name with a reason
+rather than stored, so a setting nothing reads fails where it is
+set. `trust proxy` points at the adapter options, because the
+transport reads it when the adapter is constructed, and `env`,
+`etag`, `query parser` and `x-powered-by` have no behaviour to
+reach.
+
+### `engine()` and `get()` — missing
+
+`engine()` registers a template engine by file extension, and
+nothing here reads that registry: `setViewEngine()` names the
+engine explicitly instead.
+
+`get()` is missing by collision rather than by choice. Nest's
+`INestApplicationContext.get()` already answers the DI container
+with `any[]`, and the adapter already declares
+`get(target, handler)`, the GET route registrar, so Express's
+`app.get(setting)` cannot be added without a `TS2430` override
+error and a `TS4114` implicit-override error. Naming the
+adapter's own `get` would shadow the container's, which is the
+one Nest and every Nest consumer already call.
 
 ### `useMultipart()` — not applicable
 

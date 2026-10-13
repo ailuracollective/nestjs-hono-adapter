@@ -55,6 +55,77 @@ interface TransportOptions {
 }
 
 /**
+ * The settings that name something this adapter does.
+ *
+ * Only these are honoured. Express carries a settings bag an
+ * application can write anything into; here a setting either
+ * reaches behaviour or it is an error, because a value stored
+ * and then ignored is worse than one refused -- the same reason
+ * `inject()` refuses the options it cannot carry.
+ *
+ * They live in this module because it already owns the settings
+ * state the refusals point at -- the `trustProxy` above is what
+ * the reason for that name names -- and because the composition
+ * root reaches this module already, while its dependency budget
+ * cannot take a new one. `views.ts` is at its line ceiling, so
+ * the block cannot sit beside the `view engine` name it lists.
+ */
+const HONOURED = new Set(['view engine', 'views']);
+
+/**
+ * Why a name outside `HONOURED` is refused.
+ *
+ * The reason is written per name where the name is one an
+ * application migrating from Express is likely to set, so the
+ * error says what to do instead.
+ */
+const REFUSED: Readonly<Record<string, string>> = {
+  env: 'it has no behaviour in this adapter',
+  etag: 'it has no behaviour in this adapter',
+  'query parser': 'it has no behaviour in this adapter',
+  'trust proxy':
+    'the transport reads it when the adapter is constructed, so it is set through the adapter options',
+  'x-powered-by': 'it has no behaviour in this adapter',
+};
+
+/** Throws for a setting this adapter has nothing behind. */
+function refuse(name: string, why?: string): never {
+  const reason =
+    why ??
+    REFUSED[name] ??
+    'it has no behaviour in this adapter';
+  throw new Error(
+    `set() cannot honour the "${name}" setting: ${reason}.`,
+  );
+}
+
+/** Validates the value a view setting passes to its feature. */
+function settingValue(
+  name: string,
+  value: unknown,
+): string | readonly string[] {
+  if (!HONOURED.has(name)) {
+    refuse(name);
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (
+    name === 'views' &&
+    Array.isArray(value) &&
+    value.every(
+      (directory: unknown) => typeof directory === 'string',
+    )
+  ) {
+    return value;
+  }
+  if (name === 'views') {
+    return refuse(name, 'it takes a string or a string array');
+  }
+  return refuse(name, 'it takes a string');
+}
+
+/**
  * Runs Nest on Hono: owns the Hono application, the middleware
  * every request crosses, and the server the injected transport
  * builds. The routes Nest registers are `RouteAdapter`'s.
@@ -318,5 +389,5 @@ interface HonoLifecycle {
   getInstance: <TInstance = NestHono>() => TInstance;
 }
 
-export { HonoLifecycle };
+export { HonoLifecycle, settingValue };
 export type { TransportOptions };

@@ -26,7 +26,11 @@ export type {
   InjectOptions,
   InjectResponse,
 } from './core/inject.ts';
-export type { ParsedBody } from './core/body.ts';
+export type {
+  BodyParserOptions,
+  ParsedBody,
+  SecurityHook,
+} from './core/body.ts';
 export type {
   NestHandler,
   NestRequest,
@@ -56,7 +60,4 @@ export type {
   ViewEngineOptions,
   ViewOptions,
 } from './features/views.ts';
-export type {
-  SecurityHook,
-  ServerAdapterOptions,
-} from './core/server-adapter.ts';
+export type { ServerAdapterOptions } from './core/server-adapter.ts';

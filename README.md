@@ -158,6 +158,13 @@ the response; later rejections are still logged. See
 
 ## Options
 
+`app.set('views', directory)` accepts a string or a string
+array, searched in order; `app.set('view engine', extension)`
+accepts a string. View data combines
+`setViewEngine({ defaultContext })`, `setLocal()` values, and
+handler data in that order. Configuring defaults preserves
+locals, including keys such as `__proto__`.
+
 | Option          | Type                            | Default | Effect                                                                           |
 | --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------- |
 | `bodyLimit`     | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                            |

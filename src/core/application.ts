@@ -73,6 +73,23 @@ interface NestHonoApplication extends INestApplication<
    * [platform-differences.md](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/platform-differences.md).
    */
   inject: InjectRunner;
+  /**
+   * Adds one value to the data every template render is merged
+   * onto, the way Express's `app.locals` does. It reaches the
+   * same context `defaultContext` fills at construction.
+   */
+  setLocal: (key: string, value: unknown) => this;
+  /**
+   * Sets one of the settings this adapter honours. A name it
+   * has no behaviour behind is refused rather than stored,
+   * which is what `docs/platform-differences.md` records; see
+   * `settable` in `core/hono-lifecycle.ts`.
+   */
+  set: (name: string, value: unknown) => this;
+  /** Sets a setting to `true`, as Express's `enable` does. */
+  enable: (name: string) => this;
+  /** Sets a setting to `false`, as Express's `disable` does. */
+  disable: (name: string) => this;
 }
 
 declare module '@nestjs/common' {

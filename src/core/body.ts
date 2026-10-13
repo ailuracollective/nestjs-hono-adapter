@@ -7,6 +7,32 @@ import {
 
 import type { NestContext } from './context.ts';
 import { parseQuery } from './query.ts';
+import type { NestRequest } from './request.ts';
+
+/**
+ * The options Nest hands the parser middleware. They live here
+ * rather than beside `useBodyParser()` in the composition root
+ * because they describe the size of the body this module
+ * reads.
+ */
+interface BodyParserOptions {
+  readonly limit?: number | string;
+}
+
+/**
+ * The hook Nest's built-in HTTP security features register, as
+ * the base class types it. It lives here for the same reason:
+ * the request it is handed is the one this module is about, and
+ * the composition root reaches it through an import it already
+ * makes.
+ */
+type SecurityHook = (
+  request: NestRequest,
+  response: {
+    setHeader: (name: string, value: string) => unknown;
+    removeHeader: (name: string) => unknown;
+  },
+) => Error | undefined;
 
 /** Methods that never carry a payload. */
 const BODYLESS_METHODS = new Set(['GET', 'HEAD']);
@@ -254,4 +280,4 @@ function readBody(
 }
 
 export { readBody, toByteLimit };
-export type { ParsedBody };
+export type { BodyParserOptions, ParsedBody, SecurityHook };

@@ -137,6 +137,17 @@ by `NestFactory.create()` when using this adapter:
 | `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix |
 | `setBaseViewsDir` | `(directory: string \| readonly string[]) => this`                           | Names the directories a view is read from        |
 | `setViewEngine`   | `(engine: string) => this`                                                   | Names the engine by the extension it renders     |
+| `setLocal`        | `(key: string, value: unknown) => this`                                      | Adds one value to every template render          |
+| `set`             | `(name: string, value: unknown) => this`                                     | Honours the settings that name behaviour         |
+| `enable`          | `(name: string) => this`                                                     | `set(name, true)`                                |
+| `disable`         | `(name: string) => this`                                                     | `set(name, false)`                               |
+
+Express's `app.get(name)` is not among them: it collides with
+the container's own `get()` and with the adapter's GET route
+registrar, so a setting cannot be read back. `engine()` is
+likewise a non-goal, because `setViewEngine()` already names the
+engine explicitly. Both are recorded in
+[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 ### Adapter methods
 

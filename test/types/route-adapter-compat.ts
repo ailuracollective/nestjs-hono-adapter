@@ -17,10 +17,8 @@
 import type { ProbeApplication } from '../probe.ts';
 import type { HonoLifecycle } from '../../src/core/hono-lifecycle.ts';
 import type { RouteAdapter } from '../../src/core/route-adapter.ts';
-import type {
-  SecurityHook,
-  ServerAdapter,
-} from '../../src/core/server-adapter.ts';
+import type { SecurityHook } from '../../src/core/body.ts';
+import type { ServerAdapter } from '../../src/core/server-adapter.ts';
 
 /**
  * The signature a base declares for a member, and `never` for a
