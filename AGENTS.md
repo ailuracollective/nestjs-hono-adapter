@@ -59,17 +59,14 @@ on Hono 4.
 This file covers the whole repository. The directories that are
 part of the repository and that an agent may edit:
 
-- `src/` — four re-export shims that keep the root's name and
-  its seven entrypoints: `index.ts` and
-  `servers/{bun,node,fetch}.ts`, each re-exporting
-  `@ailura/nestjs-hono-adapter-core` (the servers through its
-  matching subpaths). No behaviour lives here.
-- `packages/` — the workspace packages: `core`, the adapter
-  itself (`@ailura/nestjs-hono-adapter-core`, layered into
-  `packages/core/src/{core,features,servers}`), plus the three
-  optional capabilities extracted into `socket-io`, `ws` and
-  `multipart`. Each capability is emitted into the root's
-  `dist/` for its subpath.
+- `packages/` — the workspace packages. `core` is the adapter,
+  published as `@ailura/nestjs-hono-adapter` (layered into
+  `packages/core/src/{core,features,servers}`; it publishes `.`,
+  `./bun-server`, `./node-server` and `./fetch`). `ws`,
+  `socket-io` and `multipart` are the three optional
+  capabilities, published as `@ailura/nestjs-platform-hono-ws`,
+  `@ailura/nestjs-platform-hono-socket-io` and
+  `@ailura/nestjs-platform-hono-multipart`, one entrypoint each.
 - `test/` — what guards the monorepo and what more than one
   package shares: `test/layers.test.ts`,
   `test/entry-points.test.ts` and `test/node-builtins.test.ts`,
@@ -101,12 +98,15 @@ framework being adapted). The core is runtime-neutral: a
 `@hono/node-server`, or a fetch host's Web `Request`/`Response`;
 each transport lives behind its own subpath, and the Node one is
 the default, so a bootstrap that names none keeps working on
-Node and on Bun. The package publishes seven entrypoints: `.`
-(the adapter), `./bun-server`, `./node-server`, `./fetch`,
-`./multipart` (upload interceptors), `./ws` (the WebSocket
-adapter) and `./socket-io` (the Socket.IO adapter).
+Node and on Bun. The adapter, `@ailura/nestjs-hono-adapter`,
+publishes four entrypoints: `.` (the adapter), `./bun-server`,
+`./node-server` and `./fetch`. Each optional capability is its
+own package with a single entrypoint: WebSockets in
+`@ailura/nestjs-platform-hono-ws`, uploads in
+`@ailura/nestjs-platform-hono-multipart` and Socket.IO in
+`@ailura/nestjs-platform-hono-socket-io`.
 
-The adapter core is a workspace package too:
+The adapter's implementation is `packages/core`:
 `packages/core/src/core/` holds the request decode, response
 encode, and lifecycle bridge, plus the `Server` and `Transport`
 ports; `packages/core/src/features/` holds optional capabilities
@@ -115,16 +115,12 @@ views); `packages/core/src/servers/` holds the runtime
 transports (`bun.ts`, `node.ts`, `fetch.ts`), reached through
 their subpaths — and the Node one from `core/server-adapter.ts`,
 the adapter's composition root, as the transport it serves
-through by default. The root's `src/` is only re-export shims
-over `@ailura/nestjs-hono-adapter-core`, so `.`, `./bun-server`,
-`./node-server` and `./fetch` keep resolving. The three optional
-islands are workspace packages — `packages/socket-io`,
-`packages/ws` and `packages/multipart` — and each is emitted
-into the root's `dist/` for its subpath (`dist/socket-io`,
-`dist/ws`, `dist/multipart`), so `./socket-io`, `./ws` and
-`./multipart` keep resolving and the core's source names none of
-them. The layout, import rules, and bundle ceilings are written
-down in [docs/architecture.md](docs/architecture.md).
+through by default. The repository root is only the private Bun
+workspace root: no published package, no `src/`, no exports. The
+three capability packages live in `packages/` too and depend on
+the adapter, which names none of them. The layout, import rules,
+and bundle ceilings are written down in
+[docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 
@@ -178,9 +174,9 @@ Individual commands:
 bun run lint          # oxlint
 bun run format        # oxfmt --write .
 bun run format:check  # oxfmt --check .
-bun run typecheck     # build:core, then tsc --noEmit for src and test
+bun run typecheck     # build:core, then tsc for test
 bun run test          # build:core, then bun test
-bun run build         # build:core, then tsc, then build:packages
+bun run build         # build:core, then build:packages
 bun run size          # build + size-limit
 ```
 

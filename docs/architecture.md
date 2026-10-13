@@ -4,26 +4,26 @@ This is the map a contributor needs before changing a file. The
 README describes what the adapter does; this describes the shape
 it is built in, and which shapes are refused.
 
-## The regions of `src/` and `packages/`
+## The regions of `packages/`
 
 ```
-src/
-  index.ts  servers/bun.ts  servers/node.ts  servers/fetch.ts
-      re-export shims over the core package; the root's four
-      entrypoints compile to dist/ from here
-
 packages/
-  core/      the adapter core: its src/core/ (the Nest <->
-             Hono translation and the ports), src/features/ (the
-             optional capabilities), src/servers/ (the runtime
-             transports)
-  socket-io/ the Socket.IO island, emitted into dist/socket-io
-  ws/        the WebSocket island, emitted into dist/ws
-  multipart/ the upload island, emitted into dist/multipart
+  core/      the adapter, published as
+             @ailura/nestjs-hono-adapter: its src/core/ (the Nest
+             <-> Hono translation and the ports), src/features/
+             (the optional capabilities), src/servers/ (the
+             runtime transports)
+  socket-io/ the Socket.IO island, published as
+             @ailura/nestjs-platform-hono-socket-io
+  ws/        the WebSocket island, published as
+             @ailura/nestjs-platform-hono-ws
+  multipart/ the upload island, published as
+             @ailura/nestjs-platform-hono-multipart
 ```
 
-The implementation lives in `packages/core/src/`; the root's
-`src/` holds only shims. The region names below are the
+The implementation lives in `packages/core/src/`, and the
+repository root is only the private Bun workspace root — no
+published package, no `src/`. The region names below are the
 directories under `packages/core/src/` unless a package is
 named.
 
@@ -50,17 +50,18 @@ lives in `packages/ws`. It is neutral: it asks the adapter for
 its transport rather than importing a runtime's own WebSocket
 module.
 
-**The upload island** is the second opt-in island, behind
-`./multipart`, and it lives in `packages/multipart`. It is the
-only place that consumes a `multipart/form-data` body and the
-only place that depends on a parser (`busboy`, an optional peer
-of the adapter and a required one of the package). Its
-interceptors parse the body the way multer does, so
-`@UploadedFile()` and `@UploadedFiles()` work; importing it
-marks the adapter through `declareMultipart`, the one symbol the
-core publishes on purpose for it, and a marked adapter leaves a
-multipart body alone for an interceptor to consume. An adapter
-that serves no upload carries no trace of it.
+**The upload island** is the second opt-in island, published as
+`@ailura/nestjs-platform-hono-multipart`, and it lives in
+`packages/multipart`. It is the only place that consumes a
+`multipart/form-data` body and the only place that depends on a
+parser (`busboy`, an optional peer of the adapter and a required
+one of the package). Its interceptors parse the body the way
+multer does, so `@UploadedFile()` and `@UploadedFiles()` work;
+importing it marks the adapter through `declareMultipart`, the
+one symbol the core publishes on purpose for it, and a marked
+adapter leaves a multipart body alone for an interceptor to
+consume. An adapter that serves no upload carries no trace of
+it.
 
 ## The dependency rules
 
@@ -92,7 +93,7 @@ deployment that only serves HTTP pays for a WebSocket stack.
 The upload island follows the same rule with one exception it
 can name:
 `packages/multipart/src/multipart/multipart.interceptor.factory.ts`
-imports `declareMultipart` from the core package as a value,
+imports `declareMultipart` from the adapter package as a value,
 because marking the adapter is the whole point of the island.
 Its other reaches into the core are types, so a deployment that
 serves no upload loads neither the island nor its parser.
@@ -102,12 +103,11 @@ a rule of its own: it names nothing in `core/` or `features/` at
 all. Nest hands the adapter the server it already built, so
 `packages/socket-io/src/adapter.ts` needs no port and no
 composition root — its runtime graph is `socket.io` and the
-three modules behind `./socket-io`, and `test/layers.test.ts`
+three modules behind its entrypoint, and `test/layers.test.ts`
 refuses both the value edge and the type edge that would change
 that. The island was the first capability to leave the core's
 source tree: it lives in the `packages/socket-io` workspace
-package, and the `./socket-io` subpath a deployment already
-imports is emitted from there, so it keeps resolving.
+package, published as `@ailura/nestjs-platform-hono-socket-io`.
 
 One more split is a packaging rule rather than a layer one:
 `core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
@@ -132,25 +132,32 @@ holds at compile time rather than leaving to review.
 
 ## Entrypoints and isolation
 
-The root's `exports` map exposes seven specifiers: `.`,
-`./bun-server`, `./node-server`, `./fetch`, `./multipart`,
-`./ws` and `./socket-io`. The first four are re-export shims in
-`src/` over `@ailura/nestjs-hono-adapter-core`, which publishes
-the same four specifiers of its own. The last three are served
-from a workspace package: each carries a second tsc project
-(`tsconfig.compat.json`, whose `rootDir` is `.` and whose
-`outDir` is under the root's `dist`) plus an `index.ts`, and
-that pair emits the package's sources into `dist/socket-io`,
-`dist/ws` or `dist/multipart`, so the subpath keeps its place
-and the core names none of the three. The root depends on the
-core (`>=1.4.1 <2`) and on none of the capability packages; `ws`
-and `multipart` peer on the core. The build is the core first
-(`build:core`), then the root's `tsc` for the shims, then
-`build:packages`; the `ws` and `multipart` compat projects read
-the core's declarations from its `dist`. The map exposes nothing
-else, so no consumer can reach an internal module by path —
-which is what makes it safe to move files between regions
-without it being a breaking change.
+`@ailura/nestjs-hono-adapter`, the package built from
+`packages/core`, exposes four specifiers: `.`, `./bun-server`,
+`./node-server` and `./fetch`. Each optional capability is its
+own package with a single specifier, `.`:
+`@ailura/nestjs-platform-hono-ws` for the WebSocket adapter,
+`@ailura/nestjs-platform-hono-multipart` for uploads and
+`@ailura/nestjs-platform-hono-socket-io` for Socket.IO. The
+adapter depends on none of the three; `ws` and `multipart` peer
+on the adapter (`>=1.4.1 <2`). The repository root is the
+private Bun workspace root, with no exports of its own.
+
+The build is the adapter first (`build:core`), then
+`build:packages`; each capability package compiles its own
+sources into its own `dist/`, so the adapter's source names none
+of the three. The published maps expose nothing else, so no
+consumer can reach an internal module by path — which is what
+makes it safe to move files between regions without it being a
+breaking change.
+
+The `./ws`, `./multipart` and `./socket-io` subpaths the adapter
+used to carry are gone. `./ws` was published through 1.4.1 and
+now lives in `@ailura/nestjs-platform-hono-ws`; `./multipart`
+and `./socket-io` only ever existed on `main` and were never
+published. The
+[README](../README.md#migrating-from-the-old-subpaths) records
+what to install instead.
 
 `test/entry-points.test.ts` walks the import graph transitively
 from the neutral entrypoints. It fails if `.` reaches
@@ -160,14 +167,16 @@ installed. It checks the opposite direction too, because
 `@hono/node-server` is required and reached on purpose: `.`
 serves through it when no transport is named, which is the
 behaviour every deployment had before the transports split.
-`./ws` is the only entrypoint that reaches the WebSocket peers,
-`./socket-io` the only one that reaches `socket.io`, and
-`./multipart` the only one that reaches `busboy`. Each guard
-reads the package that now owns the tree: `test/layers.test.ts`
-reads `packages/core/src` as the layered source and
-`packages/ws/src`, `packages/multipart/src` and
-`packages/socket-io/src` as the islands, and
-`test/entry-points.test.ts` starts from the core's `index.ts`
+`@ailura/nestjs-platform-hono-ws` is the only package that
+reaches the WebSocket peers,
+`@ailura/nestjs-platform-hono-socket-io` the only one that
+reaches `socket.io`, and
+`@ailura/nestjs-platform-hono-multipart` the only one that
+reaches `busboy`. Each guard reads the package that owns the
+tree: `test/layers.test.ts` reads `packages/core/src` as the
+layered source and `packages/ws/src`, `packages/multipart/src`
+and `packages/socket-io/src` as the islands, and
+`test/entry-points.test.ts` starts from the adapter's `index.ts`
 and asks each island for its peers at the package.
 
 Note the deliberate difference between the two guards.
@@ -348,10 +357,12 @@ is an explicit edit that has to be justified here. Today:
 twenty bytes of it the published multipart marker, which a
 public export keeps alive; `bun-server` 1024/981, `node-server`
 560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1550/1543
-and `socket-io` 950/948. The core's extraction moved no
-measurement either: the root's four entrypoints are shims that
-re-export the core package, and all three opt-in entrypoints are
-emitted from their packages, each at the ceiling it had.
+and `socket-io` 950/948. The entry names are unchanged; the
+first four measure `packages/core/dist`, and `multipart`, `ws`
+and `socket-io` measure their own packages'
+`packages/<name>/dist`. The core's extraction moved no
+measurement either: every entrypoint sits at the ceiling it had,
+whichever package now emits it.
 
 **`inject()`.** Fastify's in-process request helper costs 1073
 bytes in `index` — 9754 before, 10827 after — against a
@@ -457,9 +468,9 @@ measured at 916. When the island moved into `packages/socket-io`
 and the subpath began to be emitted from it, the entrypoint
 stayed at 948 bytes under the same 950 ceiling: where the source
 lives changed, the bytes did not. Nothing in it is charged to
-`index`, because `./socket-io` is reached only by a deployment
-that names it, and `socket.io` is an optional peer the gate
-leaves out of the measurement the way it leaves out
+`index`, because the `socket-io` entry is reached only by a
+deployment that names it, and `socket.io` is an optional peer
+the gate leaves out of the measurement the way it leaves out
 `@hono/node-ws`. The island is three modules — the adapter, the
 refusal that names the transport a deployment must serve through
 instead, and the entrypoint that re-exports both — and the 34

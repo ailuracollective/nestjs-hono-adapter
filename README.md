@@ -50,17 +50,38 @@ pnpm add @ailura/nestjs-hono-adapter hono
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
 are peer dependencies, so the application decides their
 versions. `@hono/node-server` is what the adapter serves through
-when no transport is named, so it is required. A deployment that
-serves uploads installs `busboy`, reached through `./multipart`
-and nowhere else. A deployment that serves WebSockets installs
-`@hono/node-ws` and `@nestjs/websockets`: those two are the
-optional peers reached through `./ws`, which serves the adapter
-built in `@ailura/nestjs-hono-adapter-ws`. A deployment that
-runs a gateway on socket.io installs `socket.io` and
-`@nestjs/websockets`, reached through `./socket-io` and nowhere
-else; that island needs the Node transport, which
-`./node-server` provides on Node and on Bun. The optional peers
-are only ever loaded by the entrypoint that needs them.
+when no transport is named, so it is required.
+
+The three optional capabilities live in their own packages:
+`@ailura/nestjs-platform-hono-multipart` for uploads (installs
+`busboy`), `@ailura/nestjs-platform-hono-ws` for WebSockets
+(installs `@hono/node-ws` and `@nestjs/websockets`) and
+`@ailura/nestjs-platform-hono-socket-io` for a socket.io gateway
+(installs `socket.io` and `@nestjs/websockets`; it needs the
+Node transport, which `./node-server` provides on Node and on
+Bun). Each has a single entrypoint, so importing one loads none
+of the others.
+
+### Migrating from the old subpaths
+
+`@ailura/nestjs-hono-adapter@1.4.1` published five entrypoints:
+`.`, `./bun-server`, `./node-server`, `./fetch` and `./ws`. The
+four it keeps are unchanged; exactly one breaks. `./ws` moves to
+its own package:
+
+| Old import                       | Install and import                |
+| -------------------------------- | --------------------------------- |
+| `@ailura/nestjs-hono-adapter/ws` | `@ailura/nestjs-platform-hono-ws` |
+
+The new package is the whole import path: drop the trailing
+subpath.
+
+`./multipart` and `./socket-io` were added on `main` after 1.4.1
+and were never published, so nobody has to migrate for them. A
+deployment that tracked `main` and imported one installs the
+matching package: `@ailura/nestjs-platform-hono-multipart` for
+uploads and `@ailura/nestjs-platform-hono-socket-io` for a
+socket.io gateway.
 
 A Socket.IO gateway with port zero attaches to the application's
 Node server and requires that server to be available. An
@@ -169,14 +190,14 @@ accepts a string. View data combines
 handler data in that order. Configuring defaults preserves
 locals, including keys such as `__proto__`.
 
-| Option          | Type                            | Default | Effect                                                                                                                                                                               |
-| --------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bodyLimit`     | `number`                        | `1 MiB` | Largest non-multipart request body, in bytes; `0` removes the limit. Multipart parsing uses upload-route `limits` when `./multipart` is enabled; declared lengths are still checked. |
-| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                                                                                                                               |
-| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options                                                                                                           |
-| `transport`     | `Transport`                     | —       | The runtime: `bunServer()`, `nodeServer()` or `fetchServer()`                                                                                                                        |
-| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                                                                                                                   |
-| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from                                                                                                     |
+| Option          | Type                            | Default | Effect                                                                                                                                                                                       |
+| --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bodyLimit`     | `number`                        | `1 MiB` | Largest non-multipart request body, in bytes; `0` removes the limit. Multipart parsing uses upload-route `limits` when the multipart package is enabled; declared lengths are still checked. |
+| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                                                                                                                                       |
+| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options                                                                                                                   |
+| `transport`     | `Transport`                     | —       | The runtime: `bunServer()`, `nodeServer()` or `fetchServer()`                                                                                                                                |
+| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`                                                                                                                           |
+| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from                                                                                                             |
 
 `app.useBodyParser()` accepts `json`, `urlencoded`, `text` and
 `raw`; unsupported parser names are rejected. Parsing follows

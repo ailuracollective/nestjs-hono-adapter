@@ -5,11 +5,20 @@ classes, options, and types a consumer imports and uses.
 
 ## Entrypoints
 
-| Entrypoint                              | Purpose                             |
-| --------------------------------------- | ----------------------------------- |
-| `@ailura/nestjs-hono-adapter`           | HTTP adapter (`ServerAdapter`)      |
-| `@ailura/nestjs-hono-adapter/multipart` | Upload interceptors (multer-style)  |
-| `@ailura/nestjs-hono-adapter/ws`        | WebSocket adapter (`HonoWsAdapter`) |
+The adapter publishes four entrypoints, and each optional
+capability is a package of its own with a single one:
+
+| Package                                  | Entrypoints                                     | Purpose                             |
+| ---------------------------------------- | ----------------------------------------------- | ----------------------------------- |
+| `@ailura/nestjs-hono-adapter`            | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
+| `@ailura/nestjs-platform-hono-multipart` | `.`                                             | Upload interceptors (multer-style)  |
+| `@ailura/nestjs-platform-hono-ws`        | `.`                                             | WebSocket adapter (`HonoWsAdapter`) |
+| `@ailura/nestjs-platform-hono-socket-io` | `.`                                             | Socket.IO adapter (`HonoIoAdapter`) |
+
+`./ws` was published and moves to its own package; `./multipart`
+and `./socket-io` only ever existed on `main`. The
+[README](../README.md#migrating-from-the-old-subpaths) says what
+to install instead.
 
 ## HTTP Adapter
 
@@ -186,7 +195,7 @@ import {
   MultipartModule,
   diskStorage,
   memoryStorage,
-} from '@ailura/nestjs-hono-adapter/multipart';
+} from '@ailura/nestjs-platform-hono-multipart';
 ```
 
 The upload interceptors parse a `multipart/form-data` body with
@@ -243,12 +252,12 @@ so a body over it is answered `413` whatever framing the request
 uses — a chunked one, which declares no `Content-Length`,
 included. A multipart body is the exception, because a parser
 consumes it rather than this module. On a deployment that
-imports `./multipart`, the island's `busboy` reads it, so the
-`limits` an upload route declares are the ceiling that applies
-while it is parsed, and `bodyLimit` still refuses a declared
-length that already exceeds it. A deployment that never imports
-the island leaves the body to Hono's own parser, which counts no
-ceiling at all.
+imports `@ailura/nestjs-platform-hono-multipart`, the island's
+`busboy` reads it, so the `limits` an upload route declares are
+the ceiling that applies while it is parsed, and `bodyLimit`
+still refuses a declared length that already exceeds it. A
+deployment that never imports the island leaves the body to
+Hono's own parser, which counts no ceiling at all.
 
 This island needs `busboy` (an optional peer) and works where
 Node streams do — the Node and Bun transports. On a fetch host,
@@ -260,7 +269,7 @@ the request path keeps parsing `multipart/form-data` into
 ### `HonoWsAdapter`
 
 ```ts
-import { HonoWsAdapter } from '@ailura/nestjs-hono-adapter/ws';
+import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
 ```
 
 Created internally by Nest when a `@WebSocketGateway()` is

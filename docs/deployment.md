@@ -151,21 +151,19 @@ const adapter = new ServerAdapter({
 
 ## WebSockets
 
-Gateways have their own Nest adapter, kept behind the `./ws`
-subpath, emitted from `@ailura/nestjs-hono-adapter-ws`, so an
-HTTP-only deployment never resolves `@nestjs/websockets`: it is
-an optional peer, and it is not installed for the routes above.
-The upgrade is served by the transport when it carries a
-websocket helper — `hono/bun` with `bunServer()`, whatever host
-a `fetchServer()` was handed — and by `@hono/node-ws` otherwise,
-which includes the default (Node) transport. Only deployments
-that do not import `./ws` avoid resolving the optional peer
-`@hono/node-ws`. Importing `./ws` requires it because the
-entrypoint eagerly imports it, even when the transport provides
-its own WebSocket helper.
+Gateways have their own Nest adapter, in
+`@ailura/nestjs-platform-hono-ws`, so an HTTP-only deployment
+never resolves `@nestjs/websockets`: it is an optional peer, and
+it is not installed for the routes above. The upgrade is served
+by the transport when it carries a websocket helper — `hono/bun`
+with `bunServer()`, whatever host a `fetchServer()` was handed —
+and by `@hono/node-ws` otherwise, which includes the default
+(Node) transport. A deployment that serves gateways installs
+`@hono/node-ws` only when its transport does not provide a
+WebSocket helper; one that serves none never resolves it.
 
 ```ts
-import { HonoWsAdapter } from '@ailura/nestjs-hono-adapter/ws';
+import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
 
 const adapter = new ServerAdapter();
 const app = await NestFactory.create(AppModule, adapter);
@@ -245,13 +243,13 @@ its frame is delivered.
 ### Socket.IO
 
 Socket.IO is a protocol of its own rather than a WebSocket, so
-it has an adapter and a subpath of its own:
+it has an adapter and a package of its own:
 
 ```ts
 import { NestFactory } from '@nestjs/core';
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
-import { HonoIoAdapter } from '@ailura/nestjs-hono-adapter/socket-io';
+import { HonoIoAdapter } from '@ailura/nestjs-platform-hono-socket-io';
 
 const adapter = new ServerAdapter({ transport: nodeServer() });
 const app = await NestFactory.create(AppModule, adapter);
@@ -264,7 +262,7 @@ await app.listen(3000);
 its namespaces, its rooms, its broadcasts and its
 acknowledgement callbacks. Install `socket.io` beside
 `@nestjs/websockets`: it is an optional peer reached through
-`./socket-io` and nowhere else.
+`@ailura/nestjs-platform-hono-socket-io` and nowhere else.
 
 It attaches to a Node `http.Server`, which is what
 `./node-server` answers with on Node and on Bun. The Bun

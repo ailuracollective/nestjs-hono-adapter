@@ -103,11 +103,11 @@ middleware:
   land on `NestRequest.body` and files on `NestRequest.files`;
 - every other content type as a `Buffer`.
 
-When the `./multipart` upload island is imported, the request
-path leaves a multipart body for one of its interceptors to
-consume instead, as `@nestjs/platform-fastify` does; a multipart
-route without an upload interceptor then reads no `body` and no
-`files`.
+When `@ailura/nestjs-platform-hono-multipart` is imported, the
+request path leaves a multipart body for one of its interceptors
+to consume instead, as `@nestjs/platform-fastify` does; a
+multipart route without an upload interceptor then reads no
+`body` and no `files`.
 
 A body that does not match its content type is refused with
 Nest's own `BadRequestException`, and one over `bodyLimit` with
@@ -210,7 +210,8 @@ not a port, and a silent no-op would be worse than a named gap.
 - **`useMultipart()`** is Fastify's explicit opt-in for
   `@fastify/multipart`. There is nothing to turn on here: a body
   is read on demand through Hono's `parseBody()`, and the upload
-  interceptors behind `./multipart` are the supported path.
+  interceptors in `@ailura/nestjs-platform-hono-multipart` are
+  the supported path.
 - **Part of the Express settings API** — `engine()` and `get()`.
   `setLocal()`, `set()`, `enable()` and `disable()` are
   implemented, and documented in
@@ -240,8 +241,8 @@ Two more are deliberately absent for a reason that is not
 architectural, and each is documented where it belongs:
 `FileStreamInterceptor` is recorded in
 [parity.md](parity.md#file-uploads), because the streaming path
-needs seams this adapter does not have, and a `./socket-io`
-subpath is recorded in
+needs seams this adapter does not have, and a
+`@ailura/nestjs-platform-hono-socket-io` package is recorded in
 [parity.md](parity.md#nestplatform-socketio--missing-entirely)
 for the same reason on the fetch transport.
 

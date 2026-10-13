@@ -201,16 +201,17 @@ declares the method and one that does not.
 
 ## Uploads
 
-`multipart/form-data` bodies are handled by the `./multipart`
-island, which parses them with multer's semantics on top of
-`busboy` (an optional peer). Import it only where an application
-accepts an upload; the HTTP entrypoint never loads it.
+`multipart/form-data` bodies are handled by
+`@ailura/nestjs-platform-hono-multipart`, which parses them with
+multer's semantics on top of `busboy` (an optional peer of the
+adapter). Import it only where an application accepts an upload;
+the HTTP entrypoint never loads it.
 
 ```ts
 import {
   FileInterceptor,
   type UploadedMultipartFile,
-} from '@ailura/nestjs-hono-adapter/multipart';
+} from '@ailura/nestjs-platform-hono-multipart';
 
 @Post('avatar')
 @UseInterceptors(FileInterceptor('file'))
@@ -246,7 +247,7 @@ import { pipeline } from 'node:stream/promises';
 import {
   FileStreamInterceptor,
   type MultipartFileStream,
-} from '@ailura/nestjs-hono-adapter/multipart';
+} from '@ailura/nestjs-platform-hono-multipart';
 
 @Post('ingest')
 @UseInterceptors(FileStreamInterceptor('file'))
