@@ -23,7 +23,7 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { ServerAdapter } from '../src/index.ts';
+import { ServerAdapter } from '../packages/core/src/index.ts';
 import { bunAdapter } from './bun-adapter.ts';
 import { request } from './probe.ts';
 import { startAdapter } from './support.ts';

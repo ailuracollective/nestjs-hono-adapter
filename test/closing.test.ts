@@ -3,8 +3,8 @@ import { HttpStatus } from '@nestjs/common';
 import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 
-import type { NestEnv } from '../src/index.ts';
-import { guardStep } from '../src/features/front-steps.ts';
+import type { NestEnv } from '../packages/core/src/index.ts';
+import { guardStep } from '../packages/core/src/features/front-steps.ts';
 import { startProbe } from './support.ts';
 
 /** The answer a request gets once the server is closing. */

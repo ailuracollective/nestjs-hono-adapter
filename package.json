@@ -66,18 +66,22 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && bun run build:packages",
+    "build": "bun run build:core && tsc -p tsconfig.json && bun run build:packages",
+    "build:core": "bun run --filter @ailura/nestjs-hono-adapter-core build",
     "build:packages": "bun run --filter @ailura/nestjs-hono-adapter-socket-io --filter @ailura/nestjs-hono-adapter-ws --filter @ailura/nestjs-hono-adapter-multipart build",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build && bun run size",
-    "clean": "rm -rf dist *.tsbuildinfo",
+    "clean": "rm -rf dist *.tsbuildinfo packages/*/dist packages/*/*.tsbuildinfo",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
     "size": "bun run build && size-limit",
-    "test": "bun test",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json"
+    "test": "bun run build:core && bun test",
+    "typecheck": "bun run build:core && tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json"
+  },
+  "dependencies": {
+    "@ailura/nestjs-hono-adapter-core": ">=1.4.1 <2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260922.1",

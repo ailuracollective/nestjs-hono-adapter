@@ -16,10 +16,10 @@
     "skipLibCheck": true,
     "paths": {
       "@ailura/nestjs-hono-adapter": [
-        "../../../src/index.ts"
+        "../../../packages/core/src/index.ts"
       ],
       "@ailura/nestjs-hono-adapter/node-server": [
-        "../../../src/servers/node.ts"
+        "../../../packages/core/src/servers/node.ts"
       ]
     }
   },

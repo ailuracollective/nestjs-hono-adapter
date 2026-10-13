@@ -92,7 +92,7 @@
     "limit": 4250,
     "brotli": true,
     "ignore": [
-      "@ailura/nestjs-hono-adapter",
+      "@ailura/nestjs-hono-adapter-core",
       "hono",
       "@hono/node-server",
       "@nestjs/common",

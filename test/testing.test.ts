@@ -32,7 +32,7 @@ import type {
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 
-import type { ServerAdapter } from '../src/index.ts';
+import type { ServerAdapter } from '../packages/core/src/index.ts';
 import { bunAdapter } from './bun-adapter.ts';
 
 /** What the guarded route answers with. */

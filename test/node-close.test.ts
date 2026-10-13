@@ -29,8 +29,8 @@ import type { INestApplication } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { ServerAdapter } from '../src/index.ts';
-import { nodeServer } from '../src/servers/node.ts';
+import { ServerAdapter } from '../packages/core/src/index.ts';
+import { nodeServer } from '../packages/core/src/servers/node.ts';
 
 /** The port the process picks, so no case reserves one. */
 const ANY_PORT = 0;

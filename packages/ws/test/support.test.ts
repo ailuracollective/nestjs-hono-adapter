@@ -24,9 +24,9 @@ import {
 } from 'rxjs';
 
 import { bunAdapter } from '../../../test/bun-adapter.ts';
-import type { ServerAdapter } from '../../../src/index.ts';
-import type { Transport } from '../../../src/core/transport.ts';
-import { nodeServer } from '../../../src/servers/node.ts';
+import type { ServerAdapter } from '../../../packages/core/src/index.ts';
+import type { Transport } from '../../../packages/core/src/core/transport.ts';
+import { nodeServer } from '../../../packages/core/src/servers/node.ts';
 import { HonoWsAdapter } from '../src/index.ts';
 import type { MessageParser, WsFrame } from '../src/client.ts';
 

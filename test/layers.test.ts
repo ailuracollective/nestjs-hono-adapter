@@ -4,12 +4,12 @@ import path from 'node:path';
 import { expect, test } from 'bun:test';
 
 /**
- * The rules that keep `src/` layered, read off the source graph
- * rather than off a file list: `core/` holds the Nest to Hono
- * contract, `features/` the optional capabilities, and the
- * three islands — `socket-io/` behind `/socket-io`, the `ws-*`
- * one behind `/ws` and `multipart/` behind `/multipart` — are
- * worlds of their own.
+ * The rules that keep `packages/core/src/` layered, read off
+ * the source graph rather than off a file list: `core/` holds
+ * the Nest to Hono contract, `features/` the optional
+ * capabilities, and the three islands — `socket-io/` behind
+ * `/socket-io`, the `ws-*` one behind `/ws` and `multipart/`
+ * behind `/multipart` — are worlds of their own.
  *
  * Every rule already holds, so the scan has nothing to observe
  * today. What keeps this file alive is the synthetic crossings
@@ -34,7 +34,7 @@ type Layer =
   | 'ws';
 
 const ROOT = path.resolve(import.meta.dir, '..');
-const SOURCE = path.join(ROOT, 'src');
+const SOURCE = path.join(ROOT, 'packages', 'core', 'src');
 
 /**
  * The two core modules that may name a feature, because they
@@ -44,22 +44,23 @@ const SOURCE = path.join(ROOT, 'src');
  * cannot be reasoned about alone.
  */
 const COMPOSITION_ROOTS = new Set([
-  'src/core/hono-lifecycle.ts',
-  'src/core/server-adapter.ts',
+  'packages/core/src/core/hono-lifecycle.ts',
+  'packages/core/src/core/server-adapter.ts',
 ]);
 
 /**
- * The modules a walk of `src/` has to find. A tree that is
- * missing one has been renamed, not proven: the scan refuses it
- * instead of reading the absence as an absence of crossings.
+ * The modules a walk of `packages/core/src/` has to find. A
+ * tree that is missing one has been renamed, not proven: the
+ * scan refuses it instead of reading the absence as an absence
+ * of crossings.
  */
 const REQUIRED = [
   ...COMPOSITION_ROOTS,
-  'src/core/multipart.ts',
-  'src/features/cors-middleware.ts',
-  'src/features/sse.ts',
-  'src/features/static-assets.ts',
-  'src/features/views.ts',
+  'packages/core/src/core/multipart.ts',
+  'packages/core/src/features/cors-middleware.ts',
+  'packages/core/src/features/sse.ts',
+  'packages/core/src/features/static-assets.ts',
+  'packages/core/src/features/views.ts',
 ];
 
 /**
@@ -109,17 +110,16 @@ function crossing(
 
 /** The directory each island is rooted at, and its layer. */
 const ISLANDS: Readonly<Record<string, Layer>> = {
+  'packages/core/src/features': 'features',
   'packages/multipart/src': 'multipart',
   'packages/socket-io/src': 'socket-io',
   'packages/ws/src': 'ws',
-
-  'src/features': 'features',
 };
 
 /** The layer a source path belongs to, and none for the roots. */
 function layerOf(file: string): Layer | undefined {
   const directory = path.dirname(file);
-  if (directory === 'src/core') {
+  if (directory === 'packages/core/src/core') {
     return 'core';
   }
   if (directory.startsWith('packages/multipart/src/')) {
@@ -181,10 +181,12 @@ function wsReachesApp(edges: readonly Edge[]): Edge[] {
  * adapter an interceptor owns a multipart body. Every other
  * import the island makes into `core/` or `features/` has to be
  * a type, so the compiler erases it and the island's runtime
- * graph stays inside `src/multipart/` — the argument rule 4
- * makes for `/ws`, with the one exception the marker needs.
+ * graph stays inside `packages/core/src/multipart/` — the
+ * argument rule 4 makes for `/ws`, with the one exception the
+ * marker needs.
  */
-const MULTIPART_VALUE_EDGE = 'src/core/multipart.ts';
+const MULTIPART_VALUE_EDGE =
+  'packages/core/src/core/multipart.ts';
 
 /**
  * The edges the upload island takes into the application as
@@ -324,8 +326,8 @@ async function refusalOf(root: string): Promise<string> {
 
 test('core reaching a feature is refused', () => {
   const forbidden = crossing(
-    'src/core/body.ts',
-    'src/features/sse.ts',
+    'packages/core/src/core/body.ts',
+    'packages/core/src/features/sse.ts',
   );
   expect(coreReachesFeature([forbidden])).toStrictEqual([
     forbidden,
@@ -334,21 +336,21 @@ test('core reaching a feature is refused', () => {
 
 test('the two composition roots are the exception', () => {
   const cors = crossing(
-    'src/core/hono-lifecycle.ts',
-    'src/features/cors-middleware.ts',
+    'packages/core/src/core/hono-lifecycle.ts',
+    'packages/core/src/features/cors-middleware.ts',
   );
   expect(coreReachesFeature([cors])).toStrictEqual([]);
   const sse = crossing(
-    'src/core/server-adapter.ts',
-    'src/features/sse.ts',
+    'packages/core/src/core/server-adapter.ts',
+    'packages/core/src/features/sse.ts',
   );
   expect(coreReachesFeature([sse])).toStrictEqual([]);
 });
 
 test('a feature reaching another feature is refused', () => {
   const forbidden = crossing(
-    'src/features/views.ts',
-    'src/features/sse.ts',
+    'packages/core/src/features/views.ts',
+    'packages/core/src/features/sse.ts',
   );
   expect(featureReachesFeature([forbidden])).toStrictEqual([
     forbidden,
@@ -357,7 +359,7 @@ test('a feature reaching another feature is refused', () => {
 
 test('a feature reaching the ws island is refused', () => {
   const forbidden = crossing(
-    'src/features/static-assets.ts',
+    'packages/core/src/features/static-assets.ts',
     'packages/ws/src/adapter.ts',
   );
   expect(featureReachesWs([forbidden])).toStrictEqual([
@@ -368,7 +370,7 @@ test('a feature reaching the ws island is refused', () => {
 test('ws reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
     'packages/ws/src/adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
   );
   expect(wsReachesApp([forbidden])).toStrictEqual([forbidden]);
 });
@@ -376,7 +378,7 @@ test('ws reaching the application is refused when it is a value', () => {
 test('the same edge as a type is erased, so it is allowed', () => {
   const erased = crossing(
     'packages/ws/src/adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
     true,
   );
   expect(wsReachesApp([erased])).toStrictEqual([]);
@@ -384,21 +386,21 @@ test('the same edge as a type is erased, so it is allowed', () => {
 
 test('the first three rules count a type import as an edge', () => {
   const typed = crossing(
-    'src/core/body.ts',
-    'src/features/sse.ts',
+    'packages/core/src/core/body.ts',
+    'packages/core/src/features/sse.ts',
     true,
   );
   expect(coreReachesFeature([typed])).toStrictEqual([typed]);
   const alsoTyped = crossing(
-    'src/features/views.ts',
-    'src/features/sse.ts',
+    'packages/core/src/features/views.ts',
+    'packages/core/src/features/sse.ts',
     true,
   );
   expect(featureReachesFeature([alsoTyped])).toStrictEqual([
     alsoTyped,
   ]);
   const stillTyped = crossing(
-    'src/features/static-assets.ts',
+    'packages/core/src/features/static-assets.ts',
     'packages/ws/src/adapter.ts',
     true,
   );
@@ -410,7 +412,7 @@ test('the first three rules count a type import as an edge', () => {
 test('the socket.io island reaching the application is refused', () => {
   const forbidden = crossing(
     'packages/socket-io/src/adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
   );
   expect(socketIoReachesApp([forbidden])).toStrictEqual([
     forbidden,
@@ -420,17 +422,17 @@ test('the socket.io island reaching the application is refused', () => {
 test('and refused as a type too, unlike the ws island', () => {
   const typed = crossing(
     'packages/socket-io/src/adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
     true,
   );
   expect(socketIoReachesApp([typed])).toStrictEqual([typed]);
 });
 
 test.each([
-  ['src/core/server-adapter.ts', false],
-  ['src/core/server-adapter.ts', true],
-  ['src/features/sse.ts', false],
-  ['src/features/sse.ts', true],
+  ['packages/core/src/core/server-adapter.ts', false],
+  ['packages/core/src/core/server-adapter.ts', true],
+  ['packages/core/src/features/sse.ts', false],
+  ['packages/core/src/features/sse.ts', true],
 ] as const)(
   'nested socket.io modules reaching %s are refused (type only: %s)',
   (target, typeOnly) => {
@@ -470,7 +472,7 @@ test('the ws island reaches the application through no value', async () => {
 test('the upload island reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
     'packages/multipart/src/storage/disk.storage.ts',
-    'src/core/body.ts',
+    'packages/core/src/core/body.ts',
   );
   expect(multipartReachesApp([forbidden])).toStrictEqual([
     forbidden,
@@ -480,7 +482,7 @@ test('the upload island reaching the application is refused when it is a value',
 test('the marker is the one value edge the island may take', () => {
   const marker = crossing(
     'packages/multipart/src/multipart/multipart.interceptor.factory.ts',
-    'src/core/multipart.ts',
+    'packages/core/src/core/multipart.ts',
   );
   expect(multipartReachesApp([marker])).toStrictEqual([]);
 });
@@ -488,7 +490,7 @@ test('the marker is the one value edge the island may take', () => {
 test('every other edge the island takes is a type', () => {
   const erased = crossing(
     'packages/multipart/src/multipart/multipart.parser.ts',
-    'src/core/request.ts',
+    'packages/core/src/core/request.ts',
     true,
   );
   expect(multipartReachesApp([erased])).toStrictEqual([]);
@@ -513,7 +515,9 @@ test('the upload island takes the application as a package', async () => {
     'utf8',
   );
   expect(intoApp).toStrictEqual([]);
-  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
+  expect(manifest).toContain(
+    '@ailura/nestjs-hono-adapter-core',
+  );
 });
 
 test('the ws island takes the application as a package, not as edges', async () => {
@@ -529,7 +533,9 @@ test('the ws island takes the application as a package, not as edges', async () 
     'utf8',
   );
   expect(intoApp).toStrictEqual([]);
-  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
+  expect(manifest).toContain(
+    '@ailura/nestjs-hono-adapter-core',
+  );
 });
 
 test('the walk reads an import out of every layer', async () => {
@@ -559,13 +565,13 @@ test('the walk reads an import out of every layer', async () => {
 test('a tree without the layers is refused, not read as empty', async () => {
   const refusal = await refusalOf(path.join(ROOT, 'test'));
   expect(refusal).toMatch(
-    /found no src\/core\/hono-lifecycle\.ts/u,
+    /found no packages\/core\/src\/core\/hono-lifecycle\.ts/u,
   );
 });
 
 test('a tree that is not there is refused too', async () => {
   const refusal = await refusalOf(
-    path.join(ROOT, 'src/no-such-layer'),
+    path.join(ROOT, 'packages/core/src/no-such-layer'),
   );
   expect(refusal).toMatch(/read nothing/u);
 });

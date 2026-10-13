@@ -28,7 +28,7 @@ import type {
   NestContext,
   NestRequest,
   ServerAdapter,
-} from '../src/index.ts';
+} from '../packages/core/src/index.ts';
 import { bunAdapter } from './bun-adapter.ts';
 import { startApplication } from './probe.ts';
 import type { Probe, ProbeOptions } from './probe.ts';

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { upgradeWebSocket } from 'hono/cloudflare-workers';
 
-import { webSocketFromHost } from '../src/servers/fetch.ts';
-import type { FetchHostWebSocket } from '../src/servers/fetch.ts';
+import { webSocketFromHost } from '../packages/core/src/servers/fetch.ts';
+import type { FetchHostWebSocket } from '../packages/core/src/servers/fetch.ts';
 
 /**
  * The host's own helper goes in as it comes from the package,

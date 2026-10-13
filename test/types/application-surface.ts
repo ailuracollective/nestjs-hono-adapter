@@ -27,7 +27,7 @@ import type {
   NestHonoApplication,
   NestHono,
   ServerAdapter,
-} from '../../src/index.ts';
+} from '../../packages/core/src/index.ts';
 import { bunAdapter } from '../bun-adapter.ts';
 
 /** Fails the build unless the type handed to it is `true`. */

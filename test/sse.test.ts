@@ -4,8 +4,8 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 import { firstValueFrom, timeout } from 'rxjs';
 
-import { RequestCarrier } from '../src/core/bindings.ts';
-import type { Bindings } from '../src/core/bindings.ts';
+import { RequestCarrier } from '../packages/core/src/core/bindings.ts';
+import type { Bindings } from '../packages/core/src/core/bindings.ts';
 import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 import type { Probe } from './probe.ts';
 import {

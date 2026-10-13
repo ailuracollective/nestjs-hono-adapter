@@ -8,7 +8,7 @@ import manifest from '../package.json' with { type: 'json' };
 /** The HTTP entry point, and the WebSocket one beside it. */
 const ENTRY = path.resolve(
   import.meta.dirname,
-  '../src/index.ts',
+  '../packages/core/src/index.ts',
 );
 const WS_ENTRY = path.resolve(
   import.meta.dirname,
@@ -186,7 +186,7 @@ test.each(
       .replace('./dist/multipart/', './packages/multipart/src/')
       .replace('./dist/socket-io/', './packages/socket-io/src/')
       .replace('./dist/ws/', './packages/ws/src/')
-      .replace('./dist/', './src/')
+      .replace('./dist/', './packages/core/src/')
       .replace(/\.js$/u, '.ts'),
   );
   expect(

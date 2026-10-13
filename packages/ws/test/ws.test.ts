@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 
 import { bunAdapter } from '../../../test/bun-adapter.ts';
-import { ServerAdapter } from '../../../src/index.ts';
-import { nodeServer } from '../../../src/servers/node.ts';
+import { ServerAdapter } from '../../../packages/core/src/index.ts';
+import { nodeServer } from '../../../packages/core/src/servers/node.ts';
 import { HonoWsAdapter } from '../src/index.ts';
 import { HonoSocket } from '../src/client.ts';
 import { GatewayServer } from '../src/server.ts';

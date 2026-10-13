@@ -19,7 +19,7 @@ import type {
   NestContext,
   NestRequest,
   NextHandler,
-} from '../src/index.ts';
+} from '../packages/core/src/index.ts';
 
 /**
  * The fixtures that mount Nest middleware, which lives in its

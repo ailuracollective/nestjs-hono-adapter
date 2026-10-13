@@ -15,13 +15,13 @@ import { Hono } from 'hono';
 
 import type { IncomingMessage } from 'node:http';
 
-import { RequestCarrier } from '../src/core/bindings.ts';
-import { toNestRequest } from '../src/core/request.ts';
+import { RequestCarrier } from '../packages/core/src/core/bindings.ts';
+import { toNestRequest } from '../packages/core/src/core/request.ts';
 import type {
   Incoming,
   NestContext,
   NestEnv,
-} from '../src/index.ts';
+} from '../packages/core/src/index.ts';
 import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 
 /**

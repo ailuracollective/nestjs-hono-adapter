@@ -25,7 +25,7 @@ import type {
   Server,
   ServerAdapter,
   WebSocketSupport,
-} from '@ailura/nestjs-hono-adapter';
+} from '@ailura/nestjs-hono-adapter-core';
 import {
   CLOSE_EVENT,
   HonoSocket,

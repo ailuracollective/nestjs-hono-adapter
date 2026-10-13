@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { toHonoPath } from '../src/core/path.ts';
+import { toHonoPath } from '../packages/core/src/core/path.ts';
 import { request } from './probe.ts';
 import { startProbe } from './support.ts';
 

@@ -9,7 +9,7 @@ import { Readable } from 'node:stream';
 import type {
   NestContext,
   NestRequest,
-} from '@ailura/nestjs-hono-adapter';
+} from '@ailura/nestjs-hono-adapter-core';
 import type {
   IncomingMultipartFile,
   MultipartField,

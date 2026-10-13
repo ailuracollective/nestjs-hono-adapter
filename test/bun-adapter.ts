@@ -1,6 +1,6 @@
-import { bunServer } from '../src/servers/bun.ts';
-import { ServerAdapter } from '../src/index.ts';
-import type { ServerAdapterOptions } from '../src/index.ts';
+import { bunServer } from '../packages/core/src/servers/bun.ts';
+import { ServerAdapter } from '../packages/core/src/index.ts';
+import type { ServerAdapterOptions } from '../packages/core/src/index.ts';
 
 /**
  * The options an adapter takes once its transport is supplied.

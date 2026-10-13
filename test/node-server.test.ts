@@ -25,8 +25,8 @@ import { promisify } from 'node:util';
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { ServerAdapter } from '../src/index.ts';
-import { nodeServer } from '../src/servers/node.ts';
+import { ServerAdapter } from '../packages/core/src/index.ts';
+import { nodeServer } from '../packages/core/src/servers/node.ts';
 import { request } from './probe.ts';
 import { startAdapter } from './support.ts';
 
@@ -36,7 +36,7 @@ function nodeAdapter(): ServerAdapter {
 }
 
 /** Where the adapter lives, for the check Node runs. */
-const SOURCE = `${import.meta.dirname}/../src/core/server-adapter.ts`;
+const SOURCE = `${import.meta.dirname}/../packages/core/src/core/server-adapter.ts`;
 
 /**
  * A check the runtime itself answers: the server class is read

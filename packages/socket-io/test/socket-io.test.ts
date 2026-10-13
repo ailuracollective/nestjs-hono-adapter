@@ -25,10 +25,10 @@ import type { Server, Socket } from 'socket.io';
 import { io as connect } from 'socket.io-client';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
-import { ServerAdapter } from '../../../src/index.ts';
+import { ServerAdapter } from '../../../packages/core/src/index.ts';
 import { HonoIoAdapter } from '../src/index.ts';
-import { bunServer } from '../../../src/servers/bun.ts';
-import { nodeServer } from '../../../src/servers/node.ts';
+import { bunServer } from '../../../packages/core/src/servers/bun.ts';
+import { nodeServer } from '../../../packages/core/src/servers/node.ts';
 
 /** How long a case waits for an event before it fails. */
 const TIMEOUT_MS = 4000;

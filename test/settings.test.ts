@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import type { ViewEngine } from '../src/index.ts';
+import type { ViewEngine } from '../packages/core/src/index.ts';
 import { bunAdapter } from './bun-adapter.ts';
 import { startProbe } from './support.ts';
 import { request } from './probe.ts';

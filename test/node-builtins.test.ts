@@ -3,8 +3,14 @@ import path from 'node:path';
 
 import { expect, test } from 'bun:test';
 
-/** Where the package source lives, so the scan reads `src/`. */
-const SOURCE_ROOT = path.resolve(import.meta.dirname, '../src');
+/**
+ * Where the package source lives, so the scan reads
+ * `packages/core/src/`.
+ */
+const SOURCE_ROOT = path.resolve(
+  import.meta.dirname,
+  '../packages/core/src',
+);
 
 /**
  * Every `node:` builtin the source is allowed to name.
@@ -54,7 +60,10 @@ function groupOf(
   return groups[name] ?? '';
 }
 
-/** Every source file under `src/`, relative to it and sorted. */
+/**
+ * Every source file under `packages/core/src/`, relative to it
+ * and sorted.
+ */
 async function sourceFiles(): Promise<string[]> {
   const found = await readdir(SOURCE_ROOT, { recursive: true });
   return found
@@ -82,8 +91,8 @@ async function builtinsIn(file: string): Promise<string[]> {
 }
 
 /**
- * Every Node builtin imported anywhere under `src/`,
- * deduplicated.
+ * Every Node builtin imported anywhere under
+ * `packages/core/src/`, deduplicated.
  */
 async function nodeBuiltins(): Promise<string[]> {
   const files = await sourceFiles();

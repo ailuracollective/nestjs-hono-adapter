@@ -130,7 +130,8 @@
     },
     {
       "files": [
-        "src/*/index.ts",
+        "src/index.ts",
+        "src/servers/*.ts",
         "packages/*/src/index.ts",
         "packages/*/index.ts"
       ],
@@ -155,15 +156,15 @@
     },
     {
       "files": [
-        "src/core/response-helpers.ts",
-        "src/core/versioned-route.ts"
+        "packages/core/src/core/response-helpers.ts",
+        "packages/core/src/core/versioned-route.ts"
       ],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
     },
     {
-      "files": ["src/core/server-adapter.ts"],
+      "files": ["packages/core/src/core/server-adapter.ts"],
       "rules": {
         "import/max-dependencies": [
           "error",
@@ -178,10 +179,10 @@
       "files": [
         "packages/ws/src/client.ts",
         "packages/ws/src/server.ts",
-        "src/core/bindings.ts",
-        "src/servers/bun.ts",
-        "src/servers/node.ts",
-        "src/servers/fetch.ts"
+        "packages/core/src/core/bindings.ts",
+        "packages/core/src/servers/bun.ts",
+        "packages/core/src/servers/node.ts",
+        "packages/core/src/servers/fetch.ts"
       ],
       "rules": {
         "unicorn/prefer-event-target": "off"
@@ -189,11 +190,11 @@
     },
     {
       "files": [
-        "src/core/hono-lifecycle.ts",
-        "src/core/request.ts",
-        "src/features/static-assets.ts",
-        "src/servers/bun.ts",
-        "src/servers/node.ts",
+        "packages/core/src/core/hono-lifecycle.ts",
+        "packages/core/src/core/request.ts",
+        "packages/core/src/features/static-assets.ts",
+        "packages/core/src/servers/bun.ts",
+        "packages/core/src/servers/node.ts",
         "packages/ws/src/adapter.ts"
       ],
       "rules": {
@@ -202,8 +203,8 @@
     },
     {
       "files": [
-        "src/servers/bun.ts",
-        "src/servers/node.ts",
+        "packages/core/src/servers/bun.ts",
+        "packages/core/src/servers/node.ts",
         "packages/ws/src/adapter.ts"
       ],
       "rules": {
@@ -228,8 +229,8 @@
     },
     {
       "files": [
-        "src/core/server-adapter.ts",
-        "src/servers/bun.ts"
+        "packages/core/src/core/server-adapter.ts",
+        "packages/core/src/servers/bun.ts"
       ],
       "rules": {
         "max-lines": [
@@ -241,7 +242,7 @@
       }
     },
     {
-      "files": ["src/servers/node.ts"],
+      "files": ["packages/core/src/servers/node.ts"],
       "rules": {
         "typescript/unbound-method": "off"
       }
@@ -253,16 +254,16 @@
       }
     },
     {
-      "files": ["src/core/bindings.ts"],
+      "files": ["packages/core/src/core/bindings.ts"],
       "rules": {
         "max-classes-per-file": "off"
       }
     },
     {
       "files": [
-        "src/core/**/*.ts",
-        "src/features/**/*.ts",
-        "src/servers/**/*.ts",
+        "packages/core/src/core/**/*.ts",
+        "packages/core/src/features/**/*.ts",
+        "packages/core/src/servers/**/*.ts",
         "packages/ws/src/**/*.ts"
       ],
       "rules": {
@@ -283,7 +284,7 @@
       }
     },
     {
-      "files": ["src/core/request.ts"],
+      "files": ["packages/core/src/core/request.ts"],
       "rules": {
         "oxc/no-optional-chaining": "off",
         "typescript/no-unnecessary-condition": "off"
@@ -309,7 +310,7 @@
       }
     },
     {
-      "files": ["src/core/hono-lifecycle.ts"],
+      "files": ["packages/core/src/core/hono-lifecycle.ts"],
       "rules": {
         "import/max-dependencies": [
           "error",
@@ -320,7 +321,7 @@
       }
     },
     {
-      "files": ["src/features/sse.ts"],
+      "files": ["packages/core/src/features/sse.ts"],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }

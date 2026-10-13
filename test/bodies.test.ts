@@ -6,8 +6,8 @@ import { gzip } from 'node:zlib';
 
 import { HttpStatus } from '@nestjs/common';
 
-import { toByteLimit } from '../src/core/body.ts';
-import type { BodyParserOptions } from '../src/index.ts';
+import { toByteLimit } from '../packages/core/src/core/body.ts';
+import type { BodyParserOptions } from '../packages/core/src/index.ts';
 import {
   MarkerFilter,
   jsonRequest,

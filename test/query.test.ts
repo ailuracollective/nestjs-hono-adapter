@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { parseQuery } from '../src/core/query.ts';
+import { parseQuery } from '../packages/core/src/core/query.ts';
 
 /**
  * The pair ceiling `qs` has always defaulted to, restated here

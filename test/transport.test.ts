@@ -2,11 +2,14 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 import type { NestApplicationOptions } from '@nestjs/common';
 
-import { BunServer, toBunTls } from '../src/servers/bun.ts';
+import {
+  BunServer,
+  toBunTls,
+} from '../packages/core/src/servers/bun.ts';
 import type {
   NestRequest,
   ServerAdapter,
-} from '../src/index.ts';
+} from '../packages/core/src/index.ts';
 import { bunAdapter } from './bun-adapter.ts';
 import { request } from './probe.ts';
 import { startAdapter, startProbe } from './support.ts';

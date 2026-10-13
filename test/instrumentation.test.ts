@@ -2,12 +2,12 @@ import { expect, spyOn, test } from 'bun:test';
 import { HttpStatus, Logger } from '@nestjs/common';
 import { Hono } from 'hono';
 
-import type { NestEnv } from '../src/index.ts';
-import { instrumentationStep } from '../src/features/front-steps.ts';
+import type { NestEnv } from '../packages/core/src/index.ts';
+import { instrumentationStep } from '../packages/core/src/features/front-steps.ts';
 import type {
   OnRequestHook,
   OnResponseHook,
-} from '../src/features/front-steps.ts';
+} from '../packages/core/src/features/front-steps.ts';
 
 /** What the instrumentation step is configured with. */
 interface ProbeHooks {

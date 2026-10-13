@@ -15,10 +15,10 @@
  * so that `bun test` leaves it alone as well.
  */
 import type { ProbeApplication } from '../probe.ts';
-import type { HonoLifecycle } from '../../src/core/hono-lifecycle.ts';
-import type { RouteAdapter } from '../../src/core/route-adapter.ts';
-import type { SecurityHook } from '../../src/core/body.ts';
-import type { ServerAdapter } from '../../src/core/server-adapter.ts';
+import type { HonoLifecycle } from '../../packages/core/src/core/hono-lifecycle.ts';
+import type { RouteAdapter } from '../../packages/core/src/core/route-adapter.ts';
+import type { SecurityHook } from '../../packages/core/src/core/body.ts';
+import type { ServerAdapter } from '../../packages/core/src/core/server-adapter.ts';
 
 /**
  * The signature a base declares for a member, and `never` for a

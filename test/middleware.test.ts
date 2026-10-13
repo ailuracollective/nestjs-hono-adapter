@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { Type } from '@nestjs/common';
 
-import type { NestContext } from '../src/index.ts';
+import type { NestContext } from '../packages/core/src/index.ts';
 import {
   GlobalMiddlewareModule,
   MethodMiddlewareModule,

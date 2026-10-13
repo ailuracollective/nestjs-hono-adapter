@@ -2,12 +2,12 @@ import { expect, test } from 'bun:test';
 
 import { Hono } from 'hono';
 
-import type { NestEnv } from '../src/core/context.ts';
-import { corsBridge } from '../src/features/cors-middleware.ts';
+import type { NestEnv } from '../packages/core/src/core/context.ts';
+import { corsBridge } from '../packages/core/src/features/cors-middleware.ts';
 import type {
   CorsConfig,
   CorsOptions,
-} from '../src/features/cors-middleware.ts';
+} from '../packages/core/src/features/cors-middleware.ts';
 
 const ALLOWED = 'https://child.example.com';
 const FOREIGN = 'https://somewhere.else.example';

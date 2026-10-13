@@ -28,15 +28,15 @@ import {
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { fetchServer } from '../src/servers/fetch.ts';
-import { ServerAdapter } from '../src/index.ts';
+import { fetchServer } from '../packages/core/src/servers/fetch.ts';
+import { ServerAdapter } from '../packages/core/src/index.ts';
 import type {
   InjectCookie,
   InjectResponse,
   NestContext,
   NestHonoApplication,
   NestRequest,
-} from '../src/index.ts';
+} from '../packages/core/src/index.ts';
 
 /** The header a case sends and reads back. */
 const GIVEN_HEADER = 'x-given';

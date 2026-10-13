@@ -22,14 +22,14 @@ import {
   fetchHandler,
   fetchServer,
   webSocketFromHost,
-} from '../src/servers/fetch.ts';
+} from '../packages/core/src/servers/fetch.ts';
 import type {
   FetchHandlerOptions,
   FetchHostWebSocket,
-} from '../src/servers/fetch.ts';
-import { ServerAdapter } from '../src/index.ts';
-import type { TrustProxy } from '../src/index.ts';
-import type { WebSocketSupport } from '../src/core/transport.ts';
+} from '../packages/core/src/servers/fetch.ts';
+import { ServerAdapter } from '../packages/core/src/index.ts';
+import type { TrustProxy } from '../packages/core/src/index.ts';
+import type { WebSocketSupport } from '../packages/core/src/core/transport.ts';
 import { HonoWsAdapter } from '../packages/ws/src/index.ts';
 import { ProbeModule, SseModule } from './support.ts';
 

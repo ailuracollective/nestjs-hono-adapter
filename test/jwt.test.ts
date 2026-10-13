@@ -33,7 +33,7 @@ import {
 } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import type { NestRequest } from '../src/index.ts';
+import type { NestRequest } from '../packages/core/src/index.ts';
 
 import { request, startProbe } from './probe.ts';
 import type { Probe } from './probe.ts';

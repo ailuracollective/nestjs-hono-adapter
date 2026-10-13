@@ -16,18 +16,21 @@ import { Hono } from 'hono';
 import {
   CarrierSocket,
   RequestCarrier,
-} from '../src/core/bindings.ts';
-import type { Bindings, Socket } from '../src/core/bindings.ts';
-import { toNestRequest } from '../src/core/request.ts';
+} from '../packages/core/src/core/bindings.ts';
+import type {
+  Bindings,
+  Socket,
+} from '../packages/core/src/core/bindings.ts';
+import { toNestRequest } from '../packages/core/src/core/request.ts';
 import {
   reportDisconnect,
   tuneableSocket,
-} from '../src/core/socket.ts';
+} from '../packages/core/src/core/socket.ts';
 import type {
   NestEnv,
   NestContext,
   NestRequest,
-} from '../src/index.ts';
+} from '../packages/core/src/index.ts';
 import { SYNTHETIC_SERVER } from './bun-bindings.ts';
 
 /** The calls Nest makes on a stream's socket when it opens one. */

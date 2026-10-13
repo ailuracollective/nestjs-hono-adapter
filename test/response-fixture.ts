@@ -15,7 +15,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 
-import type { NestContext } from '../src/index.ts';
+import type { NestContext } from '../packages/core/src/index.ts';
 
 /**
  * The members a Node-style handler reaches for on the object
