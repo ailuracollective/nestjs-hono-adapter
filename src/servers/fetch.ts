@@ -19,8 +19,8 @@ import type {
  * {@link fetchHandler}.
  *
  * The `Server` Nest drives is a shim: Nest only needs one so
- * its lifecycle can run, and here `listen()` and `close()` do
- * nothing.
+ * its lifecycle can run. Here `close()` does nothing, and
+ * `listen()` answers the caller with the reason it cannot.
  *
  * Static assets and WebSockets are not portable across fetch
  * hosts, so they are supplied by the caller through the
@@ -56,6 +56,15 @@ interface FetchServerOptions {
   /** The host's websocket helper, when it has one. */
   readonly upgradeWebSocket?: WebSocketFactory;
 }
+
+/**
+ * What `listen()` is answered with. A deployment that reaches
+ * for it has missed the export in the documentation, and a
+ * rejection within a tick is what tells it so.
+ */
+const LISTEN_REFUSAL =
+  'The fetch transport cannot listen: the fetch host owns the ' +
+  'request loop. Export fetchHandler() and give it to the host.';
 
 /**
  * Nothing for a fetch host to release: it owns its own request
@@ -109,12 +118,27 @@ function webSocketFromHost(
  */
 class FetchServer extends EventEmitter implements Server {
   /**
-   * A fetch host is always listening — it hands the adapter a
-   * request rather than the other way around — so there is
-   * nothing to start.
+   * There is nothing to start, and no port to start it on: a
+   * fetch host hands the adapter a request rather than the
+   * other way around. The caller is answered with the reason
+   * instead of waiting for a listen that can never happen —
+   * Nest settles its listen promise from this callback. Without
+   * a callback, the refusal is thrown directly.
    */
-  public listen(): void {
-    // Nothing to start.
+  public listen(
+    _port?: string | number,
+    hostnameOrCallback?: string | (() => void),
+    callback?: () => void,
+  ): void {
+    let answer: ((error: Error) => void) | undefined = callback;
+    if (typeof hostnameOrCallback === 'function') {
+      answer = hostnameOrCallback;
+    }
+    const refusal = new Error(LISTEN_REFUSAL);
+    if (answer === undefined) {
+      throw refusal;
+    }
+    answer(refusal);
   }
 
   /** A fetch host stops itself; there is no server to close. */

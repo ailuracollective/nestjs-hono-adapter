@@ -109,12 +109,12 @@ has one. `nodeServer` names none, so the `/ws` island falls back
 to `@hono/node-ws`: an application that serves no WebSocket
 never installs it.
 
-`fetchServer` takes no port: `listen()` and `close()` do
-nothing, and the deployment exports the handler. Static assets
-and WebSockets are host-specific, so a host that has them passes
-`serveStatic` and `upgradeWebSocket`; asking for one without
-passing it throws. `fetchHandler(app)` wraps the Hono
-application as the `fetch` a host exports:
+`fetchServer` takes no port: `close()` does nothing, `listen()`
+rejects naming the fetch host, and the deployment exports the
+handler. Static assets and WebSockets are host-specific, so a
+host that has them passes `serveStatic` and `upgradeWebSocket`;
+asking for one without passing it throws. `fetchHandler(app)`
+wraps the Hono application as the `fetch` a host exports:
 
 ```ts
 const adapter = new ServerAdapter({
@@ -133,7 +133,7 @@ by `NestFactory.create()` when using this adapter:
 
 | Method            | Signature                                                                    | Description                                      |
 | ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on the CORS middleware                     |
+| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on CORS; no options allows every origin    |
 | `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix |
 | `setBaseViewsDir` | `(directory: string \| readonly string[]) => this`                           | Names the directories a view is read from        |
 | `setViewEngine`   | `(engine: string) => this`                                                   | Names the engine by the extension it renders     |

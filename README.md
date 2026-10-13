@@ -130,6 +130,9 @@ await app.init();
 export default { fetch: fetchHandler(adapter.getHono()) };
 ```
 
+The fetch server refuses `listen()` with an error passed to the
+callback, or thrown directly when no callback is provided.
+
 The fetch handler has no client address by default and ignores
 `cf-connecting-ip`. Pass `fetchHandler(app, { clientAddress })`
 with a resolver for a trusted address supplied by the host; read

@@ -250,18 +250,20 @@ function resolveOptions(
 }
 
 /**
- * The origin this request is allowed, or the configured value
- * itself when no callback decides it.
+ * The configured origin, or the `*` a deployment that named
+ * none gets — the default the `cors` and `@fastify/cors`
+ * packages document. A callback decides per request, and one
+ * answering `undefined` has decided against this one.
  */
 function resolveOrigin(
   origin: AllowedOrigins | OriginCallback | undefined,
   requestOrigin: string | undefined,
 ): Promise<AllowedOrigins | undefined> {
-  if (typeof origin !== 'function') {
-    return Promise.resolve(origin);
+  if (typeof origin === 'function') {
+    return askResolvedOrigin(origin, requestOrigin);
   }
 
-  return askResolvedOrigin(origin, requestOrigin);
+  return Promise.resolve(origin ?? '*');
 }
 
 /**

@@ -136,7 +136,12 @@ a deployment is told at startup rather than noticing later:
 
 `app.enableCors()` records the options instead of installing
 Nest's Express middleware: the adapter answers with Hono's own
-`cors` in front of every route.
+`cors` in front of every route. Called with no options it names
+no origin, and a deployment that names no origin allows every
+one — `Access-Control-Allow-Origin: *`, the default the `cors`
+package and `@fastify/cors` document and both platform adapters
+inherit. Naming no origin is not the same as `origin: false`,
+which allows none.
 
 An origin may be a string, a list, a regular expression, `'*'`,
 or a callback in the shape Nest documents:
