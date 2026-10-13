@@ -648,3 +648,17 @@ the two files above it take: it is the island's composition
 point, where the `AbstractWsAdapter` members it implements meet
 the `platform-ws` surface — the frame parser and the error
 handlers — that a consumer of that adapter reads.
+
+`packages/core/src/features/cors-middleware.ts` sits at exactly
+400 lines and stays whole, which is an exception of a different
+kind: rule 2 leaves it no seam to cut along. `features/` never
+reaches `features/`, and that rule counts any edge between two
+files in the directory, so the halves of one capability cannot
+sit beside each other without failing the guard. The module is
+one capability in any case — the option resolution, the origin
+decision, and the middleware that applies them — and its
+analogues are larger: `express-adapter.ts` is 710 lines and
+`fastify-adapter.ts` 1,433. Splitting it would also have to
+answer to the budget above, which records that moving code is
+free and extracting a helper is not, and where each entrypoint
+sits within a few per cent of its ceiling.
