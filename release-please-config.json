@@ -6,6 +6,10 @@
   "release-label": "release/tagged",
   "packages": {
     ".": {},
+    "packages/core": {
+      "component": "core",
+      "include-component-in-tag": true
+    },
     "packages/socket-io": {
       "component": "socket-io",
       "include-component-in-tag": true

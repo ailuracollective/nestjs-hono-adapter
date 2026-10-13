@@ -6,6 +6,7 @@ name: CI
     paths:
       - '.github/workflows/**'
       - 'src/**'
+      - 'packages/**'
       - 'test/**'
       - 'tsconfig.json'
       - '.size-limit.json'
@@ -15,6 +16,7 @@ name: CI
     paths:
       - '.github/workflows/**'
       - 'src/**'
+      - 'packages/**'
       - 'test/**'
       - 'tsconfig.json'
       - '.size-limit.json'
