@@ -178,7 +178,13 @@ tree: `test/layers.test.ts` reads `packages/core/src` as the
 layered source and `packages/ws/src`, `packages/multipart/src`
 and `packages/socket-io/src` as the islands, and
 `test/entry-points.test.ts` starts from the adapter's `index.ts`
-and asks each island for its peers at the package.
+and asks each island for its peers at the package. It reads the
+manifests as well as the source, because the direction it holds
+is about what a deployment installs: the adapter declares none
+of the three capability packages among its dependencies, its
+optional dependencies or its peers, and no capability package
+declares another. A source walk alone cannot see a declaration
+nothing imports yet.
 
 Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;
@@ -603,7 +609,7 @@ product.
 | File                                               | What it holds                       |
 | -------------------------------------------------- | ----------------------------------- |
 | `test/layers.test.ts`                              | the five dependency rules           |
-| `test/entry-points.test.ts`                        | subpath isolation                   |
+| `test/entry-points.test.ts`                        | subpath isolation, declarations     |
 | `test/node-builtins.test.ts`                       | the frozen builtin set              |
 | `packages/core/test/types/application-surface.ts`  | the types a consumer reads through  |
 | `packages/core/test/types/route-adapter-compat.ts` | the members two Nest versions share |
