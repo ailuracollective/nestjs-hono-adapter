@@ -118,6 +118,31 @@ test('a deployment that allows nothing writes nothing', async () => {
   expect(namedOrigin(response)).toBe(false);
 });
 
+test('a deployment that names no origin allows every one', async () => {
+  const response = await bridged({}).request('/', {
+    headers: { origin: FOREIGN },
+  });
+
+  expect(
+    response.headers.get('access-control-allow-origin'),
+  ).toBe('*');
+});
+
+test('a preflight for a deployment that names no origin allows it', async () => {
+  const response = await bridged({}).request('/', {
+    headers: {
+      'access-control-request-method': 'POST',
+      origin: FOREIGN,
+    },
+    method: 'OPTIONS',
+  });
+
+  expect(response.status).toBe(NO_CONTENT);
+  expect(
+    response.headers.get('access-control-allow-origin'),
+  ).toBe('*');
+});
+
 test('a deployment may allow any origin', async () => {
   const response = await bridged({
     credentials: true,

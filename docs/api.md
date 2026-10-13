@@ -133,7 +133,7 @@ by `NestFactory.create()` when using this adapter:
 
 | Method            | Signature                                                                    | Description                                      |
 | ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on the CORS middleware                     |
+| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on CORS; no options allows every origin    |
 | `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix |
 | `setBaseViewsDir` | `(directory: string \| readonly string[]) => this`                           | Names the directories a view is read from        |
 | `setViewEngine`   | `(engine: string) => this`                                                   | Names the engine by the extension it renders     |
