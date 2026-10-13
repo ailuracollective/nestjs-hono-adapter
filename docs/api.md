@@ -238,11 +238,17 @@ merges over.
 `_handleFile` / `_removeFile` contract, so an engine written for
 `@nestjs/platform-express` works here unchanged.
 
-The adapter's own `bodyLimit` is checked before the island sees
-the request, so a multipart request whose `Content-Length`
-exceeds it is answered `413` even when `limits.fileSize` is
-larger; a chunked request, which carries no `Content-Length`,
-skips that check.
+The adapter's own `bodyLimit` is counted as the payload is read,
+so a body over it is answered `413` whatever framing the request
+uses — a chunked one, which declares no `Content-Length`,
+included. A multipart body is the exception, because a parser
+consumes it rather than this module. On a deployment that
+imports `./multipart`, the island's `busboy` reads it, so the
+`limits` an upload route declares are the ceiling that applies
+while it is parsed, and `bodyLimit` still refuses a declared
+length that already exceeds it. A deployment that never imports
+the island leaves the body to Hono's own parser, which counts no
+ceiling at all.
 
 This island needs `busboy` (an optional peer) and works where
 Node streams do — the Node and Bun transports. On a fetch host,

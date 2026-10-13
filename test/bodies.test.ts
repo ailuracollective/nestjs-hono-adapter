@@ -5,8 +5,10 @@ import { toByteLimit } from '../src/core/body.ts';
 import {
   MarkerFilter,
   jsonRequest,
+  startAdapter,
   startProbe,
 } from './support.ts';
+import { bunAdapter } from './bun-adapter.ts';
 import { request } from './probe.ts';
 
 /** A limit small enough that one longer body crosses it. */
@@ -20,6 +22,47 @@ const BYTES_LIMIT = 512;
 /** As many bytes as the adapter accepts in one test. */
 const BINARY_LENGTH = 4;
 
+/** The size of one piece a streaming body hands over at a time. */
+const CHUNK = 1024;
+
+/** How many pieces a streaming body holds, far past the limit. */
+const CHUNKS = 1024;
+
+/**
+ * Pieces the stream plumbing may read ahead of the ceiling
+ * deciding. Reading a body hands it over in pieces, so a case
+ * asserts the order of magnitude rather than an exact count.
+ */
+const LOOKAHEAD_CHUNKS = 8;
+
+/**
+ * A body that arrives in pieces and counts the ones the adapter
+ * pulled. Nothing declares its length, so only reading it can
+ * cross the limit.
+ */
+function chunkedBody(): {
+  body: ReadableStream<Uint8Array>;
+  pulled: () => number;
+  total: number;
+} {
+  let pulled = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller): void {
+      if (pulled >= CHUNKS) {
+        controller.close();
+        return;
+      }
+      pulled += 1;
+      controller.enqueue(new Uint8Array(CHUNK));
+    },
+  });
+  return {
+    body,
+    pulled: () => pulled * CHUNK,
+    total: CHUNKS * CHUNK,
+  };
+}
+
 test('a JSON body reaches the handler that asked for it', async () => {
   const probe = await startProbe({
     mode: 'in-process',
@@ -32,6 +75,54 @@ test('a JSON body reaches the handler that asked for it', async () => {
     );
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({ hello: 'world' });
+  } finally {
+    await probe.close();
+  }
+});
+
+test.each(['arrayBuffer', 'text'] as const)(
+  'a body read with %s by Hono middleware reaches the controller',
+  async (read) => {
+    const adapter = bunAdapter();
+    adapter.getHono().use('*', async (context, next) => {
+      await context.req[read]();
+      return next();
+    });
+    const probe = await startAdapter(adapter, {
+      mode: 'in-process',
+    });
+    try {
+      const response = await request(
+        probe,
+        '/echo',
+        jsonRequest({ hello: 'world' }),
+      );
+      expect(response.status).toBe(HttpStatus.CREATED);
+      expect(response.body).toStrictEqual({ hello: 'world' });
+    } finally {
+      await probe.close();
+    }
+  },
+);
+
+test('a cached body without a declared length still obeys the limit', async () => {
+  const adapter = bunAdapter({ bodyLimit: BODY_LIMIT });
+  adapter.getHono().use('*', async (context, next) => {
+    await context.req.arrayBuffer();
+    return next();
+  });
+  const probe = await startAdapter(adapter, {
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(
+      probe,
+      '/echo',
+      jsonRequest({
+        text: 'x'.repeat(BODY_LIMIT + BODY_LIMIT),
+      }),
+    );
+    expect(response.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
   } finally {
     await probe.close();
   }
@@ -225,7 +316,7 @@ test('a malformed body is answered by the exception layer', async () => {
   }
 });
 
-test('a body over the limit is refused before it is read', async () => {
+test('a body over a declared limit is refused before it is read', async () => {
   const probe = await startProbe({
     adapter: { bodyLimit: BODY_LIMIT },
     mode: 'in-process',
@@ -239,6 +330,29 @@ test('a body over the limit is refused before it is read', async () => {
       }),
     );
     expect(response.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a body that declares no length is refused while it is read', async () => {
+  const stream = chunkedBody();
+  const probe = await startProbe({
+    adapter: { bodyLimit: BODY_LIMIT },
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(probe, '/echo', {
+      body: stream.body,
+      duplex: 'half',
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    });
+    expect(response.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
+    expect(stream.pulled()).toBeLessThanOrEqual(
+      LOOKAHEAD_CHUNKS * CHUNK,
+    );
+    expect(stream.pulled()).toBeLessThan(stream.total);
   } finally {
     await probe.close();
   }

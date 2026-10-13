@@ -448,6 +448,22 @@ configured, and treating `__proto__` as own render data bring
 ceiling by 33 bytes, so the ceiling moves to 11130. The other
 entrypoints retain their existing ceilings.
 
+Enforcing the body limit while the payload is read rather than
+once it is resident costs 60 bytes in `index` — 11123 before,
+11183 after — past the 11130-byte ceiling that left 7, so
+`index` moves to 11190 and keeps the 7 bytes of headroom the
+other entrypoints run with. It is the price of the streaming
+ceiling: the counting pass is a `TransformStream` and the
+`Response` around it, both platform globals the bundler does not
+charge for, so the 60 bytes are the glue and not the machinery.
+The alternative was a body no client needs to declare a length
+for, which is not a ceiling at all.
+
+Preserving a body that earlier Hono middleware consumed adds 28
+bytes in `index` — 11183 to 11211 — for the cached-byte fallback
+and its size check. That exceeds the 11190-byte ceiling by 21
+bytes, so the ceiling moves to 11220 and leaves 9 bytes of
+headroom. The other entrypoint ceilings stay unchanged.
 Answering two cookies as two headers costs 42 bytes in `index` —
 11123 before, 11172 after — past the 11130-byte ceiling that
 left 7, so `index` moves to 11180. It is the price of keeping a
