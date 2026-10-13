@@ -1,5 +1,9 @@
 import type { CorsConfig } from '../features/cors-middleware.ts';
 import { toByteLimit } from './body.ts';
+import type {
+  BodyParserOptions,
+  SecurityHook,
+} from './body.ts';
 import { toNestRequest } from './request.ts';
 import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
@@ -14,7 +18,11 @@ import type {
   BridgeOptions,
   NestExceptionHandler,
 } from './handler-bridge.ts';
-import { HonoLifecycle } from './hono-lifecycle.ts';
+import {
+  HonoLifecycle,
+  refuse,
+  settable,
+} from './hono-lifecycle.ts';
 import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
@@ -80,23 +88,6 @@ function withTransport(
     });
   return Object.assign({}, options, { transport });
 }
-
-/** The options Nest hands the parser middleware. */
-interface BodyParserOptions {
-  readonly limit?: number | string;
-}
-
-/**
- * The hook Nest's built-in HTTP security features register, as
- * the base class types it.
- */
-type SecurityHook = (
-  request: NestRequest,
-  response: {
-    setHeader: (name: string, value: string) => unknown;
-    removeHeader: (name: string) => unknown;
-  },
-) => Error | undefined;
 
 /**
  * HTTP adapter that runs Nest on Hono.
@@ -403,6 +394,36 @@ class ServerAdapter extends HonoLifecycle {
     }
     return this.bodyLimit;
   }
+
+  /** One local for every render, as Express's locals do. */
+  public setLocal(key: string, value: unknown): this {
+    this.views.setLocal(key, value);
+    return this;
+  }
+
+  /** Sets a setting this adapter honours, or refuses the name. */
+  public set(name: string, value: unknown): this {
+    if (!settable(name)) {
+      refuse(name);
+    }
+    if (typeof value !== 'string') {
+      refuse(name, 'it takes a string');
+    }
+    if (name === 'view engine') {
+      return this.setViewEngine(value);
+    }
+    return this.setBaseViewsDir(value);
+  }
+
+  /** Sets a setting to `true`, as Express's `enable` does. */
+  public enable(name: string): this {
+    return this.set(name, true);
+  }
+
+  /** Sets a setting to `false`, as Express's `disable` does. */
+  public disable(name: string): this {
+    return this.set(name, false);
+  }
 }
 
 /**
@@ -423,27 +444,6 @@ interface ServerAdapter {
   registerSecurityHook: (hook: SecurityHook) => void;
 }
 
-declare module '@nestjs/common' {
-  /**
-   * The application methods this adapter implements. Nest
-   * declares them on its own platform interfaces, which an
-   * application on Hono does not otherwise have.
-   */
-  interface INestApplication<TServer> {
-    /** Serves the files in a directory, at the prefix asked for. */
-    useStaticAssets: (
-      path: StaticAssetsOptions | string | readonly string[],
-      options?: StaticAssetsOptions,
-    ) => this;
-    /** Names the directories a view is read from. */
-    setBaseViewsDir: (
-      directory: string | readonly string[],
-    ) => this;
-    /** Names the view engine, by the extension it renders. */
-    setViewEngine: (engine: EngineConfig) => this;
-  }
-}
-
 export { ServerAdapter };
 
-export type { SecurityHook, ServerAdapterOptions };
+export type { ServerAdapterOptions };

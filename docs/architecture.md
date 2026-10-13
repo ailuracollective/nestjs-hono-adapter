@@ -294,9 +294,9 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has a 10880-byte ceiling and a measurement of 10827,
-`bun-server` 1024/981, `node-server` 560/511, `fetch` 480/418,
-`multipart` 4250/4206 and `ws` 1550/1543.
+`index` has an 11090-byte ceiling and a measurement of 11062,
+`bun-server` 1024/981, `node-server` 560/506, `fetch` 480/418,
+`multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
 
 **`inject()`.** Fastify's in-process request helper costs 1073
 bytes in `index` — 9754 before, 10827 after — against a
@@ -406,6 +406,35 @@ transport a deployment must serve through instead, and the
 entrypoint that re-exports both — and the 34 bytes of headroom
 left under the ceiling are in the range the other entries keep,
 from `ws`'s 10 to `fetch`'s 62.
+
+The application settings arrived next. `setLocal()`, `set()`,
+`enable()` and `disable()` add the last piece of Express's
+application surface this adapter can carry honestly: a local
+written after the application starts reaches the next render,
+through the same context `ViewOptions.defaultContext` fills at
+construction, and the two settings that name behaviour —
+`view engine` and `views` — delegate to `setViewEngine()` and
+`setBaseViewsDir()` while every other name is refused with a
+reason rather than stored. That costs 206 bytes in `index` —
+10856 before, 11062 after — past the 10880-byte ceiling that
+left 24, so `index` moves to 11090 and keeps 28 bytes of
+headroom. The refusal reasons are 74 bytes of the total,
+measured by dropping the map; shortening the explanatory half of
+the `trust proxy` reason would save 19 of those, and the rest is
+the shared text and the setting names. The methods and the
+honoured set are the other 132 bytes, so the cost does not come
+down without losing either the reason or the refusal.
+
+The helpers live in `core/hono-lifecycle.ts` rather than beside
+`set()` in `core/server-adapter.ts`, because that file is at its
+14-dependency ceiling and its 450-line ceiling, and `views.ts` —
+the natural home for the `view engine` and `views` names — is at
+388 of its 400 lines. The module augmentation that declares the
+surface on `INestApplication` stays in `core/app-settings.ts`
+and reads its parameter types off `ServerAdapter`, which is what
+keeps that file inside the layer map: naming the view and
+static-asset option types directly would draw the `core/` to
+`features/` edge only the two composition roots may take.
 
 Two consequences worth knowing before you write code:
 

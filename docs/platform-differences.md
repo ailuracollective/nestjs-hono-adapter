@@ -194,12 +194,21 @@ not a port, and a silent no-op would be worse than a named gap.
   `@fastify/multipart`. There is nothing to turn on here: a body
   is read on demand through Hono's `parseBody()`, and the upload
   interceptors behind `./multipart` are the supported path.
-- **The Express settings API** — `setLocal()`, `set()`,
-  `enable()`, `disable()` and `engine()`, reached through
-  `NestExpressApplication`. `setBaseViewsDir()` and
-  `setViewEngine()` are implemented directly, so views work, but
-  the generic settings bag they would write into does not exist
-  and nothing here reads it.
+- **Part of the Express settings API** — `engine()` and `get()`.
+  `setLocal()`, `set()`, `enable()` and `disable()` are
+  implemented, and documented in
+  [api.md](api.md#application-methods): a setting this adapter
+  honours reaches behaviour, and a name with nothing behind it
+  is refused with a reason rather than stored. `engine()` is a
+  non-goal because it registers a template engine by file
+  extension, which nothing here reads, and `setViewEngine()`
+  already names the engine explicitly. `get()` is a non-goal by
+  collision: Nest's `INestApplicationContext.get()` already
+  answers the DI container with `any[]`, and the adapter already
+  declares `get(target, handler)`, the GET route registrar, so
+  Express's `app.get(setting)` cannot be added without a
+  `TS2430` override error and a `TS4114` implicit-override
+  error.
 - **The Fastify route decorators** — `@RouteSchema()`,
   `@RouteConfig()` and `@RouteConstraints()`, which write the
   metadata keys `__fastify_route_schema__`,

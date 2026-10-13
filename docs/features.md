@@ -79,6 +79,16 @@ app.setBaseViewsDir('views');
 app.setViewEngine('hbs');
 ```
 
+`setLocal(key, value)` adds one value to the data every render
+is merged onto, the same context the `views.defaultContext`
+option fills. `set(name, value)` reaches the settings this
+adapter honours — `view engine` and `views`, which is what the
+two calls above are — and `enable(name)` / `disable(name)` call
+it with `true` and `false`. A name with no behaviour behind it
+is refused with the reason rather than stored, so a setting
+nothing would read fails where it is set instead of quietly
+doing nothing.
+
 A handler marks its route with `@Render('hello')`, and the
 extension the engine named is appended, so the file looked up is
 `views/hello.hbs`. A view that is missing is answered as

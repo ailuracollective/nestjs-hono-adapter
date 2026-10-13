@@ -107,6 +107,27 @@ the comparison for the code structure they describe.
 > `node-server` 511 B, `fetch` 418 B, `multipart` 4206 B and
 > `ws` 1543 B, each inside its unchanged ceiling.
 
+> **Update after that — application settings.** `setLocal()`,
+> `set()`, `enable()` and `disable()` add the last piece of
+> Express's application surface this adapter can carry: a local
+> written after the application starts reaches every render
+> through the context `ViewOptions.defaultContext` already
+> fills, and the two settings that name behaviour (`view engine`
+> and `views`) delegate to `setViewEngine()` and
+> `setBaseViewsDir()`, while every other name is refused with a
+> reason rather than stored. It costs 206 B in `index`: 10856 B
+> before, 11062 B after, against the 10880 B ceiling that left
+> 24 B, so the raise is 210 B, to 11090 B, and it is recorded in
+> `docs/architecture.md`. The refusal reasons are 74 B of the
+> cost, measured by dropping the map, and 19 B of those are the
+> explanatory half of the `trust proxy` reason. Every other
+> entrypoint keeps its measured value and its ceiling:
+> `bun-server` 981 B, `node-server` 506 B, `fetch` 418 B,
+> `multipart` 4206 B, `ws` 1543 B and `socket-io` 948 B.
+> (`node-server` reads 506 B where the entry above recorded 511
+> B; nothing in this change reaches that entrypoint, so the
+> refinement merged after it is what moved it.)
+
 ## Environment
 
 | Tool                                  | Version                     |

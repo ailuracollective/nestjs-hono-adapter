@@ -272,6 +272,11 @@ class ViewRenderer {
     this.directories = directoriesOf(views);
   }
 
+  /** Adds one value to the data every render is merged onto. */
+  public setLocal(key: string, value: unknown): void {
+    this.context[key] = value;
+  }
+
   /** Configures the views, by name or by Fastify's own options. */
   public useEngine(engine: EngineConfig): void {
     if (typeof engine === 'string') {
