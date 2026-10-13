@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { expect, test } from 'bun:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 /** The HTTP entry point, and the WebSocket one beside it. */
 const ENTRY = path.resolve(
   import.meta.dirname,
@@ -15,6 +17,10 @@ const WS_ENTRY = path.resolve(
 const MULTIPART_ENTRY = path.resolve(
   import.meta.dirname,
   '../src/multipart/index.ts',
+);
+const SOCKET_IO_ENTRY = path.resolve(
+  import.meta.dirname,
+  '../src/socket-io/index.ts',
 );
 
 /**
@@ -30,6 +36,13 @@ const UPLOAD_PARSER = 'busboy';
  * application that opens no gateway never installs them.
  */
 const ISLAND_PEERS = ['@hono/node-ws', '@nestjs/websockets'];
+
+/**
+ * The protocol the socket.io island alone may reach. It is an
+ * optional peer too: a deployment that runs no socket.io
+ * gateway never installs it, and no other entrypoint names it.
+ */
+const SOCKET_IO_PEER = 'socket.io';
 
 /**
  * The server the adapter builds when a deployment names no
@@ -159,6 +172,32 @@ test('the WebSocket entry point does reach the island peers', async () => {
   const peerFiles = await peersReachedBy(WS_ENTRY);
   const names = peerFiles.map((file) => path.basename(file));
   expect(names).toContain('adapter.ts');
+});
+
+test.each(
+  Object.entries(manifest.exports).filter(
+    ([name]) => name !== './socket-io',
+  ),
+)('%s reaches no socket.io peer', async (_name, entry) => {
+  const source = path.resolve(
+    import.meta.dirname,
+    '..',
+    entry.default
+      .replace('./dist/', './src/')
+      .replace(/\.js$/u, '.ts'),
+  );
+  expect(
+    await carriersOf(source, SOCKET_IO_PEER),
+  ).toStrictEqual([]);
+});
+
+test('the socket.io entry point does reach socket.io', async () => {
+  const carriers = await carriersOf(
+    SOCKET_IO_ENTRY,
+    SOCKET_IO_PEER,
+  );
+  const names = carriers.map((file) => path.basename(file));
+  expect(names).toContain('io-adapter.ts');
 });
 
 test('the HTTP entry point reaches no upload parser', async () => {

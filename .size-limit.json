@@ -130,5 +130,23 @@
       "node:stream/promises",
       "node:util"
     ]
+  },
+  {
+    "name": "socket-io",
+    "path": "dist/socket-io/index.js",
+    "limit": 950,
+    "brotli": true,
+    "ignore": [
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "rxjs",
+      "socket.io",
+      "node:buffer",
+      "node:events",
+      "node:http",
+      "node:stream",
+      "node:util"
+    ]
   }
 ]

@@ -25,7 +25,12 @@ interface Edge {
 }
 
 /** The layers of the tree, and the root is not one of them. */
-type Layer = 'core' | 'features' | 'multipart' | 'ws';
+type Layer =
+  | 'core'
+  | 'features'
+  | 'multipart'
+  | 'socket-io'
+  | 'ws';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const SOURCE = path.join(ROOT, 'src');
@@ -58,6 +63,9 @@ const REQUIRED = [
   'src/ws/client.ts',
   'src/ws/server.ts',
   'src/ws/index.ts',
+  'src/socket-io/index.ts',
+  'src/socket-io/io-adapter.ts',
+  'src/socket-io/refusal.ts',
   'src/multipart/index.ts',
   'src/multipart/multipart.module.ts',
   'src/multipart/multipart/multipart.interceptor.factory.ts',
@@ -111,25 +119,27 @@ function crossing(
   return { from, to, typeOnly };
 }
 
+/** The directory each island is rooted at, and its layer. */
+const ISLANDS: Readonly<Record<string, Layer>> = {
+  'src/features': 'features',
+  'src/multipart': 'multipart',
+  'src/socket-io': 'socket-io',
+  'src/ws': 'ws',
+};
+
 /** The layer a source path belongs to, and none for the roots. */
 function layerOf(file: string): Layer | undefined {
   const directory = path.dirname(file);
   if (directory === 'src/core') {
     return 'core';
   }
-  if (directory === 'src/features') {
-    return 'features';
-  }
-  if (directory === 'src/ws') {
-    return 'ws';
-  }
-  if (
-    directory === 'src/multipart' ||
-    directory.startsWith('src/multipart/')
-  ) {
+  if (directory.startsWith('src/multipart/')) {
     return 'multipart';
   }
-  return undefined;
+  if (directory.startsWith('src/socket-io/')) {
+    return 'socket-io';
+  }
+  return ISLANDS[directory];
 }
 
 /** The edges a core module takes into a feature. */
@@ -199,6 +209,24 @@ function multipartReachesApp(edges: readonly Edge[]): Edge[] {
         layerOf(edge.to) === 'features') &&
       !edge.typeOnly &&
       edge.to !== MULTIPART_VALUE_EDGE,
+  );
+}
+
+/**
+ * The edges the socket.io island takes into the application. It
+ * takes none, at runtime or as a type: Nest hands the adapter
+ * the server it already built, so the island's runtime graph is
+ * `socket.io` and the three modules behind `./socket-io`, and
+ * naming anything in `core/` or `features/` would mean it had
+ * grown a dependency on the application it is meant to be
+ * usable without.
+ */
+function socketIoReachesApp(edges: readonly Edge[]): Edge[] {
+  return edges.filter(
+    (edge) =>
+      layerOf(edge.from) === 'socket-io' &&
+      (layerOf(edge.to) === 'core' ||
+        layerOf(edge.to) === 'features'),
   );
 }
 
@@ -369,6 +397,50 @@ test('the first three rules count a type import as an edge', () => {
   ]);
 });
 
+test('the socket.io island reaching the application is refused', () => {
+  const forbidden = crossing(
+    'src/socket-io/io-adapter.ts',
+    'src/core/server-adapter.ts',
+  );
+  expect(socketIoReachesApp([forbidden])).toStrictEqual([
+    forbidden,
+  ]);
+});
+
+test('and refused as a type too, unlike the ws island', () => {
+  const typed = crossing(
+    'src/socket-io/io-adapter.ts',
+    'src/core/server-adapter.ts',
+    true,
+  );
+  expect(socketIoReachesApp([typed])).toStrictEqual([typed]);
+});
+
+test.each([
+  ['src/core/server-adapter.ts', false],
+  ['src/core/server-adapter.ts', true],
+  ['src/features/sse.ts', false],
+  ['src/features/sse.ts', true],
+] as const)(
+  'nested socket.io modules reaching %s are refused (type only: %s)',
+  (target, typeOnly) => {
+    const forbidden = crossing(
+      'src/socket-io/nested/helper.ts',
+      target,
+      typeOnly,
+    );
+    expect(socketIoReachesApp([forbidden])).toStrictEqual([
+      forbidden,
+    ]);
+  },
+);
+
+test('no socket.io module reaches the application', async () => {
+  expect(socketIoReachesApp(await scan(SOURCE))).toStrictEqual(
+    [],
+  );
+});
+
 test('core reaches no feature outside the composition roots', async () => {
   expect(coreReachesFeature(await scan(SOURCE))).toStrictEqual(
     [],
@@ -508,6 +580,7 @@ test('the walk reads an import out of every layer', async () => {
     'core',
     'features',
     'multipart',
+    'socket-io',
     'ws',
   ]);
 });

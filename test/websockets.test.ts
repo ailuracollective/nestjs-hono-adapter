@@ -6,6 +6,7 @@ import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { createNodeWebSocket } from '@hono/node-ws';
 import type { WSEvents } from 'hono/ws';
+import type { WebSocket as ServerSocket } from 'ws';
 import {
   BaseWsExceptionFilter,
   ConnectedSocket,
@@ -406,9 +407,8 @@ test('closing without a client ever connecting is not an error', async () => {
  * The node transport with a websocket helper that has no
  * `onOpen`, which is what a fetch host passes: Hono runs the
  * factory before the upgrade, so `@hono/cloudflare-workers`
- * types its helper as `Omit<WSEvents, 'onOpen'>`. Everything
- * else is `@hono/node-ws` as it is, so the only difference from
- * the case above is the missing event.
+ * types its helper as `Omit<WSEvents, 'onOpen'>`, and the only
+ * difference from the case above is the missing event.
  */
 function withoutOnOpen(): Transport {
   const base = nodeServer();
@@ -427,7 +427,7 @@ function withoutOnOpen(): Transport {
         upgradeWebSocket: (factory) =>
           node.upgradeWebSocket((context) => {
             const events = factory(context);
-            const kept: WSEvents<WebSocket> = {};
+            const kept: WSEvents<ServerSocket> = {};
             if (events.onClose) {
               kept.onClose = events.onClose;
             }
