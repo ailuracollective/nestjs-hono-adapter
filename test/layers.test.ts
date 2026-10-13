@@ -181,9 +181,9 @@ function wsReachesApp(edges: readonly Edge[]): Edge[] {
  * adapter an interceptor owns a multipart body. Every other
  * import the island makes into `core/` or `features/` has to be
  * a type, so the compiler erases it and the island's runtime
- * graph stays inside `packages/core/src/multipart/` — the
- * argument rule 4 makes for `/ws`, with the one exception the
- * marker needs.
+ * graph stays inside `packages/multipart/src/` — the argument
+ * rule 4 makes for `/ws`, with the one exception the marker
+ * needs.
  */
 const MULTIPART_VALUE_EDGE =
   'packages/core/src/core/multipart.ts';
