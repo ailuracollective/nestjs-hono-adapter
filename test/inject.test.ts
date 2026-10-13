@@ -24,6 +24,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
@@ -32,6 +33,7 @@ import { ServerAdapter } from '../src/index.ts';
 import type {
   InjectCookie,
   InjectResponse,
+  NestContext,
   NestHonoApplication,
   NestRequest,
 } from '../src/index.ts';
@@ -45,6 +47,9 @@ const SENT_COOKIE = 'session=abc';
 /** The `set-cookie` value the cookie route answers with. */
 const ANSWER_COOKIE =
   'session=abc; Path=/; HttpOnly; SameSite=Lax';
+
+/** The second cookie a route appends after the first. */
+const OTHER_COOKIE = 'theme=dark; Path=/';
 
 /** A controller with one route per behaviour `inject()` has. */
 @Controller()
@@ -77,6 +82,17 @@ class InjectController {
   @Get('cookie')
   @Header('set-cookie', ANSWER_COOKIE)
   public cookie(): unknown {
+    return { ok: true };
+  }
+
+  @Get('cookies')
+  public cookies(
+    @Res({ passthrough: true }) response: NestContext,
+  ): unknown {
+    response.header('set-cookie', ANSWER_COOKIE);
+    response.header('set-cookie', OTHER_COOKIE, {
+      append: true,
+    });
     return { ok: true };
   }
 
@@ -280,6 +296,19 @@ test('reports set-cookie as a list and parses the cookies', async () => {
   expect(cookie.httpOnly).toBe(true);
   expect(cookie.sameSite).toBe('Lax');
   expect(cookie.path).toBe('/');
+});
+
+test('keeps two appended cookies as two set-cookie headers', async () => {
+  const application = await app();
+  const answer = await application.inject('/cookies');
+  expect(answer.headers['set-cookie']).toEqual([
+    ANSWER_COOKIE,
+    OTHER_COOKIE,
+  ]);
+  expect(answer.cookies.map((cookie) => cookie.name)).toEqual([
+    'session',
+    'theme',
+  ]);
 });
 
 test('answers a thrown HttpException as Nest does', async () => {

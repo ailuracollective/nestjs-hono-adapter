@@ -297,7 +297,7 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11220-byte ceiling and a measurement of 11211,
+`index` has an 11180-byte ceiling and a measurement of 11172,
 `bun-server` 1024/981, `node-server` 560/506, `fetch` 480/418,
 `multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
 
@@ -464,6 +464,15 @@ bytes in `index` — 11183 to 11211 — for the cached-byte fallback
 and its size check. That exceeds the 11190-byte ceiling by 21
 bytes, so the ceiling moves to 11220 and leaves 9 bytes of
 headroom. The other entrypoint ceilings stay unchanged.
+Answering two cookies as two headers costs 42 bytes in `index` —
+11123 before, 11172 after — past the 11130-byte ceiling that
+left 7, so `index` moves to 11180. It is the price of keeping a
+repeated `set-cookie` apart: the record an answer is built from
+converts a sequence value with the WebIDL `ByteString`
+converter, which joins it with a comma, so the one header that
+cannot be folded is handed to the constructor as pairs instead.
+Every other repeated header still folds, and a record with no
+repeated `set-cookie` is still written straight through.
 
 Two consequences worth knowing before you write code:
 
