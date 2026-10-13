@@ -99,8 +99,9 @@ extension the engine named is appended, so the file looked up is
 `NotFoundException`, and naming an engine before one was
 configured throws, rather than rendering an empty page. The
 answer carries the status the route declared, so
-`@HttpCode(HttpStatus.ACCEPTED)` with `@Render()` answers `202`
-and a route that declares none answers `200`.
+`@HttpCode(HttpStatus.ACCEPTED)` with `@Render()` answers `202`,
+and a route that declares none answers the status Nest gives the
+method — `200` for a `GET`, `201` for a `POST`.
 
 ## Static assets
 
