@@ -8,3 +8,5 @@ coverage/
 odd/
 .codegraph/
 .wrangler/
+.idea/
+.vscode/

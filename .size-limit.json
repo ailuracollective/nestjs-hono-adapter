@@ -87,26 +87,6 @@
     ]
   },
   {
-    "name": "ws",
-    "path": "dist/ws/index.js",
-    "limit": 1550,
-    "brotli": true,
-    "ignore": [
-      "hono",
-      "@nestjs/common",
-      "@nestjs/core",
-      "@nestjs/websockets",
-      "@nestjs/microservices",
-      "rxjs",
-      "node:buffer",
-      "node:events",
-      "node:fs",
-      "node:path",
-      "node:stream",
-      "node:util"
-    ]
-  },
-  {
     "name": "multipart",
     "path": "dist/multipart/index.js",
     "limit": 4250,

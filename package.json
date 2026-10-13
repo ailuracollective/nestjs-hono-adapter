@@ -53,10 +53,6 @@
       "types": "./dist/multipart/index.d.ts",
       "default": "./dist/multipart/index.js"
     },
-    "./ws": {
-      "types": "./dist/ws/index.d.ts",
-      "default": "./dist/ws/index.js"
-    },
     "./socket-io": {
       "types": "./dist/socket-io/index.d.ts",
       "default": "./dist/socket-io/index.js"
@@ -66,12 +62,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun run build:packages:first && tsc -p tsconfig.json && bun run build:packages:last && bun run compat:entrypoints",
+    "build": "bun run build:packages:first && tsc -p tsconfig.json && bun run build:packages:last",
     "build:packages:first": "bun run --filter @ailura/nestjs-hono-adapter-socket-io build",
     "build:packages:last": "bun run --filter @ailura/nestjs-hono-adapter-ws build",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build && bun run size",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "compat:entrypoints": "bun run scripts/copy-compat-entry.ts ws",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",

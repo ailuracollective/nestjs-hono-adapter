@@ -99,16 +99,9 @@
   },
   "overrides": [
     {
-      "files": ["scripts/**/*.ts"],
-      "rules": {
-        "unicorn/prefer-top-level-await": "off"
-      }
-    },
-    {
       "files": [
         "src/**/*.ts",
         "test/**/*.ts",
-        "scripts/**/*.ts",
         "packages/*/src/**/*.ts",
         "packages/*/test/**/*.ts"
       ],

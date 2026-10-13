@@ -151,14 +151,14 @@ const adapter = new ServerAdapter({
 
 ## WebSockets
 
-Gateways have their own Nest adapter, kept behind the `./ws`
-subpath so an HTTP-only deployment never resolves
-`@nestjs/websockets`: it is an optional peer, and it is not
-installed for the routes above. The upgrade is served by the
-transport when it carries a websocket helper — `hono/bun` with
-`bunServer()`, whatever host a `fetchServer()` was handed — and
-by `@hono/node-ws` otherwise, which includes the default (Node)
-transport. A deployment that serves gateways installs
+Gateways have their own Nest adapter, kept in its own package,
+`@ailura/nestjs-hono-adapter-ws`, so an HTTP-only deployment
+never resolves `@nestjs/websockets`: it is an optional peer, and
+it is not installed for the routes above. The upgrade is served
+by the transport when it carries a websocket helper — `hono/bun`
+with `bunServer()`, whatever host a `fetchServer()` was handed —
+and by `@hono/node-ws` otherwise, which includes the default
+(Node) transport. A deployment that serves gateways installs
 `@hono/node-ws`; one that serves none never resolves it.
 
 ```ts

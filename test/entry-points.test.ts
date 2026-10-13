@@ -183,7 +183,7 @@ test.each(
     import.meta.dirname,
     '..',
     entry.default
-      .replace('./dist/ws/', './packages/ws/src/')
+
       .replace('./dist/', './src/')
       .replace(/\.js$/u, '.ts'),
   );
