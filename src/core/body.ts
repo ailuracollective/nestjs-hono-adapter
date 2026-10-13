@@ -141,13 +141,43 @@ function assertWithinSize(
   }
 }
 
+/**
+ * Counts the bytes as they pass and fails the stream the moment
+ * one of them crosses the ceiling, so what is resident is
+ * bounded by the limit rather than by what the client sends.
+ */
+function bounded(
+  body: ReadableStream<Uint8Array>,
+  limit: number | undefined,
+): ReadableStream<Uint8Array> {
+  let size = 0;
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller): void {
+        size += chunk.byteLength;
+        assertWithinSize(size, limit);
+        controller.enqueue(chunk);
+      },
+    }),
+  );
+}
+
+/**
+ * Reads the payload through the ceiling above: a request that
+ * declares no `Content-Length` cannot make the process hold
+ * more than the limit, and the rest of a body over it is
+ * cancelled rather than drained.
+ */
 async function readBytes(
   context: NestContext,
   limit: number | undefined,
 ): Promise<Uint8Array> {
-  const bytes = new Uint8Array(await context.req.arrayBuffer());
-  assertWithinSize(bytes.byteLength, limit);
-  return bytes;
+  const { body } = context.req.raw;
+  if (body === null) {
+    return new Uint8Array();
+  }
+  const answer = new Response(bounded(body, limit));
+  return new Uint8Array(await answer.arrayBuffer());
 }
 
 function textOf(bytes: Uint8Array): string {

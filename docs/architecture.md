@@ -297,7 +297,7 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11090-byte ceiling and a measurement of 11062,
+`index` has an 11190-byte ceiling and a measurement of 11183,
 `bun-server` 1024/981, `node-server` 560/506, `fetch` 480/418,
 `multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
 
@@ -447,6 +447,17 @@ configured, and treating `__proto__` as own render data bring
 `index` to 11123 bytes. These corrections exceed its 11090-byte
 ceiling by 33 bytes, so the ceiling moves to 11130. The other
 entrypoints retain their existing ceilings.
+
+Enforcing the body limit while the payload is read rather than
+once it is resident costs 60 bytes in `index` — 11123 before,
+11183 after — past the 11130-byte ceiling that left 7, so
+`index` moves to 11190 and keeps the 7 bytes of headroom the
+other entrypoints run with. It is the price of the streaming
+ceiling: the counting pass is a `TransformStream` and the
+`Response` around it, both platform globals the bundler does not
+charge for, so the 60 bytes are the glue and not the machinery.
+The alternative was a body no client needs to declare a length
+for, which is not a ceiling at all.
 
 Two consequences worth knowing before you write code:
 
