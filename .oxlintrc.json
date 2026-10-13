@@ -129,7 +129,11 @@
       }
     },
     {
-      "files": ["src/*/index.ts", "packages/*/src/index.ts"],
+      "files": [
+        "src/*/index.ts",
+        "packages/*/src/index.ts",
+        "packages/*/index.ts"
+      ],
       "rules": {
         "oxc/no-barrel-file": "off"
       }

@@ -278,7 +278,7 @@ the path.
 `WsAdapter` refuses a namespace and has no acknowledgement
 callback either; the reply travels back as the echoed `id`.
 These are only a gap against Socket.IO, and `./socket-io` closes
-it without changing the WebSocket adapter.
+it without changing `./ws`.
 
 ### `@nestjs/platform-socket.io` — implemented, behind `./socket-io`
 
@@ -286,8 +286,8 @@ it without changing the WebSocket adapter.
 `IoAdapter`: `create()`, `createIOServer()`, `mapPayload()`,
 `bindMessageHandlers()`, `bindClientDisconnect()` and `close()`,
 so a gateway keeps its namespaces, its rooms, its broadcasts and
-its acknowledgement callbacks. It is a new adapter beside the
-WebSocket one, not a change to it.
+its acknowledgement callbacks. It is a new subpath beside
+`./ws`, not a change to it.
 
 It attaches to a Node `http.Server`, and only the Node transport
 answers with one: `./node-server` runs on Node and on Bun, so a

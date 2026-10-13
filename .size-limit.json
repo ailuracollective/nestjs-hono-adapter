@@ -112,6 +112,20 @@
     ]
   },
   {
+    "name": "ws",
+    "path": "dist/ws/index.js",
+    "limit": 1550,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "/node-ws",
+      "/common",
+      "/core",
+      "/websockets",
+      "rxjs"
+    ]
+  },
+  {
     "name": "socket-io",
     "path": "dist/socket-io/index.js",
     "limit": 950,

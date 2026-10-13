@@ -115,15 +115,14 @@ time rather than leaving to review.
 
 ## Entrypoints and isolation
 
-The `exports` map in `package.json` exposes six specifiers: `.`,
-`./bun-server`, `./node-server`, `./fetch`, `./multipart` and
-`./socket-io`. The WebSocket adapter left the map for its own
-package, `@ailura/nestjs-hono-adapter-ws`: a deployment that
-serves a gateway installs it and imports it directly, which is
-the one import this repository has ever asked a consumer to
-change. It exposes nothing else, so no consumer can reach an
-internal module by path — which is what makes it safe to move
-files between regions without it being a breaking change.
+The `exports` map in `package.json` exposes seven specifiers:
+`.`, `./bun-server`, `./node-server`, `./fetch`, `./multipart`,
+`./ws` and `./socket-io`. `./ws` is emitted from `packages/ws`,
+the WebSocket adapter's own package, so the subpath survives
+without the core depending on that package. It exposes nothing
+else, so no consumer can reach an internal module by path —
+which is what makes it safe to move files between regions
+without it being a breaking change.
 
 `test/entry-points.test.ts` walks the import graph transitively
 from the neutral entrypoints. It fails if `.` reaches
@@ -132,14 +131,13 @@ dependencies: a deployment that serves HTTP must not need either
 installed. It checks the opposite direction too, because
 `@hono/node-server` is required and reached on purpose: `.`
 serves through it when no transport is named, which is the
-behaviour every deployment had before the transports split. The
-WebSocket package is the only thing that reaches the WebSocket
-peers, `./socket-io` the only entrypoint that reaches
-`socket.io`, and `./multipart` the only one that reaches
-`busboy`. The WebSocket adapter is checked where it now lives:
-`test/layers.test.ts` walks `packages/ws/src` as the `ws` layer
-and `test/entry-points.test.ts` asks for its peers at the
-package.
+behaviour every deployment had before the transports split.
+`./ws` is the only entrypoint that reaches the WebSocket peers,
+`./socket-io` the only one that reaches `socket.io`, and
+`./multipart` the only one that reaches `busboy`. The WebSocket
+adapter is checked where it now lives: `test/layers.test.ts`
+walks `packages/ws/src` as the `ws` layer and
+`test/entry-points.test.ts` asks for its peers at the package.
 
 Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;

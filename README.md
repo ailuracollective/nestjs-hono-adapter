@@ -53,15 +53,14 @@ versions. `@hono/node-server` is what the adapter serves through
 when no transport is named, so it is required. A deployment that
 serves uploads installs `busboy`, reached through `./multipart`
 and nowhere else. A deployment that serves WebSockets installs
-`@hono/node-ws` and `@nestjs/websockets` alongside
-`@ailura/nestjs-hono-adapter-ws`, the WebSocket adapter's own
-package: those two are the optional peers that package reaches.
-A deployment that runs a gateway on socket.io installs
-`socket.io` and `@nestjs/websockets`, reached through
-`./socket-io` and nowhere else; that island needs the Node
-transport, which `./node-server` provides on Node and on Bun.
-The optional peers are only ever loaded by the entrypoint that
-needs them.
+`@hono/node-ws` and `@nestjs/websockets`: those two are the
+optional peers reached through `./ws`, which serves the adapter
+built in `@ailura/nestjs-hono-adapter-ws`. A deployment that
+runs a gateway on socket.io installs `socket.io` and
+`@nestjs/websockets`, reached through `./socket-io` and nowhere
+else; that island needs the Node transport, which
+`./node-server` provides on Node and on Bun. The optional peers
+are only ever loaded by the entrypoint that needs them.
 
 A Socket.IO gateway with port zero attaches to the application's
 Node server and requires that server to be available. An
