@@ -8,15 +8,18 @@
     "packages/core": {},
     "packages/socket-io": {
       "component": "socket-io",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true
     },
     "packages/ws": {
       "component": "ws",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true
     },
     "packages/multipart": {
       "component": "multipart",
-      "include-component-in-tag": true
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true
     }
   }
 }
