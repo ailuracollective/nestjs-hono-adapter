@@ -5,7 +5,6 @@ import nodePath from 'node:path';
 import type { NestApplicationOptions } from '@nestjs/common';
 import type { MiddlewareHandler } from 'hono';
 import { serveStatic as baseServeStatic } from 'hono/serve-static';
-import { upgradeWebSocket, websocket } from 'hono/bun';
 
 import {
   RequestCarrier,
@@ -26,8 +25,40 @@ import type {
  * reached through the `./bun-server` subpath. It builds the
  * server Nest drives over `Bun.serve`, synthesizes the request
  * bindings from what Bun reports, serves files with `Bun.file`,
- * and upgrades WebSockets with `hono/bun`.
+ * and upgrades WebSockets with `hono/bun` — which it loads only
+ * where the Bun global exists, so the same module still loads
+ * on Node.
  */
+
+/** The `hono/bun` module, by its own declaration. */
+// oxlint-disable-next-line typescript/consistent-type-imports -- the module's own declaration; a named type import would have to be kept in step by hand and would put a static `hono/bun` specifier in a module that cannot import it statically on Node.
+type HonoBun = typeof import('hono/bun');
+
+/**
+ * Resolves `hono/bun` where the Bun global exists, and nothing
+ * on Node. `hono/bun` re-exports `ssg.js`, whose top level
+ * reads `Bun`, so a static import throws on Node before any
+ * option is read and leaves the adapter impossible to import
+ * there at all. On Node the value is `undefined`, and the
+ * transport then carries no WebSocket helper, which is what
+ * lets the `ws` package fall back to `@hono/node-ws`.
+ *
+ * Only the missing global skips the import: where Bun is
+ * present, a failure to load the module still throws, so a
+ * broken `hono/bun` is never mistaken for a runtime that cannot
+ * WebSocket.
+ */
+async function importHonoBun(): Promise<HonoBun | undefined> {
+  if (typeof Bun === 'undefined') {
+    return undefined;
+  }
+  const bun = await import('hono/bun');
+  return bun;
+}
+
+/** The `hono/bun` module, loaded where the runtime provides it. */
+// oxlint-disable-next-line node/no-top-level-await -- the module has to be resolved before anything reads the transport, and this package publishes ESM only: `require(esm)` is not a loading path it supports.
+const honoBun = await importHonoBun();
 
 /** The address Nest formats from a listening server. */
 interface BunAddress {
@@ -374,23 +405,30 @@ class BunServer extends EventEmitter implements Server {
   }
 }
 
-/** The `hono/bun` websocket helper, handed to `Bun.serve`. */
-function bunWebSocket(app: NestHono): WebSocketSupport {
-  // `hono/bun` reads the native server from `context.env.server`,
-  // which this transport's bindings always carry.
-  void app;
-  return {
-    install: (server: Server): (() => void) => {
-      if (server instanceof BunServer) {
-        // oxlint-disable-next-line typescript/no-deprecated -- `hono/bun` re-exports it; moving to the `@hono/bun` package it points at is a follow-up, and the bytes are already in this entrypoint.
-        server.useWebSocket(websocket);
-      }
-      return noDisposer;
-    },
-    // oxlint-disable-next-line typescript/no-deprecated -- the same `hono/bun` re-export as above.
-    upgradeWebSocket,
-  };
-}
+/**
+ * The `hono/bun` websocket helper, where the module loaded: on
+ * Node there is none, and `bunServer()` exposes no helper,
+ * which is what lets the `ws` package fall back to
+ * `@hono/node-ws`.
+ */
+const bunWebSocket =
+  honoBun &&
+  ((app: NestHono): WebSocketSupport => {
+    // `hono/bun` reads the native server from `context.env.server`,
+    // which this transport's bindings always carry.
+    void app;
+    return {
+      install: (server: Server): (() => void) => {
+        if (server instanceof BunServer) {
+          // oxlint-disable-next-line typescript/no-deprecated -- `hono/bun` re-exports it; moving to the `@hono/bun` package it points at is a follow-up, and the bytes are already in this entrypoint.
+          server.useWebSocket(honoBun.websocket);
+        }
+        return noDisposer;
+      },
+      // oxlint-disable-next-line typescript/no-deprecated -- the same `hono/bun` re-export as above.
+      upgradeWebSocket: honoBun.upgradeWebSocket,
+    };
+  });
 
 /** Builds the server Nest drives over `Bun.serve`. */
 function createBunServer(

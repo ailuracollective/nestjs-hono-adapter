@@ -21,10 +21,8 @@ import type {
  * the Node request and response to every Hono context and
  * serves files with the same package's static middleware.
  *
- * The adapter serves through it whenever a deployment named no
- * other transport: it is the runtime this package served
- * through before the transports split, and it runs on Bun as
- * well as on Node.
+ * A deployment on Node names it with `nodeServer()`: the
+ * transport the adapter picks itself is the Bun one.
  */
 
 /** The options `@hono/node-server` accepts to build the server. */
@@ -37,9 +35,8 @@ interface NodeServerOptions {
    * `Request` and `Response` with its lighter classes, worth
    * roughly a third of the CPU an answer costs. Off by default:
    * the replacement is process-wide and not restored, which a
-   * library should not do unless asked. The adapter turns it on
-   * for the transport it picks itself, which is the behaviour
-   * every deployment had before the transports split.
+   * library should not do unless asked, so a deployment that
+   * wants it names it here.
    */
   readonly overrideGlobalObjects?: boolean;
 }
@@ -196,11 +193,10 @@ function nodeServeStatic(
 }
 
 /**
- * The Node transport, for `new ServerAdapter({ transport })`,
- * and the one the adapter serves through when a deployment
- * names no other. It carries no websocket helper: the `/ws`
- * island falls back to `@hono/node-ws`, so a deployment that
- * serves no websocket never installs it.
+ * The Node transport, for `new ServerAdapter({ transport })`.
+ * It carries no websocket helper: the `/ws` island falls back
+ * to `@hono/node-ws`, so a deployment that serves no websocket
+ * never installs it.
  */
 function nodeServer(
   options: NodeServerOptions = {},

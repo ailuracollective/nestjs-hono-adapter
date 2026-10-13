@@ -41,9 +41,10 @@ import type { ServerAdapter } from './server-adapter.ts';
  * implements and Node's own `http.Server`, which is the object
  * `getHttpServer()` answered before the transports split: a
  * `closeAllConnections()` or an `'upgrade'` listener keeps
- * compiling. Only the default (Node) transport hands back an
- * actual `http.Server`; the Bun and fetch transports answer the
- * port and leave the rest of the intersection unimplemented.
+ * compiling. Only the Node transport hands back an actual
+ * `http.Server`; the default Bun transport and the fetch
+ * transport answer the port and leave the rest of the
+ * intersection unimplemented.
  */
 interface NestHonoApplication extends INestApplication<
   Server & NativeServer

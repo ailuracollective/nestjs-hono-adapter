@@ -19,8 +19,8 @@ interface NestEnv {
  * The environment `@hono/node-server` attaches, published under
  * the name this package knew it by before the transports split.
  * A handler annotated `Hono<NodeEnv>` keeps its `incoming` and
- * `outgoing` reads, which is the shape the default transport
- * still serves.
+ * `outgoing` reads, which is the shape the Node transport still
+ * serves.
  */
 interface NodeEnv {
   Bindings: HttpBindings;

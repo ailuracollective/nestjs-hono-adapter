@@ -1,21 +1,19 @@
 /**
- * The Node transport, exercised end to end: injected by name,
- * and picked by the adapter when a deployment names nothing.
+ * The Node transport, exercised end to end, always injected by
+ * name: the adapter's default is the Bun transport, so no case
+ * here relies on it.
  *
  * The rest of the suite runs on the Bun transport the fixture
  * injects, so these cases prove the Node path serves the same
  * application — the same routes, the same response translation,
- * the same shutdown — both ways, and that `getHttpServer()`
- * still answers Node's own server on the default path.
+ * the same shutdown — and that `getHttpServer()` answers Node's
+ * own server when `nodeServer()` is the transport named.
  *
- * The plain `new ServerAdapter()` is not served here.
- * `overrideGlobalObjects` is on by default — which is what
- * every deployment had before the transports split — and
- * `@hono/node-server` replaces the process's `Request` and
- * `Response` when it builds a server, without restoring them.
- * No later case in this process could undo that, so the cases
- * below serve the same default transport with the switch off
- * and pin the wiring without the side effect.
+ * `overrideGlobalObjects` stays off throughout: it is the
+ * switch that replaces the process's `Request` and `Response`,
+ * and `@hono/node-server` never restores them, so no later case
+ * in this process could undo it. The one case that needs it
+ * lives in `isolation.test.ts`.
  */
 
 import { execFile } from 'node:child_process';
@@ -35,22 +33,31 @@ function nodeAdapter(): ServerAdapter {
   return new ServerAdapter({ transport: nodeServer() });
 }
 
-/** Where the adapter lives, for the check Node runs. */
-const SOURCE = `${import.meta.dirname}/../src/core/server-adapter.ts`;
+/**
+ * Where the adapter and the Node transport live, for the checks
+ * Node runs.
+ */
+const ADAPTER_SOURCE = `${import.meta.dirname}/../src/index.ts`;
+const NODE_SOURCE = `${import.meta.dirname}/../src/servers/node.ts`;
 
 /**
  * A check the runtime itself answers: the server class is read
- * with `instanceof`, so the check runs in a plain Node process
- * rather than inside the test runner, which also shows that the
- * default transport is one Node serves well enough to build
- * with.
+ * with `instanceof`, and only Node tells an HTTPS server from a
+ * plain one, so the check runs in a plain Node process rather
+ * than inside the test runner. It imports the adapter itself,
+ * which loads under Node now that the Bun transport resolves
+ * `hono/bun` only where the Bun global exists, and reads
+ * `initHttpServer` there: the `httpsOptions` Nest hands it are
+ * forwarded to the transport, which is what selects the HTTPS
+ * server.
  */
 const TLS_CHECK = `
-const { ServerAdapter } = await import(${JSON.stringify(SOURCE)});
+const { ServerAdapter } = await import(${JSON.stringify(ADAPTER_SOURCE)});
+const { nodeServer } = await import(${JSON.stringify(NODE_SOURCE)});
 const { Server: HttpsServer } = await import('node:https');
-const secure = new ServerAdapter();
+const secure = new ServerAdapter({ transport: nodeServer() });
 secure.initHttpServer({ httpsOptions: {} });
-const plain = new ServerAdapter();
+const plain = new ServerAdapter({ transport: nodeServer() });
 plain.initHttpServer({});
 const answers = [
   secure.getHttpServer() instanceof HttpsServer,
@@ -101,16 +108,12 @@ test('the Node transport answers a JSON route', async () => {
 });
 
 /**
- * The bootstrap that names no runtime is the one every
- * deployment wrote before the transports split, and it has to
- * keep working: the adapter picks the Node transport itself,
- * and `getHttpServer()` answers Node's own server, so the
- * members a deployment reached for are still there.
+ * `getHttpServer()` answers Node's own server on this
+ * transport, so the members a deployment reached for are still
+ * there.
  */
-test('an adapter that names no transport serves through Node', async () => {
-  const adapter = new ServerAdapter({
-    overrideGlobalObjects: false,
-  });
+test("the Node transport answers Node's own server", async () => {
+  const adapter = nodeAdapter();
   const probe = await startAdapter(adapter);
   try {
     const response = await request(probe, '/ping');
@@ -124,9 +127,8 @@ test('an adapter that names no transport serves through Node', async () => {
   }
 });
 
-test('an undefined transport still serves through Node and keeps the other options', async () => {
+test('an undefined transport is answered by the default and keeps the other options', async () => {
   const options = {
-    overrideGlobalObjects: false,
     trustProxy: true,
   };
   // JavaScript callers can explicitly leave the transport undefined.
@@ -138,36 +140,39 @@ test('an undefined transport still serves through Node and keeps the other optio
       headers: { 'x-forwarded-for': '203.0.113.7' },
     });
     expect(response.body).toMatchObject({ ip: '203.0.113.7' });
-    expect(adapter.getHttpServer()).toBeInstanceOf(HttpServer);
   } finally {
     await probe.close();
   }
 });
 
 /**
- * The transport the adapter picks itself is the Node one: it
- * carries no websocket helper, which is what sends the `/ws`
- * island to `@hono/node-ws`.
+ * The Node transport carries no websocket helper, which is what
+ * sends the `/ws` island to `@hono/node-ws`.
  */
-test('an adapter that names no transport picks the Node one', () => {
-  const adapter = new ServerAdapter();
+test('the Node transport carries no websocket helper', () => {
+  const adapter = nodeAdapter();
   expect(
     adapter.getTransport().createWebSocket,
   ).toBeUndefined();
 });
 
-test('an explicit undefined transport still builds a Node server', async () => {
+/**
+ * `overrideGlobalObjects` is off unless a deployment asks for
+ * it, so the transport replaces nothing. Read under plain Node
+ * for the same reason as the TLS check above, and through
+ * `initHttpServer`, which is where the adapter builds the
+ * server.
+ */
+test('the Node transport leaves the global objects alone by default', async () => {
   const answer = await runNode('node', [
     '--input-type=module',
     '-e',
     `
-const { ServerAdapter } = await import(${JSON.stringify(SOURCE)});
+const { ServerAdapter } = await import(${JSON.stringify(ADAPTER_SOURCE)});
+const { nodeServer } = await import(${JSON.stringify(NODE_SOURCE)});
 const { Server: HttpServer } = await import('node:http');
 const originalRequest = globalThis.Request;
-const adapter = new ServerAdapter({
-  transport: undefined,
-  overrideGlobalObjects: false,
-});
+const adapter = new ServerAdapter({ transport: nodeServer() });
 adapter.initHttpServer({});
 process.stdout.write(String(
   adapter.getHttpServer() instanceof HttpServer &&
@@ -186,7 +191,6 @@ process.stdout.write(String(
 test('the options that are not a transport are still read', async () => {
   const probe = await startAdapter(
     new ServerAdapter({
-      overrideGlobalObjects: false,
       trustProxy: true,
     }),
   );
@@ -199,10 +203,9 @@ test('the options that are not a transport are still read', async () => {
 });
 
 /**
- * TLS is selected by the options Nest hands the adapter, as it
- * always was: an adapter started with `httpsOptions` builds
- * Node's HTTPS server, and one started without them builds the
- * plain server.
+ * TLS is selected by the options Nest hands the transport: a
+ * server started with `httpsOptions` is Node's HTTPS server,
+ * and one started without them is the plain server.
  */
 test('httpsOptions select the HTTPS server', async () => {
   const answers = await runNode('node', [

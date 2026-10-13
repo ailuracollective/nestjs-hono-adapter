@@ -216,8 +216,8 @@ abstract class HonoLifecycle extends RouteAdapter {
 
   /**
    * The server Nest drives. It is the port every transport
-   * implements — and, on the default (Node) transport, Node's
-   * own `http.Server`, which is the object this method answered
+   * implements — and, on the Node transport, Node's own
+   * `http.Server`, which is the object this method answered
    * before the transports split. The intersection is that
    * compatibility face: a `closeAllConnections()` or an
    * `'upgrade'` listener keeps compiling, and on the Node

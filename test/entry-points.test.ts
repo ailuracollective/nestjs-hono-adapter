@@ -87,12 +87,11 @@ const ISLAND_PEERS = ['@hono/node-ws', '@nestjs/websockets'];
 const SOCKET_IO_PEER = 'socket.io';
 
 /**
- * The server the adapter builds when a deployment names no
- * transport. It is reached — and required — on purpose: the
- * HTTP entry point serves through it by default, which is the
- * runtime this package has always served through.
+ * The module the adapter's default transport alone names. It is
+ * reached — and required — on purpose: the HTTP entry point
+ * serves through Bun's server by default.
  */
-const DEFAULT_SERVER = '@hono/node-server';
+const DEFAULT_SERVER = 'hono/bun';
 
 /** The name the adapter core publishes under. */
 const CORE_NAME = '@ailura/nestjs-hono-adapter';
@@ -110,6 +109,16 @@ const PLATFORM_NAMES = [
 /** The modules a source file names in its import statements. */
 const SPECIFIER = /from\s+'(?<module>[^']+)'/gu;
 
+/**
+ * The modules a source file names in dynamic imports. The Bun
+ * transport resolves `hono/bun` this way — a static import
+ * would evaluate its barrel on Node, where it throws — so the
+ * check has to read both shapes to keep seeing the default
+ * transport's module.
+ */
+const DYNAMIC_SPECIFIER =
+  /import\(\s*'(?<module>[^']+)'\s*\)/gu;
+
 /** The module a match named, when the pattern captured one. */
 function moduleOf(
   groups: Record<string, string> | undefined,
@@ -122,10 +131,12 @@ function moduleOf(
 
 function specifiersIn(source: string): string[] {
   const names: string[] = [];
-  for (const match of source.matchAll(SPECIFIER)) {
-    const module = moduleOf(match.groups);
-    if (module !== undefined) {
-      names.push(module);
+  for (const pattern of [SPECIFIER, DYNAMIC_SPECIFIER]) {
+    for (const match of source.matchAll(pattern)) {
+      const module = moduleOf(match.groups);
+      if (module !== undefined) {
+        names.push(module);
+      }
     }
   }
   return names;
@@ -285,7 +296,7 @@ test('the HTTP entry point reaches the server it serves by default', async () =>
   const carriers = await carriersOf(ENTRY, DEFAULT_SERVER);
   expect(carriers.length).toBeGreaterThan(0);
   const names = carriers.map((file) => path.basename(file));
-  expect(names).toContain('node.ts');
+  expect(names).toContain('bun.ts');
 });
 
 test('the WebSocket entry point does reach the island peers', async () => {

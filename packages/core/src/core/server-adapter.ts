@@ -27,7 +27,7 @@ import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
 import { parsesMultipart } from './multipart.ts';
-import { nodeServer } from '../servers/node.ts';
+import { bunServer } from '../servers/bun.ts';
 import { mountStaticAssets } from '../features/static-assets.ts';
 import type { StaticAssetsOptions } from '../features/static-assets.ts';
 import { ViewRenderer } from '../features/views.ts';
@@ -46,22 +46,16 @@ interface ServerAdapterOptions extends TransportChoiceOptions {
 }
 
 /**
- * Fills in the transport a deployment named none. It is the
- * Node one, with the global-object switch `@hono/node-server`
- * was handed before the transports split, so a bootstrap that
- * never names a runtime keeps answering with the bytes and the
- * behaviour it answered with then. A deployment that injects a
- * transport is answered from it and never reaches this.
+ * Fills in the transport a deployment named none: Bun's own
+ * server, so a bootstrap that names no runtime serves through
+ * `Bun.serve`. A deployment on Node names `nodeServer()`
+ * explicitly. A deployment that injects a transport is answered
+ * from it and never reaches this.
  */
 function withTransport(
   options: ServerAdapterOptions,
 ): TransportOptions {
-  const transport =
-    options.transport ??
-    nodeServer({
-      overrideGlobalObjects:
-        options.overrideGlobalObjects ?? true,
-    });
+  const transport = options.transport ?? bunServer();
   return Object.assign({}, options, { transport });
 }
 
