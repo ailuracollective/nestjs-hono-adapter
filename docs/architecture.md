@@ -167,10 +167,13 @@ to move to accommodate the new transports.
 default path and is still on by default, so `@hono/node-server`
 replaces the process's `Request` and `Response` with its lighter
 classes, exactly as it did before the split. The replacement is
-process-wide and not restored, which is why no case in the suite
-serves the plain `new ServerAdapter()`:
-`test/node-server.test.ts` serves the same default transport
-with the switch off and pins the wiring beside it.
+process-wide and not restored, so the suite does not depend on
+it: `test/probe.ts` puts the process's own classes back before
+every request, and `test/isolation.test.ts` holds that a case
+may serve the plain `new ServerAdapter()` in process without
+answering for the files beside it. `test/node-server.test.ts`
+still serves the same default transport with the switch off and
+pins the wiring beside it.
 
 ## The adapter chain
 
