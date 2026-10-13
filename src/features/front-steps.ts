@@ -136,7 +136,7 @@ async function refuse(
  * rather than imported because the composition root is what
  * wires features into one chain.
  */
-function guardBridge(
+function guardStep(
   state: GuardState,
 ): MiddlewareHandler<NestEnv> {
   return async (context, next) => {
@@ -290,7 +290,7 @@ async function reportAnswered(
  * constructed. A deployment that registers neither pays the
  * step and nothing else.
  */
-function instrumentationBridge(
+function instrumentationStep(
   state: InstrumentationState,
 ): MiddlewareHandler<NestEnv> {
   return async (context, next) => {
@@ -312,5 +312,5 @@ function instrumentationBridge(
   };
 }
 
-export { guardBridge, instrumentationBridge };
+export { guardStep, instrumentationStep };
 export type { GuardState, OnRequestHook, OnResponseHook };

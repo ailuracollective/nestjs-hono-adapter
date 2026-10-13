@@ -74,7 +74,7 @@ can answer it.
 Both platform adapters implement them, and instrumentation and
 devtools call them. Nothing in Nest calls them itself, so an
 adapter that does not run them is an adapter where a registered
-hook never runs. `src/features/guard-bridge.ts` builds the step
+hook never runs. `src/features/front-steps.ts` builds the step
 that runs both, mounted in front of every route.
 
 The request hook is a `(request, response, done)` function
@@ -202,6 +202,26 @@ than ignored, and `raw` and `trailers` are absent rather than
 faked, as
 [platform-differences.md](platform-differences.md#what-inject-does-not-carry)
 records.
+
+### `listen()` — the object form is not accepted
+
+Fastify's application accepts its listen options as an object
+(`{ port, host }`); this adapter does not. `listen()` reads the
+positional form only — `(port)`, `(port, hostname)`,
+`(port, callback)` and `(port, hostname, callback)`, the shapes
+Nest's own `NestApplication.listen()` calls it in. A Fastify
+bootstrap that passes `{ port }` passes the port instead.
+
+The divergence is deliberate, and it is taken where the
+transports end. `src/core/server.ts` is the `Server` port Nest
+drives, and every transport builds one with
+`listen(port, hostname?, callback?)` and nothing else. Reading a
+bag of bind options would promise fields two of the three have
+nowhere to put: `./bun-server` binds through `Bun.serve`, and
+`./fetch` has no listening server at all — a fetch host hands
+the adapter a request rather than the other way around. The
+positional form works on every transport, so that is the one
+this adapter carries.
 
 ## WebSocket adapter
 

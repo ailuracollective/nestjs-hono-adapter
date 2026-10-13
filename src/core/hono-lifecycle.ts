@@ -11,13 +11,13 @@ import type { TrustProxy } from './request.ts';
 import { corsBridge } from '../features/cors-middleware.ts';
 import type { CorsConfig } from '../features/cors-middleware.ts';
 import {
-  guardBridge,
-  instrumentationBridge,
-} from '../features/guard-bridge.ts';
+  guardStep,
+  instrumentationStep,
+} from '../features/front-steps.ts';
 import type {
   OnRequestHook,
   OnResponseHook,
-} from '../features/guard-bridge.ts';
+} from '../features/front-steps.ts';
 import { RouteAdapter } from './route-adapter.ts';
 import { mountSse } from '../features/sse.ts';
 
@@ -183,12 +183,12 @@ abstract class HonoLifecycle extends RouteAdapter {
     );
     hono.use(
       '*',
-      instrumentationBridge({
+      instrumentationStep({
         onRequest: () => this.onRequestHook,
         onResponse: () => this.onResponseHook,
         trustProxy: this.trustProxy,
       }),
-      guardBridge({
+      guardStep({
         closing: () => this.return503OnClosing && this.closing,
         cors,
         corsEnabled: () => this.corsOptions !== undefined,
