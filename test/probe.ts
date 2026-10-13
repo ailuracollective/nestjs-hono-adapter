@@ -63,6 +63,29 @@ const IN_PROCESS_ENV: Bindings = {
   server: SYNTHETIC_SERVER,
 };
 
+/**
+ * The Web classes the process started with. `@hono/node-server`
+ * replaces `Request` and `Response` process-wide when the
+ * default transport builds a server, and never puts them back.
+ * `bun test` runs every file in one process, so a file that
+ * starts an application on that transport would otherwise leave
+ * every later probe answering with the lightweight class, which
+ * `Bun.serve` refuses with the `"Welcome to Bun!"` body.
+ */
+const PROCESS_REQUEST = globalThis.Request;
+const PROCESS_RESPONSE = globalThis.Response;
+
+/**
+ * Puts the process's own Web classes back before a request is
+ * made. The class is read when the answer is built, so a probe
+ * answers for the code it is testing whatever a neighbouring
+ * file started in the process beside it.
+ */
+function restoreWebClasses(): void {
+  globalThis.Request = PROCESS_REQUEST;
+  globalThis.Response = PROCESS_RESPONSE;
+}
+
 /** What one request through a running application saw. */
 interface ProbeResult {
   readonly body: unknown;
@@ -202,10 +225,12 @@ async function startApplication(
       app,
       close: () => app.close(),
       mode: IN_PROCESS_MODE,
-      respond: (path, init) =>
-        Promise.resolve(
+      respond: (path, init) => {
+        restoreWebClasses();
+        return Promise.resolve(
           adapter.getHono().request(path, init, IN_PROCESS_ENV),
-        ),
+        );
+      },
     };
   }
   await app.listen(ANY_PORT, LOCALHOST);
@@ -215,7 +240,10 @@ async function startApplication(
     app,
     close: () => app.close(),
     mode: SOCKET_MODE,
-    respond: (path, init) => fetch(`${origin}${path}`, init),
+    respond: (path, init) => {
+      restoreWebClasses();
+      return fetch(`${origin}${path}`, init);
+    },
   };
 }
 
