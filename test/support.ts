@@ -133,6 +133,13 @@ class ViewController {
   public missing(): unknown {
     return {};
   }
+
+  @Get('accepted')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Render('hello')
+  public accepted(): unknown {
+    return { name: 'Nest' };
+  }
 }
 
 @Module({

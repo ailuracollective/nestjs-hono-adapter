@@ -3,7 +3,6 @@ import path from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
 
-import type { NestContext } from '../core/context.ts';
 import { toDirectories } from '../core/directories.ts';
 import { isRecord } from '../core/query.ts';
 
@@ -347,12 +346,11 @@ class ViewRenderer {
     }
   }
 
-  /** Renders one view into the response Nest handed over. */
+  /** Renders one view and answers the HTML it produced. */
   public async render(
-    response: NestContext,
     view: string,
     options: unknown,
-  ): Promise<void> {
+  ): Promise<string> {
     const { engine } = this;
     if (engine === undefined) {
       throw new TypeError(
@@ -366,7 +364,7 @@ class ViewRenderer {
       this.directoriesFor(),
       0,
     );
-    const html = await engine(
+    return engine(
       source,
       withDefaults(
         this.defaults,
@@ -374,7 +372,6 @@ class ViewRenderer {
         asData(options),
       ),
     );
-    response.html(html);
   }
 
   /** The directories to read from, the working one by default. */

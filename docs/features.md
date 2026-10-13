@@ -97,7 +97,10 @@ A handler marks its route with `@Render('hello')`, and the
 extension the engine named is appended, so the file looked up is
 `views/hello.hbs`. A view that is missing is answered as
 `NotFoundException`, and naming an engine before one was
-configured throws, rather than rendering an empty page.
+configured throws, rather than rendering an empty page. The
+answer carries the status the route declared, so
+`@HttpCode(HttpStatus.ACCEPTED)` with `@Render()` answers `202`
+and a route that declares none answers `200`.
 
 ## Static assets
 

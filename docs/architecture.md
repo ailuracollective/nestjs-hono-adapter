@@ -297,7 +297,7 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11480-byte ceiling and a measurement of 11469,
+`index` has an 11510-byte ceiling and a measurement of 11503,
 `bun-server` 1024/981, `node-server` 560/506, `fetch` 480/418,
 `multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
 
@@ -487,6 +487,15 @@ Creating charset decoders on demand and rejecting unsupported
 `useBodyParser()` names require a small increase in `index`. Its
 ceiling moves from 11480 to 11500 bytes to cover these checks;
 the other entrypoint ceilings stay as declared.
+
+Writing a rendered page through the reply path costs 12 bytes in
+`index` — 11491 before, 11503 after — past the 11500-byte
+ceiling, so `index` moves to 11510. The bytes are the label the
+page carries and the call that hands the answer to the path
+every other reply takes: the render path dropped the status Nest
+recorded for the route, so `@HttpCode(HttpStatus.ACCEPTED)` with
+`@Render()` answered `200` where Express and Fastify answer
+`202`.
 
 Two consequences worth knowing before you write code:
 
