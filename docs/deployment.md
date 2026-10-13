@@ -152,7 +152,7 @@ const adapter = new ServerAdapter({
 ## WebSockets
 
 Gateways have their own Nest adapter, kept behind the `./ws`
-subpath, served from `@ailura/nestjs-hono-adapter-ws`, so an
+subpath, emitted from `@ailura/nestjs-hono-adapter-ws`, so an
 HTTP-only deployment never resolves `@nestjs/websockets`: it is
 an optional peer, and it is not installed for the routes above.
 The upgrade is served by the transport when it carries a

@@ -233,8 +233,8 @@ Nest 12's `WsAdapter` accepts a `messageParser` in its
 constructor and exposes `setMessageParser()` for a deployment
 whose frames are not JSON. `HonoWsAdapter` takes the same option
 and exposes the same method, and reads every frame with the
-parser in use; `parseFrame()` in `src/ws/client.ts` is the
-built-in one.
+parser in use; `parseFrame()` in `packages/ws/src/client.ts` is
+the built-in one.
 
 A parser that throws is an application bug and is reported. The
 built-in one reads client-controlled input, so its failures stay
@@ -307,9 +307,11 @@ one thing a consumer moving from Fastify has to change.
 `@nestjs/platform-fastify/multipart` publishes the same shape.
 
 That work is merged: a `./multipart` subpath
-(`src/multipart/**`) with the interceptors, the module, the two
-storage engines, the interfaces and `test/multipart.test.ts`,
-with `busboy` as an optional peer and a ceiling of its own in
+(`packages/multipart/src/**`) with the interceptors, the module,
+the two storage engines, the interfaces and
+`packages/multipart/test/multipart.test.ts`, emitted into
+`dist/multipart`, with `busboy` as an optional peer of the core
+and a required one of the package, and a ceiling of its own in
 `.size-limit.json`.
 
 A review before the merge closed three things. An aborted upload
@@ -328,12 +330,13 @@ it, and the review had it removed rather than left dead; the
 interceptor produces it now.
 
 The exemption the island carried is narrower now: one block over
-`src/multipart/**` that turned off around 35 rules became ten
-blocks over thirteen files, and the nine files that need none of
-those rules carry them again. The cases the suite was missing —
-`fileFilter`, `registerAsync`, a malformed boundary and a
-`__proto__` field name — are covered, and each was proven by
-mutation, so it fails when the behaviour it pins is removed.
+`packages/multipart/src/**` that turned off around 35 rules
+became ten blocks over thirteen files, and the nine files that
+need none of those rules carry them again. The cases the suite
+was missing — `fileFilter`, `registerAsync`, a malformed
+boundary and a `__proto__` field name — are covered, and each
+was proven by mutation, so it fails when the behaviour it pins
+is removed.
 
 The streaming interceptor is implemented, and the three seams
 the reconnaissance found are closed by one design. Upstream

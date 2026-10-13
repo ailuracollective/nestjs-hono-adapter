@@ -4,16 +4,19 @@ This is the map a contributor needs before changing a file. The
 README describes what the adapter does; this describes the shape
 it is built in, and which shapes are refused.
 
-## The regions of `src/`
+## The regions of `src/` and `packages/`
 
 ```
 src/
-  index.ts  ws/index.ts  multipart/index.ts    the entrypoints
+  index.ts                                   the adapter entrypoint
   servers/bun.ts  servers/node.ts  servers/fetch.ts   the runtime transports
-  ws/adapter.ts  ws/client.ts  ws/server.ts   the WebSocket island
-  multipart/  the upload island
   core/     the Nest <-> Hono translation and the ports
   features/ the optional capabilities
+
+packages/
+  socket-io/ the Socket.IO island, emitted into dist/socket-io
+  ws/        the WebSocket island, emitted into dist/ws
+  multipart/ the upload island, emitted into dist/multipart
 ```
 
 **`core/`** holds the translation and the adapter chain, the
@@ -34,31 +37,36 @@ no other. The fetch transport is the one for a host that serves
 a Web `Request` and expects a Web `Response` — Cloudflare
 Workers, Vercel Functions, Deno — where nothing listens.
 
-**The WebSocket island** is separate from all of them. It is
-neutral: it asks the adapter for its transport rather than
-importing a runtime's own WebSocket module.
+**The WebSocket island** is separate from all of them, and it
+lives in `packages/ws`. It is neutral: it asks the adapter for
+its transport rather than importing a runtime's own WebSocket
+module.
 
-**The upload island** (`multipart/`) is the second opt-in
-island, behind `./multipart`. It is the only place that consumes
-a `multipart/form-data` body and the only place that depends on
-a parser (`busboy`, an optional peer). Its interceptors parse
-the body the way multer does, so `@UploadedFile()` and
+**The upload island** is the second opt-in island, behind
+`./multipart`, and it lives in `packages/multipart`. It is the
+only place that consumes a `multipart/form-data` body and the
+only place that depends on a parser (`busboy`, an optional peer
+of the core and a required one of the package). Its interceptors
+parse the body the way multer does, so `@UploadedFile()` and
 `@UploadedFiles()` work; importing it marks the adapter through
-`core/multipart.ts`, and a marked adapter leaves a multipart
-body alone for an interceptor to consume. An adapter that serves
-no upload carries no trace of it.
+`declareMultipart`, the one symbol the core publishes on purpose
+for it, and a marked adapter leaves a multipart body alone for
+an interceptor to consume. An adapter that serves no upload
+carries no trace of it.
 
 ## The dependency rules
 
-Four rules, all enforced by `test/layers.test.ts`:
+Five rules, all enforced by `test/layers.test.ts`:
 
 1. `core/` never reaches `features/`, **except** from
    `core/hono-lifecycle.ts` and `core/server-adapter.ts`.
 2. `features/` never reaches `features/`.
 3. `features/` never reaches the WebSocket island.
-4. The islands reach `core/` and `features/` **only through
-   type-only imports**. The upload island has one value edge,
-   `core/multipart.ts`, the marker it sets on the adapter.
+4. The islands that call the application reach it as the
+   published package, never as an internal path: the core is a
+   **type-only import** for the WebSocket island, and a
+   type-only import plus the `declareMultipart` marker for the
+   upload island.
 5. The socket.io island reaches `core/` and `features/` not at
    all, as a value or as a type.
 
@@ -67,30 +75,31 @@ are the composition root: they are the ones that turn a
 capability into a running adapter. Everything else in `core/` is
 reached only by Nest's contract.
 
-Rule 4 is the load-bearing one. `src/ws/adapter.ts` does import
-`ServerAdapter`, and it does so with `import type`. That is
-erased at compile time, so the `/ws` subpath never loads the
-HTTP adapter. The moment that becomes a value import, a
+Rule 4 is the load-bearing one. `packages/ws/src/adapter.ts`
+does import `ServerAdapter`, and it does so with `import type`.
+That is erased at compile time, so the `/ws` subpath never loads
+the HTTP adapter. The moment that becomes a value import, a
 deployment that only serves HTTP pays for a WebSocket stack.
 
 The upload island follows the same rule with one exception it
-can name: `multipart/multipart/multipart.interceptor.factory.ts`
-imports `declareMultipart` from `core/multipart.ts` as a value,
+can name:
+`packages/multipart/src/multipart/multipart.interceptor.factory.ts`
+imports `declareMultipart` from the core package as a value,
 because marking the adapter is the whole point of the island.
-Its other reaches into `core/` are types, so a deployment that
+Its other reaches into the core are types, so a deployment that
 serves no upload loads neither the island nor its parser.
 
 The socket.io island goes one step further, which is why it has
 a rule of its own: it names nothing in `core/` or `features/` at
 all. Nest hands the adapter the server it already built, so
-`packages/socket-io/src/io-adapter.ts` needs no port and no
+`packages/socket-io/src/adapter.ts` needs no port and no
 composition root — its runtime graph is `socket.io` and the
 three modules behind `./socket-io`, and `test/layers.test.ts`
 refuses both the value edge and the type edge that would change
 that. The island is the first capability to move out of `src/`:
-it lives in the `packages/socket-io` workspace package, and
-`src/socket-io/index.ts` re-exports it so the `./socket-io`
-subpath a deployment already imports keeps resolving.
+it lives in the `packages/socket-io` workspace package, and the
+`./socket-io` subpath a deployment already imports is emitted
+from there, so it keeps resolving.
 
 One more split is a packaging rule rather than a layer one:
 `core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
@@ -117,12 +126,20 @@ time rather than leaving to review.
 
 The `exports` map in `package.json` exposes seven specifiers:
 `.`, `./bun-server`, `./node-server`, `./fetch`, `./multipart`,
-`./ws` and `./socket-io`. `./ws` is emitted from `packages/ws`,
-the WebSocket adapter's own package, so the subpath survives
-without the core depending on that package. It exposes nothing
-else, so no consumer can reach an internal module by path —
-which is what makes it safe to move files between regions
-without it being a breaking change.
+`./ws` and `./socket-io`. Three of them — `./socket-io`, `./ws`
+and `./multipart` — are served from a workspace package now.
+Each package carries a second tsc project
+(`tsconfig.compat.json`, whose `rootDir` is `.` and whose
+`outDir` is under the core's `dist`) plus an `index.ts`, and
+that pair emits the package's sources into `dist/socket-io`,
+`dist/ws` or `dist/multipart`: the subpath keeps its place and
+the core's source names none of the three and the root manifest
+depends on none of them. The packages build after the core; the
+`ws` and `multipart` compat projects read the core's
+declarations from `dist`. The map exposes nothing else, so no
+consumer can reach an internal module by path — which is what
+makes it safe to move files between regions without it being a
+breaking change.
 
 `test/entry-points.test.ts` walks the import graph transitively
 from the neutral entrypoints. It fails if `.` reaches
@@ -138,6 +155,9 @@ behaviour every deployment had before the transports split.
 adapter is checked where it now lives: `test/layers.test.ts`
 walks `packages/ws/src` as the `ws` layer and
 `test/entry-points.test.ts` asks for its peers at the package.
+The upload island is checked the same way, at
+`packages/multipart`, and the Socket.IO island at
+`packages/socket-io`.
 
 Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;
@@ -266,36 +286,40 @@ well be that reading it failed.
 
 ## The runtime surface
 
-The core names no runtime; the builtin surface is what Nest, the
-features and the upload island need wherever they run. Twelve
-builtins are in use: `node:buffer`, `node:crypto`,
-`node:events`, `node:fs`, `node:fs/promises`, `node:http`,
-`node:https`, `node:os`, `node:path`, `node:stream`,
-`node:stream/promises` and `node:util`. Nest's own SSE path is a
-`node:stream` `Writable`, views read the filesystem with
-`node:fs/promises` and `node:path`, the Node transport builds an
-`http.Server` with `node:https` for TLS, and the upload island's
-disk storage picks a random name with `node:crypto` and a
-directory with `node:os`, then names the file with `node:path`
-and writes and removes it with `node:fs`, `node:fs/promises` and
-`node:stream/promises`. Static assets are not on that list:
-`features/static-assets.ts` imports no builtin at all and leaves
-the reading to the transport's `serveStatic()`, so the
-filesystem is reached for them by whichever transport serves
-them. `test/node-builtins.test.ts` freezes that set. Adding one
-is a deliberate edit to both the source and the freeze, so the
-test failing is the signal, not an obstacle to route around.
+The core names no runtime; the builtin surface is what Nest and
+the features need wherever they run. Eight builtins are in use:
+`node:buffer`, `node:events`, `node:fs/promises`, `node:http`,
+`node:https`, `node:path`, `node:stream` and `node:util`. Nest's
+own SSE path is a `node:stream` `Writable`, views read the
+filesystem with `node:fs/promises` and `node:path`, and the Node
+transport builds an `http.Server` with `node:https` for TLS.
+Static assets are not on that list: `features/static-assets.ts`
+imports no builtin at all and leaves the reading to the
+transport's `serveStatic()`, so the filesystem is reached for
+them by whichever transport serves them.
+`test/node-builtins.test.ts` freezes that set. Adding one is a
+deliberate edit to both the source and the freeze, so the test
+failing is the signal, not an obstacle to route around.
+
+The upload package is outside that scan and reaches four
+builtins the core does not: `node:crypto`, `node:fs`, `node:os`
+and `node:stream/promises`. Its disk storage picks a random name
+with `node:crypto` and a directory with `node:os`, then names
+the file with `node:path` and reads and writes it with
+`node:fs`, `node:fs/promises` and `node:stream/promises` —
+`node:path` and `node:fs/promises` are already on the core's
+list. Those four left the core's set with the island they belong
+to.
 
 Type-only imports count toward the frozen set, because a
 type-only import still couples a module's types to the platform.
 The builtins are reached from more than the transports: `core/`
 takes `node:buffer`, `node:events` and `node:stream` as values
 and `node:http` as types, the CORS bridge takes `node:util`, and
-views and the island's disk storage take the filesystem ones.
-What only a transport does is **build** a server, and that
-narrower claim does hold: `servers/node.ts` is the only module
-that calls `node:https`, and every other `node:http` import in
-`src/` is a type.
+views take the filesystem ones. What only a transport does is
+**build** a server, and that narrower claim does hold:
+`servers/node.ts` is the only module that calls `node:https`,
+and every other `node:http` import in `src/` is a type.
 
 ## The bundle budget
 
@@ -309,9 +333,9 @@ is an explicit edit that has to be justified here. Today:
 `index` has an 11550-byte ceiling and a measurement of 11530,
 twenty bytes of it the published multipart marker, which a
 public export keeps alive; `bun-server` 1024/981, `node-server`
-560/506, `fetch` 490/487, `multipart` 4250/4200, `ws` 1550/1543
-and `socket-io` 950/948. The WebSocket and upload entrypoints
-are emitted from their packages now, at the ceilings they had.
+560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1550/1543
+and `socket-io` 950/948. All three opt-in entrypoints are
+emitted from their packages now, at the ceilings they had.
 
 **`inject()`.** Fastify's in-process request helper costs 1073
 bytes in `index` — 9754 before, 10827 after — against a
@@ -413,17 +437,17 @@ carries, 1256 to 1368, ceiling 1400.
 `socket-io` is the seventh entrypoint, and the first one added
 with a ceiling of its own rather than a raise: 950 bytes,
 measured at 916. When the island moved into `packages/socket-io`
-and the subpath became a re-export of it, the entrypoint stayed
-at 948 bytes under the same 950 ceiling: resolution changed, the
-bytes did not. Nothing in it is charged to `index`, because
-`./socket-io` is reached only by a deployment that names it, and
-`socket.io` is an optional peer the gate leaves out of the
-measurement the way it leaves out `@hono/node-ws`. The island is
-three modules — the adapter, the refusal that names the
-transport a deployment must serve through instead, and the
-entrypoint that re-exports both — and the 34 bytes of headroom
-left under the ceiling are in the range the other entries keep,
-from `ws`'s 10 to `fetch`'s 62.
+and the subpath began to be emitted from it, the entrypoint
+stayed at 948 bytes under the same 950 ceiling: where the source
+lives changed, the bytes did not. Nothing in it is charged to
+`index`, because `./socket-io` is reached only by a deployment
+that names it, and `socket.io` is an optional peer the gate
+leaves out of the measurement the way it leaves out
+`@hono/node-ws`. The island is three modules — the adapter, the
+refusal that names the transport a deployment must serve through
+instead, and the entrypoint that re-exports both — and the 34
+bytes of headroom left under the ceiling are in the range the
+other entries keep, from `ws`'s 10 to `fetch`'s 62.
 
 The application settings arrived next. `setLocal()`, `set()`,
 `enable()` and `disable()` add the last piece of Express's
@@ -539,9 +563,9 @@ product.
 | `test/types/route-adapter-compat.ts` | the members two Nest versions share |
 | `.oxlintrc.json`                     | rule exceptions, each with a reason |
 
-The `.oxlintrc.json` exception for `src/multipart/**` is the
-widest one, and it is taken because the island mirrors multer's
-semantics and `append-field`'s port: it keeps multer's
+The `.oxlintrc.json` blocks over `packages/multipart/src/**` are
+the widest ones, and they are taken because the island mirrors
+multer's semantics and `append-field`'s port: it keeps multer's
 `_handleFile` / `_removeFile` names and its `Error | null`
 callbacks, and its request-shaped parser has more parameters and
 statements per function than the house style allows. The
@@ -554,11 +578,12 @@ rather than in a file of its own: file names, not directories,
 are what those blocks name, so a new file would mean a new
 exception rather than a moved one.
 
-Two later exceptions follow the same rule. `test/**` carries a
-700-line ceiling rather than 400, because an end-to-end suite
-holds its fixtures, its gateways and its cases in one file and
-grows as they do; `test/websockets.test.ts` is the largest of
-them. And `src/ws/adapter.ts` carries 450, the value the two
+Two later exceptions follow the same rule. `test/**` and
+`packages/*/test/**` carry a 700-line ceiling rather than 400,
+because an end-to-end suite holds its fixtures, its gateways and
+its cases in one file and grows as they do; the WebSocket suite
+moved with its island, into `packages/ws/test/`. And
+`packages/ws/src/adapter.ts` carries 450, the value the two
 files above it take: it is the island's composition point, where
 the `AbstractWsAdapter` members it implements meet the
 `platform-ws` surface — the frame parser and the error handlers

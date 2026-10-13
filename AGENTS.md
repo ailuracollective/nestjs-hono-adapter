@@ -59,8 +59,12 @@ on Hono 4.
 This file covers the whole repository. The directories that are
 part of the repository and that an agent may edit:
 
-- `src/` — the adapter source, layered into `core/`,
-  `features/`, `servers/`, `multipart/`, `ws/` and `socket-io/`.
+- `src/` — the adapter source, layered into `core/`, `features/`
+  and `servers/`.
+- `packages/` — the workspace packages the three optional
+  capabilities were extracted into: `socket-io`, `ws` and
+  `multipart`. Each is emitted into the core's `dist/` for its
+  subpath, so the core's source names none of them.
 - `test/` — the test suite, including fixtures and probes.
 - `docs/` — architecture and documentation.
 - `examples/` — runnable Cloudflare Workers examples, one per
@@ -98,20 +102,23 @@ response encode, and lifecycle bridge, plus the `Server` and
 views); `src/servers/` holds the runtime transports (`bun.ts`,
 `node.ts`, `fetch.ts`), reached through their subpaths — and the
 Node one from `core/server-adapter.ts`, the adapter's
-composition root, as the transport it serves through by default;
-`src/multipart/` is the upload island behind `./multipart`;
-`src/ws/` is the WebSocket island behind `./ws`; and
-`src/socket-io/` is the Socket.IO island behind `./socket-io`.
-The layout, import rules, and bundle ceilings are written down
-in [docs/architecture.md](docs/architecture.md).
+composition root, as the transport it serves through by default.
+The three optional islands are workspace packages —
+`packages/socket-io`, `packages/ws` and `packages/multipart` —
+and each is emitted into the core's `dist/` for its subpath
+(`dist/socket-io`, `dist/ws`, `dist/multipart`), so
+`./socket-io`, `./ws` and `./multipart` keep resolving and the
+core's source names none of them. The layout, import rules, and
+bundle ceilings are written down in
+[docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 
 - **Releases use release-please with OIDC trusted publishing.**
-  release-please opens a release pull request per push to
-  `main`; merging it creates the tag and the GitHub release,
-  authored by the AiluraKitty account through
-  `AILURA_RELEASE_TOKEN`. The release then fires
+  release-please opens a release pull request per package on
+  every push to `main`; merging one creates that package's tag
+  and GitHub release, authored by the AiluraKitty account
+  through `AILURA_RELEASE_TOKEN`. The release then fires
   `.github/workflows/publish.yml`, which publishes to npm with a
   short-lived OIDC token (no stored npm token). See
   `release-please-config.json` and
@@ -158,7 +165,7 @@ bun run format        # oxfmt --write .
 bun run format:check  # oxfmt --check .
 bun run typecheck     # tsc --noEmit for src and test
 bun run test          # bun test
-bun run build         # tsc -p tsconfig.json
+bun run build         # tsc, then build:packages (all three)
 bun run size          # build + size-limit
 ```
 

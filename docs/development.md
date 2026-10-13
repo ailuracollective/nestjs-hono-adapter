@@ -1,6 +1,6 @@
 # Development
 
-How to build, test and release this package.
+How to build, test and release the packages.
 
 ## Contents
 
@@ -29,6 +29,17 @@ bun run check
 
 `bun run check` is exactly what CI runs: lint, format,
 typecheck, test, build and the bundle size gate.
+
+The three optional islands are workspace packages under
+`packages/`. `bun run build` builds the core first
+(`tsc -p tsconfig.json`) and then all three packages in one
+phase (`build:packages`, which filters on `packages/socket-io`,
+`packages/ws` and `packages/multipart`). Each package's
+`tsconfig.compat.json` emits its sources into the core's `dist/`
+(`dist/socket-io`, `dist/ws`, `dist/multipart`), which is what
+the `./socket-io`, `./ws` and `./multipart` subpaths serve; the
+`ws` and `multipart` compat projects read the core's
+declarations from `dist`, which is why the core builds first.
 
 ### The lockfile format the build image reads
 
@@ -59,9 +70,9 @@ JSON-with-comments file and refuses any other value.
 
 Before changing a file, read
 [docs/architecture.md](architecture.md): it maps the regions of
-`src/`, the four dependency rules between them, what the frozen
-builtin surface is, and why the bundle ceilings behave the way
-they do.
+`src/` and the packages that left it, the five dependency rules
+between them, what the frozen builtin surface is, and why the
+bundle ceilings behave the way they do.
 
 The cases start a real application on an ephemeral port and talk
 to it over `fetch`, so they cover the path and query dialects,
@@ -98,17 +109,29 @@ library declares no decorator, so neither flag changes what
 
 Releases run through
 [release-please](https://github.com/googleapis/release-please).
-On every push to `main` it opens a release pull request with the
-version bump and the generated changelog; merging it creates the
-tag and the GitHub release. Nothing is published directly, so a
-release is a reviewed change like any other — and the release
-pull request is exempt from the policy gates by its head ref.
+The repository releases four packages: the adapter at the root,
+and the three capability packages under `packages/`.
+`release-please-config.json` declares one component per package
+— `.` at the root, and `socket-io`, `ws` and `multipart` — and
+`.release-please-manifest.json` records the last released
+version of each. On every push to `main`, release-please opens a
+release pull request per package with that package's version
+bump and generated changelog; merging one creates that package's
+tag and GitHub release. The root is tagged `vX.Y.Z`; the three
+package components set `include-component-in-tag`, so their tags
+are `socket-io-vX.Y.Z`, `ws-vX.Y.Z` and `multipart-vX.Y.Z`.
+Nothing is published directly, so a release is a reviewed change
+like any other — and a release pull request is exempt from the
+policy gates by its head ref.
 
-Merging the release pull request publishes the package to npm:
+Merging a release pull request publishes that package to npm:
 the GitHub release fires `.github/workflows/publish.yml`, which
-builds the tagged commit and runs `npm publish --provenance`
-under OIDC trusted publishing, so no npm token is stored
-anywhere.
+resolves the package directory from the tag (`socket-io-v*` is
+`packages/socket-io`, `ws-v*` is `packages/ws`, `multipart-v*`
+is `packages/multipart`, `v*` is the root), checks out the tag,
+builds it with `bun run build`, and runs
+`npm publish <directory> --provenance` under OIDC trusted
+publishing, so no npm token is stored anywhere.
 
 ## License
 
