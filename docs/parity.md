@@ -142,20 +142,24 @@ Express reaches its application settings through
 `NestExpressApplication`; here they are on the adapter and on
 the application `NestFactory.create()` hands back.
 
-`setLocal(key, value)` writes the context every render is merged
-onto — the same one `ViewOptions.defaultContext` fills at
-construction — so a local set after the application starts
-reaches the next template, the way Express's `app.locals` does.
+`setLocal(key, value)` stores locals separately from the
+`defaultContext` configured through `setViewEngine()`. Every
+render combines defaults, locals, and handler data in that
+order, so reconfiguring defaults preserves locals and a local
+set after startup reaches the next template. Special keys such
+as `__proto__` are passed as own data properties.
 
 `set(name, value)` reaches the two settings that name behaviour
 here: `view engine` delegates to `setViewEngine()` and `views`
-to `setBaseViewsDir()`, while `enable(name)` and `disable(name)`
-call it with `true` and `false`. Every other name is refused by
-name with a reason rather than stored, so a setting nothing
-reads fails where it is set. `trust proxy` points at the adapter
-options, because the transport reads it when the adapter is
-constructed, and `env`, `etag`, `query parser` and
-`x-powered-by` have no behaviour to reach.
+to `setBaseViewsDir()`. `views` accepts a string or a string
+array, searched in order; `view engine` accepts a string.
+`enable(name)` and `disable(name)` call it with `true` and
+`false`. Every other name is refused by name with a reason
+rather than stored, so a setting nothing reads fails where it is
+set. `trust proxy` points at the adapter options, because the
+transport reads it when the adapter is constructed, and `env`,
+`etag`, `query parser` and `x-powered-by` have no behaviour to
+reach.
 
 ### `engine()` and `get()` — missing
 

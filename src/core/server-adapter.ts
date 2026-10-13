@@ -20,8 +20,7 @@ import type {
 } from './handler-bridge.ts';
 import {
   HonoLifecycle,
-  refuse,
-  settable,
+  settingValue,
 } from './hono-lifecycle.ts';
 import type { TransportOptions } from './hono-lifecycle.ts';
 import { toHonoPath } from './path.ts';
@@ -403,16 +402,11 @@ class ServerAdapter extends HonoLifecycle {
 
   /** Sets a setting this adapter honours, or refuses the name. */
   public set(name: string, value: unknown): this {
-    if (!settable(name)) {
-      refuse(name);
+    const setting = settingValue(name, value);
+    if (name === 'view engine' && typeof setting === 'string') {
+      return this.setViewEngine(setting);
     }
-    if (typeof value !== 'string') {
-      refuse(name, 'it takes a string');
-    }
-    if (name === 'view engine') {
-      return this.setViewEngine(value);
-    }
-    return this.setBaseViewsDir(value);
+    return this.setBaseViewsDir(setting);
   }
 
   /** Sets a setting to `true`, as Express's `enable` does. */

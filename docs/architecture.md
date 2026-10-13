@@ -410,20 +410,23 @@ from `ws`'s 10 to `fetch`'s 62.
 The application settings arrived next. `setLocal()`, `set()`,
 `enable()` and `disable()` add the last piece of Express's
 application surface this adapter can carry honestly: a local
-written after the application starts reaches the next render,
-through the same context `ViewOptions.defaultContext` fills at
-construction, and the two settings that name behaviour —
-`view engine` and `views` — delegate to `setViewEngine()` and
-`setBaseViewsDir()` while every other name is refused with a
-reason rather than stored. That costs 206 bytes in `index` —
-10856 before, 11062 after — past the 10880-byte ceiling that
-left 24, so `index` moves to 11090 and keeps 28 bytes of
-headroom. The refusal reasons are 74 bytes of the total,
-measured by dropping the map; shortening the explanatory half of
-the `trust proxy` reason would save 19 of those, and the rest is
-the shared text and the setting names. The methods and the
-honoured set are the other 132 bytes, so the cost does not come
-down without losing either the reason or the refusal.
+written after the application starts reaches the next render.
+Locals are stored separately from the `defaultContext`
+configured through `setViewEngine()`; each render combines
+defaults, locals, and handler data in that order. Special keys
+such as `__proto__` remain own data properties. The two settings
+that name behaviour — `view engine` and `views` — delegate to
+`setViewEngine()` and `setBaseViewsDir()` while every other name
+is refused with a reason rather than stored. That costs 206
+bytes in `index` — 10856 before, 11062 after — past the
+10880-byte ceiling that left 24, so `index` moves to 11090 and
+keeps 28 bytes of headroom. The refusal reasons are 74 bytes of
+the total, measured by dropping the map; shortening the
+explanatory half of the `trust proxy` reason would save 19 of
+those, and the rest is the shared text and the setting names.
+The methods and the honoured set are the other 132 bytes, so the
+cost does not come down without losing either the reason or the
+refusal.
 
 The helpers live in `core/hono-lifecycle.ts` rather than beside
 `set()` in `core/server-adapter.ts`, because that file is at its
@@ -435,6 +438,12 @@ and reads its parameter types off `ServerAdapter`, which is what
 keeps that file inside the layer map: naming the view and
 static-asset option types directly would draw the `core/` to
 `features/` edge only the two composition roots may take.
+
+Validating directory arrays, preserving locals when defaults are
+configured, and treating `__proto__` as own render data bring
+`index` to 11123 bytes. These corrections exceed its 11090-byte
+ceiling by 33 bytes, so the ceiling moves to 11130. The other
+entrypoints retain their existing ceilings.
 
 Two consequences worth knowing before you write code:
 

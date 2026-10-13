@@ -88,11 +88,6 @@ const REFUSED: Readonly<Record<string, string>> = {
   'x-powered-by': 'it has no behaviour in this adapter',
 };
 
-/** Answers whether a setting reaches behaviour here. */
-function settable(name: string): boolean {
-  return HONOURED.has(name);
-}
-
 /** Throws for a setting this adapter has nothing behind. */
 function refuse(name: string, why?: string): never {
   const reason =
@@ -102,6 +97,32 @@ function refuse(name: string, why?: string): never {
   throw new Error(
     `set() cannot honour the "${name}" setting: ${reason}.`,
   );
+}
+
+/** Validates the value a view setting passes to its feature. */
+function settingValue(
+  name: string,
+  value: unknown,
+): string | readonly string[] {
+  if (!HONOURED.has(name)) {
+    refuse(name);
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (
+    name === 'views' &&
+    Array.isArray(value) &&
+    value.every(
+      (directory: unknown) => typeof directory === 'string',
+    )
+  ) {
+    return value;
+  }
+  if (name === 'views') {
+    return refuse(name, 'it takes a string or a string array');
+  }
+  return refuse(name, 'it takes a string');
 }
 
 /**
@@ -368,5 +389,5 @@ interface HonoLifecycle {
   getInstance: <TInstance = NestHono>() => TInstance;
 }
 
-export { HonoLifecycle, refuse, settable };
+export { HonoLifecycle, settingValue };
 export type { TransportOptions };

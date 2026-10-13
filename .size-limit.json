@@ -2,7 +2,7 @@
   {
     "name": "index",
     "path": "dist/index.js",
-    "limit": 11090,
+    "limit": 11130,
     "brotli": true,
     "ignore": [
       "hono",

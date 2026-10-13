@@ -201,15 +201,17 @@ function engineFrom(
 }
 
 /**
- * The data a template reads: what the deployment named as its
- * default context, and then the handler's own, which wins.
+ * Defaults, then locals, then the handler's data, which wins.
+ * Spreading keeps special keys such as `__proto__` as own
+ * data.
  */
 function withDefaults(
   defaults: ViewData,
+  locals: ViewData,
   data: ViewData,
 ): ViewData {
-  // oxlint-disable-next-line prefer-object-spread -- the spread that would satisfy the rule is refused by oxc/no-rest-spread-properties.
-  return Object.assign({}, defaults, data);
+  // oxlint-disable-next-line oxc/no-rest-spread-properties -- object spread defines own data properties without invoking the __proto__ setter.
+  return { ...defaults, ...locals, ...data };
 }
 
 /** The extension a view engine names. */
@@ -255,17 +257,15 @@ async function readFrom(
 }
 
 /**
- * Renders the templates a deployment configured. The engine is
- * optional because an application that renders nothing never
- * configures one; naming an engine is what makes it required,
- * and that happens at startup rather than at the first
- * request.
+ * Renders configured templates. Naming an engine requires one
+ * at startup; applications that render nothing need none.
  */
 class ViewRenderer {
   private engine: ViewEngine | undefined;
   private directories: readonly string[] = [];
   private extension = '';
-  private context: ViewData = {};
+  private defaults: ViewData = {};
+  private readonly context: ViewData = {};
 
   public constructor(views: ViewOptions | undefined) {
     this.engine = engineOf(views);
@@ -274,7 +274,12 @@ class ViewRenderer {
 
   /** Adds one value to the data every render is merged onto. */
   public setLocal(key: string, value: unknown): void {
-    this.context[key] = value;
+    Object.defineProperty(this.context, key, {
+      configurable: true,
+      enumerable: true,
+      value,
+      writable: true,
+    });
   }
 
   /** Configures the views, by name or by Fastify's own options. */
@@ -338,7 +343,7 @@ class ViewRenderer {
       this.extension = toExtension(options.viewExt);
     }
     if (options.defaultContext !== undefined) {
-      this.context = options.defaultContext;
+      this.defaults = options.defaultContext;
     }
   }
 
@@ -363,7 +368,11 @@ class ViewRenderer {
     );
     const html = await engine(
       source,
-      withDefaults(this.context, asData(options)),
+      withDefaults(
+        this.defaults,
+        this.context,
+        asData(options),
+      ),
     );
     response.html(html);
   }
