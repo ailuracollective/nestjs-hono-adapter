@@ -124,7 +124,7 @@ platform adapters inflate `gzip` and `deflate`; this one reads
 the bytes as sent, so a client that compresses its payload
 reaches them and not this adapter.
 
-`app.useBodyParser('json', { limit: '1kb' })` accepts `json`,
+`app.useBodyParser('json', false, { limit: '1kb' })` accepts `json`,
 `urlencoded`, `text` and `raw` parser names; any other name is
 refused when the call is made. Parsing is selected by the
 request's content type. The call sets one limit for the adapter,
