@@ -184,6 +184,7 @@ test.each(
     '..',
     entry.default
       .replace('./dist/multipart/', './packages/multipart/src/')
+      .replace('./dist/socket-io/', './packages/socket-io/src/')
       .replace('./dist/ws/', './packages/ws/src/')
       .replace('./dist/', './src/')
       .replace(/\.js$/u, '.ts'),

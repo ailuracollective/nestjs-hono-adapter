@@ -6,9 +6,10 @@ import { expect, test } from 'bun:test';
 /**
  * The rules that keep `src/` layered, read off the source graph
  * rather than off a file list: `core/` holds the Nest to Hono
- * contract, `features/` the optional capabilities, and the two
- * islands — the `ws-*` one behind `/ws` and `multipart/` behind
- * `/multipart` — are worlds of their own.
+ * contract, `features/` the optional capabilities, and the
+ * three islands — `socket-io/` behind `/socket-io`, the `ws-*`
+ * one behind `/ws` and `multipart/` behind `/multipart` — are
+ * worlds of their own.
  *
  * Every rule already holds, so the scan has nothing to observe
  * today. What keeps this file alive is the synthetic crossings
@@ -59,7 +60,6 @@ const REQUIRED = [
   'src/features/sse.ts',
   'src/features/static-assets.ts',
   'src/features/views.ts',
-  'src/socket-io/index.ts',
 ];
 
 /**
@@ -110,10 +110,10 @@ function crossing(
 /** The directory each island is rooted at, and its layer. */
 const ISLANDS: Readonly<Record<string, Layer>> = {
   'packages/multipart/src': 'multipart',
+  'packages/socket-io/src': 'socket-io',
   'packages/ws/src': 'ws',
 
   'src/features': 'features',
-  'src/socket-io': 'socket-io',
 };
 
 /** The layer a source path belongs to, and none for the roots. */
@@ -125,12 +125,7 @@ function layerOf(file: string): Layer | undefined {
   if (directory.startsWith('packages/multipart/src/')) {
     return 'multipart';
   }
-  if (
-    directory.startsWith('src/socket-io/') ||
-    directory.startsWith(
-      path.join('packages', 'socket-io', 'src'),
-    )
-  ) {
+  if (directory.startsWith('packages/socket-io/src/')) {
     return 'socket-io';
   }
   return ISLANDS[directory];
@@ -440,7 +435,7 @@ test.each([
   'nested socket.io modules reaching %s are refused (type only: %s)',
   (target, typeOnly) => {
     const forbidden = crossing(
-      'src/socket-io/nested/helper.ts',
+      'packages/socket-io/src/nested/helper.ts',
       target,
       typeOnly,
     );
