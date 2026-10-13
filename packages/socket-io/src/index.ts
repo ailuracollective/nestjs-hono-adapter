@@ -11,5 +11,5 @@
  * Socket.io is an optional peer dependency: it is only reached
  * when this subpath is imported.
  */
-export { HonoIoAdapter } from './io-adapter.ts';
-export type { IoOptions } from './io-adapter.ts';
+export { HonoIoAdapter } from './adapter.ts';
+export type { IoOptions } from './adapter.ts';
