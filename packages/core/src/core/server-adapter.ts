@@ -425,7 +425,8 @@ class ServerAdapter extends HonoLifecycle {
  * the base has it". The own properties their installers assign
  * satisfy both installs, and the signatures are this
  * repository's own, held by
- * `test/types/route-adapter-compat.ts` to what it documents.
+ * `packages/core/test/types/route-adapter-compat.ts` to what it
+ * documents.
  */
 interface ServerAdapter {
   /** Maps the errors the framework owns. */

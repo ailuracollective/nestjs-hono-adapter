@@ -365,9 +365,9 @@ abstract class HonoLifecycle extends RouteAdapter {
  * dropping it fails on the other. A merged declaration is the
  * one form both accept, and it only accepts a property, which
  * is why `beforeClose` is installed in the constructor.
- * `test/types/route-adapter-compat.ts` holds it to whichever
- * base is installed, since nothing in the class body checks
- * it.
+ * `packages/core/test/types/route-adapter-compat.ts` holds it
+ * to whichever base is installed, since nothing in the class
+ * body checks it.
  */
 interface HonoLifecycle {
   /**

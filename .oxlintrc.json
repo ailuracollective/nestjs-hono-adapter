@@ -291,19 +291,19 @@
       }
     },
     {
-      "files": ["test/config.test.ts"],
+      "files": ["packages/core/test/config.test.ts"],
       "rules": {
         "node/no-process-env": "off"
       }
     },
     {
       "files": [
-        "test/config-fixture.ts",
-        "test/cqrs.test.ts",
-        "test/event-emitter.test.ts",
-        "test/jwt.test.ts",
-        "test/schedule.test.ts",
-        "test/terminus.test.ts"
+        "packages/core/test/config-fixture.ts",
+        "packages/core/test/cqrs.test.ts",
+        "packages/core/test/event-emitter.test.ts",
+        "packages/core/test/jwt.test.ts",
+        "packages/core/test/schedule.test.ts",
+        "packages/core/test/terminus.test.ts"
       ],
       "rules": {
         "typescript/consistent-type-imports": "off"
