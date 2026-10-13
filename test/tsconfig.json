@@ -3,7 +3,21 @@
   "compilerOptions": {
     "rootDir": "..",
     "noEmit": true,
-    "types": ["node", "bun"]
+    "types": ["node", "bun"],
+    "paths": {
+      "@ailura/nestjs-hono-adapter": ["../src/index.ts"],
+      "@ailura/nestjs-hono-adapter-socket-io": [
+        "../packages/socket-io/src/index.ts"
+      ],
+      "@ailura/nestjs-hono-adapter-ws": [
+        "../packages/ws/src/index.ts"
+      ]
+    }
   },
-  "include": ["**/*.ts", "../src/**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "../src/**/*.ts",
+    "../packages/*/src/**/*.ts",
+    "../packages/*/test/**/*.ts"
+  ]
 }

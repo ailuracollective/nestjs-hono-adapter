@@ -99,9 +99,16 @@
   },
   "overrides": [
     {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "unicorn/prefer-top-level-await": "off"
+      }
+    },
+    {
       "files": [
         "src/**/*.ts",
         "test/**/*.ts",
+        "scripts/**/*.ts",
         "packages/*/src/**/*.ts",
         "packages/*/test/**/*.ts"
       ],
@@ -172,8 +179,8 @@
     },
     {
       "files": [
-        "src/ws/client.ts",
-        "src/ws/server.ts",
+        "packages/ws/src/client.ts",
+        "packages/ws/src/server.ts",
         "src/core/bindings.ts",
         "src/servers/bun.ts",
         "src/servers/node.ts",
@@ -190,7 +197,7 @@
         "src/features/static-assets.ts",
         "src/servers/bun.ts",
         "src/servers/node.ts",
-        "src/ws/adapter.ts"
+        "packages/ws/src/adapter.ts"
       ],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
@@ -200,7 +207,7 @@
       "files": [
         "src/servers/bun.ts",
         "src/servers/node.ts",
-        "src/ws/adapter.ts"
+        "packages/ws/src/adapter.ts"
       ],
       "rules": {
         "import/max-dependencies": [
@@ -212,7 +219,7 @@
       }
     },
     {
-      "files": ["src/ws/adapter.ts"],
+      "files": ["packages/ws/src/adapter.ts"],
       "rules": {
         "max-lines": [
           "error",
@@ -259,7 +266,7 @@
         "src/core/**/*.ts",
         "src/features/**/*.ts",
         "src/servers/**/*.ts",
-        "src/ws/**/*.ts"
+        "packages/ws/src/**/*.ts"
       ],
       "rules": {
         "import/no-relative-parent-imports": "off"

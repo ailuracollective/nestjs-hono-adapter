@@ -59,10 +59,6 @@ const REQUIRED = [
   'src/features/sse.ts',
   'src/features/static-assets.ts',
   'src/features/views.ts',
-  'src/ws/adapter.ts',
-  'src/ws/client.ts',
-  'src/ws/server.ts',
-  'src/ws/index.ts',
   'src/socket-io/index.ts',
   'src/multipart/index.ts',
   'src/multipart/multipart.module.ts',
@@ -119,10 +115,10 @@ function crossing(
 
 /** The directory each island is rooted at, and its layer. */
 const ISLANDS: Readonly<Record<string, Layer>> = {
+  'packages/ws/src': 'ws',
   'src/features': 'features',
   'src/multipart': 'multipart',
   'src/socket-io': 'socket-io',
-  'src/ws': 'ws',
 };
 
 /** The layer a source path belongs to, and none for the roots. */
@@ -307,6 +303,20 @@ async function scan(
   );
   return edges.flat();
 }
+/** The edges of the core tree and of the packages that left it. */
+async function scanAll(): Promise<Edge[]> {
+  return [
+    ...(await scan(SOURCE)),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'ws', 'src'),
+      [],
+    )),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'socket-io', 'src'),
+      [],
+    )),
+  ];
+}
 
 /** What a refused walk says, or the empty string if it did not. */
 async function refusalOf(root: string): Promise<string> {
@@ -354,7 +364,7 @@ test('a feature reaching another feature is refused', () => {
 test('a feature reaching the ws island is refused', () => {
   const forbidden = crossing(
     'src/features/static-assets.ts',
-    'src/ws/adapter.ts',
+    'packages/ws/src/adapter.ts',
   );
   expect(featureReachesWs([forbidden])).toStrictEqual([
     forbidden,
@@ -363,7 +373,7 @@ test('a feature reaching the ws island is refused', () => {
 
 test('ws reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
-    'src/ws/adapter.ts',
+    'packages/ws/src/adapter.ts',
     'src/core/server-adapter.ts',
   );
   expect(wsReachesApp([forbidden])).toStrictEqual([forbidden]);
@@ -371,7 +381,7 @@ test('ws reaching the application is refused when it is a value', () => {
 
 test('the same edge as a type is erased, so it is allowed', () => {
   const erased = crossing(
-    'src/ws/adapter.ts',
+    'packages/ws/src/adapter.ts',
     'src/core/server-adapter.ts',
     true,
   );
@@ -395,7 +405,7 @@ test('the first three rules count a type import as an edge', () => {
   ]);
   const stillTyped = crossing(
     'src/features/static-assets.ts',
-    'src/ws/adapter.ts',
+    'packages/ws/src/adapter.ts',
     true,
   );
   expect(featureReachesWs([stillTyped])).toStrictEqual([
@@ -442,31 +452,25 @@ test.each([
 );
 
 test('no socket.io module reaches the application', async () => {
-  expect(socketIoReachesApp(await scan(SOURCE))).toStrictEqual(
-    [],
-  );
+  expect(socketIoReachesApp(await scanAll())).toStrictEqual([]);
 });
 
 test('core reaches no feature outside the composition roots', async () => {
-  expect(coreReachesFeature(await scan(SOURCE))).toStrictEqual(
-    [],
-  );
+  expect(coreReachesFeature(await scanAll())).toStrictEqual([]);
 });
 
 test('no feature reaches another feature', async () => {
-  expect(
-    featureReachesFeature(await scan(SOURCE)),
-  ).toStrictEqual([]);
-});
-
-test('no feature reaches the ws island', async () => {
-  expect(featureReachesWs(await scan(SOURCE))).toStrictEqual(
+  expect(featureReachesFeature(await scanAll())).toStrictEqual(
     [],
   );
 });
 
+test('no feature reaches the ws island', async () => {
+  expect(featureReachesWs(await scanAll())).toStrictEqual([]);
+});
+
 test('the ws island reaches the application through no value', async () => {
-  expect(wsReachesApp(await scan(SOURCE))).toStrictEqual([]);
+  expect(wsReachesApp(await scanAll())).toStrictEqual([]);
 });
 
 test('the upload island reaching the application is refused when it is a value', () => {
@@ -497,13 +501,13 @@ test('every other edge the island takes is a type', () => {
 });
 
 test('the upload island reaches the application through no value but the marker', async () => {
-  expect(multipartReachesApp(await scan(SOURCE))).toStrictEqual(
+  expect(multipartReachesApp(await scanAll())).toStrictEqual(
     [],
   );
 });
 
 test('the edges from the upload island into the application are the marker and types', async () => {
-  const edges = await scan(SOURCE);
+  const edges = await scanAll();
   const intoApp = edges
     .filter(
       (edge) =>
@@ -545,43 +549,31 @@ test('the edges from the upload island into the application are the marker and t
   ]);
 });
 
-test('the edges from ws into the application are types', async () => {
-  const edges = await scan(SOURCE);
+test('the ws island takes the application as a package, not as edges', async () => {
+  const edges = await scanAll();
   const intoApp = edges.filter(
     (edge) =>
       layerOf(edge.from) === 'ws' &&
       (layerOf(edge.to) === 'core' ||
         layerOf(edge.to) === 'features'),
   );
-  expect(intoApp).toStrictEqual([
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/context.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/server.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/server-adapter.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/transport.ts',
-      typeOnly: true,
-    },
-  ]);
+  const manifest = await readFile(
+    path.join(ROOT, 'packages', 'ws', 'package.json'),
+    'utf8',
+  );
+  expect(intoApp).toStrictEqual([]);
+  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
 test('the walk reads an import out of every layer', async () => {
   const edges = [
-    ...(await scan(SOURCE)),
+    ...(await scanAll()),
     ...(await scan(
       path.join(ROOT, 'packages', 'socket-io', 'src'),
+      [],
+    )),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'ws', 'src'),
       [],
     )),
   ];

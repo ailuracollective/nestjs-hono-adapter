@@ -30,7 +30,7 @@ import type {
 import { ServerAdapter } from '../src/index.ts';
 import type { TrustProxy } from '../src/index.ts';
 import type { WebSocketSupport } from '../src/core/transport.ts';
-import { HonoWsAdapter } from '../src/ws/index.ts';
+import { HonoWsAdapter } from '../packages/ws/src/index.ts';
 import { ProbeModule, SseModule } from './support.ts';
 
 /** The state a socket is in once it accepts a send. */

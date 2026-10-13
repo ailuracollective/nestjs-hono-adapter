@@ -20,10 +20,12 @@ import type { Observable } from 'rxjs';
 
 import { createNodeWebSocket } from '@hono/node-ws';
 
-import type { NestHono } from '../core/context.ts';
-import type { Server } from '../core/server.ts';
-import type { ServerAdapter } from '../core/server-adapter.ts';
-import type { WebSocketSupport } from '../core/transport.ts';
+import type {
+  NestHono,
+  Server,
+  ServerAdapter,
+  WebSocketSupport,
+} from '@ailura/nestjs-hono-adapter';
 import {
   CLOSE_EVENT,
   HonoSocket,

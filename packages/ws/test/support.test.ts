@@ -23,15 +23,12 @@ import {
   timeout,
 } from 'rxjs';
 
-import { bunAdapter } from './bun-adapter.ts';
-import type { ServerAdapter } from '../src/index.ts';
-import type { Transport } from '../src/core/transport.ts';
-import { nodeServer } from '../src/servers/node.ts';
-import { HonoWsAdapter } from '../src/ws/index.ts';
-import type {
-  MessageParser,
-  WsFrame,
-} from '../src/ws/client.ts';
+import { bunAdapter } from '../../../test/bun-adapter.ts';
+import type { ServerAdapter } from '../../../src/index.ts';
+import type { Transport } from '../../../src/core/transport.ts';
+import { nodeServer } from '../../../src/servers/node.ts';
+import { HonoWsAdapter } from '../src/index.ts';
+import type { MessageParser, WsFrame } from '../src/client.ts';
 
 /**
  * The disposer a fake install answers, having nothing to
@@ -335,7 +332,7 @@ function withoutOnOpen(): Transport {
       const node = createNodeWebSocket({ app });
       return {
         install: (server): (() => void) => {
-          // The same narrowing the island does at src/ws/adapter.ts,
+          // The same narrowing the island does at packages/ws/src/adapter.ts,
           // where the adapter's own server is handed to this helper.
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the helper only reads a handle off it.
           node.injectWebSocket(server as unknown as HttpServer);

@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 
-import { bunAdapter } from './bun-adapter.ts';
-import { ServerAdapter } from '../src/index.ts';
-import { nodeServer } from '../src/servers/node.ts';
-import { HonoWsAdapter } from '../src/ws/index.ts';
-import { HonoSocket } from '../src/ws/client.ts';
-import { GatewayServer } from '../src/ws/server.ts';
+import { bunAdapter } from '../../../test/bun-adapter.ts';
+import { ServerAdapter } from '../../../src/index.ts';
+import { nodeServer } from '../../../src/servers/node.ts';
+import { HonoWsAdapter } from '../src/index.ts';
+import { HonoSocket } from '../src/client.ts';
+import { GatewayServer } from '../src/server.ts';
 import {
   ANSWER,
   ANY_PORT,
@@ -34,7 +34,7 @@ import {
   socketUrl,
   startGateways,
   withoutOnOpen,
-} from './websockets.support.ts';
+} from './support.test.ts';
 
 test('a gateway answers on the Hono server', async () => {
   const probe = await startGateways();

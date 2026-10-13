@@ -12,7 +12,7 @@ const ENTRY = path.resolve(
 );
 const WS_ENTRY = path.resolve(
   import.meta.dirname,
-  '../src/ws/index.ts',
+  '../packages/ws/src/index.ts',
 );
 const MULTIPART_ENTRY = path.resolve(
   import.meta.dirname,
@@ -183,6 +183,7 @@ test.each(
     import.meta.dirname,
     '..',
     entry.default
+      .replace('./dist/ws/', './packages/ws/src/')
       .replace('./dist/', './src/')
       .replace(/\.js$/u, '.ts'),
   );

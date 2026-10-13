@@ -3,15 +3,15 @@ import { Logger } from '@nestjs/common';
 import type { MiddlewareHandler } from 'hono';
 import { WSContext } from 'hono/ws';
 
-import { ServerAdapter } from '../src/index.ts';
-import type { NestEnv } from '../src/index.ts';
+import { ServerAdapter } from '../../../src/index.ts';
+import type { NestEnv } from '../../../src/index.ts';
 import type {
   WebSocketEvents,
   WebSocketSupport,
-} from '../src/core/transport.ts';
-import { nodeServer } from '../src/servers/node.ts';
-import { HonoWsAdapter } from '../src/ws/index.ts';
-import type { HonoSocket } from '../src/ws/client.ts';
+} from '../../../src/core/transport.ts';
+import { nodeServer } from '../../../src/servers/node.ts';
+import { HonoWsAdapter } from '../src/index.ts';
+import type { HonoSocket } from '../src/client.ts';
 
 /** The callbacks and clients captured by a transport probe. */
 interface Connections {
