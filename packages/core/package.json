@@ -52,6 +52,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
+    "size": "size-limit",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json"
   },

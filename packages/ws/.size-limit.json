@@ -1,0 +1,20 @@
+[
+  {
+    "name": "ws",
+    "path": "dist/index.js",
+    "limit": 1550,
+    "brotli": true,
+    "ignore": [
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:http",
+      "node:stream",
+      "node:util",
+      "@hono/node-ws"
+    ]
+  }
+]

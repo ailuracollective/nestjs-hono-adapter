@@ -1,7 +1,7 @@
 [
   {
     "name": "index",
-    "path": "packages/core/dist/index.js",
+    "path": "dist/index.js",
     "limit": 11550,
     "brotli": true,
     "ignore": [
@@ -24,7 +24,7 @@
   },
   {
     "name": "bun-server",
-    "path": "packages/core/dist/servers/bun.js",
+    "path": "dist/servers/bun.js",
     "limit": 1024,
     "brotli": true,
     "ignore": [
@@ -44,7 +44,7 @@
   },
   {
     "name": "node-server",
-    "path": "packages/core/dist/servers/node.js",
+    "path": "dist/servers/node.js",
     "limit": 560,
     "brotli": true,
     "ignore": [
@@ -68,7 +68,7 @@
   },
   {
     "name": "fetch",
-    "path": "packages/core/dist/servers/fetch.js",
+    "path": "dist/servers/fetch.js",
     "limit": 500,
     "brotli": true,
     "ignore": [
@@ -82,68 +82,6 @@
       "node:events",
       "node:fs",
       "node:path",
-      "node:stream",
-      "node:util"
-    ]
-  },
-  {
-    "name": "multipart",
-    "path": "packages/multipart/dist/index.js",
-    "limit": 4250,
-    "brotli": true,
-    "ignore": [
-      "@ailura/nestjs-hono-adapter",
-      "hono",
-      "@hono/node-server",
-      "@nestjs/common",
-      "@nestjs/core",
-      "busboy",
-      "rxjs",
-      "node:buffer",
-      "node:crypto",
-      "node:fs",
-      "node:fs/promises",
-      "node:http",
-      "node:https",
-      "node:os",
-      "node:path",
-      "node:stream",
-      "node:stream/promises",
-      "node:util"
-    ]
-  },
-  {
-    "name": "ws",
-    "path": "packages/ws/dist/index.js",
-    "limit": 1550,
-    "brotli": true,
-    "ignore": [
-      "@nestjs/common",
-      "@nestjs/core",
-      "@nestjs/websockets",
-      "rxjs",
-      "node:buffer",
-      "node:events",
-      "node:http",
-      "node:stream",
-      "node:util",
-      "@hono/node-ws"
-    ]
-  },
-  {
-    "name": "socket-io",
-    "path": "packages/socket-io/dist/index.js",
-    "limit": 950,
-    "brotli": true,
-    "ignore": [
-      "@nestjs/common",
-      "@nestjs/core",
-      "@nestjs/websockets",
-      "rxjs",
-      "socket.io",
-      "node:buffer",
-      "node:events",
-      "node:http",
       "node:stream",
       "node:util"
     ]
