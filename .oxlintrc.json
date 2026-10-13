@@ -215,7 +215,10 @@
     {
       "files": ["packages/core/src/core/server-adapter.ts"],
       // 450: the adapter's composition root, a list of what it
-      // mounts.
+      // mounts. It is one class of thirty-four members, plus a
+      // declaration merge that has to share its module and an
+      // options interface that names a feature type, which only a
+      // composition root may do.
       "rules": { "max-lines": ["error", { "max": 450 }] }
     },
     {

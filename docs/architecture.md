@@ -643,8 +643,8 @@ Two later exceptions follow the same rule. `test/**` and
 because an end-to-end suite holds its fixtures, its gateways and
 its cases in one file and grows as they do; each package's suite
 lives with it, in `packages/core/test/`, `packages/ws/test/` and
-so on. And `packages/ws/src/adapter.ts` carries 450, the value
-the two files above it take: it is the island's composition
+so on. And `packages/ws/src/adapter.ts` carries 450, like the
+adapter's composition root: it is the island's composition
 point, where the `AbstractWsAdapter` members it implements meet
 the `platform-ws` surface — the frame parser and the error
 handlers — that a consumer of that adapter reads.
@@ -673,3 +673,13 @@ the `hono/bun` websocket helper and the transport factory, at
 have to agree on one class: the websocket helper installs on the
 server the factory builds, and the factory serves through that
 class's own fetch handler.
+
+`packages/core/src/core/server-adapter.ts` is the file that
+keeps 450, and it stays there for reasons inside it: it is one
+class of thirty-four members, the `AbstractHttpAdapter` surface
+Nest reads; the declaration merge that widens it has to share
+its module, since a merge is only a merge inside one; and the
+options interface it exports names a feature type, which only
+the two composition roots may do. Nest's own adapters have the
+same shape and are larger: `express-adapter.ts` is 710 lines and
+`fastify-adapter.ts` 1,433.
