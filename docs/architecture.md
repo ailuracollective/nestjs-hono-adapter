@@ -658,6 +658,7 @@ sit beside each other without failing the guard. The module is
 one capability in any case — the option resolution, the origin
 decision, and the middleware that applies them — and its
 analogues are larger: `express-adapter.ts` is 710 lines and
-`fastify-adapter.ts` 1,433. Splitting it would also be the wrong
-direction for the budget above, which pays for every module
-boundary.
+`fastify-adapter.ts` 1,433. Splitting it would also have to
+answer to the budget above, which records that moving code is
+free and extracting a helper is not, and where each entrypoint
+sits within a few per cent of its ceiling.
