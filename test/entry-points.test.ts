@@ -11,11 +11,24 @@ import wsManifest from '../packages/ws/package.json' with { type: 'json' };
 /** One published package, and the directory its source lives in. */
 interface PublishedPackage {
   readonly dir: string;
+  readonly manifest: RuntimeManifest;
   readonly name: string;
   readonly exports: Record<
     string,
     { readonly default: string }
   >;
+}
+
+/**
+ * The half of a manifest a consumer resolves: what a deployment
+ * installs with the package. A dev dependency is not one of
+ * these, which is the point of reading it rather than the
+ * source alone.
+ */
+interface RuntimeManifest {
+  readonly dependencies?: Record<string, string>;
+  readonly optionalDependencies?: Record<string, string>;
+  readonly peerDependencies?: Record<string, string>;
 }
 
 /**
@@ -28,24 +41,36 @@ const PACKAGES: readonly PublishedPackage[] = [
   {
     dir: 'packages/core',
     exports: coreManifest.exports,
+    manifest: coreManifest,
     name: coreManifest.name,
   },
   {
     dir: 'packages/multipart',
     exports: multipartManifest.exports,
+    manifest: multipartManifest,
     name: multipartManifest.name,
   },
   {
     dir: 'packages/socket-io',
     exports: socketIoManifest.exports,
+    manifest: socketIoManifest,
     name: socketIoManifest.name,
   },
   {
     dir: 'packages/ws',
     exports: wsManifest.exports,
+    manifest: wsManifest,
     name: wsManifest.name,
   },
 ];
+
+/**
+ * The three packages that left the adapter, one entry point
+ * each.
+ */
+const CAPABILITIES = PACKAGES.filter(
+  (pkg) => pkg.dir !== 'packages/core',
+);
 
 /** The HTTP entry point, and the WebSocket one beside it. */
 const ENTRY = path.resolve(
@@ -262,6 +287,46 @@ const OTHER_ENTRY_POINTS = PACKAGES.filter(
   ),
 );
 
+/** The names a manifest declares a deployment installs with it. */
+function declaredBy(manifest: RuntimeManifest): string[] {
+  return [
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...Object.keys(manifest.optionalDependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {}),
+  ];
+}
+
+/** The capability packages one manifest declares, itself aside. */
+function capabilitiesDeclaredBy(
+  manifest: RuntimeManifest,
+): string[] {
+  return declaredBy(manifest).filter((name) =>
+    name.startsWith(PLATFORM_PREFIX),
+  );
+}
+
+test('the adapter declares none of the capability packages', () => {
+  expect(capabilitiesDeclaredBy(coreManifest)).toStrictEqual(
+    [],
+  );
+});
+
+test('no capability package declares another', () => {
+  const declared = CAPABILITIES.flatMap((pkg) =>
+    capabilitiesDeclaredBy(pkg.manifest).map(
+      (name) => `${pkg.name} -> ${name}`,
+    ),
+  );
+  expect(declared).toStrictEqual([]);
+});
+
+test('the check reads a declaration, so an empty answer is not a pass', () => {
+  const carriers = CAPABILITIES.filter((pkg) =>
+    declaredBy(pkg.manifest).includes(CORE_NAME),
+  ).map((pkg) => pkg.name);
+  expect(carriers).toContain(`${PLATFORM_PREFIX}ws`);
+});
+
 test('the adapter publishes its four entry points', () => {
   expect(coreManifest.name).toBe(CORE_NAME);
   expect(
@@ -275,13 +340,10 @@ test('the adapter publishes its four entry points', () => {
 });
 
 test('each platform package publishes one entry point', () => {
-  const capabilities = PACKAGES.filter(
-    (pkg) => pkg.dir !== 'packages/core',
-  );
   expect(
-    capabilities.map((pkg) => pkg.name).toSorted(),
+    CAPABILITIES.map((pkg) => pkg.name).toSorted(),
   ).toStrictEqual(PLATFORM_NAMES);
-  for (const pkg of capabilities) {
+  for (const pkg of CAPABILITIES) {
     expect(Object.keys(pkg.exports)).toStrictEqual(['.']);
   }
 });
