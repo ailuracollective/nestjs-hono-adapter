@@ -662,3 +662,14 @@ analogues are larger: `express-adapter.ts` is 710 lines and
 answer to the budget above, which records that moving code is
 free and extracting a helper is not, and where each entrypoint
 sits within a few per cent of its ceiling.
+
+The Bun transport was split along its own seam:
+`servers/bun-runtime.ts` holds what Bun's server and TLS options
+look like — the types, the TLS mapping, and the static-file
+middleware that reads with `Bun.file` — and `servers/bun.ts`
+keeps the Node-shaped server Nest drives, its fetch bindings,
+the `hono/bun` websocket helper and the transport factory, at
+315 lines. What is left stays in one file because those parts
+have to agree on one class: the websocket helper installs on the
+server the factory builds, and the factory serves through that
+class's own fetch handler.
