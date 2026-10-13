@@ -7,7 +7,6 @@ import type {
 import { toNestRequest } from './request.ts';
 import type { NestHandler, NestRequest } from './request.ts';
 import type { NestContext } from './context.ts';
-import type { Transport } from './transport.ts';
 import {
   createExceptionRunner,
   createRouteHandler,
@@ -23,6 +22,7 @@ import {
   settingValue,
 } from './hono-lifecycle.ts';
 import type { TransportOptions } from './hono-lifecycle.ts';
+import type { TransportChoiceOptions } from './server-options.ts';
 import { toHonoPath } from './path.ts';
 import { ResponseWriter } from './response-writer.ts';
 import { ALL_METHOD } from './route-adapter.ts';
@@ -37,30 +37,7 @@ import type {
 } from '../features/views.ts';
 
 /** The options the adapter itself reads. */
-interface ServerAdapterOptions extends Omit<
-  TransportOptions,
-  'transport'
-> {
-  /**
-   * Whether `@hono/node-server` may replace the global
-   * `Request` and `Response` with its lighter classes. Read
-   * only where no transport is named, because it is a switch on
-   * the transport the adapter picks itself: it is the option
-   * every deployment set before the transports split, and it is
-   * handed to the Node transport with the default it always
-   * had. `nodeServer()` takes its own, for the deployment that
-   * names the transport instead of relying on this.
-   */
-  readonly overrideGlobalObjects?: boolean;
-  /**
-   * The runtime to serve through. Left out, the adapter serves
-   * through the Node transport — the runtime every deployment
-   * was served by before the transports split, which runs on
-   * Bun as well as on Node. `bunServer()` picks Bun's own
-   * server instead, and `fetchServer()` a host that hands over
-   * a Web `Request`.
-   */
-  readonly transport?: Transport;
+interface ServerAdapterOptions extends TransportChoiceOptions {
   /**
    * The views a handler may render, when the application has
    * any.
