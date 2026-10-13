@@ -10,7 +10,7 @@ import {
   ServerAdapter,
   type NestHonoApplication,
 } from '@ailura/nestjs-hono-adapter';
-import { nodeServer } from '@ailura/nestjs-hono-adapter/servers/node';
+import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
 import { AppModule } from './app.module.ts';
 
 const PORT = 8787;
