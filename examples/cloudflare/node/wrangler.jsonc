@@ -13,7 +13,7 @@
   },
   "alias": {
     "@ailura/nestjs-hono-adapter": "../../../src/index.ts",
-    "@ailura/nestjs-hono-adapter/servers/node": "../../../src/servers/node.ts",
+    "@ailura/nestjs-hono-adapter/node-server": "../../../src/servers/node.ts",
     "@fastify/static": "./src/stub-optional-peers.ts",
     "@nestjs/microservices": "./src/stub-optional-peers.ts",
     "@nestjs/microservices/microservices-module.js": "./src/stub-optional-peers.ts",

@@ -18,7 +18,7 @@
       "@ailura/nestjs-hono-adapter": [
         "../../../src/index.ts"
       ],
-      "@ailura/nestjs-hono-adapter/servers/node": [
+      "@ailura/nestjs-hono-adapter/node-server": [
         "../../../src/servers/node.ts"
       ]
     }
