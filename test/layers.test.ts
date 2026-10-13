@@ -136,6 +136,9 @@ function layerOf(file: string): Layer | undefined {
   if (directory.startsWith('src/multipart/')) {
     return 'multipart';
   }
+  if (directory.startsWith('src/socket-io/')) {
+    return 'socket-io';
+  }
   return ISLANDS[directory];
 }
 
@@ -412,6 +415,25 @@ test('and refused as a type too, unlike the ws island', () => {
   );
   expect(socketIoReachesApp([typed])).toStrictEqual([typed]);
 });
+
+test.each([
+  ['src/core/server-adapter.ts', false],
+  ['src/core/server-adapter.ts', true],
+  ['src/features/sse.ts', false],
+  ['src/features/sse.ts', true],
+] as const)(
+  'nested socket.io modules reaching %s are refused (type only: %s)',
+  (target, typeOnly) => {
+    const forbidden = crossing(
+      'src/socket-io/nested/helper.ts',
+      target,
+      typeOnly,
+    );
+    expect(socketIoReachesApp([forbidden])).toStrictEqual([
+      forbidden,
+    ]);
+  },
+);
 
 test('no socket.io module reaches the application', async () => {
   expect(socketIoReachesApp(await scan(SOURCE))).toStrictEqual(

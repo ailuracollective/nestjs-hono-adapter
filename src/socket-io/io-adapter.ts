@@ -27,8 +27,8 @@ const DISCONNECT_EVENT = 'disconnect';
 /**
  * The port that means "attach to the server already listening".
  * Nest asks for the server this way whatever port the
- * application was started on, so a gateway never opens a
- * listener of its own.
+ * application was started on. An explicit nonzero gateway port
+ * opens a listener of its own.
  */
 const ATTACHED_PORT = 0;
 
@@ -142,6 +142,9 @@ class HonoIoAdapter extends AbstractWsAdapter {
     Observable<unknown>
   >();
 
+  /** The roots whose HTTP listeners this adapter created. */
+  private readonly ownedServers = new WeakSet<Server>();
+
   /** The server, or the namespace, a gateway is bound to. */
   public override create(
     port: number,
@@ -169,21 +172,19 @@ class HonoIoAdapter extends AbstractWsAdapter {
 
   /**
    * Attaches socket.io to the server this adapter serves
-   * through, or opens one on a port when the application is not
-   * listening yet.
+   * through, or opens one on an explicit nonzero gateway port.
    */
   public createIOServer(
     port: number,
     options?: ServerOptions,
   ): Server {
-    if (
-      port === ATTACHED_PORT &&
-      this.httpServer !== undefined
-    ) {
+    if (port === ATTACHED_PORT) {
       assertAttachable(this.httpServer);
       return new Server(this.httpServer, options);
     }
-    return new Server(port, options);
+    const server = new Server(port, options);
+    this.ownedServers.add(server);
+    return server;
   }
 
   /** Binds every event a gateway declared to its handler. */
@@ -224,7 +225,8 @@ class HonoIoAdapter extends AbstractWsAdapter {
 
   /**
    * Lets every client go and closes socket.io, without waiting
-   * for the HTTP server to answer.
+   * for a shared HTTP server to answer. A standalone gateway's
+   * listener belongs to this adapter and is closed here.
    *
    * Socket.io's own `close()` waits for `httpServer.close()`,
    * and this adapter's Node transport answers that call with a
@@ -243,6 +245,9 @@ class HonoIoAdapter extends AbstractWsAdapter {
     server: Server | Namespace,
   ): Promise<void> {
     const io = rootOf(server);
+    if (this.ownedServers.has(io)) {
+      return io.close();
+    }
     io.disconnectSockets(true);
     io.engine.close();
     return Promise.resolve();

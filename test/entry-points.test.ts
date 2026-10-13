@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { expect, test } from 'bun:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 /** The HTTP entry point, and the WebSocket one beside it. */
 const ENTRY = path.resolve(
   import.meta.dirname,
@@ -172,10 +174,21 @@ test('the WebSocket entry point does reach the island peers', async () => {
   expect(names).toContain('adapter.ts');
 });
 
-test('the HTTP entry point reaches no socket.io peer', async () => {
-  expect(await carriersOf(ENTRY, SOCKET_IO_PEER)).toStrictEqual(
-    [],
+test.each(
+  Object.entries(manifest.exports).filter(
+    ([name]) => name !== './socket-io',
+  ),
+)('%s reaches no socket.io peer', async (_name, entry) => {
+  const source = path.resolve(
+    import.meta.dirname,
+    '..',
+    entry.default
+      .replace('./dist/', './src/')
+      .replace(/\.js$/u, '.ts'),
   );
+  expect(
+    await carriersOf(source, SOCKET_IO_PEER),
+  ).toStrictEqual([]);
 });
 
 test('the socket.io entry point does reach socket.io', async () => {

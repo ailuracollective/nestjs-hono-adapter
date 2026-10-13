@@ -61,6 +61,11 @@ else; that island needs the Node transport, which
 `./node-server` provides on Node and on Bun. The optional peers
 are only ever loaded by the entrypoint that needs them.
 
+A Socket.IO gateway with port zero attaches to the application's
+Node server and requires that server to be available. An
+explicit nonzero gateway port creates a separate listener; the
+adapter closes that listener during shutdown.
+
 ## Use
 
 Pick the transport for the runtime, then inject it:

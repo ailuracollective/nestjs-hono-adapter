@@ -269,7 +269,11 @@ when the gateway starts, naming the transport to serve through
 instead, rather than failing inside socket.io. Its `close()`
 lets the clients go without waiting for the HTTP server, because
 the Node transport answers `close(callback)` without ever
-invoking the callback (issue #121).
+invoking the callback (issue #121). Port zero requests
+attachment and is refused when no Node server is available. An
+explicit nonzero gateway port opens a separate listener, which
+the adapter owns and closes during shutdown, including when the
+gateway uses a namespace.
 
 ## Microservices
 
