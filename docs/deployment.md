@@ -158,9 +158,11 @@ it is not installed for the routes above. The upgrade is served
 by the transport when it carries a websocket helper — `hono/bun`
 with `bunServer()`, whatever host a `fetchServer()` was handed —
 and by `@hono/node-ws` otherwise, which includes the default
-(Node) transport. A deployment that serves gateways installs
-`@hono/node-ws` only when its transport does not provide a
-WebSocket helper; one that serves none never resolves it.
+(Node) transport. A deployment that installs the ws package
+resolves the optional peer `@hono/node-ws`, because that
+entrypoint eagerly imports it even when the transport provides
+its own WebSocket helper; one that does not install it never
+resolves it.
 
 ```ts
 import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
