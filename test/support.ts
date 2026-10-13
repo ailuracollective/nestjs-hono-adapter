@@ -128,6 +128,12 @@ class ViewController {
     return { name: 'Nest' };
   }
 
+  @Post('created')
+  @Render('hello')
+  public created(): unknown {
+    return { name: 'Nest' };
+  }
+
   @Get('missing')
   @Render('missing')
   public missing(): unknown {
