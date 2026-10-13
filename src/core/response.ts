@@ -52,10 +52,21 @@ function isBinaryBody(
  * `Headers`: a `Headers` validates every name and value through
  * the WebIDL converters and the transport then walks the result
  * a second time, and an answer with the default security
- * headers on carries twelve. A record is written straight
- * through.
+ * headers on carries twelve. A record of single values is
+ * written straight through; one that repeats a header goes
+ * through `headerInit`.
  */
 type HeaderRecord = Record<string, string | string[]>;
+
+/**
+ * What the `Response` constructor accepts for headers. The
+ * platform names that type only inside the fetch library, not
+ * globally, and the pair form is the one that keeps a repeated
+ * `set-cookie` separate.
+ */
+type HeaderInit =
+  | Record<string, string | readonly string[]>
+  | [string, string][];
 
 /**
  * Adds one value to a header that may already carry some; Nest
@@ -74,6 +85,42 @@ function appendHeader(
   } else {
     seen.push(value);
   }
+}
+
+/**
+ * The pairs one header becomes, splitting a repeated
+ * `set-cookie`.
+ */
+function headerPairs(
+  name: string,
+  value: string | string[],
+): [string, string][] {
+  if (typeof value === 'string') {
+    return [[name, value]];
+  }
+  if (name === 'set-cookie') {
+    return value.map((one): [string, string] => [name, one]);
+  }
+  return [[name, value.join(',')]];
+}
+
+/**
+ * The headers as something `Response` accepts. Handing it the
+ * record converts every value with the WebIDL `ByteString`
+ * converter, which stringifies an array: a repeated
+ * `set-cookie` arrives joined with commas, as one malformed
+ * cookie rather than two. That header is passed as pairs, which
+ * the constructor appends; a repeat of any other header is
+ * joined here so it keeps folding the way it does today.
+ */
+function headerInit(headers: HeaderRecord): HeaderInit {
+  const cookies = headers['set-cookie'];
+  if (typeof cookies !== 'object') {
+    return headers;
+  }
+  return Object.entries(headers).flatMap(([name, value]) =>
+    headerPairs(name, value),
+  );
 }
 
 /**
@@ -107,7 +154,10 @@ function toTextResponse(
   headers: HeaderRecord,
 ): Response {
   defaultContentType(headers, TEXT_CONTENT_TYPE);
-  return new Response(String(body), { headers, status });
+  return new Response(String(body), {
+    headers: headerInit(headers),
+    status,
+  });
 }
 
 function toList(
@@ -168,7 +218,7 @@ function toFileResponse(
     headers['content-length'] = String(length);
   }
   return new Response(toBodyStream(file.getStream()), {
-    headers,
+    headers: headerInit(headers),
     status,
   });
 }
@@ -183,7 +233,10 @@ function toBinaryResponse(
   headers: HeaderRecord,
 ): Response {
   defaultContentType(headers, BINARY_CONTENT_TYPE);
-  return new Response(body, { headers, status });
+  return new Response(body, {
+    headers: headerInit(headers),
+    status,
+  });
 }
 
 /**
@@ -202,7 +255,10 @@ function jsonResponse(
   if (typeof serialized !== 'string') {
     throw new TypeError('The data is not JSON serializable');
   }
-  return new Response(serialized, { headers, status });
+  return new Response(serialized, {
+    headers: headerInit(headers),
+    status,
+  });
 }
 
 function toResponse(
@@ -215,7 +271,10 @@ function toResponse(
     body === null ||
     NULL_BODY_STATUS.has(status)
   ) {
-    return new Response(undefined, { headers, status });
+    return new Response(undefined, {
+      headers: headerInit(headers),
+      status,
+    });
   }
   if (body instanceof StreamableFile) {
     return toFileResponse(body, status, headers);
