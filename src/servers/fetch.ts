@@ -122,7 +122,8 @@ class FetchServer extends EventEmitter implements Server {
    * fetch host hands the adapter a request rather than the
    * other way around. The caller is answered with the reason
    * instead of waiting for a listen that can never happen —
-   * Nest settles its listen promise from this callback.
+   * Nest settles its listen promise from this callback. Without
+   * a callback, the refusal is thrown directly.
    */
   public listen(
     _port?: string | number,
@@ -133,9 +134,11 @@ class FetchServer extends EventEmitter implements Server {
     if (typeof hostnameOrCallback === 'function') {
       answer = hostnameOrCallback;
     }
-    if (answer !== undefined) {
-      answer(new Error(LISTEN_REFUSAL));
+    const refusal = new Error(LISTEN_REFUSAL);
+    if (answer === undefined) {
+      throw refusal;
     }
+    answer(refusal);
   }
 
   /** A fetch host stops itself; there is no server to close. */

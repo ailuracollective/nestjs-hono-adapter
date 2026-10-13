@@ -496,6 +496,9 @@ deployment that waits on `listen()` waits forever, and Nest
 settles that promise only from the callback this transport now
 answers with an `Error`.
 
+Throwing the same refusal when no callback is supplied brings
+`fetch` to 496 bytes, so its ceiling moves from 490 to 500.
+
 Two consequences worth knowing before you write code:
 
 - **Extracting a helper costs bytes.** The bundler does not
