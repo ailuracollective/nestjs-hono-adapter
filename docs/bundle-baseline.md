@@ -146,13 +146,13 @@ bun run build
 bun run size
 ```
 
-`bun run size` runs the build and then `size-limit`, which
-bundles each entrypoint with rolldown (minified, tree-shaken,
-peers external) and brotli-compresses the result. For the exact
-byte counts rather than the rounded `kB` display:
+`bun run size` runs the build and then `size-limit` in each
+package, which bundles each entrypoint with rolldown (minified,
+tree-shaken, peers external) and brotli-compresses the result.
+For the exact byte counts rather than the rounded `kB` display:
 
 ```sh
-bunx size-limit --debug
+bunx size-limit --debug   # run from the package directory
 ```
 
 Published contents:
@@ -322,8 +322,9 @@ is available; this is the outcome issue #68 allows documenting.
 - The import order in `core/server-adapter.ts` and
   `core/hono-lifecycle.ts` is load-bearing for the measurement
   (see _The bundle budget_ in `docs/architecture.md`).
-- The ceilings in `.size-limit.json` are ratchets. Lowering one
-  is an allowed edit; it is recorded here, not hidden.
+- The ceilings in each package's `.size-limit.json` are
+  ratchets. Lowering one is an allowed edit; it is recorded
+  here, not hidden.
 - HTTP, WebSocket, lifecycle, middleware, query parsing, SSE,
   and security-sensitive behavior must remain compatible.
 
@@ -335,7 +336,8 @@ is available; this is the outcome issue #68 allows documenting.
   magnitude is what the table supports.
 - A from-scratch rolldown replication of the size-limit
   configuration differs from size-limit's own measurement by 1–2
-  bytes. `bunx size-limit --debug` is authoritative.
+  bytes. `bunx size-limit --debug` from a package directory is
+  authoritative.
 - Measurements are from commit `f4f2531` under Bun 1.4.2 and
   Node 26.10.0. Re-run the commands above to compare after any
   change.

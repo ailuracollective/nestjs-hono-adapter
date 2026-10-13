@@ -11,8 +11,8 @@
     "import.meta.url": "\"file:///worker.js\""
   },
   "alias": {
-    "@ailura/nestjs-hono-adapter": "../../../src/index.ts",
-    "@ailura/nestjs-hono-adapter/fetch": "../../../src/servers/fetch.ts",
+    "@ailura/nestjs-hono-adapter": "../../../packages/core/src/index.ts",
+    "@ailura/nestjs-hono-adapter/fetch": "../../../packages/core/src/servers/fetch.ts",
     "@fastify/static": "./src/stub-optional-peers.ts",
     "@nestjs/microservices": "./src/stub-optional-peers.ts",
     "@nestjs/microservices/microservices-module.js": "./src/stub-optional-peers.ts",

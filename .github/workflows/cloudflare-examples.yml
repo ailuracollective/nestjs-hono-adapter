@@ -7,7 +7,7 @@ name: Cloudflare examples
     paths:
       - '.github/workflows/cloudflare-examples.yml'
       - 'examples/**'
-      - 'src/**'
+      - 'packages/core/**'
       - 'package.json'
       - 'bun.lock'
   pull_request:
@@ -15,7 +15,7 @@ name: Cloudflare examples
     paths:
       - '.github/workflows/cloudflare-examples.yml'
       - 'examples/**'
-      - 'src/**'
+      - 'packages/core/**'
       - 'package.json'
       - 'bun.lock'
   workflow_dispatch:

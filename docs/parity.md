@@ -37,9 +37,10 @@ unchanged: `setCookie()` and `clearCookie()`, which are written
 on top of `appendHeader()`, and the `setOnRouteTriggered()` /
 `getOnRouteTriggered()` pair, which the core reads and invokes
 itself. `registerSecurityHook()` is installed as an own property
-in `src/core/server-adapter.ts`, and `NestHonoApplication`
-(`src/core/application.ts`) is the counterpart of
-`NestExpressApplication` and `NestFastifyApplication`.
+in `packages/core/src/core/server-adapter.ts`, and
+`NestHonoApplication` (`packages/core/src/core/application.ts`)
+is the counterpart of `NestExpressApplication` and
+`NestFastifyApplication`.
 
 On the WebSocket side `create()`, `bindMessageHandlers()`,
 `bindClientDisconnect()`, `close()` and `dispose()` are
@@ -57,10 +58,11 @@ adapter mirrors Express, and returns anything else unchanged.
 
 The `URIError` is the one that carries. A wildcard is
 percent-decoded when the params are read (`paramsOf` in
-`src/core/params.ts`), so a path whose escape stands for no
-character — `/files/%FF` — is a `400` where it used to be a
-`500`. Query values decode themselves and keep the raw text when
-that fails (`src/core/query.ts`), so they never raise it.
+`packages/core/src/core/params.ts`), so a path whose escape
+stands for no character — `/files/%FF` — is a `400` where it
+used to be a `500`. Query values decode themselves and keep the
+raw text when that fails (`packages/core/src/core/query.ts`), so
+they never raise it.
 
 Where the decode fails matters as much as the mapping. Nest
 wraps every route handler in a proxy that answers a failure
@@ -74,8 +76,8 @@ can answer it.
 Both platform adapters implement them, and instrumentation and
 devtools call them. Nothing in Nest calls them itself, so an
 adapter that does not run them is an adapter where a registered
-hook never runs. `src/features/front-steps.ts` builds the step
-that runs both, mounted in front of every route.
+hook never runs. `packages/core/src/features/front-steps.ts`
+builds the step that runs both, mounted in front of every route.
 
 The request hook is a `(request, response, done)` function
 called at the start of a request. It continues the chain by
@@ -213,8 +215,8 @@ Nest's own `NestApplication.listen()` calls it in. A Fastify
 bootstrap that passes `{ port }` passes the port instead.
 
 The divergence is deliberate, and it is taken where the
-transports end. `src/core/server.ts` is the `Server` port Nest
-drives, and every transport builds one with
+transports end. `packages/core/src/core/server.ts` is the
+`Server` port Nest drives, and every transport builds one with
 `listen(port, hostname?, callback?)` and nothing else. Reading a
 bag of bind options would promise fields two of the three have
 nowhere to put: `./bun-server` binds through `Bun.serve`, and
@@ -233,8 +235,8 @@ Nest 12's `WsAdapter` accepts a `messageParser` in its
 constructor and exposes `setMessageParser()` for a deployment
 whose frames are not JSON. `HonoWsAdapter` takes the same option
 and exposes the same method, and reads every frame with the
-parser in use; `parseFrame()` in `src/ws/client.ts` is the
-built-in one.
+parser in use; `parseFrame()` in `packages/ws/src/client.ts` is
+the built-in one.
 
 A parser that throws is an application bug and is reported. The
 built-in one reads client-controlled input, so its failures stay
@@ -277,17 +279,18 @@ the path.
 
 `WsAdapter` refuses a namespace and has no acknowledgement
 callback either; the reply travels back as the echoed `id`.
-These are only a gap against Socket.IO, and `./socket-io` closes
-it without changing `./ws`.
+These are only a gap against Socket.IO, and
+`@ailura/nestjs-platform-hono-socket-io` closes it without
+changing `@ailura/nestjs-platform-hono-ws`.
 
-### `@nestjs/platform-socket.io` — implemented, behind `./socket-io`
+### `@nestjs/platform-socket.io` — implemented, in `@ailura/nestjs-platform-hono-socket-io`
 
 `HonoIoAdapter` is the counterpart of that package's
 `IoAdapter`: `create()`, `createIOServer()`, `mapPayload()`,
 `bindMessageHandlers()`, `bindClientDisconnect()` and `close()`,
 so a gateway keeps its namespaces, its rooms, its broadcasts and
-its acknowledgement callbacks. It is a new subpath beside
-`./ws`, not a change to it.
+its acknowledgement callbacks. It is a new package beside
+`@ailura/nestjs-platform-hono-ws`, not a change to it.
 
 It attaches to a Node `http.Server`, and only the Node transport
 answers with one: `./node-server` runs on Node and on Bun, so a
@@ -306,11 +309,13 @@ one thing a consumer moving from Fastify has to change.
 `diskStorage` / `memoryStorage` engines;
 `@nestjs/platform-fastify/multipart` publishes the same shape.
 
-That work is merged: a `./multipart` subpath
-(`src/multipart/**`) with the interceptors, the module, the two
-storage engines, the interfaces and `test/multipart.test.ts`,
-with `busboy` as an optional peer and a ceiling of its own in
-`.size-limit.json`.
+That work is merged: `@ailura/nestjs-platform-hono-multipart`
+(`packages/multipart/src/**`) with the interceptors, the module,
+the two storage engines, the interfaces and
+`packages/multipart/test/multipart.test.ts`, with `busboy` as an
+optional peer of the adapter and a required one of the multipart
+package, and a ceiling of its own in
+`packages/multipart/.size-limit.json`.
 
 A review before the merge closed three things. An aborted upload
 now cancels the parse instead of leaving an unhandled error on
@@ -328,12 +333,13 @@ it, and the review had it removed rather than left dead; the
 interceptor produces it now.
 
 The exemption the island carried is narrower now: one block over
-`src/multipart/**` that turned off around 35 rules became ten
-blocks over thirteen files, and the nine files that need none of
-those rules carry them again. The cases the suite was missing —
-`fileFilter`, `registerAsync`, a malformed boundary and a
-`__proto__` field name — are covered, and each was proven by
-mutation, so it fails when the behaviour it pins is removed.
+`packages/multipart/src/**` that turned off around 35 rules
+became ten blocks over thirteen files, and the nine files that
+need none of those rules carry them again. The cases the suite
+was missing — `fileFilter`, `registerAsync`, a malformed
+boundary and a `__proto__` field name — are covered, and each
+was proven by mutation, so it fails when the behaviour it pins
+is removed.
 
 The streaming interceptor is implemented, and the three seams
 the reconnaissance found are closed by one design. Upstream
@@ -373,8 +379,8 @@ the stream the handler is reading, so the read fails rather than
 hangs.
 
 The ceiling decision the reconnaissance left open was taken, as
-the first item of the backlog asked: `./multipart` moved from
-3800 B to 4250 B for 553 B of measured growth, recorded in
+the first item of the backlog asked: the multipart entry moved
+from 3800 B to 4250 B for 553 B of measured growth, recorded in
 [bundle-baseline.md](bundle-baseline.md) and justified in
 [architecture.md](architecture.md#the-bundle-budget).
 
@@ -385,8 +391,8 @@ the first item of the backlog asked: `./multipart` moved from
 which write the metadata keys `__fastify_route_schema__`,
 `__fastify_route_config__` and `__fastify_route_constraints__`.
 Only `FastifyAdapter` reads them, in its route registration;
-nothing in `src/` does, so on this adapter the three decorators
-are no-ops.
+nothing in the core's source does, so on this adapter the three
+decorators are no-ops.
 
 They describe Fastify's own route options — a JSON schema, a
 route config, a constraint — and a Hono equivalent would be a
@@ -400,9 +406,10 @@ rather than emulated.
 Ordered by what it costs and what it unblocks.
 
 The one item this list carried — whether to support Socket.IO —
-is settled: it is `./socket-io`, a subpath of its own, and the
-section above records what it covers and the one transport it
-needs. Nothing else the reconnaissance found is outstanding.
+is settled: it is `@ailura/nestjs-platform-hono-socket-io`, a
+package of its own, and the section above records what it covers
+and the one transport it needs. Nothing else the reconnaissance
+found is outstanding.
 
 The non-goals and the runtime surface are written down:
 [docs/platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)

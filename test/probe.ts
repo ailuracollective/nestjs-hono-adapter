@@ -16,9 +16,9 @@ import type {
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { RequestCarrier } from '../src/core/bindings.ts';
-import type { Bindings } from '../src/core/bindings.ts';
-import type { ServerAdapter } from '../src/index.ts';
+import { RequestCarrier } from '../packages/core/src/core/bindings.ts';
+import type { Bindings } from '../packages/core/src/core/bindings.ts';
+import type { ServerAdapter } from '../packages/core/src/index.ts';
 import { bunAdapter } from './bun-adapter.ts';
 import type { AdapterOptions } from './bun-adapter.ts';
 import { SYNTHETIC_SERVER } from './bun-bindings.ts';

@@ -4,17 +4,28 @@ This is the map a contributor needs before changing a file. The
 README describes what the adapter does; this describes the shape
 it is built in, and which shapes are refused.
 
-## The regions of `src/`
+## The regions of `packages/`
 
 ```
-src/
-  index.ts  ws/index.ts  multipart/index.ts    the entrypoints
-  servers/bun.ts  servers/node.ts  servers/fetch.ts   the runtime transports
-  ws/adapter.ts  ws/client.ts  ws/server.ts   the WebSocket island
-  multipart/  the upload island
-  core/     the Nest <-> Hono translation and the ports
-  features/ the optional capabilities
+packages/
+  core/      the adapter, published as
+             @ailura/nestjs-hono-adapter: its src/core/ (the Nest
+             <-> Hono translation and the ports), src/features/
+             (the optional capabilities), src/servers/ (the
+             runtime transports)
+  socket-io/ the Socket.IO island, published as
+             @ailura/nestjs-platform-hono-socket-io
+  ws/        the WebSocket island, published as
+             @ailura/nestjs-platform-hono-ws
+  multipart/ the upload island, published as
+             @ailura/nestjs-platform-hono-multipart
 ```
+
+The implementation lives in `packages/core/src/`, and the
+repository root is only the private Bun workspace root — no
+published package, no `src/`. The region names below are the
+directories under `packages/core/src/` unless a package is
+named.
 
 **`core/`** holds the translation and the adapter chain, the
 ports that describe a runtime, and the primitives translation
@@ -34,31 +45,37 @@ no other. The fetch transport is the one for a host that serves
 a Web `Request` and expects a Web `Response` — Cloudflare
 Workers, Vercel Functions, Deno — where nothing listens.
 
-**The WebSocket island** is separate from all of them. It is
-neutral: it asks the adapter for its transport rather than
-importing a runtime's own WebSocket module.
+**The WebSocket island** is separate from all of them, and it
+lives in `packages/ws`. It is neutral: it asks the adapter for
+its transport rather than importing a runtime's own WebSocket
+module.
 
-**The upload island** (`multipart/`) is the second opt-in
-island, behind `./multipart`. It is the only place that consumes
-a `multipart/form-data` body and the only place that depends on
-a parser (`busboy`, an optional peer). Its interceptors parse
-the body the way multer does, so `@UploadedFile()` and
-`@UploadedFiles()` work; importing it marks the adapter through
-`core/multipart.ts`, and a marked adapter leaves a multipart
-body alone for an interceptor to consume. An adapter that serves
-no upload carries no trace of it.
+**The upload island** is the second opt-in island, published as
+`@ailura/nestjs-platform-hono-multipart`, and it lives in
+`packages/multipart`. It is the only place that consumes a
+`multipart/form-data` body and the only place that depends on a
+parser (`busboy`, an optional peer of the adapter and a required
+one of the package). Its interceptors parse the body the way
+multer does, so `@UploadedFile()` and `@UploadedFiles()` work;
+importing it marks the adapter through `declareMultipart`, the
+one symbol the core publishes on purpose for it, and a marked
+adapter leaves a multipart body alone for an interceptor to
+consume. An adapter that serves no upload carries no trace of
+it.
 
 ## The dependency rules
 
-Four rules, all enforced by `test/layers.test.ts`:
+Five rules, all enforced by `test/layers.test.ts`:
 
 1. `core/` never reaches `features/`, **except** from
    `core/hono-lifecycle.ts` and `core/server-adapter.ts`.
 2. `features/` never reaches `features/`.
 3. `features/` never reaches the WebSocket island.
-4. The islands reach `core/` and `features/` **only through
-   type-only imports**. The upload island has one value edge,
-   `core/multipart.ts`, the marker it sets on the adapter.
+4. The islands that call the application reach it as the
+   published package, never as an internal path: the core is a
+   **type-only import** for the WebSocket island, and a
+   type-only import plus the `declareMultipart` marker for the
+   upload island.
 5. The socket.io island reaches `core/` and `features/` not at
    all, as a value or as a type.
 
@@ -67,26 +84,30 @@ are the composition root: they are the ones that turn a
 capability into a running adapter. Everything else in `core/` is
 reached only by Nest's contract.
 
-Rule 4 is the load-bearing one. `src/ws/adapter.ts` does import
-`ServerAdapter`, and it does so with `import type`. That is
-erased at compile time, so the `/ws` subpath never loads the
-HTTP adapter. The moment that becomes a value import, a
+Rule 4 is the load-bearing one. `packages/ws/src/adapter.ts`
+does import `ServerAdapter`, and it does so with `import type`.
+That is erased at compile time, so the `/ws` subpath never loads
+the HTTP adapter. The moment that becomes a value import, a
 deployment that only serves HTTP pays for a WebSocket stack.
 
 The upload island follows the same rule with one exception it
-can name: `multipart/multipart/multipart.interceptor.factory.ts`
-imports `declareMultipart` from `core/multipart.ts` as a value,
+can name:
+`packages/multipart/src/multipart/multipart.interceptor.factory.ts`
+imports `declareMultipart` from the adapter package as a value,
 because marking the adapter is the whole point of the island.
-Its other reaches into `core/` are types, so a deployment that
+Its other reaches into the core are types, so a deployment that
 serves no upload loads neither the island nor its parser.
 
 The socket.io island goes one step further, which is why it has
 a rule of its own: it names nothing in `core/` or `features/` at
 all. Nest hands the adapter the server it already built, so
-`socket-io/io-adapter.ts` needs no port and no composition root
-— its runtime graph is `socket.io` and the three modules behind
-`./socket-io`, and `test/layers.test.ts` refuses both the value
-edge and the type edge that would change that.
+`packages/socket-io/src/adapter.ts` needs no port and no
+composition root — its runtime graph is `socket.io` and the
+three modules behind its entrypoint, and `test/layers.test.ts`
+refuses both the value edge and the type edge that would change
+that. The island was the first capability to leave the core's
+source tree: it lives in the `packages/socket-io` workspace
+package, published as `@ailura/nestjs-platform-hono-socket-io`.
 
 One more split is a packaging rule rather than a layer one:
 `core/` never imports `servers/bun.ts` or `servers/fetch.ts`; a
@@ -100,23 +121,43 @@ through when a deployment names none. That is what keeps
 with, working unchanged; the cost is that `.` requires
 `@hono/node-server`, which it always did.
 
-`src/core/application.ts` is the one module whose entire
-contents are types: the interface a bootstrap hands to
+`packages/core/src/core/application.ts` is the one module whose
+entire contents are types: the interface a bootstrap hands to
 `NestFactory.create()`, and the member this package declares on
 Nest's `HttpServer` so `getHono()` is reachable out of
 `getHttpAdapter()`. Every import it declares is `import type`,
 so it costs the bundle nothing and the bundler never reaches it
-— a claim `test/types/application-surface.ts` holds at compile
-time rather than leaving to review.
+— a claim `packages/core/test/types/application-surface.ts`
+holds at compile time rather than leaving to review.
 
 ## Entrypoints and isolation
 
-The `exports` map in `package.json` exposes seven specifiers:
-`.`, `./bun-server`, `./node-server`, `./fetch`, `./multipart`,
-`./ws` and `./socket-io`. It exposes nothing else, so no
+`@ailura/nestjs-hono-adapter`, the package built from
+`packages/core`, exposes four specifiers: `.`, `./bun-server`,
+`./node-server` and `./fetch`. Each optional capability is its
+own package with a single specifier, `.`:
+`@ailura/nestjs-platform-hono-ws` for the WebSocket adapter,
+`@ailura/nestjs-platform-hono-multipart` for uploads and
+`@ailura/nestjs-platform-hono-socket-io` for Socket.IO. The
+adapter depends on none of the three; `ws` and `multipart` peer
+on the adapter (`>=1.4.1 <2`). The repository root is the
+private Bun workspace root, with no exports of its own.
+
+The build is the adapter first (`build:core`), then
+`build:packages`; each capability package compiles its own
+sources into its own `dist/`, so the adapter's source names none
+of the three. The published maps expose nothing else, so no
 consumer can reach an internal module by path — which is what
 makes it safe to move files between regions without it being a
 breaking change.
+
+The `./ws`, `./multipart` and `./socket-io` subpaths the adapter
+used to carry are gone. `./ws` was published through 1.4.1 and
+now lives in `@ailura/nestjs-platform-hono-ws`; `./multipart`
+and `./socket-io` only ever existed on `main` and were never
+published. The
+[README](../README.md#migrating-from-the-old-subpaths) records
+what to install instead.
 
 `test/entry-points.test.ts` walks the import graph transitively
 from the neutral entrypoints. It fails if `.` reaches
@@ -126,9 +167,17 @@ installed. It checks the opposite direction too, because
 `@hono/node-server` is required and reached on purpose: `.`
 serves through it when no transport is named, which is the
 behaviour every deployment had before the transports split.
-`./ws` is the only entrypoint that reaches the WebSocket peers,
-`./socket-io` the only one that reaches `socket.io`, and
-`./multipart` the only one that reaches `busboy`.
+`@ailura/nestjs-platform-hono-ws` is the only package that
+reaches the WebSocket peers,
+`@ailura/nestjs-platform-hono-socket-io` the only one that
+reaches `socket.io`, and
+`@ailura/nestjs-platform-hono-multipart` the only one that
+reaches `busboy`. Each guard reads the package that owns the
+tree: `test/layers.test.ts` reads `packages/core/src` as the
+layered source and `packages/ws/src`, `packages/multipart/src`
+and `packages/socket-io/src` as the islands, and
+`test/entry-points.test.ts` starts from the adapter's `index.ts`
+and asks each island for its peers at the package.
 
 Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;
@@ -169,11 +218,12 @@ replaces the process's `Request` and `Response` with its lighter
 classes, exactly as it did before the split. The replacement is
 process-wide and not restored, so the suite does not depend on
 it: `test/probe.ts` puts the process's own classes back before
-every request, and `test/isolation.test.ts` holds that a case
-may serve the plain `new ServerAdapter()` in process without
-answering for the files beside it. `test/node-server.test.ts`
-still serves the same default transport with the switch off and
-pins the wiring beside it.
+every request, and `packages/core/test/isolation.test.ts` holds
+that a case may serve the plain `new ServerAdapter()` in process
+without answering for the files beside it.
+`packages/core/test/node-server.test.ts` still serves the same
+default transport with the switch off and pins the wiring beside
+it.
 
 ## The adapter chain
 
@@ -257,60 +307,79 @@ well be that reading it failed.
 
 ## The runtime surface
 
-The core names no runtime; the builtin surface is what Nest, the
-features and the upload island need wherever they run. Twelve
-builtins are in use: `node:buffer`, `node:crypto`,
-`node:events`, `node:fs`, `node:fs/promises`, `node:http`,
-`node:https`, `node:os`, `node:path`, `node:stream`,
-`node:stream/promises` and `node:util`. Nest's own SSE path is a
-`node:stream` `Writable`, views read the filesystem with
-`node:fs/promises` and `node:path`, the Node transport builds an
-`http.Server` with `node:https` for TLS, and the upload island's
-disk storage picks a random name with `node:crypto` and a
-directory with `node:os`, then names the file with `node:path`
-and writes and removes it with `node:fs`, `node:fs/promises` and
-`node:stream/promises`. Static assets are not on that list:
-`features/static-assets.ts` imports no builtin at all and leaves
-the reading to the transport's `serveStatic()`, so the
-filesystem is reached for them by whichever transport serves
-them. `test/node-builtins.test.ts` freezes that set. Adding one
-is a deliberate edit to both the source and the freeze, so the
-test failing is the signal, not an obstacle to route around.
+The core names no runtime; the builtin surface is what Nest and
+the features need wherever they run. Eight builtins are in use:
+`node:buffer`, `node:events`, `node:fs/promises`, `node:http`,
+`node:https`, `node:path`, `node:stream` and `node:util`. Nest's
+own SSE path is a `node:stream` `Writable`, views read the
+filesystem with `node:fs/promises` and `node:path`, and the Node
+transport builds an `http.Server` with `node:https` for TLS.
+Static assets are not on that list: `features/static-assets.ts`
+imports no builtin at all and leaves the reading to the
+transport's `serveStatic()`, so the filesystem is reached for
+them by whichever transport serves them.
+`test/node-builtins.test.ts` freezes that set, scanning
+`packages/core/src/`. Adding one is a deliberate edit to both
+the source and the freeze, so the test failing is the signal,
+not an obstacle to route around.
+
+The upload package is outside that scan and reaches four
+builtins the core does not: `node:crypto`, `node:fs`, `node:os`
+and `node:stream/promises`. Its disk storage picks a random name
+with `node:crypto` and a directory with `node:os`, then names
+the file with `node:path` and reads and writes it with
+`node:fs`, `node:fs/promises` and `node:stream/promises` —
+`node:path` and `node:fs/promises` are already on the core's
+list. Those four left the core's set with the island they belong
+to.
 
 Type-only imports count toward the frozen set, because a
 type-only import still couples a module's types to the platform.
 The builtins are reached from more than the transports: `core/`
 takes `node:buffer`, `node:events` and `node:stream` as values
 and `node:http` as types, the CORS bridge takes `node:util`, and
-views and the island's disk storage take the filesystem ones.
-What only a transport does is **build** a server, and that
-narrower claim does hold: `servers/node.ts` is the only module
-that calls `node:https`, and every other `node:http` import in
-`src/` is a type.
+views take the filesystem ones. What only a transport does is
+**build** a server, and that narrower claim does hold:
+`servers/node.ts` is the only module that calls `node:https`,
+and every other `node:http` import in the core's source is a
+type.
 
 ## The bundle budget
 
-`.size-limit.json` holds a ceiling per entrypoint, measured by
-`size-limit` as a consumer would see it: bundled, minified,
-brotlied, with peers external. `bun run check` runs it last, and
-CI runs it again as its own job.
+Each package holds its own `.size-limit.json` beside its
+`package.json`: `packages/core` carries the four adapter
+entrypoints, and `packages/ws`, `packages/socket-io` and
+`packages/multipart` carry their single one, each with a path
+relative to the package. `size-limit` measures an entrypoint as
+a consumer would see it: bundled, minified, brotlied, with peers
+external. The root `size` script runs the build and then
+`bun run --filter './packages/*' size`, and `bun run check` runs
+it last; CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11500-byte ceiling and a measurement of 11491,
-`bun-server` 1024/981, `node-server` 560/506, `fetch` 490/487,
-`multipart` 4250/4206, `ws` 1550/1543 and `socket-io` 950/948.
+`index` has an 11550-byte ceiling and a measurement of 11530,
+twenty bytes of it the published multipart marker, which a
+public export keeps alive; `bun-server` 1024/981, `node-server`
+560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1550/1543
+and `socket-io` 950/948. The entry names are unchanged; the
+first four measure `packages/core/dist`, and `multipart`, `ws`
+and `socket-io` measure their own packages'
+`packages/<name>/dist`. The core's extraction moved no
+measurement either: every entrypoint sits at the ceiling it had,
+whichever package now emits it.
 
 **`inject()`.** Fastify's in-process request helper costs 1073
 bytes in `index` — 9754 before, 10827 after — against a
 9760-byte ceiling that left 6, so `index` moves to 10880. The
 feature is read on the first call and on Hono's own
 `app.request()`, which is what makes it reach a route without a
-port; it lives in `src/core/` rather than in `src/features/`
-because it is not optional — the member is on every adapter, and
-a feature it cannot be split into two files across would meet
-the layer's import rule either way. See
-[bundle-baseline.md](bundle-baseline.md) for the measurement.
+port; it lives in `packages/core/src/core/` rather than in
+`packages/core/src/features/` because it is not optional — the
+member is on every adapter, and a feature it cannot be split
+into two files across would meet the layer's import rule either
+way. See [bundle-baseline.md](bundle-baseline.md) for the
+measurement.
 
 The signature forms the platform adapters accept arrived next.
 `enableCors()` reads a per-request delegate, which means the
@@ -400,15 +469,18 @@ carries, 1256 to 1368, ceiling 1400.
 
 `socket-io` is the seventh entrypoint, and the first one added
 with a ceiling of its own rather than a raise: 950 bytes,
-measured at 916. Nothing in it is charged to `index`, because
-`./socket-io` is reached only by a deployment that names it, and
-`socket.io` is an optional peer the gate leaves out of the
-measurement the way it leaves out `@hono/node-ws`. The island is
-three modules — the adapter, the refusal that names the
-transport a deployment must serve through instead, and the
-entrypoint that re-exports both — and the 34 bytes of headroom
-left under the ceiling are in the range the other entries keep,
-from `ws`'s 10 to `fetch`'s 62.
+measured at 916. When the island moved into `packages/socket-io`
+and the subpath began to be emitted from it, the entrypoint
+stayed at 948 bytes under the same 950 ceiling: where the source
+lives changed, the bytes did not. Nothing in it is charged to
+`index`, because the `socket-io` entry is reached only by a
+deployment that names it, and `socket.io` is an optional peer
+the gate leaves out of the measurement the way it leaves out
+`@hono/node-ws`. The island is three modules — the adapter, the
+refusal that names the transport a deployment must serve through
+instead, and the entrypoint that re-exports both — and the 34
+bytes of headroom left under the ceiling are in the range the
+other entries keep, from `ws`'s 10 to `fetch`'s 62.
 
 The application settings arrived next. `setLocal()`, `set()`,
 `enable()` and `disable()` add the last piece of Express's
@@ -515,18 +587,26 @@ product.
 
 ## Where the guards live
 
-| File                                 | What it holds                       |
-| ------------------------------------ | ----------------------------------- |
-| `test/layers.test.ts`                | the five dependency rules           |
-| `test/entry-points.test.ts`          | subpath isolation                   |
-| `test/node-builtins.test.ts`         | the frozen builtin set              |
-| `test/types/application-surface.ts`  | the types a consumer reads through  |
-| `test/types/route-adapter-compat.ts` | the members two Nest versions share |
-| `.oxlintrc.json`                     | rule exceptions, each with a reason |
+| File                                               | What it holds                       |
+| -------------------------------------------------- | ----------------------------------- |
+| `test/layers.test.ts`                              | the five dependency rules           |
+| `test/entry-points.test.ts`                        | subpath isolation                   |
+| `test/node-builtins.test.ts`                       | the frozen builtin set              |
+| `packages/core/test/types/application-surface.ts`  | the types a consumer reads through  |
+| `packages/core/test/types/route-adapter-compat.ts` | the members two Nest versions share |
+| `.oxlintrc.json`                                   | rule exceptions, each with a reason |
 
-The `.oxlintrc.json` exception for `src/multipart/**` is the
-widest one, and it is taken because the island mirrors multer's
-semantics and `append-field`'s port: it keeps multer's
+The root `test/` holds only what guards the monorepo and what
+more than one package shares: the guards above, and the shared
+probe and helpers (`test/probe.ts`, `test/bun-adapter.ts`,
+`test/bun-bindings.ts`), which a package's tests reach through a
+relative path like `../../../test/probe.ts`. Each package's
+behaviour tests live in its own `packages/<name>/test/`, and
+each package has its own `test` script.
+
+The `.oxlintrc.json` blocks over `packages/multipart/src/**` are
+the widest ones, and they are taken because the island mirrors
+multer's semantics and `append-field`'s port: it keeps multer's
 `_handleFile` / `_removeFile` names and its `Error | null`
 callbacks, and its request-shaped parser has more parameters and
 statements per function than the house style allows. The
@@ -539,12 +619,13 @@ rather than in a file of its own: file names, not directories,
 are what those blocks name, so a new file would mean a new
 exception rather than a moved one.
 
-Two later exceptions follow the same rule. `test/**` carries a
-700-line ceiling rather than 400, because an end-to-end suite
-holds its fixtures, its gateways and its cases in one file and
-grows as they do; `test/websockets.test.ts` is the largest of
-them. And `src/ws/adapter.ts` carries 450, the value the two
-files above it take: it is the island's composition point, where
-the `AbstractWsAdapter` members it implements meet the
-`platform-ws` surface — the frame parser and the error handlers
-— that a consumer of that adapter reads.
+Two later exceptions follow the same rule. `test/**` and
+`packages/*/test/**` carry a 700-line ceiling rather than 400,
+because an end-to-end suite holds its fixtures, its gateways and
+its cases in one file and grows as they do; each package's suite
+lives with it, in `packages/core/test/`, `packages/ws/test/` and
+so on. And `packages/ws/src/adapter.ts` carries 450, the value
+the two files above it take: it is the island's composition
+point, where the `AbstractWsAdapter` members it implements meet
+the `platform-ws` surface — the frame parser and the error
+handlers — that a consumer of that adapter reads.

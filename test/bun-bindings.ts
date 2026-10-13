@@ -1,4 +1,4 @@
-import type { Bindings } from '../src/core/bindings.ts';
+import type { Bindings } from '../packages/core/src/core/bindings.ts';
 
 /**
  * The native server an in-process request is run with. Nothing

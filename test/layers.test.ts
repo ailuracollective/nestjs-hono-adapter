@@ -4,11 +4,12 @@ import path from 'node:path';
 import { expect, test } from 'bun:test';
 
 /**
- * The rules that keep `src/` layered, read off the source graph
- * rather than off a file list: `core/` holds the Nest to Hono
- * contract, `features/` the optional capabilities, and the two
- * islands — the `ws-*` one behind `/ws` and `multipart/` behind
- * `/multipart` — are worlds of their own.
+ * The rules that keep `packages/core/src/` layered, read off
+ * the source graph rather than off a file list: `core/` holds
+ * the Nest to Hono contract, `features/` the optional
+ * capabilities, and the three islands — `socket-io/` behind
+ * `/socket-io`, the `ws-*` one behind `/ws` and `multipart/`
+ * behind `/multipart` — are worlds of their own.
  *
  * Every rule already holds, so the scan has nothing to observe
  * today. What keeps this file alive is the synthetic crossings
@@ -17,11 +18,12 @@ import { expect, test } from 'bun:test';
  * checking nothing at all.
  */
 
-/** One relative import, and whether it is a type. */
+/** One source import, and whether it is a type or the marker. */
 interface Edge {
   readonly from: string;
   readonly to: string;
   readonly typeOnly: boolean;
+  readonly markerOnly?: boolean;
 }
 
 /** The layers of the tree, and the root is not one of them. */
@@ -33,7 +35,9 @@ type Layer =
   | 'ws';
 
 const ROOT = path.resolve(import.meta.dir, '..');
-const SOURCE = path.join(ROOT, 'src');
+const SOURCE = path.join(ROOT, 'packages', 'core', 'src');
+const CORE_PACKAGE = '@ailura/nestjs-hono-adapter';
+const CORE_ENTRY = 'packages/core/src/index.ts';
 
 /**
  * The two core modules that may name a feature, because they
@@ -43,35 +47,23 @@ const SOURCE = path.join(ROOT, 'src');
  * cannot be reasoned about alone.
  */
 const COMPOSITION_ROOTS = new Set([
-  'src/core/hono-lifecycle.ts',
-  'src/core/server-adapter.ts',
+  'packages/core/src/core/hono-lifecycle.ts',
+  'packages/core/src/core/server-adapter.ts',
 ]);
 
 /**
- * The modules a walk of `src/` has to find. A tree that is
- * missing one has been renamed, not proven: the scan refuses it
- * instead of reading the absence as an absence of crossings.
+ * The modules a walk of `packages/core/src/` has to find. A
+ * tree that is missing one has been renamed, not proven: the
+ * scan refuses it instead of reading the absence as an absence
+ * of crossings.
  */
 const REQUIRED = [
   ...COMPOSITION_ROOTS,
-  'src/core/multipart.ts',
-  'src/features/cors-middleware.ts',
-  'src/features/sse.ts',
-  'src/features/static-assets.ts',
-  'src/features/views.ts',
-  'src/ws/adapter.ts',
-  'src/ws/client.ts',
-  'src/ws/server.ts',
-  'src/ws/index.ts',
-  'src/socket-io/index.ts',
-  'src/socket-io/io-adapter.ts',
-  'src/socket-io/refusal.ts',
-  'src/multipart/index.ts',
-  'src/multipart/multipart.module.ts',
-  'src/multipart/multipart/multipart.interceptor.factory.ts',
-  'src/multipart/multipart/multipart.parser.ts',
-  'src/multipart/storage/index.ts',
-  'src/multipart/storage/disk.storage.ts',
+  'packages/core/src/core/multipart.ts',
+  'packages/core/src/features/cors-middleware.ts',
+  'packages/core/src/features/sse.ts',
+  'packages/core/src/features/static-assets.ts',
+  'packages/core/src/features/views.ts',
 ];
 
 /**
@@ -84,17 +76,17 @@ const REQUIRED = [
  * apart.
  */
 const SPECIFIER =
-  /^[ \t]*(?:import|export)[ \t]+(?<typeOnly>type\b[ \t]*)?[^;]*?\bfrom\s+'(?<module>[^']+)'/gmu;
+  /^[ \t]*(?<statement>import|export)[ \t]+(?<typeOnly>type\b[ \t]*)?(?<bindings>[^;]*?)\bfrom\s+'(?<module>[^']+)'/gmu;
 
-/** The relative module a match named, and none for a package. */
-function relativeOf(
+/** The relative module or core package a match named. */
+function moduleOf(
   groups: Record<string, string> | undefined,
 ): string | undefined {
   if (groups === undefined) {
     return undefined;
   }
   const { module = '' } = groups;
-  if (!module.startsWith('.')) {
+  if (module !== CORE_PACKAGE && !module.startsWith('.')) {
     return undefined;
   }
   return module;
@@ -121,32 +113,39 @@ function crossing(
 
 /** The directory each island is rooted at, and its layer. */
 const ISLANDS: Readonly<Record<string, Layer>> = {
-  'src/features': 'features',
-  'src/multipart': 'multipart',
-  'src/socket-io': 'socket-io',
-  'src/ws': 'ws',
+  'packages/core/src/features': 'features',
+  'packages/multipart/src': 'multipart',
+  'packages/socket-io/src': 'socket-io',
+  'packages/ws/src': 'ws',
 };
 
 /** The layer a source path belongs to, and none for the roots. */
 function layerOf(file: string): Layer | undefined {
   const directory = path.dirname(file);
-  if (directory === 'src/core') {
+  if (
+    file === CORE_ENTRY ||
+    directory === 'packages/core/src/core'
+  ) {
     return 'core';
   }
-  if (directory.startsWith('src/multipart/')) {
+  if (directory.startsWith('packages/multipart/src/')) {
     return 'multipart';
   }
-  if (directory.startsWith('src/socket-io/')) {
+  if (directory.startsWith('packages/socket-io/src/')) {
     return 'socket-io';
   }
   return ISLANDS[directory];
 }
 
-/** The edges a core module takes into a feature. */
+/**
+ * The edges a core module takes into a feature, excluding the
+ * facade.
+ */
 function coreReachesFeature(edges: readonly Edge[]): Edge[] {
   return edges.filter(
     (edge) =>
       layerOf(edge.from) === 'core' &&
+      edge.from !== CORE_ENTRY &&
       layerOf(edge.to) === 'features' &&
       !COMPOSITION_ROOTS.has(edge.from),
   );
@@ -192,10 +191,12 @@ function wsReachesApp(edges: readonly Edge[]): Edge[] {
  * adapter an interceptor owns a multipart body. Every other
  * import the island makes into `core/` or `features/` has to be
  * a type, so the compiler erases it and the island's runtime
- * graph stays inside `src/multipart/` — the argument rule 4
- * makes for `/ws`, with the one exception the marker needs.
+ * graph stays inside `packages/multipart/src/` — the argument
+ * rule 4 makes for `/ws`, with the one exception the marker
+ * needs.
  */
-const MULTIPART_VALUE_EDGE = 'src/core/multipart.ts';
+const MULTIPART_VALUE_EDGE =
+  'packages/core/src/core/multipart.ts';
 
 /**
  * The edges the upload island takes into the application as
@@ -208,7 +209,8 @@ function multipartReachesApp(edges: readonly Edge[]): Edge[] {
       (layerOf(edge.to) === 'core' ||
         layerOf(edge.to) === 'features') &&
       !edge.typeOnly &&
-      edge.to !== MULTIPART_VALUE_EDGE,
+      edge.to !== MULTIPART_VALUE_EDGE &&
+      !(edge.to === CORE_ENTRY && edge.markerOnly === true),
   );
 }
 
@@ -253,21 +255,37 @@ async function sourceFiles(
   return [...nested.flat(), ...here];
 }
 
-/** The relative imports of one file, resolved against it. */
-async function edgesFrom(file: string): Promise<Edge[]> {
-  const source = await readFile(path.join(ROOT, file), 'utf8');
+/** The local imports in source text, resolved against its file. */
+function edgesIn(source: string, file: string): Edge[] {
   const found: Edge[] = [];
   for (const match of source.matchAll(SPECIFIER)) {
-    const module = relativeOf(match.groups);
+    const module = moduleOf(match.groups);
     if (module !== undefined) {
+      let target = CORE_ENTRY;
+      if (module.startsWith('.')) {
+        target = path.join(path.dirname(file), module);
+      }
+      const { bindings = '', statement = '' } =
+        match.groups ?? {};
       found.push({
         from: file,
-        to: path.join(path.dirname(file), module),
+        markerOnly:
+          statement === 'import' &&
+          /^\s*\{\s*declareMultipart(?:\s+as\s+[\w$]+)?\s*,?\s*\}\s*$/u.test(
+            bindings,
+          ),
+        to: target,
         typeOnly: typeOnlyOf(match.groups),
       });
     }
   }
   return found;
+}
+
+/** The local imports of one file, resolved against it. */
+async function edgesFrom(file: string): Promise<Edge[]> {
+  const source = await readFile(path.join(ROOT, file), 'utf8');
+  return edgesIn(source, file);
 }
 
 /** The repository-relative source files of a tree, or a failure. */
@@ -286,9 +304,12 @@ async function readTree(root: string): Promise<string[]> {
 }
 
 /** The edges of a tree, once it has been shown to be the tree. */
-async function scan(root: string): Promise<Edge[]> {
+async function scan(
+  root: string,
+  expected: readonly string[] = REQUIRED,
+): Promise<Edge[]> {
   const files = await readTree(root);
-  const missing = REQUIRED.filter(
+  const missing = expected.filter(
     (name) => !files.includes(name),
   );
   if (missing.length > 0) {
@@ -301,6 +322,24 @@ async function scan(root: string): Promise<Edge[]> {
   );
   return edges.flat();
 }
+/** The edges of the core tree and of the packages that left it. */
+async function scanAll(): Promise<Edge[]> {
+  return [
+    ...(await scan(SOURCE)),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'ws', 'src'),
+      [],
+    )),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'socket-io', 'src'),
+      [],
+    )),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'multipart', 'src'),
+      [],
+    )),
+  ];
+}
 
 /** What a refused walk says, or the empty string if it did not. */
 async function refusalOf(root: string): Promise<string> {
@@ -312,10 +351,57 @@ async function refusalOf(root: string): Promise<string> {
   return '';
 }
 
+test.each(['', 'type '])(
+  'core package imports are scanned with their type flag (%s)',
+  (type) => {
+    const source = `import ${type}{ ServerAdapter } from '${CORE_PACKAGE}';`;
+    const ws = edgesIn(source, 'packages/ws/src/adapter.ts');
+    expect(ws).toHaveLength(1);
+    expect(ws[0]).toMatchObject({
+      to: CORE_ENTRY,
+      typeOnly: type !== '',
+    });
+    expect(wsReachesApp(ws)).toHaveLength(Number(type === ''));
+    const socketIo = edgesIn(
+      source,
+      'packages/socket-io/src/adapter.ts',
+    );
+    expect(socketIoReachesApp(socketIo)).toHaveLength(1);
+    const multipart = edgesIn(
+      source,
+      'packages/multipart/src/multipart/multipart.parser.ts',
+    );
+    expect(multipartReachesApp(multipart)).toHaveLength(
+      Number(type === ''),
+    );
+  },
+);
+
+test.each([
+  ['import { declareMultipart }', true],
+  ['import { declareMultipart as mark, }', true],
+  ['import { ServerAdapter }', false],
+  ['import { declareMultipart, ServerAdapter }', false],
+  ['import * as core', false],
+  ['export { declareMultipart }', false],
+] as const)(
+  'the multipart package marker exception checks its binding: %s',
+  (binding, allowed) => {
+    const edges = edgesIn(
+      `${binding} from '${CORE_PACKAGE}';`,
+      'packages/multipart/src/multipart/multipart.interceptor.factory.ts',
+    );
+    expect(edges).toHaveLength(1);
+    expect(multipartReachesApp(edges)).toHaveLength(
+      Number(!allowed),
+    );
+  },
+);
+
 test('core reaching a feature is refused', () => {
   const forbidden = crossing(
-    'src/core/body.ts',
-    'src/features/sse.ts',
+    'packages/core/src/core/body.ts',
+    'packages/core/src/features/sse.ts',
   );
   expect(coreReachesFeature([forbidden])).toStrictEqual([
     forbidden,
@@ -324,21 +410,21 @@ test('core reaching a feature is refused', () => {
 
 test('the two composition roots are the exception', () => {
   const cors = crossing(
-    'src/core/hono-lifecycle.ts',
-    'src/features/cors-middleware.ts',
+    'packages/core/src/core/hono-lifecycle.ts',
+    'packages/core/src/features/cors-middleware.ts',
   );
   expect(coreReachesFeature([cors])).toStrictEqual([]);
   const sse = crossing(
-    'src/core/server-adapter.ts',
-    'src/features/sse.ts',
+    'packages/core/src/core/server-adapter.ts',
+    'packages/core/src/features/sse.ts',
   );
   expect(coreReachesFeature([sse])).toStrictEqual([]);
 });
 
 test('a feature reaching another feature is refused', () => {
   const forbidden = crossing(
-    'src/features/views.ts',
-    'src/features/sse.ts',
+    'packages/core/src/features/views.ts',
+    'packages/core/src/features/sse.ts',
   );
   expect(featureReachesFeature([forbidden])).toStrictEqual([
     forbidden,
@@ -347,8 +433,8 @@ test('a feature reaching another feature is refused', () => {
 
 test('a feature reaching the ws island is refused', () => {
   const forbidden = crossing(
-    'src/features/static-assets.ts',
-    'src/ws/adapter.ts',
+    'packages/core/src/features/static-assets.ts',
+    'packages/ws/src/adapter.ts',
   );
   expect(featureReachesWs([forbidden])).toStrictEqual([
     forbidden,
@@ -357,16 +443,16 @@ test('a feature reaching the ws island is refused', () => {
 
 test('ws reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
-    'src/ws/adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/ws/src/adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
   );
   expect(wsReachesApp([forbidden])).toStrictEqual([forbidden]);
 });
 
 test('the same edge as a type is erased, so it is allowed', () => {
   const erased = crossing(
-    'src/ws/adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/ws/src/adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
     true,
   );
   expect(wsReachesApp([erased])).toStrictEqual([]);
@@ -374,22 +460,22 @@ test('the same edge as a type is erased, so it is allowed', () => {
 
 test('the first three rules count a type import as an edge', () => {
   const typed = crossing(
-    'src/core/body.ts',
-    'src/features/sse.ts',
+    'packages/core/src/core/body.ts',
+    'packages/core/src/features/sse.ts',
     true,
   );
   expect(coreReachesFeature([typed])).toStrictEqual([typed]);
   const alsoTyped = crossing(
-    'src/features/views.ts',
-    'src/features/sse.ts',
+    'packages/core/src/features/views.ts',
+    'packages/core/src/features/sse.ts',
     true,
   );
   expect(featureReachesFeature([alsoTyped])).toStrictEqual([
     alsoTyped,
   ]);
   const stillTyped = crossing(
-    'src/features/static-assets.ts',
-    'src/ws/adapter.ts',
+    'packages/core/src/features/static-assets.ts',
+    'packages/ws/src/adapter.ts',
     true,
   );
   expect(featureReachesWs([stillTyped])).toStrictEqual([
@@ -399,8 +485,8 @@ test('the first three rules count a type import as an edge', () => {
 
 test('the socket.io island reaching the application is refused', () => {
   const forbidden = crossing(
-    'src/socket-io/io-adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/socket-io/src/adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
   );
   expect(socketIoReachesApp([forbidden])).toStrictEqual([
     forbidden,
@@ -409,23 +495,23 @@ test('the socket.io island reaching the application is refused', () => {
 
 test('and refused as a type too, unlike the ws island', () => {
   const typed = crossing(
-    'src/socket-io/io-adapter.ts',
-    'src/core/server-adapter.ts',
+    'packages/socket-io/src/adapter.ts',
+    'packages/core/src/core/server-adapter.ts',
     true,
   );
   expect(socketIoReachesApp([typed])).toStrictEqual([typed]);
 });
 
 test.each([
-  ['src/core/server-adapter.ts', false],
-  ['src/core/server-adapter.ts', true],
-  ['src/features/sse.ts', false],
-  ['src/features/sse.ts', true],
+  ['packages/core/src/core/server-adapter.ts', false],
+  ['packages/core/src/core/server-adapter.ts', true],
+  ['packages/core/src/features/sse.ts', false],
+  ['packages/core/src/features/sse.ts', true],
 ] as const)(
   'nested socket.io modules reaching %s are refused (type only: %s)',
   (target, typeOnly) => {
     const forbidden = crossing(
-      'src/socket-io/nested/helper.ts',
+      'packages/socket-io/src/nested/helper.ts',
       target,
       typeOnly,
     );
@@ -436,37 +522,31 @@ test.each([
 );
 
 test('no socket.io module reaches the application', async () => {
-  expect(socketIoReachesApp(await scan(SOURCE))).toStrictEqual(
-    [],
-  );
+  expect(socketIoReachesApp(await scanAll())).toStrictEqual([]);
 });
 
 test('core reaches no feature outside the composition roots', async () => {
-  expect(coreReachesFeature(await scan(SOURCE))).toStrictEqual(
-    [],
-  );
+  expect(coreReachesFeature(await scanAll())).toStrictEqual([]);
 });
 
 test('no feature reaches another feature', async () => {
-  expect(
-    featureReachesFeature(await scan(SOURCE)),
-  ).toStrictEqual([]);
-});
-
-test('no feature reaches the ws island', async () => {
-  expect(featureReachesWs(await scan(SOURCE))).toStrictEqual(
+  expect(featureReachesFeature(await scanAll())).toStrictEqual(
     [],
   );
 });
 
+test('no feature reaches the ws island', async () => {
+  expect(featureReachesWs(await scanAll())).toStrictEqual([]);
+});
+
 test('the ws island reaches the application through no value', async () => {
-  expect(wsReachesApp(await scan(SOURCE))).toStrictEqual([]);
+  expect(wsReachesApp(await scanAll())).toStrictEqual([]);
 });
 
 test('the upload island reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
-    'src/multipart/storage/disk.storage.ts',
-    'src/core/body.ts',
+    'packages/multipart/src/storage/disk.storage.ts',
+    'packages/core/src/core/body.ts',
   );
   expect(multipartReachesApp([forbidden])).toStrictEqual([
     forbidden,
@@ -475,104 +555,79 @@ test('the upload island reaching the application is refused when it is a value',
 
 test('the marker is the one value edge the island may take', () => {
   const marker = crossing(
-    'src/multipart/multipart/multipart.interceptor.factory.ts',
-    'src/core/multipart.ts',
+    'packages/multipart/src/multipart/multipart.interceptor.factory.ts',
+    'packages/core/src/core/multipart.ts',
   );
   expect(multipartReachesApp([marker])).toStrictEqual([]);
 });
 
 test('every other edge the island takes is a type', () => {
   const erased = crossing(
-    'src/multipart/multipart/multipart.parser.ts',
-    'src/core/request.ts',
+    'packages/multipart/src/multipart/multipart.parser.ts',
+    'packages/core/src/core/request.ts',
     true,
   );
   expect(multipartReachesApp([erased])).toStrictEqual([]);
 });
 
 test('the upload island reaches the application through no value but the marker', async () => {
-  expect(multipartReachesApp(await scan(SOURCE))).toStrictEqual(
+  expect(multipartReachesApp(await scanAll())).toStrictEqual(
     [],
   );
 });
 
-test('the edges from the upload island into the application are the marker and types', async () => {
-  const edges = await scan(SOURCE);
-  const intoApp = edges
-    .filter(
-      (edge) =>
-        layerOf(edge.from) === 'multipart' &&
-        (layerOf(edge.to) === 'core' ||
-          layerOf(edge.to) === 'features'),
-    )
-    .toSorted((left, right) =>
-      `${left.from} ${left.to}`.localeCompare(
-        `${right.from} ${right.to}`,
-      ),
-    );
-  expect(intoApp).toStrictEqual([
-    {
-      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
-      to: 'src/core/context.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
-      to: 'src/core/multipart.ts',
-      typeOnly: false,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
-      to: 'src/core/request.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.parser.ts',
-      to: 'src/core/context.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.parser.ts',
-      to: 'src/core/request.ts',
-      typeOnly: true,
-    },
-  ]);
+test('the upload island takes the application as a package', async () => {
+  const edges = await scanAll();
+  const intoApp = edges.filter(
+    (edge) =>
+      layerOf(edge.from) === 'multipart' &&
+      (layerOf(edge.to) === 'core' ||
+        layerOf(edge.to) === 'features'),
+  );
+  const manifest = await readFile(
+    path.join(ROOT, 'packages', 'multipart', 'package.json'),
+    'utf8',
+  );
+  expect(intoApp.length).toBeGreaterThan(0);
+  expect(intoApp.every((edge) => edge.to === CORE_ENTRY)).toBe(
+    true,
+  );
+  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
-test('the edges from ws into the application are types', async () => {
-  const edges = await scan(SOURCE);
+test('the ws island takes the application as a package through types', async () => {
+  const edges = await scanAll();
   const intoApp = edges.filter(
     (edge) =>
       layerOf(edge.from) === 'ws' &&
       (layerOf(edge.to) === 'core' ||
         layerOf(edge.to) === 'features'),
   );
-  expect(intoApp).toStrictEqual([
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/context.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/server.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/server-adapter.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/ws/adapter.ts',
-      to: 'src/core/transport.ts',
-      typeOnly: true,
-    },
-  ]);
+  const manifest = await readFile(
+    path.join(ROOT, 'packages', 'ws', 'package.json'),
+    'utf8',
+  );
+  expect(intoApp.length).toBeGreaterThan(0);
+  expect(
+    intoApp.every(
+      (edge) => edge.to === CORE_ENTRY && edge.typeOnly,
+    ),
+  ).toBe(true);
+  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
 test('the walk reads an import out of every layer', async () => {
-  const edges = await scan(SOURCE);
+  const edges = [
+    ...(await scanAll()),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'socket-io', 'src'),
+      [],
+    )),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'ws', 'src'),
+      [],
+    )),
+  ];
   const layers = [
     ...new Set(edges.map((edge) => layerOf(edge.from))),
   ].filter((layer) => layer !== undefined);
@@ -588,13 +643,13 @@ test('the walk reads an import out of every layer', async () => {
 test('a tree without the layers is refused, not read as empty', async () => {
   const refusal = await refusalOf(path.join(ROOT, 'test'));
   expect(refusal).toMatch(
-    /found no src\/core\/hono-lifecycle\.ts/u,
+    /found no packages\/core\/src\/core\/hono-lifecycle\.ts/u,
   );
 });
 
 test('a tree that is not there is refused too', async () => {
   const refusal = await refusalOf(
-    path.join(ROOT, 'src/no-such-layer'),
+    path.join(ROOT, 'packages/core/src/no-such-layer'),
   );
   expect(refusal).toMatch(/read nothing/u);
 });

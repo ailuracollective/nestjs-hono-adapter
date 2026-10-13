@@ -59,9 +59,21 @@ on Hono 4.
 This file covers the whole repository. The directories that are
 part of the repository and that an agent may edit:
 
-- `src/` — the adapter source, layered into `core/`,
-  `features/`, `servers/`, `multipart/`, `ws/` and `socket-io/`.
-- `test/` — the test suite, including fixtures and probes.
+- `packages/` — the workspace packages. `core` is the adapter,
+  published as `@ailura/nestjs-hono-adapter` (layered into
+  `packages/core/src/{core,features,servers}`; it publishes `.`,
+  `./bun-server`, `./node-server` and `./fetch`). `ws`,
+  `socket-io` and `multipart` are the three optional
+  capabilities, published as `@ailura/nestjs-platform-hono-ws`,
+  `@ailura/nestjs-platform-hono-socket-io` and
+  `@ailura/nestjs-platform-hono-multipart`, one entrypoint each.
+- `test/` — what guards the monorepo and what more than one
+  package shares: `test/layers.test.ts`,
+  `test/entry-points.test.ts` and `test/node-builtins.test.ts`,
+  plus the shared probe and helpers (`test/probe.ts`,
+  `test/bun-adapter.ts`, `test/bun-bindings.ts`). Each package
+  carries its own behaviour tests under `packages/<name>/test/`
+  and has its own `test` script.
 - `docs/` — architecture and documentation.
 - `examples/` — runnable Cloudflare Workers examples, one per
   transport that runs on a Worker.
@@ -86,31 +98,37 @@ framework being adapted). The core is runtime-neutral: a
 `@hono/node-server`, or a fetch host's Web `Request`/`Response`;
 each transport lives behind its own subpath, and the Node one is
 the default, so a bootstrap that names none keeps working on
-Node and on Bun. The package publishes seven entrypoints: `.`
-(the adapter), `./bun-server`, `./node-server`, `./fetch`,
-`./multipart` (upload interceptors), `./ws` (the WebSocket
-adapter) and `./socket-io` (the Socket.IO adapter).
+Node and on Bun. The adapter, `@ailura/nestjs-hono-adapter`,
+publishes four entrypoints: `.` (the adapter), `./bun-server`,
+`./node-server` and `./fetch`. Each optional capability is its
+own package with a single entrypoint: WebSockets in
+`@ailura/nestjs-platform-hono-ws`, uploads in
+`@ailura/nestjs-platform-hono-multipart` and Socket.IO in
+`@ailura/nestjs-platform-hono-socket-io`.
 
-The source is layered: `src/core/` holds the request decode,
-response encode, and lifecycle bridge, plus the `Server` and
-`Transport` ports; `src/features/` holds optional capabilities
+The adapter's implementation is `packages/core`:
+`packages/core/src/core/` holds the request decode, response
+encode, and lifecycle bridge, plus the `Server` and `Transport`
+ports; `packages/core/src/features/` holds optional capabilities
 (CORS, guards, the instrumentation hooks, SSE, static assets,
-views); `src/servers/` holds the runtime transports (`bun.ts`,
-`node.ts`, `fetch.ts`), reached through their subpaths — and the
-Node one from `core/server-adapter.ts`, the adapter's
-composition root, as the transport it serves through by default;
-`src/multipart/` is the upload island behind `./multipart`;
-`src/ws/` is the WebSocket island behind `./ws`; and
-`src/socket-io/` is the Socket.IO island behind `./socket-io`.
-The layout, import rules, and bundle ceilings are written down
-in [docs/architecture.md](docs/architecture.md).
+views); `packages/core/src/servers/` holds the runtime
+transports (`bun.ts`, `node.ts`, `fetch.ts`), reached through
+their subpaths — and the Node one from `core/server-adapter.ts`,
+the adapter's composition root, as the transport it serves
+through by default. The repository root is only the private Bun
+workspace root: no published package, no `src/`, no exports. The
+three capability packages live in `packages/` too and depend on
+the adapter, which names none of them. The layout, import rules,
+and bundle ceilings are written down in
+[docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 
 - **Releases use release-please with OIDC trusted publishing.**
-  release-please opens a release pull request per push to
-  `main`; merging it creates the tag and the GitHub release,
-  authored by the AiluraKitty account through
+  release-please opens one combined pull request for packages
+  with pending releases on every push to `main`; merging it
+  creates the corresponding tags and GitHub releases for those
+  packages, authored by the AiluraKitty account through
   `AILURA_RELEASE_TOKEN`. The release then fires
   `.github/workflows/publish.yml`, which publishes to npm with a
   short-lived OIDC token (no stored npm token). See
@@ -129,8 +147,9 @@ in [docs/architecture.md](docs/architecture.md).
   the human-readable reference and the templates implement it.
 - **The size gate is a product constraint.** Each public
   entrypoint is bundled the way a consumer resolves it, and CI
-  fails when a ceiling in `.size-limit.json` is exceeded. This
-  is a gate, not a report.
+  fails when a ceiling in a package's `.size-limit.json` is
+  exceeded. Each package carries its own beside its
+  `package.json`. This is a gate, not a report.
 - **The compat matrix tests NestJS 11 and 12 on Bun.** Every
   Nest package moves together; a mixed install is what a
   WebSocket or microservice case would fail on.
@@ -156,10 +175,10 @@ Individual commands:
 bun run lint          # oxlint
 bun run format        # oxfmt --write .
 bun run format:check  # oxfmt --check .
-bun run typecheck     # tsc --noEmit for src and test
-bun run test          # bun test
-bun run build         # tsc -p tsconfig.json
-bun run size          # build + size-limit
+bun run typecheck     # build:core, then tsc for test
+bun run test          # build:core, then bun test
+bun run build         # build:core, then build:packages
+bun run size          # build, then each package's size-limit
 ```
 
 ## Testing and validation
@@ -172,8 +191,8 @@ bun run check
 
 This runs lint, format check, typecheck, test, build, and the
 size gate in sequence. A failure in any step fails the whole
-command. The size gate fails when a bundle ceiling in
-`.size-limit.json` is exceeded.
+command. The size gate fails when a bundle ceiling in a
+package's `.size-limit.json` is exceeded.
 
 The compat matrix in CI additionally runs
 `bun run typecheck && bun test && bun run build` against NestJS
@@ -211,9 +230,12 @@ rules, and a README section for user-facing behavior.
 ## Additional references
 
 - [docs/architecture.md](docs/architecture.md) — the layer map,
-  import rules, and Node boundary. Read before editing `src/`.
-- [.size-limit.json](.size-limit.json) — the bundle ceilings the
-  size gate enforces.
+  import rules, and Node boundary. Read before editing the
+  adapter.
+- [packages/core/.size-limit.json](packages/core/.size-limit.json)
+  — the adapter's bundle ceilings; `packages/ws`,
+  `packages/socket-io` and `packages/multipart` each carry their
+  own beside their `package.json`.
 - [release-please-config.json](release-please-config.json) — the
   release-please configuration.
 - [.release-please-manifest.json](.release-please-manifest.json)

@@ -99,8 +99,9 @@ new ServerAdapter({ transport: fetchServer() });
 
 These folders import `.../servers/fetch` instead, which is **not** in
 the package's `exports` map. `wrangler.jsonc` and `tsconfig.json` each
-alias it to `src/servers/fetch.ts`, which is why it resolves from a
-fresh clone with no build. Do not copy that spelling.
+alias it to `packages/core/src/servers/fetch.ts`, which is why it
+resolves from a fresh clone with no build. Do not copy that
+spelling.
 
 ## The client address
 
@@ -112,8 +113,8 @@ one. The fetch Worker passes a `clientAddress` resolver that reads
 replace the host's address or the Node socket address.
 
 Both folders are Bun workspace members, so an install from anywhere
-hoists `node_modules` to the root — where the `src/` imports resolve
-against.
+hoists `node_modules` to the root — where the
+`packages/core/src/` imports resolve against.
 
 The thirteen optional peers Nest and `@nestjs/swagger` name inside lazy
 `import()`s are aliased to `src/stub-optional-peers.ts`, an empty
