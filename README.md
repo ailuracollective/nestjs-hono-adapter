@@ -233,8 +233,8 @@ Contributions are welcome via
 - Run `bun run check` before opening a PR — it must pass lint,
   format, typecheck, test, build, and the bundle size gate.
 - Read [docs/architecture.md](docs/architecture.md) before
-  editing `src/`: it documents the layer map, import rules, and
-  bundle ceilings.
+  editing the adapter: it documents the layer map, import rules,
+  and bundle ceilings.
 - Tests must cover new behaviour; the suite runs against both
   Nest 11 and 12 on Bun.
 

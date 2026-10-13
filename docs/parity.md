@@ -37,9 +37,10 @@ unchanged: `setCookie()` and `clearCookie()`, which are written
 on top of `appendHeader()`, and the `setOnRouteTriggered()` /
 `getOnRouteTriggered()` pair, which the core reads and invokes
 itself. `registerSecurityHook()` is installed as an own property
-in `src/core/server-adapter.ts`, and `NestHonoApplication`
-(`src/core/application.ts`) is the counterpart of
-`NestExpressApplication` and `NestFastifyApplication`.
+in `packages/core/src/core/server-adapter.ts`, and
+`NestHonoApplication` (`packages/core/src/core/application.ts`)
+is the counterpart of `NestExpressApplication` and
+`NestFastifyApplication`.
 
 On the WebSocket side `create()`, `bindMessageHandlers()`,
 `bindClientDisconnect()`, `close()` and `dispose()` are
@@ -57,10 +58,11 @@ adapter mirrors Express, and returns anything else unchanged.
 
 The `URIError` is the one that carries. A wildcard is
 percent-decoded when the params are read (`paramsOf` in
-`src/core/params.ts`), so a path whose escape stands for no
-character — `/files/%FF` — is a `400` where it used to be a
-`500`. Query values decode themselves and keep the raw text when
-that fails (`src/core/query.ts`), so they never raise it.
+`packages/core/src/core/params.ts`), so a path whose escape
+stands for no character — `/files/%FF` — is a `400` where it
+used to be a `500`. Query values decode themselves and keep the
+raw text when that fails (`packages/core/src/core/query.ts`), so
+they never raise it.
 
 Where the decode fails matters as much as the mapping. Nest
 wraps every route handler in a proxy that answers a failure
@@ -74,8 +76,8 @@ can answer it.
 Both platform adapters implement them, and instrumentation and
 devtools call them. Nothing in Nest calls them itself, so an
 adapter that does not run them is an adapter where a registered
-hook never runs. `src/features/front-steps.ts` builds the step
-that runs both, mounted in front of every route.
+hook never runs. `packages/core/src/features/front-steps.ts`
+builds the step that runs both, mounted in front of every route.
 
 The request hook is a `(request, response, done)` function
 called at the start of a request. It continues the chain by
@@ -213,8 +215,8 @@ Nest's own `NestApplication.listen()` calls it in. A Fastify
 bootstrap that passes `{ port }` passes the port instead.
 
 The divergence is deliberate, and it is taken where the
-transports end. `src/core/server.ts` is the `Server` port Nest
-drives, and every transport builds one with
+transports end. `packages/core/src/core/server.ts` is the
+`Server` port Nest drives, and every transport builds one with
 `listen(port, hostname?, callback?)` and nothing else. Reading a
 bag of bind options would promise fields two of the three have
 nowhere to put: `./bun-server` binds through `Bun.serve`, and
@@ -310,9 +312,9 @@ That work is merged: a `./multipart` subpath
 (`packages/multipart/src/**`) with the interceptors, the module,
 the two storage engines, the interfaces and
 `packages/multipart/test/multipart.test.ts`, emitted into
-`dist/multipart`, with `busboy` as an optional peer of the core
-and a required one of the package, and a ceiling of its own in
-`.size-limit.json`.
+`dist/multipart`, with `busboy` as an optional peer of the
+adapter and a required one of the package, and a ceiling of its
+own in `.size-limit.json`.
 
 A review before the merge closed three things. An aborted upload
 now cancels the parse instead of leaving an unhandled error on
@@ -388,8 +390,8 @@ the first item of the backlog asked: `./multipart` moved from
 which write the metadata keys `__fastify_route_schema__`,
 `__fastify_route_config__` and `__fastify_route_constraints__`.
 Only `FastifyAdapter` reads them, in its route registration;
-nothing in `src/` does, so on this adapter the three decorators
-are no-ops.
+nothing in the core's source does, so on this adapter the three
+decorators are no-ops.
 
 They describe Fastify's own route options — a JSON schema, a
 route config, a constraint — and a Hono equivalent would be a

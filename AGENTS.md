@@ -59,13 +59,24 @@ on Hono 4.
 This file covers the whole repository. The directories that are
 part of the repository and that an agent may edit:
 
-- `src/` — the adapter source, layered into `core/`, `features/`
-  and `servers/`.
-- `packages/` — the workspace packages the three optional
-  capabilities were extracted into: `socket-io`, `ws` and
-  `multipart`. Each is emitted into the core's `dist/` for its
-  subpath, so the core's source names none of them.
-- `test/` — the test suite, including fixtures and probes.
+- `src/` — four re-export shims that keep the root's name and
+  its seven entrypoints: `index.ts` and
+  `servers/{bun,node,fetch}.ts`, each re-exporting
+  `@ailura/nestjs-hono-adapter-core` (the servers through its
+  matching subpaths). No behaviour lives here.
+- `packages/` — the workspace packages: `core`, the adapter
+  itself (`@ailura/nestjs-hono-adapter-core`, layered into
+  `packages/core/src/{core,features,servers}`), plus the three
+  optional capabilities extracted into `socket-io`, `ws` and
+  `multipart`. Each capability is emitted into the root's
+  `dist/` for its subpath.
+- `test/` — what guards the monorepo and what more than one
+  package shares: `test/layers.test.ts`,
+  `test/entry-points.test.ts` and `test/node-builtins.test.ts`,
+  plus the shared probe and helpers (`test/probe.ts`,
+  `test/bun-adapter.ts`, `test/bun-bindings.ts`). Each package
+  carries its own behaviour tests under `packages/<name>/test/`
+  and has its own `test` script.
 - `docs/` — architecture and documentation.
 - `examples/` — runnable Cloudflare Workers examples, one per
   transport that runs on a Worker.
@@ -95,22 +106,25 @@ Node and on Bun. The package publishes seven entrypoints: `.`
 `./multipart` (upload interceptors), `./ws` (the WebSocket
 adapter) and `./socket-io` (the Socket.IO adapter).
 
-The source is layered: `src/core/` holds the request decode,
-response encode, and lifecycle bridge, plus the `Server` and
-`Transport` ports; `src/features/` holds optional capabilities
+The adapter core is a workspace package too:
+`packages/core/src/core/` holds the request decode, response
+encode, and lifecycle bridge, plus the `Server` and `Transport`
+ports; `packages/core/src/features/` holds optional capabilities
 (CORS, guards, the instrumentation hooks, SSE, static assets,
-views); `src/servers/` holds the runtime transports (`bun.ts`,
-`node.ts`, `fetch.ts`), reached through their subpaths — and the
-Node one from `core/server-adapter.ts`, the adapter's
-composition root, as the transport it serves through by default.
-The three optional islands are workspace packages —
-`packages/socket-io`, `packages/ws` and `packages/multipart` —
-and each is emitted into the core's `dist/` for its subpath
-(`dist/socket-io`, `dist/ws`, `dist/multipart`), so
-`./socket-io`, `./ws` and `./multipart` keep resolving and the
-core's source names none of them. The layout, import rules, and
-bundle ceilings are written down in
-[docs/architecture.md](docs/architecture.md).
+views); `packages/core/src/servers/` holds the runtime
+transports (`bun.ts`, `node.ts`, `fetch.ts`), reached through
+their subpaths — and the Node one from `core/server-adapter.ts`,
+the adapter's composition root, as the transport it serves
+through by default. The root's `src/` is only re-export shims
+over `@ailura/nestjs-hono-adapter-core`, so `.`, `./bun-server`,
+`./node-server` and `./fetch` keep resolving. The three optional
+islands are workspace packages — `packages/socket-io`,
+`packages/ws` and `packages/multipart` — and each is emitted
+into the root's `dist/` for its subpath (`dist/socket-io`,
+`dist/ws`, `dist/multipart`), so `./socket-io`, `./ws` and
+`./multipart` keep resolving and the core's source names none of
+them. The layout, import rules, and bundle ceilings are written
+down in [docs/architecture.md](docs/architecture.md).
 
 ## Repository-specific conventions
 
@@ -163,9 +177,9 @@ Individual commands:
 bun run lint          # oxlint
 bun run format        # oxfmt --write .
 bun run format:check  # oxfmt --check .
-bun run typecheck     # tsc --noEmit for src and test
-bun run test          # bun test
-bun run build         # tsc, then build:packages (all three)
+bun run typecheck     # build:core, then tsc --noEmit for src and test
+bun run test          # build:core, then bun test
+bun run build         # build:core, then tsc, then build:packages
 bun run size          # build + size-limit
 ```
 
@@ -218,7 +232,8 @@ rules, and a README section for user-facing behavior.
 ## Additional references
 
 - [docs/architecture.md](docs/architecture.md) — the layer map,
-  import rules, and Node boundary. Read before editing `src/`.
+  import rules, and Node boundary. Read before editing the
+  adapter.
 - [.size-limit.json](.size-limit.json) — the bundle ceilings the
   size gate enforces.
 - [release-please-config.json](release-please-config.json) — the

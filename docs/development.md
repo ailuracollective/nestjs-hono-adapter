@@ -30,16 +30,39 @@ bun run check
 `bun run check` is exactly what CI runs: lint, format,
 typecheck, test, build and the bundle size gate.
 
-The three optional islands are workspace packages under
-`packages/`. `bun run build` builds the core first
-(`tsc -p tsconfig.json`) and then all three packages in one
-phase (`build:packages`, which filters on `packages/socket-io`,
-`packages/ws` and `packages/multipart`). Each package's
-`tsconfig.compat.json` emits its sources into the core's `dist/`
-(`dist/socket-io`, `dist/ws`, `dist/multipart`), which is what
-the `./socket-io`, `./ws` and `./multipart` subpaths serve; the
-`ws` and `multipart` compat projects read the core's
-declarations from `dist`, which is why the core builds first.
+Every part of the adapter is a workspace package now, and the
+root's `src/` is four re-export shims over
+`@ailura/nestjs-hono-adapter-core`. The build order is the core,
+the shims, then the capabilities, and the root's scripts say it
+exactly:
+
+```sh
+"build": "bun run build:core && tsc -p tsconfig.json && bun run build:packages",
+"build:core": "bun run --filter @ailura/nestjs-hono-adapter-core build",
+"build:packages": "bun run --filter @ailura/nestjs-hono-adapter-socket-io --filter @ailura/nestjs-hono-adapter-ws --filter @ailura/nestjs-hono-adapter-multipart build",
+"test": "bun run build:core && bun test",
+"typecheck": "bun run build:core && tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json"
+```
+
+`build:core` compiles the core into `packages/core/dist`; the
+root's `tsc` compiles the shims into `dist/`, which is what `.`,
+`./bun-server`, `./node-server` and `./fetch` serve; and each
+capability's `tsconfig.compat.json` emits its sources into the
+root's `dist/` for its subpath (`dist/socket-io`, `dist/ws`,
+`dist/multipart`). `test` and `typecheck` build the core first
+too, because the root resolves it through
+`node_modules/@ailura/nestjs-hono-adapter-core` →
+`packages/core/dist`, and a clean checkout has no core `dist`
+yet. The `ws` and `multipart` compat projects read the core's
+declarations from `packages/core/dist`, which is why the core
+builds first.
+
+Each package carries its own behaviour tests under
+`packages/<name>/test/` and has its own `test` script; the
+root's `test/` holds only the guards and the shared helpers
+(`test/probe.ts`, `test/bun-adapter.ts`,
+`test/bun-bindings.ts`), which a package reaches through a
+relative path like `../../../test/probe.ts`.
 
 ### The lockfile format the build image reads
 
@@ -70,9 +93,9 @@ JSON-with-comments file and refuses any other value.
 
 Before changing a file, read
 [docs/architecture.md](architecture.md): it maps the regions of
-`src/` and the packages that left it, the five dependency rules
-between them, what the frozen builtin surface is, and why the
-bundle ceilings behave the way they do.
+`packages/core/src/` and the root's shims, the five dependency
+rules between them, what the frozen builtin surface is, and why
+the bundle ceilings behave the way they do.
 
 The cases start a real application on an ephemeral port and talk
 to it over `fetch`, so they cover the path and query dialects,
@@ -109,29 +132,37 @@ library declares no decorator, so neither flag changes what
 
 Releases run through
 [release-please](https://github.com/googleapis/release-please).
-The repository releases four packages: the adapter at the root,
-and the three capability packages under `packages/`.
-`release-please-config.json` declares one component per package
-— `.` at the root, and `socket-io`, `ws` and `multipart` — and
+The repository releases five packages: the adapter at the root,
+the core at `packages/core`, and the three capability packages
+under `packages/`. `release-please-config.json` declares one
+component per package — `.` at the root, and `core`,
+`socket-io`, `ws` and `multipart` — and
 `.release-please-manifest.json` records the last released
 version of each. On every push to `main`, release-please opens a
 release pull request per package with that package's version
 bump and generated changelog; merging one creates that package's
-tag and GitHub release. The root is tagged `vX.Y.Z`; the three
-package components set `include-component-in-tag`, so their tags
-are `socket-io-vX.Y.Z`, `ws-vX.Y.Z` and `multipart-vX.Y.Z`.
-Nothing is published directly, so a release is a reviewed change
-like any other — and a release pull request is exempt from the
-policy gates by its head ref.
+tag and GitHub release. The root is tagged `vX.Y.Z`; the package
+components set `include-component-in-tag`, so their tags are
+`core-vX.Y.Z`, `socket-io-vX.Y.Z`, `ws-vX.Y.Z` and
+`multipart-vX.Y.Z`. Nothing is published directly, so a release
+is a reviewed change like any other — and a release pull request
+is exempt from the policy gates by its head ref.
 
 Merging a release pull request publishes that package to npm:
 the GitHub release fires `.github/workflows/publish.yml`, which
-resolves the package directory from the tag (`socket-io-v*` is
-`packages/socket-io`, `ws-v*` is `packages/ws`, `multipart-v*`
-is `packages/multipart`, `v*` is the root), checks out the tag,
-builds it with `bun run build`, and runs
-`npm publish <directory> --provenance` under OIDC trusted
-publishing, so no npm token is stored anywhere.
+resolves the package directory from the tag (`core-v*` is
+`packages/core`, `socket-io-v*` is `packages/socket-io`, `ws-v*`
+is `packages/ws`, `multipart-v*` is `packages/multipart`, `v*`
+is the root), checks out the tag, builds it with
+`bun run build`, and runs `npm publish <directory> --provenance`
+under OIDC trusted publishing, so no npm token is stored
+anywhere.
+
+One order matters and no configuration enforces it: the core
+must be published before the root and before the capability
+packages that peer on it (`multipart` requires it, `ws` takes it
+as an optional peer). release-please cuts one independent
+release per package, so publish the core's release first.
 
 ## License
 

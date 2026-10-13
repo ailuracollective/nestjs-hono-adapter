@@ -231,9 +231,10 @@ not a port, and a silent no-op would be worse than a named gap.
   metadata keys `__fastify_route_schema__`,
   `__fastify_route_config__` and
   `__fastify_route_constraints__`. Only `FastifyAdapter` reads
-  those keys, and nothing in `src/` does, so on this adapter the
-  three are no-ops: they neither fail nor change a route. A Hono
-  equivalent would be a new feature, not a port of these.
+  those keys, and nothing in the core's source does, so on this
+  adapter the three are no-ops: they neither fail nor change a
+  route. A Hono equivalent would be a new feature, not a port of
+  these.
 
 Two more are deliberately absent for a reason that is not
 architectural, and each is documented where it belongs:

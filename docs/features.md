@@ -304,7 +304,7 @@ object with `res.type()` and `res.send()`, which a Hono context
 does not carry. Without them such a route answers `500`.
 
 The adapter installs both on the Hono context prototype, once
-per process, in `src/core/express-surface.ts`:
+per process, in `packages/core/src/core/express-surface.ts`:
 
 - `res.type(value)` writes `Content-Type` and returns the
   context, as Express does for chaining.
