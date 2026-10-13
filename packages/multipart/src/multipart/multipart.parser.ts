@@ -6,8 +6,10 @@ import Busboy from 'busboy';
 import type { BusboyConfig } from 'busboy';
 import { Readable } from 'node:stream';
 
-import type { NestContext } from '../../core/context.ts';
-import type { NestRequest } from '../../core/request.ts';
+import type {
+  NestContext,
+  NestRequest,
+} from '@ailura/nestjs-hono-adapter';
 import type {
   IncomingMultipartFile,
   MultipartField,

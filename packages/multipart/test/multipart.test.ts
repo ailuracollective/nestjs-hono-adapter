@@ -25,7 +25,7 @@ import {
   upload,
   withDeadline,
 } from './multipart.support.ts';
-import { request, startProbe } from './probe.ts';
+import { request, startProbe } from '../../../test/probe.ts';
 
 afterAll(cleanup);
 

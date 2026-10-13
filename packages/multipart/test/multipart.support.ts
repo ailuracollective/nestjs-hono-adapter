@@ -18,7 +18,7 @@ import {
 import type {
   MultipartOptions,
   UploadedMultipartFile,
-} from '../src/multipart/index.ts';
+} from '../src/index.ts';
 import {
   AnyFilesInterceptor,
   FileFieldsInterceptor,
@@ -27,8 +27,8 @@ import {
   MultipartModule,
   NoFilesInterceptor,
   diskStorage,
-} from '../src/multipart/index.ts';
-import { request, startProbe } from './probe.ts';
+} from '../src/index.ts';
+import { request, startProbe } from '../../../test/probe.ts';
 
 /** The statuses and payloads the cases below use. */
 const CREATED = 201;

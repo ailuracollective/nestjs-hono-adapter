@@ -326,17 +326,17 @@
       }
     },
     {
-      "files": ["src/multipart/index.ts"],
+      "files": ["packages/multipart/src/index.ts"],
       "rules": {
         "import/group-exports": "off"
       }
     },
     {
       "files": [
-        "src/multipart/interceptors/any-files.interceptor.ts",
-        "src/multipart/interceptors/file-fields.interceptor.ts",
-        "src/multipart/interceptors/file.interceptor.ts",
-        "src/multipart/interceptors/no-files.interceptor.ts"
+        "packages/multipart/src/interceptors/any-files.interceptor.ts",
+        "packages/multipart/src/interceptors/file-fields.interceptor.ts",
+        "packages/multipart/src/interceptors/file.interceptor.ts",
+        "packages/multipart/src/interceptors/no-files.interceptor.ts"
       ],
       "rules": {
         "import/no-relative-parent-imports": "off"
@@ -344,7 +344,7 @@
     },
     {
       "files": [
-        "src/multipart/interceptors/files.interceptor.ts"
+        "packages/multipart/src/interceptors/files.interceptor.ts"
       ],
       "rules": {
         "import/no-relative-parent-imports": "off",
@@ -352,7 +352,9 @@
       }
     },
     {
-      "files": ["src/multipart/multipart/append-field.util.ts"],
+      "files": [
+        "packages/multipart/src/multipart/append-field.util.ts"
+      ],
       "rules": {
         "init-declarations": "off",
         "max-params": "off",
@@ -374,7 +376,7 @@
     },
     {
       "files": [
-        "src/multipart/multipart/multipart.constants.ts"
+        "packages/multipart/src/multipart/multipart.constants.ts"
       ],
       "rules": {
         "sort-keys": "off"
@@ -382,7 +384,7 @@
     },
     {
       "files": [
-        "src/multipart/multipart/multipart.interceptor.factory.ts"
+        "packages/multipart/src/multipart/multipart.interceptor.factory.ts"
       ],
       "rules": {
         "import/max-dependencies": "off",
@@ -392,7 +394,9 @@
       }
     },
     {
-      "files": ["src/multipart/multipart/multipart.parser.ts"],
+      "files": [
+        "packages/multipart/src/multipart/multipart.parser.ts"
+      ],
       "rules": {
         "import/max-dependencies": "off",
         "import/no-relative-parent-imports": "off",
@@ -418,7 +422,9 @@
       }
     },
     {
-      "files": ["src/multipart/multipart/multipart.utils.ts"],
+      "files": [
+        "packages/multipart/src/multipart/multipart.utils.ts"
+      ],
       "rules": {
         "import/no-relative-parent-imports": "off",
         "max-statements": "off",
@@ -427,7 +433,9 @@
       }
     },
     {
-      "files": ["src/multipart/storage/disk.storage.ts"],
+      "files": [
+        "packages/multipart/src/storage/disk.storage.ts"
+      ],
       "rules": {
         "import/no-relative-parent-imports": "off",
         "init-declarations": "off",
@@ -445,7 +453,9 @@
       }
     },
     {
-      "files": ["src/multipart/storage/memory.storage.ts"],
+      "files": [
+        "packages/multipart/src/storage/memory.storage.ts"
+      ],
       "rules": {
         "import/no-relative-parent-imports": "off",
         "unicorn/no-null": "off"

@@ -26,8 +26,8 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 
-import type { MultipartFileStream } from '../src/multipart/index.ts';
-import { FileStreamInterceptor } from '../src/multipart/index.ts';
+import type { MultipartFileStream } from '../src/index.ts';
+import { FileStreamInterceptor } from '../src/index.ts';
 import {
   ABORT_DEADLINE,
   abortingBody,
@@ -35,7 +35,7 @@ import {
   filePart,
   withDeadline,
 } from './multipart.support.ts';
-import { request, startProbe } from './probe.ts';
+import { request, startProbe } from '../../../test/probe.ts';
 
 /** The statuses these cases expect. */
 const CREATED = 201;

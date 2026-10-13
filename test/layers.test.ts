@@ -60,12 +60,6 @@ const REQUIRED = [
   'src/features/static-assets.ts',
   'src/features/views.ts',
   'src/socket-io/index.ts',
-  'src/multipart/index.ts',
-  'src/multipart/multipart.module.ts',
-  'src/multipart/multipart/multipart.interceptor.factory.ts',
-  'src/multipart/multipart/multipart.parser.ts',
-  'src/multipart/storage/index.ts',
-  'src/multipart/storage/disk.storage.ts',
 ];
 
 /**
@@ -115,9 +109,10 @@ function crossing(
 
 /** The directory each island is rooted at, and its layer. */
 const ISLANDS: Readonly<Record<string, Layer>> = {
+  'packages/multipart/src': 'multipart',
   'packages/ws/src': 'ws',
+
   'src/features': 'features',
-  'src/multipart': 'multipart',
   'src/socket-io': 'socket-io',
 };
 
@@ -127,7 +122,7 @@ function layerOf(file: string): Layer | undefined {
   if (directory === 'src/core') {
     return 'core';
   }
-  if (directory.startsWith('src/multipart/')) {
+  if (directory.startsWith('packages/multipart/src/')) {
     return 'multipart';
   }
   if (
@@ -315,6 +310,10 @@ async function scanAll(): Promise<Edge[]> {
       path.join(ROOT, 'packages', 'socket-io', 'src'),
       [],
     )),
+    ...(await scan(
+      path.join(ROOT, 'packages', 'multipart', 'src'),
+      [],
+    )),
   ];
 }
 
@@ -415,7 +414,7 @@ test('the first three rules count a type import as an edge', () => {
 
 test('the socket.io island reaching the application is refused', () => {
   const forbidden = crossing(
-    'src/socket-io/io-adapter.ts',
+    'packages/socket-io/src/adapter.ts',
     'src/core/server-adapter.ts',
   );
   expect(socketIoReachesApp([forbidden])).toStrictEqual([
@@ -425,7 +424,7 @@ test('the socket.io island reaching the application is refused', () => {
 
 test('and refused as a type too, unlike the ws island', () => {
   const typed = crossing(
-    'src/socket-io/io-adapter.ts',
+    'packages/socket-io/src/adapter.ts',
     'src/core/server-adapter.ts',
     true,
   );
@@ -475,7 +474,7 @@ test('the ws island reaches the application through no value', async () => {
 
 test('the upload island reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
-    'src/multipart/storage/disk.storage.ts',
+    'packages/multipart/src/storage/disk.storage.ts',
     'src/core/body.ts',
   );
   expect(multipartReachesApp([forbidden])).toStrictEqual([
@@ -485,7 +484,7 @@ test('the upload island reaching the application is refused when it is a value',
 
 test('the marker is the one value edge the island may take', () => {
   const marker = crossing(
-    'src/multipart/multipart/multipart.interceptor.factory.ts',
+    'packages/multipart/src/multipart/multipart.interceptor.factory.ts',
     'src/core/multipart.ts',
   );
   expect(multipartReachesApp([marker])).toStrictEqual([]);
@@ -493,7 +492,7 @@ test('the marker is the one value edge the island may take', () => {
 
 test('every other edge the island takes is a type', () => {
   const erased = crossing(
-    'src/multipart/multipart/multipart.parser.ts',
+    'packages/multipart/src/multipart/multipart.parser.ts',
     'src/core/request.ts',
     true,
   );
@@ -506,47 +505,20 @@ test('the upload island reaches the application through no value but the marker'
   );
 });
 
-test('the edges from the upload island into the application are the marker and types', async () => {
+test('the upload island takes the application as a package', async () => {
   const edges = await scanAll();
-  const intoApp = edges
-    .filter(
-      (edge) =>
-        layerOf(edge.from) === 'multipart' &&
-        (layerOf(edge.to) === 'core' ||
-          layerOf(edge.to) === 'features'),
-    )
-    .toSorted((left, right) =>
-      `${left.from} ${left.to}`.localeCompare(
-        `${right.from} ${right.to}`,
-      ),
-    );
-  expect(intoApp).toStrictEqual([
-    {
-      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
-      to: 'src/core/context.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
-      to: 'src/core/multipart.ts',
-      typeOnly: false,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.interceptor.factory.ts',
-      to: 'src/core/request.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.parser.ts',
-      to: 'src/core/context.ts',
-      typeOnly: true,
-    },
-    {
-      from: 'src/multipart/multipart/multipart.parser.ts',
-      to: 'src/core/request.ts',
-      typeOnly: true,
-    },
-  ]);
+  const intoApp = edges.filter(
+    (edge) =>
+      layerOf(edge.from) === 'multipart' &&
+      (layerOf(edge.to) === 'core' ||
+        layerOf(edge.to) === 'features'),
+  );
+  const manifest = await readFile(
+    path.join(ROOT, 'packages', 'multipart', 'package.json'),
+    'utf8',
+  );
+  expect(intoApp).toStrictEqual([]);
+  expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
 test('the ws island takes the application as a package, not as edges', async () => {

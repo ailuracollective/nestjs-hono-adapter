@@ -16,7 +16,7 @@ const WS_ENTRY = path.resolve(
 );
 const MULTIPART_ENTRY = path.resolve(
   import.meta.dirname,
-  '../src/multipart/index.ts',
+  '../packages/multipart/src/index.ts',
 );
 const SOCKET_IO_ENTRY = path.resolve(
   import.meta.dirname,
@@ -183,6 +183,7 @@ test.each(
     import.meta.dirname,
     '..',
     entry.default
+      .replace('./dist/multipart/', './packages/multipart/src/')
       .replace('./dist/ws/', './packages/ws/src/')
       .replace('./dist/', './src/')
       .replace(/\.js$/u, '.ts'),
@@ -198,7 +199,7 @@ test('the socket.io entry point does reach socket.io', async () => {
     SOCKET_IO_PEER,
   );
   const names = carriers.map((file) => path.basename(file));
-  expect(names).toContain('io-adapter.ts');
+  expect(names).toContain('adapter.ts');
 });
 
 test('the HTTP entry point reaches no upload parser', async () => {

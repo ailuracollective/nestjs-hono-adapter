@@ -23,16 +23,12 @@ const SOURCE_ROOT = path.resolve(import.meta.dirname, '../src');
  */
 const FROZEN_NODE_BUILTINS = [
   'node:buffer',
-  'node:crypto',
   'node:events',
-  'node:fs',
   'node:fs/promises',
   'node:http',
   'node:https',
-  'node:os',
   'node:path',
   'node:stream',
-  'node:stream/promises',
   'node:util',
 ];
 

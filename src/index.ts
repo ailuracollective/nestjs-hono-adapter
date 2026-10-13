@@ -37,6 +37,15 @@ export type {
   NextHandler,
   TrustProxy,
 } from './core/request.ts';
+
+/**
+ * Marks an adapter whose `multipart/form-data` bodies a
+ * capability package consumes. It is public because the upload
+ * package lives outside this one and has to reach the seam;
+ * nothing else needs it, and an adapter nothing marks carries
+ * no trace of an upload.
+ */
+export { declareMultipart } from './core/multipart.ts';
 export type {
   NestEnv,
   NestContext,

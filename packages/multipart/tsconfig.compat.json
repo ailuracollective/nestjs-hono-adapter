@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../../dist/multipart",
+    "paths": {
+      "@ailura/nestjs-hono-adapter": ["../../dist/index.d.ts"]
+    }
+  },
+  "include": ["index.ts", "src/**/*.ts"]
+}

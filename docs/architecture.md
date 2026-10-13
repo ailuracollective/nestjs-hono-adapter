@@ -306,11 +306,12 @@ CI runs it again as its own job.
 
 The ceilings are ratchets. Growth past one fails, and moving one
 is an explicit edit that has to be justified here. Today:
-`index` has an 11500-byte ceiling and a measurement of 11491,
-`bun-server` 1024/981, `node-server` 560/506, `fetch` 490/487,
-`multipart` 4250/4206, and `socket-io` 950/948; the `ws` ceiling
-was retired with the entrypoint when the WebSocket adapter moved
-to its own package.
+`index` has an 11550-byte ceiling and a measurement of 11530,
+twenty bytes of it the published multipart marker, which a
+public export keeps alive; `bun-server` 1024/981, `node-server`
+560/506, `fetch` 490/487, `multipart` 4250/4200, `ws` 1550/1543
+and `socket-io` 950/948. The WebSocket and upload entrypoints
+are emitted from their packages now, at the ceilings they had.
 
 **`inject()`.** Fastify's in-process request helper costs 1073
 bytes in `index` — 9754 before, 10827 after — against a

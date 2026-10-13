@@ -2,7 +2,7 @@
   {
     "name": "index",
     "path": "dist/index.js",
-    "limit": 11510,
+    "limit": 11550,
     "brotli": true,
     "ignore": [
       "hono",
@@ -92,6 +92,7 @@
     "limit": 4250,
     "brotli": true,
     "ignore": [
+      "@ailura/nestjs-hono-adapter",
       "hono",
       "@hono/node-server",
       "@nestjs/common",

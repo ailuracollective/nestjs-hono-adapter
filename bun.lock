@@ -100,6 +100,15 @@
         "wrangler": "4.136.2",
       },
     },
+    "packages/multipart": {
+      "name": "@ailura/nestjs-hono-adapter-multipart",
+      "version": "1.4.1",
+      "peerDependencies": {
+        "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
+        "@nestjs/common": ">=11 <13",
+        "busboy": "^1.6.0",
+      },
+    },
     "packages/socket-io": {
       "name": "@ailura/nestjs-hono-adapter-socket-io",
       "version": "1.4.1",
@@ -133,9 +142,13 @@
     },
   },
   "packages": {
+    "@ailura/nestjs-hono-adapter": ["@ailura/nestjs-hono-adapter@1.4.1", "", { "peerDependencies": { "@hono/node-server": "^2.1.1", "@hono/node-ws": "^1.3.1", "@nestjs/common": ">=11 <13", "@nestjs/core": ">=11 <13", "@nestjs/websockets": ">=11 <13", "hono": "^4.13.8" }, "optionalPeers": ["@hono/node-ws", "@nestjs/websockets"] }, "sha512-5nQzB7w7SkhOMwn9DQ5Lhv+SnNQkyTuOyMBAKtvvlyWrJ4vjrt8yVBXbIC99QyRrjPPK5z8JGc5CSpQkbtWeyw=="],
+
     "@ailura/nestjs-hono-adapter-example-cloudflare-fetch": ["@ailura/nestjs-hono-adapter-example-cloudflare-fetch@workspace:examples/cloudflare/fetch"],
 
     "@ailura/nestjs-hono-adapter-example-cloudflare-node": ["@ailura/nestjs-hono-adapter-example-cloudflare-node@workspace:examples/cloudflare/node"],
+
+    "@ailura/nestjs-hono-adapter-multipart": ["@ailura/nestjs-hono-adapter-multipart@workspace:packages/multipart"],
 
     "@ailura/nestjs-hono-adapter-socket-io": ["@ailura/nestjs-hono-adapter-socket-io@workspace:packages/socket-io"],
 
