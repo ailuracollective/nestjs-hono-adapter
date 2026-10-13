@@ -35,4 +35,31 @@ class GatewayServer extends EventEmitter {
   }
 }
 
-export { CONNECTION_EVENT, GatewayServer };
+/** The path a gateway listens on when it named none. */
+const ROOT_PATH = '/';
+
+/** What Nest passes to `create()` for one gateway. */
+interface HonoGatewayOptions {
+  /** The path the gateway listens on. */
+  readonly path?: string;
+  /**
+   * Whatever else the gateway asked for, which upstream reads
+   * as `server` and `namespace` and this adapter refuses beyond
+   * the path, because it serves the HTTP adapter's own server.
+   */
+  readonly [option: string]: unknown;
+}
+
+/** Gives a gateway path the leading slash a route needs. */
+function normalizePath(path?: string): string {
+  if (path === undefined || path === '') {
+    return ROOT_PATH;
+  }
+  if (path.startsWith(ROOT_PATH)) {
+    return path;
+  }
+  return `/${path}`;
+}
+
+export { CONNECTION_EVENT, GatewayServer, normalizePath };
+export type { HonoGatewayOptions };

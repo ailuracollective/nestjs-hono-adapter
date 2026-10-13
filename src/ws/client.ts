@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 
 import type { WSContext } from 'hono/ws';
 
-import type { Logger } from '@nestjs/common';
+import type { Logger, WsMessageHandler } from '@nestjs/common';
 
 /** The event a frame from the client arrives on. */
 const MESSAGE_EVENT = 'message';
@@ -246,13 +246,47 @@ class HonoSocket extends EventEmitter {
   }
 }
 
+/** What a deployment may hand the adapter when it builds one. */
+interface HonoWsAdapterOptions {
+  /** Reads the frames every gateway of this adapter receives. */
+  readonly messageParser?: MessageParser;
+}
+
+/**
+ * The part of a message event this adapter reads, named here
+ * rather than taken from the DOM library this package does not
+ * build against.
+ */
+interface WsMessageEvent {
+  /** The frame the socket delivered. */
+  readonly data: unknown;
+}
+
+/** The handlers of one gateway, by the event each answers. */
+function indexHandlers(
+  handlers: WsMessageHandler[],
+): Map<string, WsMessageHandler> {
+  const byEvent = new Map<string, WsMessageHandler>();
+  for (const handler of handlers) {
+    byEvent.set(handler.message, handler);
+  }
+  return byEvent;
+}
+
 export {
   CLOSE_EVENT,
   MESSAGE_EVENT,
   HonoSocket,
+  indexHandlers,
   isReply,
   parseFrame,
   readFrame,
   toReply,
 };
-export type { MessageParser, WsFrame, WsReply };
+export type {
+  HonoWsAdapterOptions,
+  MessageParser,
+  WsFrame,
+  WsMessageEvent,
+  WsReply,
+};

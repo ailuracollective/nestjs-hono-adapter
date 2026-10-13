@@ -28,13 +28,24 @@ import {
   CLOSE_EVENT,
   HonoSocket,
   MESSAGE_EVENT,
+  indexHandlers,
   isReply,
   parseFrame,
   readFrame,
   toReply,
 } from './client.ts';
-import type { MessageParser, WsFrame } from './client.ts';
-import { CONNECTION_EVENT, GatewayServer } from './server.ts';
+import type {
+  HonoWsAdapterOptions,
+  MessageParser,
+  WsFrame,
+  WsMessageEvent,
+} from './client.ts';
+import {
+  CONNECTION_EVENT,
+  GatewayServer,
+  normalizePath,
+} from './server.ts';
+import type { HonoGatewayOptions } from './server.ts';
 
 /** The port a gateway asks for when it keeps the HTTP one. */
 const UNDERLYING_PORT = 0;
@@ -42,61 +53,8 @@ const UNDERLYING_PORT = 0;
 /** The event a socket, or the server itself, fails on. */
 const ERROR_EVENT = 'error';
 
-/** The path a gateway listens on when it named none. */
-const ROOT_PATH = '/';
-
 /** The event Node reports a protocol upgrade on. */
 const UPGRADE_EVENT = 'upgrade';
-
-/** What a deployment may hand the adapter when it builds one. */
-interface HonoWsAdapterOptions {
-  /** Reads the frames every gateway of this adapter receives. */
-  readonly messageParser?: MessageParser;
-}
-
-/** What Nest passes to `create()` for one gateway. */
-interface HonoGatewayOptions {
-  /** The path the gateway listens on. */
-  readonly path?: string;
-  /**
-   * Whatever else the gateway asked for, which upstream reads
-   * as `server` and `namespace` and this adapter refuses beyond
-   * the path, because it serves the HTTP adapter's own server.
-   */
-  readonly [option: string]: unknown;
-}
-
-/**
- * The part of a message event this adapter reads, named here
- * rather than taken from the DOM library this package does not
- * build against.
- */
-interface WsMessageEvent {
-  /** The frame the socket delivered. */
-  readonly data: unknown;
-}
-
-/** Gives a gateway path the leading slash a route needs. */
-function normalizePath(path?: string): string {
-  if (path === undefined || path === '') {
-    return ROOT_PATH;
-  }
-  if (path.startsWith(ROOT_PATH)) {
-    return path;
-  }
-  return `/${path}`;
-}
-
-/** The handlers of one gateway, by the event each answers. */
-function indexHandlers(
-  handlers: WsMessageHandler[],
-): Map<string, WsMessageHandler> {
-  const byEvent = new Map<string, WsMessageHandler>();
-  for (const handler of handlers) {
-    byEvent.set(handler.message, handler);
-  }
-  return byEvent;
-}
 
 /**
  * Removes the upgrade listeners `@hono/node-ws` installed on
@@ -447,4 +405,3 @@ class HonoWsAdapter extends AbstractWsAdapter {
 }
 
 export { HonoWsAdapter };
-export type { HonoGatewayOptions, HonoWsAdapterOptions };
