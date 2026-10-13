@@ -114,10 +114,23 @@ Nest's own `BadRequestException`, and one over `bodyLimit` with
 `PayloadTooLargeException`, so both travel through the exception
 layer and its filters.
 
+A textual payload is decoded with the `charset` its
+`content-type` declares: `utf-8`, `utf-16le` and `utf-16be`,
+with or without the dash. A declared charset outside that
+family, or a `Content-Encoding` other than `identity`, is
+refused with `415` — the status `body-parser` answers both with,
+under `charset.unsupported` and `encoding.unsupported`. The
+platform adapters inflate `gzip` and `deflate`; this one reads
+the bytes as sent, so a client that compresses its payload
+reaches them and not this adapter.
+
 `app.useBodyParser('json', { limit: '1kb' })` ignores the parser
 name and sets one limit for the adapter, so the size applies to
 every parser and every route, and it replaces the `bodyLimit`
-option. Called without a `limit` it changes nothing.
+option. The limit is the one option it reads: any other —
+`inflate`, `verify`, `extended`, `strict` — is refused by name
+when the call is made, rather than accepted and dropped. Called
+without a `limit` it changes nothing.
 
 With `rawBody: true` — the adapter option, or the same option on
 `NestFactory.create` — `NestRequest.rawBody` holds the bytes

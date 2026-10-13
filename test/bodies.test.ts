@@ -1,7 +1,13 @@
 import { expect, test } from 'bun:test';
+
+import { Buffer } from 'node:buffer';
+import { promisify } from 'node:util';
+import { gzip } from 'node:zlib';
+
 import { HttpStatus } from '@nestjs/common';
 
 import { toByteLimit } from '../src/core/body.ts';
+import type { BodyParserOptions } from '../src/index.ts';
 import {
   MarkerFilter,
   jsonRequest,
@@ -61,6 +67,54 @@ function chunkedBody(): {
     pulled: () => pulled * CHUNK,
     total: CHUNKS * CHUNK,
   };
+}
+
+/** A JSON document, in the bytes a case sends it as. */
+const JSON_BODY = '{"hello":"world"}';
+
+/** One payload a socket reader is handed, and what it answers. */
+interface DeclaredCase {
+  readonly body: Uint8Array;
+  readonly headers: Record<string, string>;
+  readonly name: string;
+  readonly status: number;
+  readonly value?: unknown;
+}
+
+/**
+ * What a reader does with a payload that declares its own
+ * encoding. The compressed one is built here, because the bytes
+ * of a gzip stream are not a literal.
+ */
+async function declaredCases(): Promise<DeclaredCase[]> {
+  return [
+    {
+      body: Buffer.from(JSON_BODY, 'utf16le'),
+      headers: {
+        'content-type': 'application/json; charset=utf-16le',
+      },
+      name: 'a UTF-16LE JSON body is decoded',
+      status: HttpStatus.CREATED,
+      value: { hello: 'world' },
+    },
+    {
+      body: Buffer.from(JSON_BODY),
+      headers: {
+        'content-type': 'application/json; charset=iso-8859-1',
+      },
+      name: 'a charset outside the UTF family is refused',
+      status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+    },
+    {
+      body: await promisify(gzip)(Buffer.from(JSON_BODY)),
+      headers: {
+        'content-encoding': 'gzip',
+        'content-type': 'application/json',
+      },
+      name: 'a body it would have to inflate is refused',
+      status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+    },
+  ];
 }
 
 test('a JSON body reaches the handler that asked for it', async () => {
@@ -353,6 +407,57 @@ test('a body that declares no length is refused while it is read', async () => {
       LOOKAHEAD_CHUNKS * CHUNK,
     );
     expect(stream.pulled()).toBeLessThan(stream.total);
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a socket reader honours what the payload declares', async () => {
+  const probe = await startProbe({ mode: 'socket' });
+  try {
+    const cases = await declaredCases();
+    const answers = await Promise.all(
+      cases.map(async (item) => ({
+        item,
+        response: await request(probe, '/echo', {
+          body: item.body,
+          headers: item.headers,
+          method: 'POST',
+        }),
+      })),
+    );
+    for (const { item, response } of answers) {
+      expect(response.status).toBe(item.status);
+      if (item.value !== undefined) {
+        expect(response.body).toStrictEqual(item.value);
+      }
+    }
+  } finally {
+    await probe.close();
+  }
+});
+
+/**
+ * Options as a caller writing plain JavaScript reaches them:
+ * the one the typed surface carries, plus whatever else was
+ * passed.
+ */
+type CallerOptions = BodyParserOptions &
+  Record<string, unknown>;
+
+test('refuses a parser option it cannot honour', async () => {
+  const probe = await startProbe({ mode: 'in-process' });
+  try {
+    const options: CallerOptions = { extended: true };
+    let refusal = '';
+    try {
+      probe.adapter.useBodyParser('urlencoded', false, options);
+    } catch (error) {
+      if (error instanceof Error) {
+        refusal = error.message;
+      }
+    }
+    expect(refusal).toContain('extended');
   } finally {
     await probe.close();
   }
