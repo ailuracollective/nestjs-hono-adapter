@@ -196,6 +196,7 @@
         "packages/core/src/core/hono-lifecycle.ts",
         "packages/core/src/core/request.ts",
         "packages/core/src/features/static-assets.ts",
+        "packages/core/src/servers/bun-runtime.ts",
         "packages/core/src/servers/bun.ts",
         "packages/core/src/servers/node.ts",
         "packages/ws/src/adapter.ts"
@@ -212,12 +213,9 @@
       "rules": { "max-lines": ["error", { "max": 450 }] }
     },
     {
-      "files": [
-        "packages/core/src/core/server-adapter.ts",
-        "packages/core/src/servers/bun.ts"
-      ],
-      // 450: the adapter's composition root and the Bun transport
-      // it binds, each a list of what it mounts.
+      "files": ["packages/core/src/core/server-adapter.ts"],
+      // 450: the adapter's composition root, a list of what it
+      // mounts.
       "rules": { "max-lines": ["error", { "max": 450 }] }
     },
     {
