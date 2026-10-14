@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  HttpException,
   PayloadTooLargeException,
 } from '@nestjs/common';
 
@@ -20,6 +19,20 @@ const isPlainObject = (
   }
   return !Array.isArray(value);
 };
+
+/** Says whether a value is a Nest HTTP exception, across copies. */
+const isHttpException = (value: unknown): boolean =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof Reflect.get(value, 'getStatus') === 'function';
+
+/** Says whether a value is a file Nest built, across copies. */
+const isStreamableFile = (
+  value: unknown,
+): value is { getStream: () => unknown } =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof Reflect.get(value, 'getStream') === 'function';
 
 /** Merges the module's options with an interceptor's. */
 const mergeOptions = (
@@ -44,7 +57,7 @@ const mergeOptions = (
 
 /** Maps a parser failure to the HTTP exception multer gives. */
 const transformException = (error: unknown): unknown => {
-  if (error === undefined || error instanceof HttpException) {
+  if (error === undefined || isHttpException(error)) {
     return error;
   }
   if (error instanceof MultipartError) {
@@ -77,4 +90,9 @@ const transformException = (error: unknown): unknown => {
   return error;
 };
 
-export { mergeOptions, transformException };
+export {
+  isHttpException,
+  isStreamableFile,
+  mergeOptions,
+  transformException,
+};

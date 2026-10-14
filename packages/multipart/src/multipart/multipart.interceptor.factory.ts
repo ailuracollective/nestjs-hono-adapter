@@ -1,9 +1,4 @@
-import {
-  Inject,
-  mixin,
-  Optional,
-  StreamableFile,
-} from '@nestjs/common';
+import { Inject, mixin, Optional } from '@nestjs/common';
 import type {
   CallHandler,
   ExecutionContext,
@@ -35,7 +30,10 @@ import {
   validateLimits,
 } from './multipart.parser.ts';
 import type { UploadSpec } from './multipart.parser.ts';
-import { mergeOptions } from './multipart.utils.ts';
+import {
+  mergeOptions,
+  isStreamableFile,
+} from './multipart.utils.ts';
 
 /** What every upload interceptor shares. */
 abstract class MultipartInterceptorHost
@@ -128,7 +126,7 @@ const keepsUpload = (
   result: unknown,
   file: MultipartFileStream | undefined,
 ): boolean =>
-  result instanceof StreamableFile &&
+  isStreamableFile(result) &&
   file !== undefined &&
   result.getStream() === file.stream;
 
