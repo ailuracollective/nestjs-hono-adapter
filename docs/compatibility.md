@@ -130,6 +130,27 @@ answering the way its author wrote. A string body is labelled
 `text/html`, as Express labels it, unless the handler declared a
 content type itself.
 
+#### Why a step never returns `next()`
+
+Hono's `Next` is declared `() => Promise<void>`, but `compose()`
+ends with `return context` and `dispatch()` then writes whatever
+a middleware returned onto `context.res` while the context is
+unfinalized. `next()` therefore resolves to the **context**, and
+a step that returned it left the answer as the context itself:
+every later `context.res.headers` read threw, and the request
+failed as a `500`. Both front steps answer through `passed()`,
+which keeps a continuation's value only when it is a `Response`.
+
+A Nest middleware may also call `next()` **without awaiting it**
+— `nestjs-i18n`'s does, and Nest's contract allows it. It hands
+the continuation to something it never waits for — its own
+wrapper runs `middleware.use(req, res, noop)` and answers with a
+bare `next(err)` — so the route runs on its own and Hono
+finishes the chain with the context unfinalized. `forwardFrom()`
+remembers the continuation and both bridges — the route bridge
+and the Express error bridge — await it before handing the chain
+back.
+
 #### Which status the answer carries
 
 Nest records a status against every `@Res()` response _before_

@@ -23,20 +23,24 @@ interface InstrumentationState {
 const instrumentationStep =
   (state: InstrumentationState): MiddlewareHandler<NestEnv> =>
   async (context, next) => {
-    const onRequest = state.onRequest();
-    const onResponse = state.onResponse();
-    if (onRequest === undefined && onResponse === undefined) {
-      return next();
+    if (
+      state.onRequest() === undefined &&
+      state.onResponse() === undefined
+    ) {
+      // oxlint-disable-next-line node/callback-return -- next() resolves to the context, so returning it answers with the context itself.
+      await next();
+      return;
     }
     const args = hookArgsOf(context, state.trustProxy);
     try {
+      const onRequest = state.onRequest();
       if (onRequest !== undefined) {
         await holdRequest(onRequest, args);
       }
-      // oxlint-disable-next-line node/callback-return -- the response hook runs once the chain has settled, so the result of next() is awaited here rather than returned through: there is nowhere to return it from.
+      // oxlint-disable-next-line node/callback-return -- the response hook runs once the chain has settled, so next() is awaited here rather than returned through.
       await next();
     } finally {
-      await reportAnswered(onResponse, args);
+      await reportAnswered(state.onResponse(), args);
     }
   };
 

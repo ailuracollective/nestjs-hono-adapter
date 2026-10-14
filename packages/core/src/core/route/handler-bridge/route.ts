@@ -11,6 +11,7 @@ import {
   settledAs,
   watchFailure,
 } from './request.ts';
+import { forwardFrom } from './forwarded.ts';
 import { NOOP_NEXT } from './types.ts';
 import type {
   BridgeOptions,
@@ -33,8 +34,9 @@ const createRouteHandler =
     const started = interceptor(context, () =>
       options.pendingStatus(context),
     );
+    const forwarded = forwardFrom(next);
     const handled = Promise.resolve(
-      handler(request, context, next),
+      handler(request, context, forwarded.next),
     );
     const outcome = await Promise.race([
       settledAs(handled, 'handled'),
@@ -42,6 +44,8 @@ const createRouteHandler =
     ]);
     if (outcome === 'streaming') {
       void watchFailure(handled);
+    } else {
+      await forwarded.settled();
     }
     return context.res;
   };

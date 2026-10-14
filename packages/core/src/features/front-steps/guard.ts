@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import type { Context, MiddlewareHandler } from 'hono';
 
 import type { NestEnv } from '#adapter/core/context';
+import { passed } from './passed.ts';
 
 /** The refusal body a closing server answers with. */
 const CLOSING_BODY = {
@@ -28,24 +29,6 @@ const closingAnswer = (): Response =>
     headers: { connection: 'close' },
     status: HttpStatus.SERVICE_UNAVAILABLE,
   });
-
-/**
- * Runs a continuation and hands back only what Hono may store
- * as the answer.
- *
- * Hono's `next()` resolves to the **context**, not to `void`:
- * `compose()` ends with `return context`. A middleware that
- * returns it makes Hono write `context.res = context`, and
- * every later read of `context.res.headers` then throws. The
- * value is only ever useful when the continuation answered with
- * a response of its own, which is what this keeps.
- */
-const passed = async (
-  run: () => Promise<unknown>,
-): Promise<Response | undefined> => {
-  const answered = await run();
-  return answered instanceof Response ? answered : undefined;
-};
 
 /** Writes the closing refusal over the headers CORS just added. */
 const refuse = async (
