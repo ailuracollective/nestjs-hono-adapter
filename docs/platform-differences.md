@@ -13,8 +13,8 @@ slash is significant, the body limit is 1 MiB, and there is no
 `X-Powered-By` or `ETag` on the way out. Two defaults follow
 **Express 4** instead: `@Query()` and URL-encoded bodies parse
 with the `qs` grammar, and an empty JSON body reads as `{}`
-(Express 5 reads the query flat; bracket syntax nests here, so
-`filter[name]` is not a literal key).
+(Express 5 and Fastify read the query flat; bracket syntax nests
+here, so `filter[name]` is not a literal key).
 
 | Situation                                      | This adapter                                          | Express                                      | Fastify                    |
 | ---------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- | -------------------------- |
@@ -58,11 +58,11 @@ it sits, skipping `q` weights and earlier media ranges.
 
 ## Query strings
 
-`@Query()` gets the platform parsers' shape: a repeated name
-becomes a list, `tags[]` appends, `tags[0]` indexes and
-`filter[name]` nests; values are percent-decoded, `+` reads as a
-space, and `__proto__`, `constructor` and `prototype` are
-dropped rather than written into the tree.
+`@Query()` gets Express 4's `qs` shape: a repeated name becomes
+a list, `tags[]` appends, `tags[0]` indexes and `filter[name]`
+nests; values are percent-decoded, `+` reads as a space, and
+`__proto__`, `constructor` and `prototype` are dropped rather
+than written into the tree.
 
 ## Request bodies
 
@@ -86,8 +86,9 @@ its declared `charset` (`content-type`; `utf-8`, `utf-16le`,
 `utf-16be`, with or without the dash); any other charset, or a
 `Content-Encoding` other than `identity`, is refused with `415`
 (`body-parser`'s status, `charset.unsupported`,
-`encoding.unsupported`). The platform adapters inflate `gzip`
-and `deflate`; this one reads the bytes as sent.
+`encoding.unsupported`). Express inflates `gzip` and `deflate`;
+Fastify and this adapter do not — Fastify answers `400` for the
+body it cannot parse, this one refuses the encoding with `415`.
 
 `app.useBodyParser('json', false, { limit: '1kb' })` accepts
 `json`, `urlencoded`, `text` and `raw` names (others refused
