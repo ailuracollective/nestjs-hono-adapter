@@ -1,5 +1,3 @@
-import { StreamableFile } from '@nestjs/common';
-
 import { defaultContentType } from '#adapter/core/response/headers';
 
 import {
@@ -9,6 +7,7 @@ import {
   isPrimitive,
 } from './content.ts';
 import {
+  isStreamableFile,
   toBinaryResponse,
   toFileResponse,
   toTextResponse,
@@ -39,7 +38,7 @@ const toResponse = (
   ) {
     return new Response(undefined, { headers, status });
   }
-  if (body instanceof StreamableFile) {
+  if (isStreamableFile(body)) {
     return toFileResponse(body, status, headers);
   }
   if (isBinaryBody(body)) {

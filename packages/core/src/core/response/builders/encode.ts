@@ -1,7 +1,5 @@
 import { Readable } from 'node:stream';
 
-import type { StreamableFile } from '@nestjs/common';
-
 import {
   defaultContentType,
   setDisposition,
@@ -11,6 +9,27 @@ import {
   BINARY_CONTENT_TYPE,
   TEXT_CONTENT_TYPE,
 } from './content.ts';
+
+/** The surface a file Nest built answers with, by shape. */
+interface StreamableFileLike {
+  /** The headers the file declares. */
+  getHeaders: () => {
+    type?: string | undefined;
+    disposition?: string | string[] | undefined;
+    length?: number | undefined;
+  };
+  /** The stream the file carries. */
+  getStream: () => Readable;
+}
+
+/** Says whether a value is a file Nest built, across copies. */
+const isStreamableFile = (
+  value: unknown,
+): value is StreamableFileLike =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof Reflect.get(value, 'getStream') === 'function' &&
+  typeof Reflect.get(value, 'getHeaders') === 'function';
 
 const toBodyStream = (stream: Readable): ReadableStream => {
   const web = Readable.toWeb(stream);
@@ -32,12 +51,12 @@ const toTextResponse = (
 
 /** Streams a file Nest built, keeping the headers it declares. */
 const toFileResponse = (
-  file: StreamableFile,
+  file: StreamableFileLike,
   status: number,
   headers: Headers,
 ): Response => {
   const { type, disposition, length } = file.getHeaders();
-  if (type !== '') {
+  if (type !== undefined && type !== '') {
     headers.set('content-type', type);
   }
   if (disposition !== undefined) {
@@ -67,8 +86,10 @@ const toBinaryResponse = (
 };
 
 export {
+  isStreamableFile,
   toBinaryResponse,
   toBodyStream,
   toFileResponse,
   toTextResponse,
 };
+export type { StreamableFileLike };
