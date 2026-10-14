@@ -142,6 +142,11 @@ covers every `HttpServer` (Express and Fastify included, which
 lack it). Name [`NestHonoApplication`](#nesthonoapplication) —
 it narrows the adapter instead of widening the contract.
 
+`getType()` answers `'hono'`, not `'express'` or `'fastify'`,
+since the adapter wraps neither. Among the packages the suite
+runs, only `@nestjs/swagger` reads it, and it takes the
+`useStaticAssets()` branch, which this adapter serves.
+
 ## Uploads
 
 ### Interceptors
