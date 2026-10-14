@@ -91,8 +91,12 @@ jobs:
       - run: bun run size
 
   compat:
-    # Every Nest package moves together: a mixed install is what a WebSocket or
-    # microservice case would fail on, not the adapter. The suite runs on Bun.
+    # Every Nest package moves together: a mixed install is what a WebSocket,
+    # microservice or bridge case would fail on, not the adapter. A bridge
+    # package's peers move with the matrix too, and their majors are not the
+    # core's — `@nestjs/graphql`/`@nestjs/apollo` are core + 2 and
+    # `@nestjs/serve-static` is 5 for the 11 line and 12 for the 12 line.
+    # The suite runs on Bun.
     if:
       github.event_name != 'pull_request' ||
       github.event.pull_request.draft == false
@@ -100,7 +104,13 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        nest: ['11', '12']
+        include:
+          - nest: '11'
+            nestGraphql: '13'
+            nestServeStatic: '5'
+          - nest: '12'
+            nestGraphql: '14'
+            nestServeStatic: '12'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -113,4 +123,7 @@ jobs:
           @nestjs/websockets@${{ matrix.nest }}.x
           @nestjs/microservices@${{ matrix.nest }}.x
           @nestjs/testing@${{ matrix.nest }}.x
+          @nestjs/graphql@${{ matrix.nestGraphql }}
+          @nestjs/apollo@${{ matrix.nestGraphql }}
+          @nestjs/serve-static@${{ matrix.nestServeStatic }}
       - run: bun run typecheck && bun run build && bun test

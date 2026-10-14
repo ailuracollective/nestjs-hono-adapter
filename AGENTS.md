@@ -164,7 +164,7 @@ region is covered in
   the published entrypoint.
 - **The compat matrix tests NestJS 11 and 12 on Bun.** Every
   Nest package moves together; a mixed install is what a
-  WebSocket or microservice case would fail on.
+  WebSocket, microservice or bridge case would fail on.
 - **`packages/benchmarks/` is private and never published.** It
   is a workspace package like the others, so `bun run check`
   lints, formats and typechecks it; but it has no release entry

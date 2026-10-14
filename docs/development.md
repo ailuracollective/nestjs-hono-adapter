@@ -21,25 +21,27 @@ oxlint, oxfmt, `tsc`, `bun test` and size-limit.
 
 Every part of the adapter is a workspace package: `core` is the
 adapter, published as `@ailura/nestjs-hono-adapter`; `ws`,
-`socket-io` and `multipart` are the capability packages. The
+`socket-io` and `multipart` are the capability packages; and
+`graphql` and `serve-static` are the compatibility bridges. The
 root is only the private Bun workspace root — no `src/`, no
 published package. The build order is the adapter first, then
-the capabilities: `build:core` compiles into
-`packages/core/dist`, which `.`, `./bun-server`, `./node-server`
-and `./fetch` serve, and each capability compiles into its own
-`dist/` (`packages/ws/dist`, `packages/socket-io/dist`,
-`packages/multipart/dist`) — it builds first because the
-capabilities resolve it through
-`node_modules/@ailura/nestjs-hono-adapter` →
+the rest: `build:core` compiles into `packages/core/dist`, which
+`.`, `./bun-server`, `./node-server` and `./fetch` serve, and
+each other package compiles into its own `dist/`
+(`packages/ws/dist`, `packages/socket-io/dist`,
+`packages/multipart/dist`, `packages/graphql/dist`,
+`packages/serve-static/dist`) — it builds first because they
+resolve it through `node_modules/@ailura/nestjs-hono-adapter` →
 `packages/core/dist` and a clean checkout has no core `dist`, so
-`test` and `typecheck` build it first too and `ws` and
-`multipart` read its declarations from there. Each package
+`test` and `typecheck` build it first too. `test` also builds
+the bridge packages, which the region resolves by name, and `ws`
+and `multipart` read its declarations from there. Each package
 carries its own `"size": "size-limit"` script and a
 `.size-limit.json` beside its `package.json`; the root's `size`
-builds once and fans out to all four. Behaviour tests live under
-`packages/<name>/test/` with each package's own `test` script;
-the root's `test/` holds only the guards and shared helpers
-(`test/probe.ts`, `test/bun-adapter.ts`,
+builds once and fans out to every package. Behaviour tests live
+under `packages/<name>/test/` with each package's own `test`
+script; the root's `test/` holds only the guards and shared
+helpers (`test/probe.ts`, `test/bun-adapter.ts`,
 `test/bun-bindings.ts`), reached as `#test/probe.ts`,
 `#test/bun-adapter.ts` and so on.
 
