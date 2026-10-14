@@ -108,7 +108,7 @@ const send = (
     init.signal = asked.signal;
   }
   return Promise.resolve(
-    app.request(toUrl(target.url, asked.query), init),
+    app.request(toUrl(target.url, asked.query), init, {}),
   );
 };
 
