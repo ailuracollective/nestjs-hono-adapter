@@ -113,4 +113,4 @@ jobs:
           @nestjs/websockets@${{ matrix.nest }}.x
           @nestjs/microservices@${{ matrix.nest }}.x
           @nestjs/testing@${{ matrix.nest }}.x
-      - run: bun run typecheck && bun test && bun run build
+      - run: bun run typecheck && bun run build && bun test

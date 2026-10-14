@@ -192,7 +192,7 @@ typecheck, test, build and the size gate, in sequence; a failure
 in any step fails the whole command. The size gate fails when a
 bundle ceiling in a package's `.size-limit.json` is exceeded.
 The compat matrix in CI additionally runs
-`bun run typecheck && bun test && bun run build` against NestJS
+`bun run typecheck && bun run build && bun test` against NestJS
 11 and 12 on Bun.
 
 Individual commands:
@@ -202,7 +202,7 @@ bun run lint          # oxlint
 bun run format        # oxfmt --write .
 bun run format:check  # oxfmt --check .
 bun run typecheck     # build:core, then tsc for test
-bun run test          # build:core, then bun test
+bun run test          # build, then bun test
 bun run build         # build:core, then build:packages
 bun run size          # build, then each package's size-limit
 ```

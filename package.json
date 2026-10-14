@@ -17,7 +17,7 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "size": "bun run build && bun run --filter './packages/*' size",
-    "test": "bun run build:core && bun test",
+    "test": "bun run build && bun test",
     "typecheck": "bun run build:core && tsc -p test/tsconfig.json"
   },
   "devDependencies": {
