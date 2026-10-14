@@ -150,7 +150,7 @@ Two details the bridge had to get right, both of them the integration's behaviou
 
 A streaming answer is pulled a chunk at a time through a `ReadableStream`, so an incremental delivery starts before the operation does.
 
-Subscriptions are not covered. `ApolloDriver.start` opens a `GqlSubscriptionService` on the adapter's HTTP server, which on a transport that serves no socket is nothing to attach to; that needs the WebSocket island and is its work, not this bridge's.
+Subscriptions answer on the **Node** transport. `ApolloDriver.start` opens a `GqlSubscriptionService` that builds a `ws` server and attaches it to `httpAdapter.getHttpServer()` by listening for `upgrade`; the Node transport is a real `node:http` server, so the upgrade arrives and `graphql-ws` answers. `Bun.serve` is not a `node:http` server, so there the listener is attached to an emitter nothing fires and the upgrade falls through to the HTTP pipeline, where the endpoint refuses it; the fetch transport serves no socket at all. Carrying it on Bun means registering `graphql-ws`'s own Bun handler (`graphql-ws/use/bun`) with the transport's WebSocket support, which is the WebSocket island's work and not this bridge's.
 
 ### The seam both drivers share
 
