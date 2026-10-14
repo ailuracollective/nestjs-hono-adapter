@@ -102,3 +102,10 @@ numbers.
 - `../../docs/benchmarks.md`: generated metrics page (committed)
 - `results/`: raw JSON samples (git-ignored)
 - `dist/`: compiled output (git-ignored)
+
+## CI
+
+`.github/workflows/benchmarks.yml` runs a short inline
+comparison on demand and weekly: it serves every target once,
+uploads the raw samples, and sets no performance threshold,
+since a shared runner is too noisy for one.
