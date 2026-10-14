@@ -94,6 +94,11 @@ class RequestBag implements NestRequest {
     return state.hosts;
   }
 
+  /** Replaces the host parameters, as Nest's host filter does. */
+  public set hosts(hosts: Record<string, string>) {
+    this.state.hosts = hosts;
+  }
+
   /** The client address. */
   public get ip(): string | undefined {
     const { state } = this;
