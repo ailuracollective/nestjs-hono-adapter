@@ -29,7 +29,10 @@ import type { TransportChoiceOptions } from './server-options.ts';
 import { toHonoPath } from '#adapter/core/request/path';
 import { ResponseWriter } from '#adapter/core/response/response-writer';
 import { ALL_METHOD } from '#adapter/core/route/route-adapter';
-import { parsesMultipart } from '#adapter/core/multipart';
+import {
+  parsesMultipart,
+  rememberAdapter,
+} from '#adapter/core/multipart';
 import { bunServer } from '#adapter/servers/bun';
 import { mountStaticAssets } from '#adapter/features/static-assets/index';
 import type { StaticAssetsOptions } from '#adapter/features/static-assets/index';
@@ -67,6 +70,7 @@ class ServerAdapter extends HonoLifecycle {
     this.views = new ViewRenderer(options.views);
     this.installMapException();
     this.installSecurityHook();
+    rememberAdapter(this);
   }
 
   /** Records the status Nest asked for. */

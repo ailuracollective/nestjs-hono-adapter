@@ -66,6 +66,8 @@ abstract class MultipartInterceptorHost
   public onModuleInit(): void {
     const adapter = this.adapterHost?.httpAdapter;
     if (adapter === undefined) {
+      // The host carries a token from another `@nestjs/core` copy.
+      declareMultipart();
       return;
     }
     if (adapter.getType() !== 'hono') {
