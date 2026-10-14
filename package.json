@@ -6,6 +6,7 @@
   ],
   "type": "module",
   "scripts": {
+    "bench": "bun run build:core && bun run --filter @ailura/nestjs-hono-adapter-benchmarks bench",
     "build": "bun run build:core && bun run build:packages",
     "build:core": "bun run --filter @ailura/nestjs-hono-adapter build",
     "build:packages": "bun run --filter @ailura/nestjs-platform-hono-socket-io --filter @ailura/nestjs-platform-hono-ws --filter @ailura/nestjs-platform-hono-multipart build",

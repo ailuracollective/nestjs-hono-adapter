@@ -51,7 +51,13 @@ may edit:
 - `packages/` — the workspace packages: `core`, published as
   `@ailura/nestjs-hono-adapter`, and the optional capabilities
   `ws`, `socket-io` and `multipart`, published as
-  `@ailura/nestjs-platform-hono-{ws,socket-io,multipart}`.
+  `@ailura/nestjs-platform-hono-{ws,socket-io,multipart}`. It
+  also holds `benchmarks`, the private comparison suite — one
+  Nest application served by the Hono adapter on Bun and Node
+  and by the official Express and Fastify platform adapters,
+  driven by `oha` and `bombardier`. It is never published; its
+  own build is not part of `bun run check`, which lints, formats
+  and typechecks it. Run it by hand with `bun run bench`.
 - `test/` — what guards the monorepo and what more than one
   package shares: `layers.test.ts`, `entry-points.test.ts`,
   `node-builtins.test.ts`, plus the shared probe and helpers
@@ -133,6 +139,18 @@ layout, import rules, and bundle ceilings are in
 - **The compat matrix tests NestJS 11 and 12 on Bun.** Every
   Nest package moves together; a mixed install is what a
   WebSocket or microservice case would fail on.
+- **`packages/benchmarks/` is private and never published.** It
+  is a workspace package like the others, so `bun run check`
+  lints, formats and typechecks it; but it has no release entry
+  — it is absent from `release-please-config.json`, from
+  `.github/workflows/publish.yml` and from the size gate — and
+  its own `tsc` build runs only when the suite does, by hand,
+  with `bun run bench`.
+- **`docs/benchmarks.md` is generated.** The private benchmark
+  suite overwrites it on every `bun run bench`, so
+  `.oxfmtrc.json` excludes it from the formatter, the way it
+  excludes `CHANGELOG.md`; the raw samples stay under
+  `packages/benchmarks/results/`, which is git-ignored.
 
 ## Development and validation
 
@@ -199,6 +217,8 @@ rules, and a README section for user-facing behavior.
   — the adapter's bundle ceilings; `packages/ws`,
   `packages/socket-io` and `packages/multipart` each carry their
   own beside their `package.json`.
+- [packages/benchmarks/README.md](packages/benchmarks/README.md)
+  — the comparison suite and the methodology it follows.
 - [release-please-config.json](release-please-config.json) — the
   release-please configuration.
 - [.release-please-manifest.json](.release-please-manifest.json)

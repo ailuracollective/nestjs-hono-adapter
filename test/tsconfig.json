@@ -31,6 +31,10 @@
       ],
       "#test/*": ["./*.ts", "./*"],
       "#root/*": ["../*"],
+      "#benchmarks/*": [
+        "../packages/benchmarks/src/*.ts",
+        "../packages/benchmarks/src/*"
+      ],
       "@ailura/nestjs-hono-adapter": [
         "../packages/core/src/index.ts"
       ],
