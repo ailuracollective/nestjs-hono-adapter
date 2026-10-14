@@ -23,9 +23,12 @@ import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
 
 const adapter = new ServerAdapter();
 const app = await NestFactory.create(AppModule, adapter);
-app.useWebSocketAdapter(new HonoWsAdapter(adapter));
+app.useWebSocketAdapter(new HonoWsAdapter(app));
 await app.listen(3000);
 ```
+
+`HonoWsAdapter` takes the application, as Nest's own `WsAdapter`
+does; the `ServerAdapter` itself is accepted too.
 
 ```ts
 @WebSocketGateway({ path: '/ws' })

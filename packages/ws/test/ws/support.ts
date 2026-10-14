@@ -11,7 +11,10 @@ import {
 } from 'rxjs';
 
 import { bunAdapter } from '#test/bun-adapter';
-import type { ServerAdapter } from '#adapter/index';
+import type {
+  NestHonoApplication,
+  ServerAdapter,
+} from '#adapter/index';
 import type { MessageParser } from '#ws/client/index';
 import { HonoWsAdapter } from '#ws/index';
 import { ANSWER, GatewayModule, PING } from './gateways.ts';
@@ -69,10 +72,14 @@ const startGateways = async (
   adapter: ServerAdapter = bunAdapter(),
   options?: { readonly messageParser?: MessageParser },
 ): Promise<WsProbe> => {
-  const app = await NestFactory.create(GatewayModule, adapter, {
-    logger: false,
-  });
-  const ws = new HonoWsAdapter(adapter, options);
+  const app = await NestFactory.create<NestHonoApplication>(
+    GatewayModule,
+    adapter,
+    {
+      logger: false,
+    },
+  );
+  const ws = new HonoWsAdapter(app, options);
   app.useWebSocketAdapter(ws);
   await app.listen(ANY_PORT, LOCALHOST);
   const address = adapter.getHttpServer().address();

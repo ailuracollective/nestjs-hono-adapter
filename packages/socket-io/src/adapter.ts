@@ -1,5 +1,8 @@
 import { Logger } from '@nestjs/common';
-import type { WsMessageHandler } from '@nestjs/common';
+import type {
+  INestApplicationContext,
+  WsMessageHandler,
+} from '@nestjs/common';
 import { AbstractWsAdapter } from '@nestjs/websockets';
 import { defer, EMPTY, fromEvent } from 'rxjs';
 import type { Observable } from 'rxjs';
@@ -39,9 +42,37 @@ import type {
   Payload,
 } from './frames.ts';
 
+/** An application that answers with the server it serves. */
+interface ServerHost {
+  getHttpServer: () => unknown;
+}
+
+/** Says whether a value is an application serving a server. */
+const isServerHost = (value: unknown): value is ServerHost =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof Reflect.get(value, 'getHttpServer') === 'function';
+
+/** Reads the server an application answers with, if it is one. */
+const serverOf = (value: unknown): object | undefined => {
+  const server: unknown = isServerHost(value)
+    ? value.getHttpServer()
+    : value;
+  return typeof server === 'object' && server !== null
+    ? server
+    : undefined;
+};
+
 class HonoIoAdapter extends AbstractWsAdapter {
   /** Reports failures from the socket.io layer. */
   protected readonly logger = new Logger(HonoIoAdapter.name);
+
+  /** Reads the server an application answers with, if it is one. */
+  public constructor(
+    appOrHttpServer?: INestApplicationContext | object,
+  ) {
+    super(serverOf(appOrHttpServer));
+  }
 
   /** The shared disconnect of every client. */
   private readonly disconnects = new WeakMap<

@@ -126,6 +126,12 @@ collides with the container's `get()` and the GET registrar, the
 second with `setViewEngine()`. Both are in
 [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
+These are reached on the application —
+`app.useStaticAssets(...)`, `app.setViewEngine(...)` — the way
+`NestExpressApplication` is read: `NestHonoApplication` and
+every `INestApplication` carry them, and the adapter answers
+behind them. The adapter carries the same names.
+
 ### Adapter methods
 
 | Method                  | Signature                                              | Description                                      |

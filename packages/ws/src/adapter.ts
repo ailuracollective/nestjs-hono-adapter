@@ -11,6 +11,7 @@ import {
 import type { Observable } from 'rxjs';
 
 import type {
+  NestHonoApplication,
   ServerAdapter,
   WebSocketSupport,
 } from '@ailura/nestjs-hono-adapter';
@@ -30,6 +31,12 @@ import { GatewaySockets } from './gateway.ts';
 import { GatewayServer, normalizePath } from './server.ts';
 import type { HonoGatewayOptions } from './server.ts';
 import { ensureSupported, nodeWebSocket } from './upgrade.ts';
+
+/** Reads the adapter behind whatever the constructor was handed. */
+const serverAdapterOf = (
+  value: NestHonoApplication | ServerAdapter,
+): ServerAdapter =>
+  'getHttpAdapter' in value ? value.getHttpAdapter() : value;
 
 class HonoWsAdapter extends AbstractWsAdapter {
   /** The HTTP adapter whose application serves the gateways. */
@@ -51,9 +58,10 @@ class HonoWsAdapter extends AbstractWsAdapter {
 
   /** Builds the adapter on the HTTP adapter it serves. */
   public constructor(
-    httpAdapter: ServerAdapter,
+    appOrAdapter: NestHonoApplication | ServerAdapter,
     options: HonoWsAdapterOptions = {},
   ) {
+    const httpAdapter = serverAdapterOf(appOrAdapter);
     super(httpAdapter);
     this.adapter = httpAdapter;
     const app = httpAdapter.getHono();

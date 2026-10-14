@@ -2,7 +2,7 @@
   {
     "name": "socket-io",
     "path": "dist/index.js",
-    "limit": 1260,
+    "limit": 1400,
     "brotli": true,
     "ignore": [
       "@nestjs/common",
