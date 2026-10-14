@@ -5,6 +5,7 @@ import {
   DYNAMIC_SPECIFIER,
   ISLAND_PEERS,
   SPECIFIER,
+  TYPE_STATEMENT,
 } from '#test/entry-points/packages';
 import { ALIASES, ROOT } from '#test/layers/model';
 
@@ -45,6 +46,21 @@ const namesPackage = async (
 ): Promise<boolean> => {
   const source = await readFile(file, 'utf8');
   return specifiersIn(source).some((name) =>
+    belongsTo(name, packageName),
+  );
+};
+
+/** The modules a source file names in its value imports. */
+const valueSpecifiersIn = (source: string): string[] =>
+  specifiersIn(source.replace(TYPE_STATEMENT, ''));
+
+/** Says whether one file names a package at run time. */
+const namesPackageAtRunTime = async (
+  file: string,
+  packageName: string,
+): Promise<boolean> => {
+  const source = await readFile(file, 'utf8');
+  return valueSpecifiersIn(source).some((name) =>
     belongsTo(name, packageName),
   );
 };
@@ -91,6 +107,8 @@ const targetOf = (
 export {
   namesIslandPeer,
   namesPackage,
+  namesPackageAtRunTime,
   specifiersIn,
   targetOf,
+  valueSpecifiersIn,
 };

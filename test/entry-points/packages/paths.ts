@@ -5,6 +5,11 @@ const ENTRY = path.resolve(
   import.meta.dirname,
   '../../../packages/core/src/index.ts',
 );
+/** The Node transport entry point's source. */
+const NODE_ENTRY = path.resolve(
+  import.meta.dirname,
+  '../../../packages/core/src/servers/node.ts',
+);
 /** The WebSocket entry point's source. */
 const WS_ENTRY = path.resolve(
   import.meta.dirname,
@@ -21,4 +26,10 @@ const SOCKET_IO_ENTRY = path.resolve(
   '../../../packages/socket-io/src/index.ts',
 );
 
-export { ENTRY, MULTIPART_ENTRY, SOCKET_IO_ENTRY, WS_ENTRY };
+export {
+  ENTRY,
+  MULTIPART_ENTRY,
+  NODE_ENTRY,
+  SOCKET_IO_ENTRY,
+  WS_ENTRY,
+};

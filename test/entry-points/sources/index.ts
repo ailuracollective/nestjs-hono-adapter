@@ -8,5 +8,6 @@ export {
   entryPointName,
   peersReachedBy,
   reachable,
+  runtimeCarriersOf,
   sourceOf,
 } from './walk.ts';

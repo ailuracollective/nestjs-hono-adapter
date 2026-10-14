@@ -10,6 +10,12 @@ const SOCKET_IO_PEER = 'socket.io';
 /** The module the adapter's default transport alone names. */
 const DEFAULT_SERVER = 'hono/bun';
 
+/**
+ * The server package only the Node transport reaches at run
+ * time.
+ */
+const NODE_SERVER = '@hono/node-server';
+
 /** The name the adapter core publishes under. */
 const CORE_NAME = '@ailura/nestjs-hono-adapter';
 
@@ -30,14 +36,20 @@ const SPECIFIER = /from\s+'(?<module>[^']+)'/gu;
 const DYNAMIC_SPECIFIER =
   /import\(\s*'(?<module>[^']+)'\s*\)/gu;
 
+/** A type-only import or export statement, up to its semicolon. */
+const TYPE_STATEMENT =
+  /\b(?:import|export)\s+type\b[\s\S]*?;/gu;
+
 export {
   CORE_NAME,
   DEFAULT_SERVER,
   DYNAMIC_SPECIFIER,
   ISLAND_PEERS,
+  NODE_SERVER,
   PLATFORM_NAMES,
   PLATFORM_PREFIX,
   SOCKET_IO_PEER,
   SPECIFIER,
+  TYPE_STATEMENT,
   UPLOAD_PARSER,
 };

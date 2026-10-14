@@ -10,6 +10,8 @@ import {
   DEFAULT_SERVER,
   ENTRY,
   MULTIPART_ENTRY,
+  NODE_ENTRY,
+  NODE_SERVER,
   PLATFORM_NAMES,
   PLATFORM_PREFIX,
   SOCKET_IO_ENTRY,
@@ -24,6 +26,7 @@ import {
   declaredBy,
   peersReachedBy,
   reachable,
+  runtimeCarriersOf,
 } from './entry-points/sources/index.ts';
 
 test('the adapter declares none of the capability packages', () => {
@@ -73,6 +76,22 @@ test('the HTTP entry point reaches no websocket peer', async () => {
   const files = await reachable(ENTRY);
   expect(files.length).toBeGreaterThan(1);
   expect(await peersReachedBy(ENTRY)).toStrictEqual([]);
+});
+
+test('the HTTP entry point reaches no Node server package at run time', async () => {
+  const files = await reachable(ENTRY);
+  expect(files.length).toBeGreaterThan(1);
+  expect(
+    await runtimeCarriersOf(ENTRY, NODE_SERVER),
+  ).toStrictEqual([]);
+});
+
+test('the Node entry point reaches the Node server package at run time', async () => {
+  const carriers = await runtimeCarriersOf(
+    NODE_ENTRY,
+    NODE_SERVER,
+  );
+  expect(carriers.length).toBeGreaterThan(0);
 });
 
 test('the HTTP entry point reaches the server it serves by default', async () => {

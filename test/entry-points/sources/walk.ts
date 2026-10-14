@@ -4,6 +4,7 @@ import path from 'node:path';
 import {
   namesIslandPeer,
   namesPackage,
+  namesPackageAtRunTime,
   specifiersIn,
   targetOf,
 } from './parse.ts';
@@ -53,6 +54,20 @@ const peersReachedBy = async (
   return files.filter((_file, index) => checks[index] === true);
 };
 
+/** The reached files that name a package in a value import. */
+const runtimeCarriersOf = async (
+  entry: string,
+  packageName: string,
+): Promise<string[]> => {
+  const files = await reachable(entry);
+  const checks = await Promise.all(
+    files.map((file) =>
+      namesPackageAtRunTime(file, packageName),
+    ),
+  );
+  return files.filter((_file, index) => checks[index] === true);
+};
+
 /** The name an entry point is published under, e.g. `pkg/sub`. */
 const entryPointName = (
   pkgName: string,
@@ -87,5 +102,6 @@ export {
   entryPointName,
   peersReachedBy,
   reachable,
+  runtimeCarriersOf,
   sourceOf,
 };
