@@ -4,7 +4,6 @@ import { createServer } from 'node:http';
 import { expect, test } from 'bun:test';
 
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import type { Server } from 'socket.io';
 
 import { ANY_PORT, LOCALHOST, open, within } from './support.ts';
 
@@ -48,7 +47,7 @@ test('a gateway on a port of its own owns its listener', async () => {
 
 const shutdown = async (
   adapter: IoAdapter,
-  io: Server,
+  io: ReturnType<IoAdapter['createIOServer']>,
   listener: ReturnType<typeof createServer>,
 ): Promise<void> => {
   await within(adapter.close(io), 'gateway shutdown');

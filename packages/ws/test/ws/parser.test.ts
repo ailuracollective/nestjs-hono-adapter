@@ -42,8 +42,9 @@ const parseFailureProbe = async (
 ): Promise<{
   readonly frames: unknown[];
   readonly open: boolean;
-  readonly reported: unknown[];
 }> => {
+  // Nest 12 logs a parser failure and Nest 11 swallows it, so the spy only
+  // keeps the run quiet: what is asserted is what both versions guarantee.
   const watched = watchLogger();
   const probe = await startGateways(bunAdapter(), {
     messageParser: () => {
@@ -60,7 +61,6 @@ const parseFailureProbe = async (
   return {
     frames: frames(),
     open: stayedOpen,
-    reported: watched.seen,
   };
 };
 
@@ -93,10 +93,8 @@ test('setMessageParser() replaces the reader in place', async () => {
   }
 });
 
-test('a parser that throws drops the frame and is reported', async () => {
-  const failure = new Error('a parser the application replaced');
-  const outcome = await parseFailureProbe(failure);
+test('a parser that throws drops the frame and keeps the client', async () => {
+  const outcome = await parseFailureProbe(new Error('a parser the application replaced'));
   expect(outcome.frames).toStrictEqual([]);
   expect(outcome.open).toBe(true);
-  expect(outcome.reported).toContain(failure);
 });
