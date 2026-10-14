@@ -33,8 +33,11 @@ bun add @ailura/nestjs-hono-adapter hono
 ```
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
-are peers, so the application decides their versions. Use
-`npm install` or `pnpm add` in place of `bun add` as needed.
+are peers, so the application decides their versions.
+`@hono/node-server` is optional: only the `./node-server`
+transport reaches it, and a Bun or fetch deployment never loads
+it. Use `npm install` or `pnpm add` in place of `bun add` as
+needed.
 
 The three optional capabilities live in their own packages, each
 with a single entrypoint, so importing one loads none of the
@@ -205,8 +208,9 @@ directory.
 
 - Bun 1.2+ (toolchain, and the runtime the default transport
   serves on), or Node 22.12+.
-- `@hono/node-server`, which `nodeServer()` serves through; the
-  default transport is Bun's own server.
+- `@hono/node-server`, which `nodeServer()` serves through; it
+  is an optional peer, and the default transport is Bun's own
+  server.
 - Nest 11 or 12.
 - Hono 4.
 
