@@ -77,9 +77,14 @@ assignable; not naming it costs nothing for `getHono()`
 
 `bunServer` is the default, so `new ServerAdapter()` serves
 through `Bun.serve`. `nodeServer()` runs on Node and Bun and
-takes `overrideGlobalObjects` (default `false`) — whether
+takes two options. `autoCleanupIncoming` (default `true`) makes
+`@hono/node-server` drain and destroy the socket of a request
+whose body was never read; turn it off only for trusted clients,
+such as behind a reverse proxy that always reads the body
+through. `overrideGlobalObjects` (default `false`) is whether
 `@hono/node-server` may swap the global `Request` and `Response`
-for its lighter classes; the adapter has no switch of its own.
+for its lighter classes — fastest, but the swap is process-wide
+and not restored.
 
 A transport carries a websocket helper only where the runtime
 has one: `nodeServer` none, Bun only where `hono/bun` loads

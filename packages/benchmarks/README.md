@@ -14,6 +14,12 @@ All four serve the **same** Nest application. `platform-express`
 is Nest's default, and `platform-fastify` is the fast baseline.
 Measured on both Bun and Node.
 
+The suite follows the workspace's Nest major instead of pinning
+one: its `@nestjs/*` dependencies are ranges (`>=11 <13`), so
+the compatibility job's `bun add` moves it along with the rest
+of the workspace, and `bun.lock` fixes the version actually
+measured.
+
 ## Scenarios
 
 | Scenario    | Route            | What it exercises        |
@@ -80,6 +86,12 @@ numbers.
 
 - `src/app/`: shared Nest application
 - `src/harness/`: orchestrator, load wrappers, report
+- `tsconfig.json`: typechecks against the adapter's sources
+- `tsconfig.build.json`: emits against the adapter's built
+  declarations
+- `tsconfig.dist.json`: copied to `dist/tsconfig.json` so the
+  compiled tree resolves `#benchmarks/*` through
+  `package.json#imports` to `dist/`, not back to `src/`
 - `../../docs/benchmarks.md`: generated metrics page (committed)
 - `results/`: raw JSON samples (git-ignored)
 - `dist/`: compiled output (git-ignored)

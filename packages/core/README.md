@@ -116,9 +116,13 @@ import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
 new ServerAdapter({ transport: nodeServer() });
 ```
 
-`nodeServer()` takes `overrideGlobalObjects` (default `false`),
-which asks `@hono/node-server` to replace the process's
-`Request` and `Response` with its lighter classes.
+`nodeServer()` takes `autoCleanupIncoming` (default `true`),
+which drains a request whose body was never read, and
+`overrideGlobalObjects` (default `false`), which asks
+`@hono/node-server` to replace the process's `Request` and
+`Response` with its lighter classes. Both only reach
+`@hono/node-server`, so they change nothing for a deployment
+that serves through `bunServer()`.
 
 On a fetch host — Cloudflare Workers, Vercel Functions or Deno —
 the transport takes no port and the deployment exports the

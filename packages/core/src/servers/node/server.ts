@@ -22,6 +22,12 @@ type AdaptorOptions = Parameters<typeof createAdaptorServer>[0];
 
 /** What `nodeServer` accepts beyond the adapter's own options. */
 interface NodeServerOptions {
+  /**
+   * Whether `@hono/node-server` drains unread request bodies
+   * and destroys the socket. Disabling is faster but only safe
+   * for trusted clients.
+   */
+  readonly autoCleanupIncoming?: boolean;
   /** Whether the server replaces the global Web classes. */
   readonly overrideGlobalObjects?: boolean;
 }
@@ -37,6 +43,9 @@ const createNodeServer = (
     overrideGlobalObjects:
       transport.overrideGlobalObjects ?? false,
   };
+  if (transport.autoCleanupIncoming !== undefined) {
+    adaptor.autoCleanupIncoming = transport.autoCleanupIncoming;
+  }
   const certificate = options.httpsOptions;
   if (certificate !== undefined) {
     adaptor.createServer = createHttpsServer;

@@ -72,13 +72,19 @@ The adapter builds against two Nest majors: the suite runs
 against the lockfile's version, and CI's compatibility job
 installs Nest 11 and 12 — every `@nestjs/*` package moves
 together, because a mixed install is what a gateway or
-microservice case would fail on, not the adapter. `bun add`
-rewrites `package.json` and `bun.lock`, so run the check in a
-disposable checkout or restore both first. The tests are
-transpiled from the root `tsconfig.json`, which turns
-`experimentalDecorators` and `emitDecoratorMetadata` on for the
-fixtures (Nest controllers with legacy decorators); the library
-declares no decorator, so neither flag changes `bun run build`.
+microservice case would fail on, not the adapter. The private
+benchmark suite joins that install rather than keeping its own
+copy: `packages/benchmarks` declares its `@nestjs/*`
+dependencies as ranges (`>=11 <13`), so the same `bun add` moves
+it too; an exact pin leaves a second Nest nested under
+`packages/benchmarks/`, and two copies of `AbstractHttpAdapter`
+are not assignable to each other. `bun add` rewrites
+`package.json` and `bun.lock`, so run the check in a disposable
+checkout or restore both first. The tests are transpiled from
+the root `tsconfig.json`, which turns `experimentalDecorators`
+and `emitDecoratorMetadata` on for the fixtures (Nest
+controllers with legacy decorators); the library declares no
+decorator, so neither flag changes `bun run build`.
 
 ```sh
 bun add --exact @nestjs/common@11.x @nestjs/core@11.x @nestjs/websockets@11.x @nestjs/microservices@11.x @nestjs/testing@11.x

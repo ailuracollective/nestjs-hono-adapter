@@ -19,12 +19,20 @@ import type {
   ParsedBody,
 } from './types.ts';
 
+/** Whether the request declares its payload length up front. */
+const declaresLength = (context: NestContext): boolean => {
+  const declared = context.req.header('content-length');
+  return (
+    declared !== undefined && Number.isFinite(Number(declared))
+  );
+};
+
 /** Reads an unconsumed payload through the ceiling. */
 const readBytes = async (
   context: NestContext,
   limit: number | undefined,
 ): Promise<Uint8Array> => {
-  if (context.req.raw.bodyUsed) {
+  if (context.req.raw.bodyUsed || declaresLength(context)) {
     const bytes = new Uint8Array(
       await context.req.arrayBuffer(),
     );

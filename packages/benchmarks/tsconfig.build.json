@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["bun", "node"],
+    "paths": {
+      "#benchmarks/*": ["./src/*.ts", "./src/*"],
+      "@ailura/nestjs-hono-adapter": [
+        "../core/dist/index.d.ts"
+      ],
+      "@ailura/nestjs-hono-adapter/bun-server": [
+        "../core/dist/servers/bun.d.ts"
+      ],
+      "@ailura/nestjs-hono-adapter/node-server": [
+        "../core/dist/servers/node.d.ts"
+      ],
+      "@ailura/nestjs-hono-adapter/fetch": [
+        "../core/dist/servers/fetch.d.ts"
+      ]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
