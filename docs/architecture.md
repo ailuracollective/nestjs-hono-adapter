@@ -6,18 +6,22 @@ The shape the adapter is built in, and which shapes are refused. The README says
 
 ```
 packages/
-  core/      the adapter, published as
-             @ailura/nestjs-hono-adapter: its src/core/ (the Nest
-             <-> Hono translation and the ports), src/features/
-             (the optional capabilities), src/compat/ (the
-             bridges to the platforms Nest users write against),
-             src/servers/ (the runtime transports)
-  socket-io/ the Socket.IO island, published as
-             @ailura/nestjs-platform-hono-socket-io
-  ws/        the WebSocket island, published as
-             @ailura/nestjs-platform-hono-ws
-  multipart/ the upload island, published as
-             @ailura/nestjs-platform-hono-multipart
+  core/          the adapter, published as
+                 @ailura/nestjs-hono-adapter: its src/core/ (the Nest
+                 <-> Hono translation and the ports), src/features/
+                 (the optional capabilities), src/compat/ (the
+                 bridges to the platforms Nest users write against),
+                 src/servers/ (the runtime transports)
+  socket-io/     the Socket.IO island, published as
+                 @ailura/nestjs-platform-hono-socket-io
+  ws/            the WebSocket island, published as
+                 @ailura/nestjs-platform-hono-ws
+  multipart/     the upload island, published as
+                 @ailura/nestjs-platform-hono-multipart
+  graphql/       the Apollo bridge, published as
+                 @ailura/nestjs-platform-hono-graphql
+  serve-static/  the @nestjs/serve-static bridge, published as
+                 @ailura/nestjs-platform-hono-serve-static
 ```
 
 The implementation is `packages/core/src/`; the repository root is only the private Bun workspace root — no package, no `src/`, no exports. Region names below are directories under `packages/core/src/` unless a package is named.
@@ -39,7 +43,7 @@ The implementation is `packages/core/src/`; the repository root is only the priv
 Six rules, all enforced by `test/layers.test.ts`:
 
 1. `core/` never reaches `features/`, **except** from `core/server/hono-lifecycle.ts` and `core/server/server-adapter.ts`.
-2. `features/` never reaches `features/`.
+2. `features/` never reaches another feature.
 3. `features/` never reaches the WebSocket island.
 4. The islands that call the application reach it as the published package, never as an internal path: the core is a **type-only import** for the WebSocket island, and a type-only import plus the `declareMultipart` marker for the upload island.
 5. The socket.io island reaches `core/` and `features/` not at all, as a value or as a type.
@@ -147,9 +151,9 @@ Type-only imports count toward the frozen set. The builtins are reached from mor
 
 ## The bundle budget
 
-Each package holds its own `.size-limit.json` beside its `package.json`: `packages/core` carries the four adapter entrypoints; `packages/ws`, `packages/socket-io` and `packages/multipart` their single one, each with a package-relative path. `size-limit` measures an entrypoint as a consumer sees it: bundled, minified, brotlied, peers external. The root `size` script builds then runs `bun run --filter './packages/*' size`; `bun run check` runs it last, and CI runs it as its own job. The measured values are in [bundle-baseline.md](bundle-baseline.md).
+Each package holds its own `.size-limit.json` beside its `package.json`: `packages/core` carries the four adapter entrypoints; `packages/ws`, `packages/socket-io`, `packages/multipart`, `packages/graphql` and `packages/serve-static` their single one, each with a package-relative path. `size-limit` measures an entrypoint as a consumer sees it: bundled, minified, brotlied, peers external. The root `size` script builds then runs `bun run --filter './packages/*' size`; `bun run check` runs it last, and CI runs it as its own job. The historical baseline behind issue #66 is in [bundle-baseline.md](bundle-baseline.md); the current measured values are below.
 
-The ceilings are ratchets: growth past one fails, and moving one is an explicit edit justified here. Current ceiling/measured: `index` 12000/11691, `bun-server` 1100/1066, `node-server` 560/534, `fetch` 500/495, `multipart` 4250/4192, `ws` 1650/1614 and `socket-io` 1260/1231. Both moved ceilings belong to one change: the Bun transport gained the `useNativeHandler()` slot a socket.io gateway serves its engine through, which costs `bun-server` 63 B, and the island gained the duck-typed bind and the guarded dynamic import, which took `socket-io` from 948 B. The engine itself is an optional peer, external to the gate, so it adds nothing to either bundle. Entry names are unchanged: the first four measure `packages/core/dist`, and `multipart`, `ws` and `socket-io` their own `packages/<name>/dist`. The upload island's streaming seam closes three pieces the reconnaissance in [parity.md](parity.md#file-uploads) calls missing.
+The ceilings are ratchets: growth past one fails, and moving one is an explicit edit justified here. Current ceiling/measured: `index` 16000/13078, `bun-server` 1125/1109, `node-server` 560/534, `fetch` 500/495, `multipart` 4300/4259, `ws` 1650/1640, `socket-io` 1400/1379, `graphql` 1500/1297 and `serve-static` 1850/1823. They sit above the baseline page's numbers: the multipart and socket.io islands, signature breadth, the instrumentation hooks, the streaming upload seam, `inject()`, application settings and the WebSocket island split are what raised them. Entry names: `index`, `bun-server`, `node-server` and `fetch` measure `packages/core/dist`, and the other five their own `packages/<name>/dist`. The upload island's streaming seam closes three pieces the reconnaissance in [parity.md](parity.md#file-uploads) calls missing.
 
 Two consequences before you write code:
 
@@ -173,7 +177,7 @@ The root `test/` holds only what guards the monorepo and what more than one pack
 
 `.oxlintrc.json` takes the widest exceptions over `packages/multipart/src/**`, because the island mirrors multer's semantics and `append-field`'s port: multer's `_handleFile` / `_removeFile` names and `Error | null` callbacks, and a request-shaped parser with more parameters and statements per function than the house style allows. Type-safety rules stay on elsewhere, and a rule is relaxed for one file rather than the region — also why `FileStreamInterceptor` sits in `interceptors/file.interceptor.ts` beside the buffered one.
 
-`test/**` and `packages/*/test/**` carry a 700-line ceiling rather than 400, because an end-to-end suite holds its fixtures, gateways and cases in one file; `packages/ws/src/adapter.ts` carries 450, its composition point where the `AbstractWsAdapter` members meet the `platform-ws` surface it implements. `packages/core/src/features/cors/index.ts` sits at exactly 400 lines and stays whole: rule 2 leaves it no seam, since any edge between two files of `features/` fails the guard. Its analogues are larger — `express-adapter.ts` 710 lines, `fastify-adapter.ts` 1,433.
+`test/**` and `packages/*/test/**` carry a 700-line ceiling rather than 400, because an end-to-end suite holds its fixtures, gateways and cases in one file; `packages/ws/src/adapter.ts` carries 450, its composition point where the `AbstractWsAdapter` members meet the `platform-ws` surface it implements, and sits well under it. A feature splits across its own files, which rule 2 permits: it forbids reaching into _another_ feature, not into itself. `features/cors/` is `middleware/`, `origins/`, `options.ts` and `types.ts` behind a two-line `index.ts`. Its analogues are larger — `express-adapter.ts` 710 lines, `fastify-adapter.ts` 1,433.
 
 The `.oxlintrc.json` exceptions that are not about `multipart` are on `compat/`:
 
@@ -182,4 +186,4 @@ The `.oxlintrc.json` exceptions that are not about `multipart` are on `compat/`:
 
 `packages/serve-static/` is split along its seams: `peer-load.ts` and `peer-read.ts` (the optional peers), `peer-shapes.ts` (their types), `swap.ts` (the prototype patch), `exclude.ts`, `global-prefix.ts`, `mount-roots.ts` and `mount-type.ts`, `index-file-read.ts` and `index-file-answer.ts` (the SPA fallback), and `loader{,-resolve,-mount,-fallback}.ts` tying them to an adapter. The split is what keeps the third-party typing in `peer-shapes.ts` instead of behind forty lint exceptions on one file. The 100-line cap and the two-line comment rule the region carries apply to each bridge package's `src/` as well.
 
-The Bun transport is split along its seam: `servers/bun-runtime.ts` holds Bun's server and TLS option types, the TLS mapping, and the static-file middleware reading `Bun.file`; `servers/bun.ts` keeps the Node-shaped server Nest drives, its fetch bindings, the `hono/bun` websocket helper and the transport factory, at 315 lines — the helper installs on the server the factory builds, and the factory serves through that class's fetch handler.
+The Bun transport is split along its seam: `servers/bun-runtime.ts` holds Bun's server and TLS option types, the TLS mapping, and the static-file middleware reading `Bun.file`; `servers/bun.ts` keeps the `hono/bun` websocket helper and the transport factory — the helper installs on the server the factory builds, and the factory serves through that class's fetch handler — and `servers/bun/` holds the class itself, the listen arguments, the fetch bindings, the serve options and the TLS mapping it reads.

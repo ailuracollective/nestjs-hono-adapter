@@ -39,7 +39,8 @@ const parsesMultipart = (adapter: object): boolean => registry.has(adapter);
 
 /**
  * Remembers the adapter an upload island should mark when `HttpAdapterHost` carries a token the
- * island cannot inject.
+ * island cannot inject. It is the newest one constructed, so `declareMultipart()` without an
+ * argument is only unambiguous while one application runs per process.
  */
 const rememberAdapter = (adapter: object): void => {
   Reflect.set(globalThis, CURRENT_ADAPTER_KEY, adapter);
