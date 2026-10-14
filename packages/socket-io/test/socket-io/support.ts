@@ -10,6 +10,7 @@ import { io as connect } from 'socket.io-client';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
 import { ServerAdapter } from '#adapter/index';
+import type { Transport } from '#adapter/core/ports/transport';
 import { nodeServer } from '#adapter/servers/node';
 import { HonoIoAdapter } from '#socket-io/index';
 import { GatewayModule } from './gateways.ts';
@@ -65,10 +66,10 @@ interface Started {
 }
 
 /** Starts the application with the socket.io adapter bound. */
-const start = async (): Promise<Started> => {
-  const adapter = new ServerAdapter({
-    transport: nodeServer(),
-  });
+const start = async (
+  transport: Transport = nodeServer(),
+): Promise<Started> => {
+  const adapter = new ServerAdapter({ transport });
   const app = await NestFactory.create(GatewayModule, adapter, {
     logger: false,
   });

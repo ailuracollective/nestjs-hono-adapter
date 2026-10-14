@@ -351,6 +351,12 @@
         "max-statements": "off",
         "oxc/no-rest-spread-properties": "off"
       }
+    },
+    {
+      "files": ["packages/socket-io/src/engine.ts"],
+      "rules": {
+        "oxc/no-optional-chaining": "off"
+      }
     }
   ],
   "ignorePatterns": [

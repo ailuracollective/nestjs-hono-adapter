@@ -185,18 +185,22 @@ Install `socket.io` beside `@nestjs/websockets`: an optional
 peer reached only through
 `@ailura/nestjs-platform-hono-socket-io`. It attaches to a Node
 `http.Server`, which `./node-server` answers with on Node and
-Bun; the Bun transport serves through `Bun.serve`, whose server
-is not one, and a fetch host has no server — the adapter refuses
-both when the gateway starts, naming the transport to serve
-through instead, rather than failing inside socket.io. Its
-`close()` closes the listener a standalone gateway opened and
-only that one: the server an attached gateway shares belongs to
-the transport, which closes it in its own shutdown, so the
-adapter lets the clients go and leaves that listener alone. Port
-zero requests attachment and is refused when no Node server is
-available; an explicit nonzero port opens a separate listener
-the adapter owns and closes during shutdown, even when the
-gateway uses a namespace.
+Bun; where the transport serves through `Bun.serve`, it binds a
+socket.io engine to that server instead — install the optional
+`@socket.io/bun-engine` peer alongside it, and the example above
+works unchanged with `new ServerAdapter()` or `bunServer()`. A
+fetch host has no server to bind either to — the adapter refuses
+it when the gateway starts, as it refuses a `Bun.serve`
+deployment without `@socket.io/bun-engine`, naming the transport
+or the package to use instead, rather than failing inside
+socket.io. Its `close()` closes the listener a standalone
+gateway opened and only that one: the server an attached gateway
+shares belongs to the transport, which closes it in its own
+shutdown, so the adapter lets the clients go and leaves that
+listener alone. Port zero requests attachment and is refused
+when no Node server is available; an explicit nonzero port opens
+a separate listener the adapter owns and closes during shutdown,
+even when the gateway uses a namespace.
 
 ## Microservices
 

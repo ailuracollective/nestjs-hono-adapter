@@ -13,12 +13,33 @@ import { callbackOf, hostnameOf } from './listen-args.ts';
 import { fetchOf } from './request.ts';
 import { applyAddress, baseOptions } from './serve-options.ts';
 
+/**
+ * What a capability installs on the Bun server beside the
+ * application.
+ */
+interface NativeHandler {
+  /**
+   * Answers a request the capability owns, or none to let the
+   * application answer it.
+   */
+  readonly handleRequest: (
+    request: Request,
+    server: BunRuntime,
+  ) => Response | Promise<Response> | undefined;
+  /** The seconds Bun keeps an idle connection. */
+  readonly idleTimeout: number;
+  /** The handler Bun upgrades WebSocket requests with. */
+  readonly websocket: unknown;
+}
+
 /** The server Nest drives over `Bun.serve`. */
 class BunServer extends EventEmitter implements Server {
   /** The Hono application the server answers with. */
   private readonly app: NestHono;
   /** Bun's own server, once it is started. */
   private server: BunRuntime | undefined;
+  /** The handler a capability installed, where one did. */
+  private native: NativeHandler | undefined;
   /** The handler Bun upgrades WebSocket requests with. */
   private websocket: unknown;
   /** The TLS options the server is started with. */
@@ -39,6 +60,14 @@ class BunServer extends EventEmitter implements Server {
   /** Stores the websocket handler Bun upgrades requests with. */
   public useWebSocket(handler: unknown): void {
     this.websocket = handler;
+  }
+
+  /**
+   * Installs a capability's handler beside the application,
+   * before the server starts.
+   */
+  public useNativeHandler(handler: NativeHandler): void {
+    this.native = handler;
   }
 
   /** Starts the server and answers the callback Nest passed. */
@@ -81,11 +110,19 @@ class BunServer extends EventEmitter implements Server {
     port: string | number,
     hostname: string | undefined,
   ): void {
+    const { native } = this;
     const options = baseOptions(
-      fetchOf.bind(undefined, this.app),
-      this.websocket,
+      (request, server) =>
+        native === undefined
+          ? fetchOf(this.app, request, server)
+          : (native.handleRequest(request, server) ??
+            fetchOf(this.app, request, server)),
+      native === undefined ? this.websocket : native.websocket,
       this.tls,
     );
+    if (native !== undefined) {
+      options.idleTimeout = native.idleTimeout;
+    }
     this.unix = applyAddress(options, port, hostname);
     this.server = Bun.serve(
       options as unknown as ServeOptions,
@@ -94,5 +131,6 @@ class BunServer extends EventEmitter implements Server {
 }
 
 export { BunServer };
+export type { NativeHandler };
 export { noDisposer } from './listen-args.ts';
 export type { ListenCallback } from './listen-args.ts';

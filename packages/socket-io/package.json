@@ -45,11 +45,15 @@
   "peerDependencies": {
     "@nestjs/common": ">=11 <13",
     "@nestjs/websockets": ">=11 <13",
+    "@socket.io/bun-engine": "^0.1.2",
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.1"
   },
   "peerDependenciesMeta": {
     "@nestjs/websockets": {
+      "optional": true
+    },
+    "@socket.io/bun-engine": {
       "optional": true
     },
     "socket.io": {

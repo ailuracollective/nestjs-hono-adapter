@@ -87,9 +87,19 @@ marking the adapter, and otherwise reaches the core only as
 types. The socket.io island names nothing in `core/` or
 `features/`: Nest hands it the server it already built, so
 `packages/socket-io/src/adapter.ts` needs no port or composition
-root — its runtime graph is `socket.io` and the three modules
-behind its entrypoint, and `test/layers.test.ts` refuses the
-value and type edges that would change that.
+root — its runtime graph is `socket.io`, the optional
+`@socket.io/bun-engine` it loads by dynamic import only where
+the runtime is Bun, and the four modules behind its entrypoint,
+and `test/layers.test.ts` refuses the value and type edges that
+would change that. The island reads the server by capability,
+not by class, the way `ws` reads the transport: a server that
+offers `useNativeHandler()` — the Bun transport's slot, a
+structural port the island calls without importing the core — is
+served by a socket.io engine bound to it; any other server is
+served the way socket.io has always served one, on its
+`http.Server`. So a gateway attaches to `Bun.serve` or to a Node
+server through the same adapter, and a transport that offers
+neither is refused by name rather than by inspecting it.
 
 Packaging, not layering: `core/` never imports
 `servers/fetch.ts`, and imports `servers/bun.ts` only from
@@ -180,8 +190,9 @@ the Bun transport's dynamic import, which is why it reads both
 import shapes. `@ailura/nestjs-platform-hono-ws` is the only
 package reaching the WebSocket peers,
 `@ailura/nestjs-platform-hono-socket-io` the only one reaching
-`socket.io`, `@ailura/nestjs-platform-hono-multipart` the only
-one reaching `busboy`. `test/layers.test.ts` reads
+`socket.io` (and the `@socket.io/bun-engine` it dynamically
+imports on Bun), `@ailura/nestjs-platform-hono-multipart` the
+only one reaching `busboy`. `test/layers.test.ts` reads
 `packages/core/src` as the layered source and the three
 `packages/*/src` as islands; `test/entry-points.test.ts` starts
 from the adapter's `index.ts` and asks each island for its peers
@@ -334,11 +345,17 @@ last, and CI runs it as its own job. The measured values are in
 
 The ceilings are ratchets: growth past one fails, and moving one
 is an explicit edit justified here. Current ceiling/measured:
-`index` 12000/11944, `bun-server` 1024/1003, `node-server`
-560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1650/1618
-and `socket-io` 950/948. Entry names are unchanged: the first
-four measure `packages/core/dist`, and `multipart`, `ws` and
-`socket-io` their own `packages/<name>/dist`. The upload
+`index` 12000/11691, `bun-server` 1100/1066, `node-server`
+560/534, `fetch` 500/495, `multipart` 4250/4192, `ws` 1650/1614
+and `socket-io` 1260/1231. Both moved ceilings belong to one
+change: the Bun transport gained the `useNativeHandler()` slot a
+socket.io gateway serves its engine through, which costs
+`bun-server` 63 B, and the island gained the duck-typed bind and
+the guarded dynamic import, which took `socket-io` from 948 B.
+The engine itself is an optional peer, external to the gate, so
+it adds nothing to either bundle. Entry names are unchanged: the
+first four measure `packages/core/dist`, and `multipart`, `ws`
+and `socket-io` their own `packages/<name>/dist`. The upload
 island's streaming seam closes three pieces the reconnaissance
 in [parity.md](parity.md#file-uploads) calls missing.
 

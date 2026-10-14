@@ -15,6 +15,12 @@ bun add @ailura/nestjs-platform-hono-socket-io socket.io @nestjs/websockets
 
 `@ailura/nestjs-hono-adapter`, `@nestjs/common`, `hono` and
 `rxjs` are peers too; install the adapter and Hono alongside it.
+A deployment that serves through the Bun transport adds the
+optional `@socket.io/bun-engine`:
+
+```sh
+bun add @socket.io/bun-engine
+```
 
 ## Use
 
@@ -34,10 +40,16 @@ app.useWebSocketAdapter(new HonoIoAdapter(app));
 await app.listen(3000);
 ```
 
-The Bun transport serves through `Bun.serve`, whose server is
-not a Node one, and a fetch host has no server at all; the
-adapter refuses both when the gateway starts, naming the
-transport to serve through instead.
+Where the transport serves through `Bun.serve` — the default
+`new ServerAdapter()` or `bunServer()` — and
+`@socket.io/bun-engine` is installed, the adapter binds a
+socket.io engine to that server instead, and the same bootstrap
+works unchanged.
+
+A fetch host has no server to bind either to; the adapter
+refuses one when the gateway starts, as it refuses a `Bun.serve`
+deployment without `@socket.io/bun-engine`, naming the transport
+or the package to use instead.
 
 Port zero requests attachment and is refused when no Node server
 is available. An explicit nonzero gateway port opens a separate

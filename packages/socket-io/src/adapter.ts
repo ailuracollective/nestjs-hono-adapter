@@ -20,6 +20,8 @@ import type {
 } from 'socket.io';
 
 import { assertAttachable } from './refusal.ts';
+import { attachEngine } from './engine.ts';
+import type { BunEngine } from './engine.ts';
 
 import {
   ATTACHED_PORT,
@@ -50,6 +52,12 @@ class HonoIoAdapter extends AbstractWsAdapter {
   /** The roots whose HTTP listeners this adapter created. */
   private readonly ownedServers = new WeakSet<Server>();
 
+  /**
+   * The Bun engines this adapter bound, by the server they
+   * serve.
+   */
+  private readonly engines = new WeakMap<Server, BunEngine>();
+
   /** The server, or the namespace, a gateway is bound to. */
   public override create(
     port: number,
@@ -78,8 +86,7 @@ class HonoIoAdapter extends AbstractWsAdapter {
     options?: ServerOptions,
   ): Server {
     if (port === ATTACHED_PORT) {
-      assertAttachable(this.httpServer);
-      return new Server(this.httpServer, options);
+      return this.attach(this.httpServer, options);
     }
     const server = new Server(port, options);
     this.ownedServers.add(server);
@@ -123,12 +130,34 @@ class HonoIoAdapter extends AbstractWsAdapter {
     server: Server | Namespace,
   ): Promise<void> {
     const io = rootOf(server);
+    const engine = this.engines.get(io);
+    io.disconnectSockets(true);
+    if (engine !== undefined) {
+      engine.close();
+      return Promise.resolve();
+    }
     if (this.ownedServers.has(io)) {
       return io.close();
     }
-    io.disconnectSockets(true);
     io.engine.close();
     return Promise.resolve();
+  }
+
+  /**
+   * Binds a gateway to the connected server, or refuses the
+   * transport.
+   */
+  private attach(
+    host: unknown,
+    options?: ServerOptions,
+  ): Server {
+    const attached = attachEngine(host, options);
+    if (attached === undefined) {
+      assertAttachable(host);
+      return new Server(host, options);
+    }
+    this.engines.set(attached.io, attached.engine);
+    return attached.io;
   }
 
   /** Binds one event name to the handler that answers it. */

@@ -210,12 +210,12 @@ gap only against Socket.IO, closed by
 `createIOServer()`, `mapPayload()`, `bindMessageHandlers()`,
 `bindClientDisconnect()` and `close()` — so a gateway keeps its
 namespaces, rooms, broadcasts and acknowledgement callbacks. It
-attaches to a Node `http.Server`, which only the Node transport
-provides: `./node-server` runs on Node and Bun, so a Bun
-deployment that wants socket.io serves through it. The Bun
-(`Bun.serve`) and fetch transports are refused by name instead
-of failing inside socket.io — the one change a consumer moving
-from Fastify must make.
+attaches to a Node `http.Server`, which the Node transport
+provides on Node and Bun; where the transport serves through
+`Bun.serve`, it binds a socket.io engine to that server instead
+when the optional `@socket.io/bun-engine` peer is installed. A
+fetch host — and a `Bun.serve` deployment without that peer — is
+refused by name instead of failing inside socket.io.
 
 ## File uploads
 

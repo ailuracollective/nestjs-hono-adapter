@@ -2,12 +2,13 @@
   {
     "name": "socket-io",
     "path": "dist/index.js",
-    "limit": 950,
+    "limit": 1260,
     "brotli": true,
     "ignore": [
       "@nestjs/common",
       "@nestjs/core",
       "@nestjs/websockets",
+      "@socket.io/bun-engine",
       "rxjs",
       "socket.io",
       "node:buffer",

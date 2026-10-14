@@ -8,7 +8,7 @@ const assertAttachable: (
     return;
   }
   throw new Error(
-    'HonoIoAdapter needs a Node http.Server for socket.io to attach to, and this transport does not answer with one. Serve through ./node-server, which runs on Node and on Bun.',
+    'HonoIoAdapter needs a Node http.Server for socket.io to attach to, and this transport does not answer with one. Serve through ./node-server, which runs on Node and on Bun, or install @socket.io/bun-engine to bind to the Bun transport.',
   );
 };
 
