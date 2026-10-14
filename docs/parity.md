@@ -74,7 +74,9 @@ Where the transport has no `createWebSocket` (`nodeServer()`, and the default tr
 
 ### `@nestjs/platform-socket.io` — implemented, in `@ailura/nestjs-platform-hono-socket-io`
 
-`HonoIoAdapter` is the counterpart of `IoAdapter` — `create()`, `createIOServer()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` — so a gateway keeps its namespaces, rooms, broadcasts and acknowledgement callbacks. It attaches to a Node `http.Server`, which the Node transport provides on Node and Bun; where the transport serves through `Bun.serve`, it binds a socket.io engine to that server instead when the optional `@socket.io/bun-engine` peer is installed. A fetch host — and a `Bun.serve` deployment without that peer — is refused by name instead of failing inside socket.io.
+The bridge ships no adapter: Nest's `IoAdapter` is the adapter, and the bridge replaces its `createIOServer()` so a gateway binds to the transport's own server instead of one built from it. Everything else is the stock class — `create()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` — so namespaces, rooms, broadcasts, acknowledgement callbacks and the shutdown are `platform-socket.io`'s own.
+
+Where the transport's server offers `useNativeHandler()` — the Bun transport's slot — a socket.io engine binds to it, and the optional `@socket.io/bun-engine` peer is where the engine comes from. A server that answers with a real `node:http` server (`nodeServer()`, on Node and on Bun) keeps the stock path, which attaches socket.io to it as it stands. A fetch host — and a `Bun.serve` deployment without that peer — is refused by name instead of failing inside socket.io. The Bun server carries one native slot, so it serves one socket.io server per application.
 
 ## File uploads
 
@@ -96,7 +98,7 @@ The multipart entry moved from 3800 B to 4250 B for 553 B of measured growth, re
 
 - **`ApolloDriver` — implemented, in `@ailura/nestjs-platform-hono-graphql`.** The bridge replaces that one branch on `ApolloDriver.prototype` and mounts the endpoint through `registerGraphQLRoute()`. A deployment names the stock driver and imports nothing: installing the package is what installs the bridge, because the compatibility region resolves it. Queries and mutations, both code-first and schema-first, answer on Hono.
 - **GraphiQL / the Apollo landing page — implemented.** The plugin is one `@nestjs/apollo` puts into `options.plugins` before the driver registers, so the bridge hands it to the engine untouched and the page answers on a `GET` that accepts `text/html`.
-- **Subscriptions — implemented on the Node transport, not yet on Bun or fetch.** `ApolloDriver.start()` opens a `GqlSubscriptionService` that attaches a `ws` server to the HTTP server's `upgrade` event. The Node transport's real `node:http` server emits it, so `graphql-ws` answers; `Bun.serve` is not a `node:http` server and the fetch transport serves no socket, so neither carries the upgrade yet. That is the WebSocket island's work.
+- **Subscriptions — implemented on the Node transport, not yet on Bun or fetch.** `ApolloDriver.start()` opens a `GqlSubscriptionService` that attaches a `ws` server to the HTTP server's `upgrade` event. The Node transport's real `node:http` server emits it, so `graphql-ws` answers; `Bun.serve` is not a `node:http` server and the fetch transport serves no socket, so neither carries the upgrade yet. That is the WebSocket bridge's work.
 - **`MercuriusDriver` — not implemented.** Mercurius is itself a Fastify plugin, so adapting it means a Fastify-shaped façade over the Hono application. The seam it would mount through (`registerGraphQLRoute()`) and the resolver context naming (`c`, `ctx`, `req`) exist and are covered by the Apollo bridge's tests.
 
 The reasoning, and what the bridge costs, are in [compatibility.md](compatibility.md#graphqlapollo).

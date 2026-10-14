@@ -108,7 +108,16 @@ test.each(OTHER_ENTRY_POINTS)('%s reaches no socket.io peer', async (_name, sour
 test('the socket.io entry point does reach socket.io', async () => {
   const carriers = await carriersOf(SOCKET_IO_ENTRY, SOCKET_IO_PEER);
   const names = carriers.map((file) => path.basename(file));
-  expect(names).toContain('adapter.ts');
+  expect(names).toContain('kit.ts');
+});
+
+test('the Socket.IO package peers on the adapter it patches', () => {
+  const found = CAPABILITIES.filter((pkg) => pkg.name === `${PLATFORM_PREFIX}socket-io`);
+  expect(found).toHaveLength(1);
+  const [socketIo] = found;
+  if (socketIo === undefined) throw new TypeError('the Socket.IO package is not published');
+  const peers = socketIo.manifest.peerDependencies ?? {};
+  expect(peers['@nestjs/platform-socket.io']).toBeDefined();
 });
 
 test('the HTTP entry point reaches no upload parser', async () => {

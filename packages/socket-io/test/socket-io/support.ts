@@ -1,12 +1,13 @@
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { firstValueFrom, from, fromEvent, throwError, timeout } from 'rxjs';
 import { io as connect } from 'socket.io-client';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
+import { restoreWebClasses } from '#test/probe/in-process';
 import { ServerAdapter } from '#adapter/index';
 import type { Transport } from '#adapter/core/ports/transport';
 import { nodeServer } from '#adapter/servers/node';
-import { HonoIoAdapter } from '#socket-io/index';
 import { GatewayModule } from './gateways.ts';
 
 const TIMEOUT_MS = 4000;
@@ -44,13 +45,17 @@ const start = async (transport: Transport = nodeServer()): Promise<Started> => {
   const app = await NestFactory.create(GatewayModule, adapter, {
     logger: false,
   });
-  app.useWebSocketAdapter(new HonoIoAdapter(app));
+  app.useWebSocketAdapter(new IoAdapter(app));
   await app.listen(ANY_PORT, LOCALHOST);
   const address = adapter.getHttpServer().address();
   if (address === undefined || typeof address === 'string')
     throw new TypeError('the adapter answered with no port');
   return {
-    close: () => app.close(),
+    // A Bun server installs its own lightweight web classes; the probe puts the process ones back.
+    close: async () => {
+      await app.close();
+      restoreWebClasses();
+    },
     url: `http://${LOCALHOST}:${address.port}`,
   };
 };

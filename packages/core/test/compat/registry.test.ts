@@ -18,7 +18,7 @@ const SHIPPED = ['express'];
  * The names the region finds on its own once a deployment has installed the packages, in the order
  * it looks for them.
  */
-const DISCOVERED = ['graphql/apollo', 'serve-static', 'ws'];
+const DISCOVERED = ['graphql/apollo', 'serve-static', 'socket-io', 'ws'];
 
 const TWO_APPLICATIONS = 2;
 

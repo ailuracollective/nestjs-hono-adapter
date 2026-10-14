@@ -52,6 +52,7 @@ So the region resolves them. `compat/registry/discover.ts` carries the list, and
 const BRIDGE_PACKAGES = [
   '@ailura/nestjs-platform-hono-graphql',
   '@ailura/nestjs-platform-hono-serve-static',
+  '@ailura/nestjs-platform-hono-socket-io',
   '@ailura/nestjs-platform-hono-ws',
 ];
 ```
@@ -70,7 +71,7 @@ Discovery is settled by `init()` like an install is, because the bridges it turn
 
 ## The bridges
 
-One ships with the adapter and three ship with a package the adapter looks for. All four are described below.
+One ships with the adapter and four ship with a package the adapter looks for. All five are described below.
 
 ### `express`
 
@@ -120,6 +121,18 @@ app.useWebSocketAdapter(new WsAdapter(app)); // @nestjs/platform-ws, unchanged
 The patch is written on the prototype once per process. At call time it asks which of the registered applications owns `this.httpServer`; a call that owns none — an Express or Fastify deployment in the same process — falls through to the stock path unchanged. For an application it does own, `create()` refuses anything but `path` (`port`, `namespace`, `server` and the WebSocket server options), registers the path as a route on that application through the transport's websocket helper, and hands the adapter a server of its own — `clients`, `on('connection')`, `close(callback)` — so `bindMessageHandlers()`, `bindErrorHandler()` and `close()` run against it exactly as they run against `ws.Server`. A transport with no helper (`nodeServer()`) gets no route and no server of ours: the stock path serves a real `ws.Server` on the transport's HTTP server.
 
 A socket is bound on whichever event the helper fires first, because a helper that never calls `onOpen` — `@hono/cloudflare-workers` — still delivers messages.
+
+### `socket-io`
+
+Shipped as `@ailura/nestjs-platform-hono-socket-io`, which peers on `@nestjs/platform-socket.io` and on `socket.io`. Nest's own `IoAdapter` builds a socket.io server out of the HTTP server, which a transport serving through `Bun.serve` does not have. So the bridge replaces the one member that builds a server, `IoAdapter.prototype.createIOServer`, and leaves the rest of the class alone — `create()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` are the stock implementation, which is why namespaces, rooms, broadcasts, acknowledgement callbacks and refusals stay `platform-socket.io`'s own.
+
+```ts
+app.useWebSocketAdapter(new IoAdapter(app)); // @nestjs/platform-socket.io, unchanged
+```
+
+The patch is written on the prototype once per process. At call time it asks which of the registered applications owns `this.httpServer`; a call that owns none — an Express or Fastify deployment in the same process — falls through to the stock path unchanged, and so does a gateway that asked for a port of its own. For an application it does own, the port is zero, because the server is the transport's. A server offering `useNativeHandler()` — the Bun transport's slot, a structural port the bridge reads without importing the core — is served by a socket.io engine bound to it, and the optional `@socket.io/bun-engine` peer is where the engine comes from. Any other server is served the way socket.io has always served one, on its `http.Server`, which is the whole of the `nodeServer()` path. A transport that answers with neither — the fetch transport, or `Bun.serve` without the engine — is refused by name when the gateway starts rather than inside socket.io.
+
+The Bun transport carries one native slot, so one socket.io server per application is what it serves.
 
 ### `graphql/apollo`
 
@@ -229,13 +242,13 @@ The GraphQL bridge adds **no** drain plugin either. `@as-integrations/express5` 
 
 The region holds the **bridges**: runtime shims that add or reshape behaviour. It does not hold the **call shapes**: the argument forms a feature accepts.
 
-Those stay with their feature, because the dependency runs the other way. `features/static-assets/mount/target.ts` reads Express's `useStaticAssets(path, options)` and Fastify's `useStaticAssets({ root })` because that is the feature's own option parsing; moving it to `compat/` would make a feature reach into the region, which is the direction rule 6 forbids. `features/views/types.ts` keeps `ViewEngineOptions` for the same reason.
+Those stay with their feature, because the dependency runs the other way. `features/static-assets/mount/target.ts` reads Express's `useStaticAssets(path, options)` and Fastify's `useStaticAssets({ root })` because that is the feature's own option parsing; moving it to `compat/` would make a feature reach into the region, which is the direction rule 5 forbids. `features/views/types.ts` keeps `ViewEngineOptions` for the same reason.
 
 `core/server/socket.ts` stays in `core/` too. It fills `setKeepAlive`, `setNoDelay` and `setTimeout` onto a socket so the `Socket` port reads as a Node socket — that is the port's own contract, not a bridge to another platform.
 
 ## The guard
 
-`test/layers.test.ts` holds rule 6: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a seventh rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
+`test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
 `test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all four trees: the region, and the three bridge packages.
 

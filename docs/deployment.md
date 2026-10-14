@@ -69,21 +69,22 @@ A gateway is declared as Nest declares one, its `path` registered on the same Ho
 
 ### Socket.IO
 
-Socket.IO is a protocol of its own rather than a WebSocket, with an adapter and package of its own:
+Socket.IO is a protocol of its own rather than a WebSocket, and Nest serves it with its own `@nestjs/platform-socket.io` `IoAdapter`. That adapter is the adapter here too, fitted to Hono by the bridge package `@ailura/nestjs-platform-hono-socket-io`: installing it is what installs the bridge, and an application writes no import of it.
 
 ```ts
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
-import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
-import { HonoIoAdapter } from '@ailura/nestjs-platform-hono-socket-io';
 
-const adapter = new ServerAdapter({ transport: nodeServer() });
+const adapter = new ServerAdapter();
 const app = await NestFactory.create(AppModule, adapter);
-app.useWebSocketAdapter(new HonoIoAdapter(app));
+app.useWebSocketAdapter(new IoAdapter(app));
 await app.listen(3000);
 ```
 
-`HonoIoAdapter` is the counterpart of `@nestjs/platform-socket.io`'s `IoAdapter`, so a gateway keeps its namespaces, rooms, broadcasts and acknowledgement callbacks. Install `socket.io` beside `@nestjs/websockets`: an optional peer reached only through `@ailura/nestjs-platform-hono-socket-io`. It attaches to a Node `http.Server`, which `./node-server` answers with on Node and Bun; where the transport serves through `Bun.serve`, it binds a socket.io engine to that server instead — install the optional `@socket.io/bun-engine` peer alongside it, and the example above works unchanged with `new ServerAdapter()` or `bunServer()`. A fetch host has no server to bind either to — the adapter refuses it when the gateway starts, as it refuses a `Bun.serve` deployment without `@socket.io/bun-engine`, naming the transport or the package to use instead, rather than failing inside socket.io. Its `close()` closes the listener a standalone gateway opened and only that one: the server an attached gateway shares belongs to the transport, which closes it in its own shutdown, so the adapter lets the clients go and leaves that listener alone. Port zero requests attachment and is refused when no Node server is available; an explicit nonzero port opens a separate listener the adapter owns and closes during shutdown, even when the gateway uses a namespace.
+Install `socket.io` beside it, which the stock adapter needs anyway. The bridge replaces `createIOServer()`, the one member that builds a server, so a gateway binds to the transport's own server instead of one built from it. Where the transport serves through `Bun.serve` the gateway is served by a socket.io engine bound to that server — install the optional `@socket.io/bun-engine` peer alongside it, and the example above works unchanged with `new ServerAdapter()` or `bunServer()`. Where the transport answers with a real `node:http` server, which `nodeServer()` does on Node and on Bun, socket.io attaches to it the way it always has. A fetch host has no server to bind either to, and a `Bun.serve` deployment without the engine has none either: the gateway is refused when it starts, naming the transport or the package to use instead, rather than failing inside socket.io. The Bun server carries one native slot, so it serves one socket.io server per application.
+
+Everything else is the stock class — `create()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` — so a gateway keeps its namespaces, rooms, broadcasts, acknowledgement callbacks and its shutdown: a gateway that asked for a listener of its own with an explicit nonzero port releases it, and one attached to the application's server is closed the way `IoAdapter` closes it.
 
 ## Microservices
 

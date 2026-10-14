@@ -23,14 +23,7 @@ const multipartReachesApp = (edges: readonly Edge[]): Edge[] =>
       !(edge.to === CORE_ENTRY && edge.markerOnly === true),
   );
 
-const socketIoReachesApp = (edges: readonly Edge[]): Edge[] =>
-  edges.filter(
-    (edge) =>
-      layerOf(edge.from) === 'socket-io' &&
-      (layerOf(edge.to) === 'core' || layerOf(edge.to) === 'features'),
-  );
-
-const BRIDGE_LAYERS: ReadonlySet<string> = new Set(['graphql', 'serve-static', 'ws']);
+const BRIDGE_LAYERS: ReadonlySet<string> = new Set(['graphql', 'serve-static', 'socket-io', 'ws']);
 
 /** A feature may not lean on a bridge: a bridge is installed, never imported. */
 const featureReachesBridge = (edges: readonly Edge[]): Edge[] =>
@@ -61,5 +54,4 @@ export {
   featureReachesBridge,
   featureReachesFeature,
   multipartReachesApp,
-  socketIoReachesApp,
 };

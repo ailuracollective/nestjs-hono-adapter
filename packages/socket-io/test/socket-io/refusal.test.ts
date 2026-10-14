@@ -2,10 +2,10 @@ import { expect, test } from 'bun:test';
 
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 import { ServerAdapter } from '#adapter/index';
 import { fetchServer } from '#adapter/servers/fetch';
-import { HonoIoAdapter } from '#socket-io/index';
 import { GatewayModule } from './gateways.ts';
 import { ANY_PORT, LOCALHOST } from './support.ts';
 
@@ -25,12 +25,7 @@ test('a transport with no node server is refused by name', async () => {
   const app = await NestFactory.create(GatewayModule, adapter, {
     logger: false,
   });
-  app.useWebSocketAdapter(new HonoIoAdapter(app));
+  app.useWebSocketAdapter(new IoAdapter(app));
   const refusal = await refusalOf(app);
   expect(refusal).toMatch(/needs a Node http\.Server/u);
-});
-
-test('attachment without an HTTP server is refused', () => {
-  const adapter = new HonoIoAdapter();
-  expect(() => adapter.create(ANY_PORT)).toThrow(/needs a Node http\.Server/u);
 });

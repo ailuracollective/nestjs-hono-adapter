@@ -64,6 +64,7 @@ const BRIDGE_ENTRYPOINTS: Readonly<Record<string, string[]>> = {
     'packages/graphql/src/route.ts',
   ],
   'serve-static': ['packages/serve-static/src/index.ts', 'packages/serve-static/src/bridge.ts'],
+  'socket-io': ['packages/socket-io/src/index.ts', 'packages/socket-io/src/bridge.ts'],
   ws: ['packages/ws/src/index.ts', 'packages/ws/src/bridge.ts'],
 };
 

@@ -68,7 +68,7 @@ Three platform APIs have no counterpart here, recorded rather than emulated beca
 - **Part of the Express settings API** — `engine()` and `get()`. `setLocal()`, `set()`, `enable()` and `disable()` are implemented and documented in [api.md](api.md#application-methods). `engine()` registers an engine by file extension, which nothing reads (`setViewEngine()` names it explicitly); `get()` collides with Nest's `INestApplicationContext.get()` (`any[]`) and the `get(target, handler)` GET route registrar, so `app.get(setting)` needs a `TS2430` override error and a `TS4114` implicit-override error.
 - **The Fastify route decorators** — `@RouteSchema()`, `@RouteConfig()` and `@RouteConstraints()`, which write `__fastify_route_schema__`, `__fastify_route_config__` and `__fastify_route_constraints__`; only `FastifyAdapter` reads them, so here the three are no-ops.
 
-`FileStreamInterceptor` and the `@ailura/nestjs-platform-hono-socket-io` package are implemented in those capability packages rather than here: [file uploads](parity.md#file-uploads), [socket.io](parity.md#nestjsplatform-socketio--implemented-in-ailuranestjs-platform-hono-socket-io).
+`FileStreamInterceptor` is implemented in the capability package and the Socket.IO bridge in its own package, rather than here: [file uploads](parity.md#file-uploads), [socket.io](parity.md#nestjsplatform-socketio--implemented-in-ailuranestjs-platform-hono-socket-io).
 
 ## What `inject()` does not carry
 

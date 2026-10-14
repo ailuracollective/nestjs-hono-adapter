@@ -7,7 +7,7 @@
 | `@ailura/nestjs-hono-adapter` | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
 | `@ailura/nestjs-platform-hono-multipart` | `.` | Upload interceptors (multer-style) |
 | `@ailura/nestjs-platform-hono-ws` | `.` | Nest's `@nestjs/platform-ws` `WsAdapter` on Hono (bridge) |
-| `@ailura/nestjs-platform-hono-socket-io` | `.` | Socket.IO adapter (`HonoIoAdapter`) |
+| `@ailura/nestjs-platform-hono-socket-io` | `.` | Nest's `@nestjs/platform-socket.io` `IoAdapter` on Hono (bridge) |
 
 `./ws` moved to its own package; `./multipart` and `./socket-io` only ever existed on `main`. Install per the [README](../packages/core/README.md#migrating-from-the-old-subpaths).
 
@@ -165,6 +165,8 @@ import { bridge } from '@ailura/nestjs-platform-hono-ws';
 ```
 
 Its `install(target)` patches `WsAdapter.prototype.create` once per process: for the adapter a gateway was created for, the gateway's `path` is registered on that adapter's Hono application instead of a `ws.Server` being built. Every other member — `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()`, `close()`, `dispose()`, `messageParser` — is the stock class's. Only `path` is honoured; a non-zero `port`, a `namespace`, a `server` and the WebSocket server options are refused by name. See [WebSockets](deployment.md#websockets).
+
+Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for Socket.IO: an application names Nest's own `@nestjs/platform-socket.io` `IoAdapter` — `app.useWebSocketAdapter(new IoAdapter(app))` — and the bridge replaces its `createIOServer()`, so a gateway binds to the transport's own server instead of one built from it. Every other member is the stock class's, and the wire protocol, namespaces, rooms, broadcasts and acknowledgement callbacks stay `platform-socket.io`'s own. See [Socket.IO](deployment.md#socketio).
 
 ## Types
 

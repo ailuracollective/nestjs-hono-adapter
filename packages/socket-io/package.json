@@ -1,12 +1,14 @@
 {
   "name": "@ailura/nestjs-platform-hono-socket-io",
   "version": "1.4.1",
-  "description": "Socket.IO gateway adapter for @ailura/nestjs-hono-adapter.",
+  "description": "The Socket.IO bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/platform-socket.io IoAdapter serving on Hono.",
   "keywords": [
     "adapter",
     "hono",
     "nestjs",
-    "socket.io"
+    "platform-socket.io",
+    "socket.io",
+    "websockets"
   ],
   "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
   "bugs": {
@@ -43,20 +45,19 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
-    "@nestjs/common": ">=11 <13",
-    "@nestjs/websockets": ">=11 <13",
+    "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
+    "@nestjs/platform-socket.io": ">=11 <13",
     "@socket.io/bun-engine": "^0.1.2",
-    "rxjs": "^7.8.2",
     "socket.io": "^4.8.1"
   },
   "peerDependenciesMeta": {
-    "@nestjs/websockets": {
+    "@ailura/nestjs-hono-adapter": {
+      "optional": true
+    },
+    "@nestjs/platform-socket.io": {
       "optional": true
     },
     "@socket.io/bun-engine": {
-      "optional": true
-    },
-    "socket.io": {
       "optional": true
     }
   },

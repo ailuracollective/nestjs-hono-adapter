@@ -1,41 +1,7 @@
 import { expect, test } from 'bun:test';
 
-import {
-  bridgeReachesApp,
-  crossing,
-  multipartReachesApp,
-  socketIoReachesApp,
-} from '#test/layers/rules';
+import { bridgeReachesApp, crossing, multipartReachesApp } from '#test/layers/rules';
 
-test('the socket.io island reaching the application is refused', () => {
-  const forbidden = crossing(
-    'packages/socket-io/src/adapter.ts',
-    'packages/core/src/core/server/server-adapter.ts',
-  );
-  expect(socketIoReachesApp([forbidden])).toStrictEqual([forbidden]);
-});
-
-test('and refused as a type too, unlike the ws island', () => {
-  const typed = crossing(
-    'packages/socket-io/src/adapter.ts',
-    'packages/core/src/core/server/server-adapter.ts',
-    true,
-  );
-  expect(socketIoReachesApp([typed])).toStrictEqual([typed]);
-});
-
-test.each([
-  ['packages/core/src/core/server/server-adapter.ts', false],
-  ['packages/core/src/core/server/server-adapter.ts', true],
-  ['packages/core/src/features/sse.ts', false],
-  ['packages/core/src/features/sse.ts', true],
-] as const)(
-  'nested socket.io modules reaching %s are refused (type only: %s)',
-  (target, typeOnly) => {
-    const forbidden = crossing('packages/socket-io/src/nested/helper.ts', target, typeOnly);
-    expect(socketIoReachesApp([forbidden])).toStrictEqual([forbidden]);
-  },
-);
 test('the upload island reaching the application is refused when it is a value', () => {
   const forbidden = crossing(
     'packages/multipart/src/storage/disk.storage.ts',

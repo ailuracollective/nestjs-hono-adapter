@@ -25,7 +25,6 @@ const bridgeTrees = async (): Promise<Edge[]> => {
 
 const scanAll = async (): Promise<Edge[]> => [
   ...(await scan(SOURCE)),
-  ...(await scan(path.join(ROOT, 'packages', 'socket-io', 'src'), [])),
   ...(await scan(path.join(ROOT, 'packages', 'multipart', 'src'), [])),
   ...(await bridgeTrees()),
 ];

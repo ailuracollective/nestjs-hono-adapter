@@ -18,14 +18,14 @@ bun add @ailura/nestjs-hono-adapter hono
 
 The two optional capabilities live in their own packages, each with a single entrypoint, so importing one loads none of the others:
 
-| Package                                  | For       | Installs                          |
-| ---------------------------------------- | --------- | --------------------------------- |
-| `@ailura/nestjs-platform-hono-multipart` | uploads   | `busboy`                          |
-| `@ailura/nestjs-platform-hono-socket-io` | socket.io | `socket.io`, `@nestjs/websockets` |
+| Package                                  | For       | Installs                                  |
+| ---------------------------------------- | --------- | ----------------------------------------- |
+| `@ailura/nestjs-platform-hono-multipart` | uploads   | `busboy`                                  |
+| `@ailura/nestjs-platform-hono-socket-io` | socket.io | `socket.io`, `@nestjs/platform-socket.io` |
 
-WebSockets are not a capability but a **compatibility bridge**: `@ailura/nestjs-platform-hono-ws` fits Nest's own `@nestjs/platform-ws` `WsAdapter` to Hono, so you install the package and write no import of it — `app.useWebSocketAdapter(new WsAdapter(app))` is the whole wiring. See [docs/compatibility.md](../../docs/compatibility.md).
+WebSockets are not a capability but a **compatibility bridge**: `@ailura/nestjs-platform-hono-ws` fits Nest's own `@nestjs/platform-ws` `WsAdapter` to Hono, so you install the package and write no import of it — `app.useWebSocketAdapter(new WsAdapter(app))` is the whole wiring. Socket.IO is the same, through `@ailura/nestjs-platform-hono-socket-io` and the stock `@nestjs/platform-socket.io` `IoAdapter`. See [docs/compatibility.md](../../docs/compatibility.md).
 
-A socket.io gateway needs the Node transport, which `./node-server` provides on Node and on Bun.
+A socket.io gateway is served by the Bun transport's own server where it can bind an engine, and by the Node transport's `http.Server` otherwise; the fetch transport has neither and is refused by name.
 
 ### Migrating from the old subpaths
 

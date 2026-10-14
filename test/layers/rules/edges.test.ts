@@ -1,18 +1,14 @@
 import { expect, test } from 'bun:test';
 
 import { CORE_ENTRY, CORE_PACKAGE } from '#test/layers/model';
-import {
-  bridgeReachesApp,
-  crossing,
-  multipartReachesApp,
-  socketIoReachesApp,
-} from '#test/layers/rules';
+import { bridgeReachesApp, crossing, multipartReachesApp } from '#test/layers/rules';
 import { edgesIn } from '#test/layers/tree';
 
 test.each(['', 'type '])('core package imports are scanned with their type flag (%s)', (type) => {
   const source = `import ${type}{ ServerAdapter } from '${CORE_PACKAGE}';`;
-  const socketIo = edgesIn(source, 'packages/socket-io/src/adapter.ts');
-  expect(socketIoReachesApp(socketIo)).toHaveLength(1);
+  const socketIo = edgesIn(source, 'packages/socket-io/src/patch.ts');
+  expect(bridgeReachesApp(socketIo)).toHaveLength(0);
+  expect(socketIo[0]).toMatchObject({ to: CORE_ENTRY, typeOnly: type !== '' });
   const multipart = edgesIn(source, 'packages/multipart/src/multipart/multipart.parser.ts');
   expect(multipartReachesApp(multipart)).toHaveLength(Number(type === ''));
 });

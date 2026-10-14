@@ -5,7 +5,7 @@
     "noEmit": true,
     "paths": {
       "#adapter/*": ["../core/src/*.ts", "../core/src/*"],
-      "#socket-io/*": ["./src/*.ts", "./src/*"],
+      "#test/*": ["../../test/*.ts", "../../test/*"],
       "@ailura/nestjs-hono-adapter": ["../core/src/index.ts"]
     }
   },

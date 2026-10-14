@@ -17,13 +17,8 @@ import {
   featureReachesFeature,
   layerOf,
   multipartReachesApp,
-  socketIoReachesApp,
 } from './layers/rules.ts';
 import { refusalOf, scanAll } from './layers/tree.ts';
-
-test('no socket.io module reaches the application', async () => {
-  expect(socketIoReachesApp(await scanAll())).toStrictEqual([]);
-});
 
 test('no bridge package reaches past the published entrypoint', async () => {
   expect(bridgeReachesApp(await scanAll())).toStrictEqual([]);

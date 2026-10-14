@@ -2,20 +2,13 @@
   {
     "name": "socket-io",
     "path": "dist/index.js",
-    "limit": 1400,
+    "limit": 900,
     "brotli": true,
     "ignore": [
-      "@nestjs/common",
-      "@nestjs/core",
-      "@nestjs/websockets",
+      "@ailura/nestjs-hono-adapter",
+      "@nestjs/platform-socket.io",
       "@socket.io/bun-engine",
-      "rxjs",
-      "socket.io",
-      "node:buffer",
-      "node:events",
-      "node:http",
-      "node:stream",
-      "node:util"
+      "socket.io"
     ]
   }
 ]

@@ -188,6 +188,7 @@
         "packages/core/src/servers/bun-runtime.ts",
         "packages/core/src/servers/bun/**/*.ts",
         "packages/core/src/servers/node.ts",
+        "packages/socket-io/src/patch.ts",
         "packages/ws/src/patch.ts"
       ],
       "rules": {
@@ -321,6 +322,7 @@
         "packages/core/src/compat/**/*.ts",
         "packages/graphql/src/**/*.ts",
         "packages/serve-static/src/**/*.ts",
+        "packages/socket-io/src/**/*.ts",
         "packages/ws/src/**/*.ts"
       ],
       "rules": {

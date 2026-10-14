@@ -15,7 +15,6 @@
         "../packages/serve-static/test/*"
       ],
       "#ws/*": ["../packages/ws/src/*.ts", "../packages/ws/src/*"],
-      "#socket-io/*": ["../packages/socket-io/src/*.ts", "../packages/socket-io/src/*"],
       "#test/*": ["./*.ts", "./*"],
       "#root/*": ["../*"],
       "#benchmarks/*": ["../packages/benchmarks/src/*.ts", "../packages/benchmarks/src/*"],

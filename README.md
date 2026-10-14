@@ -10,14 +10,14 @@ An HTTP adapter that runs a NestJS application on [Hono](https://hono.dev), with
 | --- | --- | --- |
 | [`@ailura/nestjs-hono-adapter`](packages/core/README.md) | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
 | [`@ailura/nestjs-platform-hono-ws`](packages/ws/README.md) | `.` | `@nestjs/platform-ws` on Hono |
-| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md) | `.` | Socket.IO gateways |
+| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md) | `.` | Socket.IO gateways (bridge) |
 | [`@ailura/nestjs-platform-hono-multipart`](packages/multipart/README.md) | `.` | Upload interceptors (multer-style) |
 | [`@ailura/nestjs-platform-hono-graphql`](packages/graphql/README.md) | `.` | GraphQL for `@nestjs/apollo` |
 | [`@ailura/nestjs-platform-hono-serve-static`](packages/serve-static/README.md) | `.` | `@nestjs/serve-static` on Hono |
 
 The adapter does the work; each capability package is optional and imports alone, and each bridge package is installed alone. The adapter's README is the detailed one.
 
-`ws`, `graphql` and `serve-static` are **compatibility bridges**, and they behave differently from the capabilities above: you write no import for them. Installing the package is what installs the bridge, because the adapter's compatibility region resolves it out of your own tree. So `GraphQLModule.forRoot({ driver: ApolloDriver })` keeps naming the stock [`@nestjs/apollo`](https://www.npmjs.com/package/@nestjs/apollo) driver, `ServeStaticModule.forRoot()` keeps naming the stock `@nestjs/serve-static`, and a `@WebSocketGateway()` keeps being served by the stock [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) `WsAdapter`; none of them knows this repository exists. See [docs/compatibility.md](docs/compatibility.md).
+`ws`, `socket-io`, `graphql` and `serve-static` are **compatibility bridges**, and they behave differently from the capabilities above: you write no import for them. Installing the package is what installs the bridge, because the adapter's compatibility region resolves it out of your own tree. So `GraphQLModule.forRoot({ driver: ApolloDriver })` keeps naming the stock [`@nestjs/apollo`](https://www.npmjs.com/package/@nestjs/apollo) driver, `ServeStaticModule.forRoot()` keeps naming the stock `@nestjs/serve-static`, a `@WebSocketGateway()` keeps being served by the stock [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) `WsAdapter`, and a Socket.IO gateway by the stock [`@nestjs/platform-socket.io`](https://www.npmjs.com/package/@nestjs/platform-socket.io) `IoAdapter`; none of them knows this repository exists. See [docs/compatibility.md](docs/compatibility.md).
 
 ## Install
 

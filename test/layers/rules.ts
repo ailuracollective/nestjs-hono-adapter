@@ -20,5 +20,4 @@ export {
   featureReachesBridge,
   featureReachesFeature,
   multipartReachesApp,
-  socketIoReachesApp,
 } from './rules/islands.ts';
