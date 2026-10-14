@@ -33,6 +33,7 @@
         "busboy": "1.6.0",
         "class-transformer": "0.5.1",
         "class-validator": "0.15.1",
+        "ejs": "7.0.1",
         "hono": "^4.13.8",
         "oxfmt": "^0.68.0",
         "oxlint": "^1.83.0",
@@ -133,11 +134,13 @@
       "peerDependencies": {
         "@nestjs/common": ">=11 <13",
         "@nestjs/websockets": ">=11 <13",
+        "@socket.io/bun-engine": "^0.1.2",
         "rxjs": "^7.8.2",
         "socket.io": "^4.8.1",
       },
       "optionalPeers": [
         "@nestjs/websockets",
+        "@socket.io/bun-engine",
         "socket.io",
       ],
     },
@@ -695,6 +698,8 @@
     "ecdsa-sig-formatter": ["ecdsa-sig-formatter@1.0.11", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, "sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ=="],
 
     "ee-first": ["ee-first@1.1.1", "", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
+
+    "ejs": ["ejs@7.0.1", "", { "bin": { "ejs": "bin/cli.js" } }, "sha512-TrAb1fY4jNY6aQrNjMJsoWQxGUK47A38JxuUvnt75vDcAA9Ln7ur6FHo+irVa5Bwd3w9rdUT3xLSl5MRgHIugg=="],
 
     "encodeurl": ["encodeurl@2.0.0", "", {}, "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg=="],
 
