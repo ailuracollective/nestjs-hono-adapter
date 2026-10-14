@@ -9,6 +9,10 @@ import type {
   Tool,
 } from '#benchmarks/harness/config/index';
 import { measure } from '#benchmarks/harness/tools/load';
+import {
+  sampleResources,
+  toResourceUsage,
+} from './resources/index.ts';
 
 /** Configuration and measurement handle for a target sweep. */
 interface Sweep {
@@ -19,6 +23,8 @@ interface Sweep {
   ) => (seconds: number) => Promise<LoadResult>;
   /** Options guiding the execution. */
   readonly options: Options;
+  /** OS process id of the server, when known. */
+  readonly pid: number | undefined;
   /** Scenarios selected to run. */
   readonly selected: readonly Scenario[];
   /** Server target under test. */
@@ -29,6 +35,8 @@ interface Sweep {
 interface SweepSpec {
   /** Execution options. */
   readonly options: Options;
+  /** OS process id of the server, when known. */
+  readonly pid: number | undefined;
   /** Port the target is listening on. */
   readonly port: number;
   /** Scenarios to measure. */
@@ -50,6 +58,7 @@ const sweepFor = (spec: SweepSpec): Sweep => ({
         url: `http://127.0.0.1:${spec.port}${scenario.path}`,
       }),
   options: spec.options,
+  pid: spec.pid,
   selected: spec.selected,
   target: spec.target,
 });
@@ -66,8 +75,12 @@ const runScenario = async (
     await load(sweep.options.warmupSeconds);
   }
   for (let index = 0; index < sweep.options.runs; index += 1) {
-    const result = await load(sweep.options.durationSeconds);
+    const { result, usage } = await sampleResources(
+      sweep.pid,
+      () => load(sweep.options.durationSeconds),
+    );
     samples.push({
+      resources: toResourceUsage(usage, result.total),
       result,
       run: index,
       scenario: scenario.id,

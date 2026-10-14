@@ -69,4 +69,4 @@ const table = (
   return [header, divider, ...rows];
 };
 
-export { format, matrix, table };
+export { ABSENT, format, matrix, table };

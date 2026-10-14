@@ -1,12 +1,28 @@
 import type {
   ReportContext,
+  ResourceUsage,
   RunMeta,
   Summary,
 } from '#benchmarks/harness/config/index';
-import { format, matrix, table } from './table.ts';
+import { ABSENT, format, matrix, table } from './table.ts';
 
 /** Decimal precision digits for latency values. */
 const LATENCY_DIGITS = 2;
+
+/** Decimal precision digits for CPU percent values. */
+const CPU_PERCENT_DIGITS = 1;
+
+/** Decimal precision digits for per-request CPU cost values. */
+const CPU_COST_DIGITS = 3;
+
+/** Decimal precision digits for mebibyte memory values. */
+const MEMORY_DIGITS = 1;
+
+/** Bytes in one kibibyte. */
+const KIB_BYTES = 1024;
+
+/** Bytes in one mebibyte. */
+const MIB_BYTES = KIB_BYTES * KIB_BYTES;
 
 /**
  * Renders the load tool version line, or nothing when no
@@ -47,6 +63,71 @@ const toolsOf = (summaries: readonly Summary[]): string[] =>
   [
     ...new Set(summaries.map((summary) => summary.tool)),
   ].toSorted();
+
+/** One resource metric rendered as its own table row set. */
+interface ResourceMetric {
+  /** Decimal precision digits. */
+  readonly digits: number;
+  /** Table caption. */
+  readonly label: string;
+  /** Reads the metric from a usage record. */
+  readonly read: (usage: ResourceUsage) => number;
+}
+
+/** Resource metrics shown for every tool that recorded usage. */
+const RESOURCE_METRICS: readonly ResourceMetric[] = [
+  {
+    digits: CPU_PERCENT_DIGITS,
+    label: 'CPU, median percent of one core:',
+    read: (usage) => usage.cpuPercent,
+  },
+  {
+    digits: CPU_COST_DIGITS,
+    label: 'CPU cost, median milliseconds per request:',
+    read: (usage) => usage.cpuMsPerRequest,
+  },
+  {
+    digits: MEMORY_DIGITS,
+    label: 'Memory, median mean RSS in mebibytes:',
+    read: (usage) => usage.rssMeanBytes / MIB_BYTES,
+  },
+  {
+    digits: MEMORY_DIGITS,
+    label: 'Memory, median peak RSS in mebibytes:',
+    read: (usage) => usage.rssPeakBytes / MIB_BYTES,
+  },
+];
+
+/** Renders one resource table. */
+const resourceTable = (
+  context: ReportContext,
+  metric: ResourceMetric,
+): string[] => [
+  metric.label,
+  '',
+  ...table(
+    matrix(context, (summary) =>
+      summary.resources === undefined
+        ? ABSENT
+        : format(metric.read(summary.resources), metric.digits),
+    ),
+    context.targets,
+  ),
+  '',
+];
+
+/**
+ * Builds the resource tables for a tool, when any run has
+ * usage.
+ */
+const resourceSection = (context: ReportContext): string[] =>
+  context.summaries.every(
+    (summary) => summary.resources === undefined,
+  )
+    ? []
+    : RESOURCE_METRICS.flatMap((metric) =>
+        resourceTable(context, metric),
+      );
 
 /** Generates markdown section lines for a specific load tool. */
 const toolSection = (
@@ -89,6 +170,7 @@ const toolSection = (
       context.targets,
     ),
     '',
+    ...resourceSection(forTool),
   ];
 };
 

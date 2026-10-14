@@ -39,6 +39,10 @@ measured.
 - **Latency**: p99 in milliseconds, plus full histogram in JSON.
 - **Errors**: count outside 2xx/3xx (`error` route responds with
   418).
+- **Resources**: the server process CPU (percent of one core,
+  and milliseconds per request) and RSS (mean and peak), sampled
+  with [pidusage](https://github.com/soyuka/pidusage) during the
+  measured window only.
 - **Generators**: [oha](https://github.com/hatoo/oha) (default)
   and [bombardier](https://github.com/codesenberg/bombardier).
 - **`tsc`**: compiles once to plain JS so code is identical
@@ -78,6 +82,9 @@ excludes `CHANGELOG.md`.
    histogram in JSON.
 4. **Target 127.0.0.1**: avoids IPv6 overhead.
 5. **Inherit environment**: sees harness's `NODE_ENV`.
+6. **Watch the server**: CPU and RSS are polled from the target
+   process, and only inside the measured window, so warmup and
+   cooldown never count.
 
 Results are comparative on this machine, not absolute production
 numbers.

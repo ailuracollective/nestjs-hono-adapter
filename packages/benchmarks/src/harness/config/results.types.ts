@@ -18,6 +18,18 @@ interface LatencyMs {
   readonly p99: number;
 }
 
+/** Resource usage of the server process during one measured run. */
+interface ResourceUsage {
+  /** Mean CPU milliseconds spent per answered request. */
+  readonly cpuMsPerRequest: number;
+  /** Mean CPU usage, percent of one logical core. */
+  readonly cpuPercent: number;
+  /** Mean resident set size in bytes. */
+  readonly rssMeanBytes: number;
+  /** Peak resident set size in bytes. */
+  readonly rssPeakBytes: number;
+}
+
 /** Metrics from a single measured run. */
 interface LoadResult {
   /** Transfer rate in bytes per second. */
@@ -34,6 +46,8 @@ interface LoadResult {
 
 /** One sample of a scenario on a target by a tool. */
 interface Sample {
+  /** Server process resource usage, when measurable. */
+  readonly resources: ResourceUsage | undefined;
   /** Load result measurements. */
   readonly result: LoadResult;
   /** Zero-indexed iteration number. */
@@ -54,6 +68,8 @@ interface Summary {
   readonly latencyMs: LatencyMs;
   /** Median throughput in requests per second. */
   readonly requestsPerSecond: number;
+  /** Median server process resource usage, when measurable. */
+  readonly resources: ResourceUsage | undefined;
   /** Total count of measured runs. */
   readonly runs: number;
   /** Scenario identifier. */
@@ -64,4 +80,10 @@ interface Summary {
   readonly tool: Tool;
 }
 
-export type { LatencyMs, LoadResult, Sample, Summary };
+export type {
+  LatencyMs,
+  LoadResult,
+  ResourceUsage,
+  Sample,
+  Summary,
+};

@@ -66,12 +66,13 @@ The zero-configuration bootstrap now serves through
 `bunServer()` where it served through `@hono/node-server`; a
 deployment on Node names the transport explicitly ([Use](#use)).
 
-`ServerAdapterOptions.overrideGlobalObjects` left with that
-default — it existed only to configure the implicit Node one.
-`nodeServer()` keeps it and defaults it to `false` (the implicit
-default passed `true`), so a deployment that relied on
-`@hono/node-server` replacing the global `Request`/`Response`
-now asks by name: `nodeServer({ overrideGlobalObjects: true })`.
+`ServerAdapterOptions.overrideGlobalObjects` left with the
+implicit Node default. `nodeServer()` keeps it and defaults it
+to `true`, the fastest path and the behavior the implicit Node
+transport had; the replacement of the global `Request` and
+`Response` is process-wide and not restored, so a deployment
+that wants the globals left alone asks by name:
+`nodeServer({ overrideGlobalObjects: false })`.
 
 The Bun transport resolves `hono/bun` in a top-level await so
 the root entrypoint still imports on Node, which makes the
@@ -118,11 +119,12 @@ new ServerAdapter({ transport: nodeServer() });
 
 `nodeServer()` takes `autoCleanupIncoming` (default `true`),
 which drains a request whose body was never read, and
-`overrideGlobalObjects` (default `false`), which asks
+`overrideGlobalObjects` (default `true`), which asks
 `@hono/node-server` to replace the process's `Request` and
-`Response` with its lighter classes. Both only reach
-`@hono/node-server`, so they change nothing for a deployment
-that serves through `bunServer()`.
+`Response` with its lighter classes — the fastest path, and
+process-wide; pass `false` to leave the globals alone. Both only
+reach `@hono/node-server`, so they change nothing for a
+deployment that serves through `bunServer()`.
 
 On a fetch host — Cloudflare Workers, Vercel Functions or Deno —
 the transport takes no port and the deployment exports the

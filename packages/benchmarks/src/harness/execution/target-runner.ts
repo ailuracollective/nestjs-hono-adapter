@@ -31,6 +31,7 @@ const runTarget = async (
     return await collect(
       sweepFor({
         options,
+        pid: running.pid,
         port: running.port,
         selected,
         target,

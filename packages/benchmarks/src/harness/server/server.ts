@@ -18,6 +18,8 @@ interface Running {
   readonly child: ChildProcess;
   /** Resolves once the server process exits. */
   readonly exited: Promise<unknown>;
+  /** OS process id of the server, when known. */
+  readonly pid: number | undefined;
   /** Port the child process is listening on. */
   readonly port: number;
 }
@@ -38,6 +40,7 @@ const start = async (target: Target): Promise<Running> => {
   return {
     child: process.nodeChildProcess,
     exited: process,
+    pid: process.pid,
     port,
   };
 };

@@ -1,5 +1,6 @@
 import type {
   LatencyMs,
+  ResourceUsage,
   Sample,
   Summary,
 } from '#benchmarks/harness/config/index';
@@ -58,6 +59,32 @@ const groupSamples = (
   return groups;
 };
 
+/** Aggregates per-run resource usage into its medians. */
+const summarizeResources = (
+  samples: readonly Sample[],
+): ResourceUsage | undefined => {
+  const present = samples.flatMap((sample) =>
+    sample.resources === undefined ? [] : [sample.resources],
+  );
+  if (present.length === 0) {
+    return undefined;
+  }
+  return {
+    cpuMsPerRequest: median(
+      present.map((usage) => usage.cpuMsPerRequest),
+    ),
+    cpuPercent: median(
+      present.map((usage) => usage.cpuPercent),
+    ),
+    rssMeanBytes: median(
+      present.map((usage) => usage.rssMeanBytes),
+    ),
+    rssPeakBytes: median(
+      present.map((usage) => usage.rssPeakBytes),
+    ),
+  };
+};
+
 /** Computes median summary for a grouped list of samples. */
 const summarizeGroup = (list: readonly Sample[]): Summary => {
   const [first] = list;
@@ -70,6 +97,7 @@ const summarizeGroup = (list: readonly Sample[]): Summary => {
     requestsPerSecond: median(
       list.map((sample) => sample.result.requestsPerSecond),
     ),
+    resources: summarizeResources(list),
     runs: list.length,
     scenario: first.scenario,
     target: first.target,

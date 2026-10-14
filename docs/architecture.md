@@ -219,9 +219,10 @@ and a deployment that names it runs on Node or Bun.
 
 `ServerAdapterOptions.overrideGlobalObjects` left with the
 implicit default it configured. The Node transport carries the
-option and defaults it to `false`, where the old default passed
-`true`; a deployment that relied on the replacement names it
-`nodeServer({ overrideGlobalObjects: true })`. The replacement
+option and defaults it to `true`, the fastest path and the
+behavior the implicit Node transport had; a deployment that
+wants the globals left alone names it
+`nodeServer({ overrideGlobalObjects: false })`. The replacement
 is process-wide and not restored, so `test/probe.ts` puts the
 process's own classes back before every request, and
 `packages/core/test/isolation.test.ts` holds that a case may

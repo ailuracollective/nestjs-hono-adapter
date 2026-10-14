@@ -81,10 +81,11 @@ takes two options. `autoCleanupIncoming` (default `true`) makes
 `@hono/node-server` drain and destroy the socket of a request
 whose body was never read; turn it off only for trusted clients,
 such as behind a reverse proxy that always reads the body
-through. `overrideGlobalObjects` (default `false`) is whether
+through. `overrideGlobalObjects` (default `true`) is whether
 `@hono/node-server` may swap the global `Request` and `Response`
-for its lighter classes — fastest, but the swap is process-wide
-and not restored.
+for its lighter classes — the fastest path; the swap is
+process-wide and not restored, so set it `false` to leave the
+globals alone.
 
 A transport carries a websocket helper only where the runtime
 has one: `nodeServer` none, Bun only where `hono/bun` loads
