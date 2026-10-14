@@ -19,6 +19,12 @@ import { parseQuery } from './query/index.ts';
 import type { ParsedQuery } from './query/index.ts';
 import type { NestRequest } from './types.ts';
 
+/** The symbol a request keeps the bag Nest reads under. */
+const REQUEST = Symbol('nestRequest');
+
+/** A context that holds the bag of its own request. */
+type RequestHolder = Record<symbol, RequestBag | undefined>;
+
 /** The request object Nest expects. */
 class RequestBag implements NestRequest {
   /** The parsed request body. */
@@ -58,6 +64,7 @@ class RequestBag implements NestRequest {
       method: undefined,
       options,
       params: undefined,
+      paramsAt: undefined,
       protocol: undefined,
       query: undefined,
       url: undefined,
@@ -131,7 +138,11 @@ class RequestBag implements NestRequest {
   /** The route parameters. */
   public get params(): Record<string, string> {
     const { state } = this;
-    state.params ??= paramsOf(state.context);
+    const at = state.context.req.routeIndex;
+    if (state.params === undefined || state.paramsAt !== at) {
+      state.params = paramsOf(state.context);
+      state.paramsAt = at;
+    }
     return state.params;
   }
 
@@ -193,7 +204,16 @@ class RequestBag implements NestRequest {
 const toNestRequest = (
   context: NestContext,
   options: RequestOptions,
-): NestRequest => new RequestBag(context, options);
+): NestRequest => {
+  const holder = context as unknown as RequestHolder;
+  const held = holder[REQUEST];
+  if (held !== undefined) {
+    return held;
+  }
+  const built = new RequestBag(context, options);
+  holder[REQUEST] = built;
+  return built;
+};
 
 export { toNestRequest };
 export type {

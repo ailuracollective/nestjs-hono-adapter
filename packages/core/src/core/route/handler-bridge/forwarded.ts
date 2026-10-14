@@ -17,7 +17,7 @@ const forwardFrom = (continuation: Next): Forwarded => {
   let started: Promise<void> | undefined = undefined;
   return {
     next: (): Promise<void> => {
-      started = continuation();
+      started ??= continuation();
       return started;
     },
     settled: async (): Promise<void> => {

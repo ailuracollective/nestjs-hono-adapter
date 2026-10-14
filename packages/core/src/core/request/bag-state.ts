@@ -25,6 +25,7 @@ interface BagState {
   ip: string | undefined;
   method: string | undefined;
   params: Record<string, string> | undefined;
+  paramsAt: number | undefined;
   protocol: string | undefined;
   query: ParsedQuery | undefined;
   url: UrlParts | undefined;
