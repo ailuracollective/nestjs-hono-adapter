@@ -25,6 +25,11 @@ const SOCKET = 'socket';
 
 const FAIL = 'fail';
 
+interface Frame {
+  readonly data: unknown;
+  readonly event: string;
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -32,21 +37,24 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 @WebSocketGateway({ path: GATEWAY_PATH })
 class PingGateway {
   @SubscribeMessage(PING)
-  public ping(@MessageBody() data: { readonly amount: number }): { readonly doubled: number } {
-    return { doubled: data.amount * FACTOR };
+  public ping(@MessageBody() data: { readonly amount: number }): Frame {
+    return { data: { doubled: data.amount * FACTOR }, event: PING };
   }
 
   @SubscribeMessage(SOCKET)
-  public socket(@ConnectedSocket() socket: unknown): unknown {
+  public socket(@ConnectedSocket() socket: unknown): Frame {
     if (!isRecord(socket)) {
       throw new TypeError('the socket was not an object');
     }
     return {
-      close: typeof socket.close,
-      on: typeof socket.on,
-      once: typeof socket.once,
-      readyState: socket.readyState,
-      send: typeof socket.send,
+      data: {
+        close: typeof socket.close,
+        on: typeof socket.on,
+        once: typeof socket.once,
+        readyState: socket.readyState,
+        send: typeof socket.send,
+      },
+      event: SOCKET,
     };
   }
 
@@ -60,8 +68,8 @@ class PingGateway {
 @WebSocketGateway({ path: OTHER_PATH })
 class OtherGateway {
   @SubscribeMessage(PING)
-  public ping(): { readonly path: string } {
-    return { path: OTHER_PATH };
+  public ping(): Frame {
+    return { data: { path: OTHER_PATH }, event: PING };
   }
 }
 
@@ -81,3 +89,4 @@ export {
   SOCKET,
   isRecord,
 };
+export type { Frame };

@@ -1,11 +1,12 @@
 {
   "name": "@ailura/nestjs-platform-hono-ws",
   "version": "1.4.1",
-  "description": "WebSocket gateway adapter for @ailura/nestjs-hono-adapter.",
+  "description": "The WebSocket bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/platform-ws WsAdapter serving on Hono.",
   "keywords": [
     "adapter",
     "hono",
     "nestjs",
+    "platform-ws",
     "websockets"
   ],
   "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
@@ -44,20 +45,14 @@
   },
   "peerDependencies": {
     "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
-    "@hono/node-ws": "^1.3.1",
-    "@nestjs/common": ">=11 <13",
-    "@nestjs/websockets": ">=11 <13",
-    "hono": "^4.13.8",
-    "rxjs": "^7.8.2"
+    "@nestjs/platform-ws": ">=11 <13",
+    "hono": "^4.13.8"
   },
   "peerDependenciesMeta": {
     "@ailura/nestjs-hono-adapter": {
       "optional": true
     },
-    "@hono/node-ws": {
-      "optional": true
-    },
-    "@nestjs/websockets": {
+    "@nestjs/platform-ws": {
       "optional": true
     }
   },

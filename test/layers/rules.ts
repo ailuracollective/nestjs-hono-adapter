@@ -17,9 +17,8 @@ export {
 } from './rules/layers.ts';
 export {
   bridgeReachesApp,
+  featureReachesBridge,
   featureReachesFeature,
-  featureReachesWs,
   multipartReachesApp,
   socketIoReachesApp,
-  wsReachesApp,
 } from './rules/islands.ts';

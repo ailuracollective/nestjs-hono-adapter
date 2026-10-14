@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 
+import { WsAdapter } from '@nestjs/platform-ws';
+
 import { fetchHandler, fetchServer, webSocketFromHost } from '#adapter/servers/fetch';
 import { ServerAdapter } from '#adapter/index';
-import { HonoWsAdapter } from '#ws/index';
 
 import { GatewayModule } from './gateway.ts';
 import type { DrivenHost } from './hosts.ts';
@@ -21,7 +22,7 @@ const startGateway = async (host: DrivenHost): Promise<GatewayProbe> => {
   const app = await NestFactory.create(GatewayModule, adapter, {
     logger: false,
   });
-  app.useWebSocketAdapter(new HonoWsAdapter(adapter));
+  app.useWebSocketAdapter(new WsAdapter(app));
   await app.init();
   return {
     close: () => app.close(),

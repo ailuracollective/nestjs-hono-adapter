@@ -1,29 +1,31 @@
 # @ailura/nestjs-platform-hono-ws
 
-WebSocket gateways for [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter). A gateway is declared the way Nest declares one, and its `path` is registered on the same Hono application the routes hang on.
+WebSocket gateways on [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter), served by Nest's own [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) `WsAdapter`.
+
+It is a **compatibility bridge**: installing the package is what installs it, and an application writes no import of it. The application names the stock `WsAdapter`, and the bridge makes that adapter register each gateway's `path` on the Hono application the routes hang on.
 
 ## Install
 
 ```sh
-bun add @ailura/nestjs-platform-hono-ws @hono/node-ws @nestjs/websockets
+bun add @ailura/nestjs-platform-hono-ws @nestjs/platform-ws @nestjs/websockets
 ```
 
-`@ailura/nestjs-hono-adapter`, `@nestjs/common`, `hono` and `rxjs` are peers too; install the adapter and Hono alongside it.
+`@ailura/nestjs-hono-adapter` and `hono` are peers too; install the adapter and Hono alongside it.
 
 ## Use
 
 ```ts
 import { NestFactory } from '@nestjs/core';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
-import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
 
 const adapter = new ServerAdapter();
 const app = await NestFactory.create(AppModule, adapter);
-app.useWebSocketAdapter(new HonoWsAdapter(app));
+app.useWebSocketAdapter(new WsAdapter(app));
 await app.listen(3000);
 ```
 
-`HonoWsAdapter` takes the application, as Nest's own `WsAdapter` does; the `ServerAdapter` itself is accepted too.
+`WsAdapter` is Nest's own; nothing here is imported. The bridge patches its `create()` once per process and, for the adapter the gateway was created for, registers the path on that adapter's Hono application.
 
 ```ts
 @WebSocketGateway({ path: '/ws' })
@@ -35,24 +37,15 @@ class EventsGateway {
 }
 ```
 
-A client sends `{ event, data, id? }` — or a bare string, which reads as the event name — and receives `{ event, data }`, with the `id` echoed when it asked for one. A handler that returns an observable is subscribed per connection and unsubscribed when that connection closes.
+The wire protocol is `platform-ws`'s: the frame goes through `messageParser` (JSON by default, replaceable with the constructor option or `setMessageParser()`), the handler's return value is serialized back to the client, and a falsy return sends nothing. `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()` and `close()` are `platform-ws`'s own, so a throwing handler, a parser failure and a shutdown are answered the way Nest answers them. `@ConnectedSocket()` gets a socket with `send`, `close`, `terminate`, `readyState` and `on` / `off` / `once` / `emit`.
 
-A deployment whose frames are not JSON replaces the reader:
+The upgrade is served by the transport when it carries a websocket helper — `bunServer()`, or the helper a `fetchServer()` host was handed — and by the stock `ws.Server` on the transport's own HTTP server otherwise, which includes `nodeServer()` and the default transport on Node.
 
-```ts
-const ws = new HonoWsAdapter(adapter, {
-  messageParser: (raw) => ({ event: String(raw), data: {} }),
-});
-ws.setMessageParser(otherParser); // or later
-```
-
-The parser answers a `{ event, data }`, or nothing, which drops the frame. Only `path` is honoured — every other gateway option (`port`, `namespace`, `server`, and the WebSocket server options) is refused when the gateway starts, naming the option it read. `@Ack()` is not wired; the acknowledgement travels back as the echoed `id`.
-
-The upgrade is served by the transport when it carries a websocket helper — `hono/bun` with `bunServer()`, or the helper a `fetchServer()` host was handed — and by `@hono/node-ws` otherwise, which includes `nodeServer()` and the default transport on a Node runtime.
+Only `path` is honoured. A non-zero `port`, a `namespace`, a `server` and the WebSocket server options (`perMessageDeflate`, `maxPayload` and the rest) are refused when the gateway starts, naming the option it read.
 
 ## Documentation
 
-See [WebSockets](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/deployment.md#websockets) for the gateway contract, the custom parser and the refusals.
+See [WebSockets](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/deployment.md#websockets) for the gateway contract, and [compatibility.md](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/compatibility.md#ws) for what the bridge patches.
 
 ## License
 

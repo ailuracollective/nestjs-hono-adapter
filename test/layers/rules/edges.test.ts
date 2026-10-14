@@ -1,22 +1,32 @@
 import { expect, test } from 'bun:test';
 
 import { CORE_ENTRY, CORE_PACKAGE } from '#test/layers/model';
-import { multipartReachesApp, socketIoReachesApp, wsReachesApp } from '#test/layers/rules';
+import {
+  bridgeReachesApp,
+  crossing,
+  multipartReachesApp,
+  socketIoReachesApp,
+} from '#test/layers/rules';
 import { edgesIn } from '#test/layers/tree';
 
 test.each(['', 'type '])('core package imports are scanned with their type flag (%s)', (type) => {
   const source = `import ${type}{ ServerAdapter } from '${CORE_PACKAGE}';`;
-  const ws = edgesIn(source, 'packages/ws/src/adapter.ts');
-  expect(ws).toHaveLength(1);
-  expect(ws[0]).toMatchObject({
-    to: CORE_ENTRY,
-    typeOnly: type !== '',
-  });
-  expect(wsReachesApp(ws)).toHaveLength(Number(type === ''));
   const socketIo = edgesIn(source, 'packages/socket-io/src/adapter.ts');
   expect(socketIoReachesApp(socketIo)).toHaveLength(1);
   const multipart = edgesIn(source, 'packages/multipart/src/multipart/multipart.parser.ts');
   expect(multipartReachesApp(multipart)).toHaveLength(Number(type === ''));
+});
+
+test('a bridge reaches the application through its entrypoint and nowhere past it', () => {
+  const ws = edgesIn(`import { loadPeer } from '${CORE_PACKAGE}';`, 'packages/ws/src/patch.ts');
+  expect(ws).toHaveLength(1);
+  expect(ws[0]).toMatchObject({ to: CORE_ENTRY });
+  expect(bridgeReachesApp(ws)).toStrictEqual([]);
+  const past = crossing(
+    'packages/ws/src/patch.ts',
+    'packages/core/src/core/server/server-adapter.ts',
+  );
+  expect(bridgeReachesApp([past])).toHaveLength(1);
 });
 
 test.each([

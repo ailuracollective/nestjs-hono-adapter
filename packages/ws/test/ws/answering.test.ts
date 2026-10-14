@@ -2,10 +2,8 @@ import { expect, test } from 'bun:test';
 
 import { ServerAdapter } from '#adapter/index';
 import { nodeServer } from '#adapter/servers/node';
-import { DOUBLED, GATEWAY_PATH, INPUT, OTHER_PATH, PING } from './gateways.ts';
+import { GATEWAY_PATH, INPUT, OTHER_PATH, PING } from './gateways.ts';
 import { ask, expectAnswered, open, socketUrl, startGateways } from './support.ts';
-
-const CORRELATION = 7;
 
 test('a gateway answers on the Hono server', async () => {
   const probe = await startGateways();
@@ -31,22 +29,6 @@ test('a gateway answers on the Node transport', async () => {
   }
 });
 
-test('a frame that asked for a correlation is answered with it', async () => {
-  const probe = await startGateways();
-  const socket = await open(socketUrl(probe, GATEWAY_PATH));
-  try {
-    const answer = await ask(socket, { amount: INPUT }, CORRELATION);
-    expect(answer).toStrictEqual({
-      data: { doubled: DOUBLED },
-      event: PING,
-      id: CORRELATION,
-    });
-  } finally {
-    socket.close();
-    await probe.close();
-  }
-});
-
 test('one socket closing leaves another socket answering', async () => {
   const probe = await startGateways();
   const first = await open(socketUrl(probe, GATEWAY_PATH));
@@ -66,10 +48,7 @@ test('each gateway path is served on a route of its own', async () => {
   const other = await open(socketUrl(probe, OTHER_PATH));
   try {
     const answer = await ask(other, {});
-    expect(answer).toStrictEqual({
-      data: { path: OTHER_PATH },
-      event: PING,
-    });
+    expect(answer).toStrictEqual({ data: { path: OTHER_PATH }, event: PING });
   } finally {
     other.close();
     await probe.close();

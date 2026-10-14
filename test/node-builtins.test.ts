@@ -8,12 +8,14 @@ const REPOSITORY = path.resolve(import.meta.dirname, '..');
 const SOURCE_ROOT = path.resolve(import.meta.dirname, '../packages/core/src');
 
 /**
- * The trees that hold a compatibility bridge: the region inside the adapter, and the package that
- * carries the bridge belonging to the one platform still outside it.
+ * The trees that hold a compatibility bridge: the region inside the adapter, and the packages that
+ * carry one for a platform still outside it.
  */
 const BRIDGE_ROOTS = [
   path.join(SOURCE_ROOT, 'compat'),
+  path.resolve(import.meta.dirname, '../packages/graphql/src'),
   path.resolve(import.meta.dirname, '../packages/serve-static/src'),
+  path.resolve(import.meta.dirname, '../packages/ws/src'),
 ];
 
 const FROZEN_NODE_BUILTINS = [

@@ -3,7 +3,6 @@ import { expect, spyOn, test } from 'bun:test';
 import { Logger } from '@nestjs/common';
 
 import { bunAdapter } from '#test/bun-adapter';
-import type { WsFrame } from '#ws/client/index';
 import { ANSWER, GATEWAY_PATH, INPUT, PING } from './gateways.ts';
 import {
   QUIET_MS,
@@ -14,6 +13,7 @@ import {
   socketUrl,
   startGateways,
 } from './support.ts';
+import type { WsFrame } from './support.ts';
 
 const colonParser = (raw: unknown): WsFrame | undefined => {
   if (typeof raw !== 'string') return undefined;

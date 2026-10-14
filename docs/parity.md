@@ -10,7 +10,7 @@ Every abstract member of Nest's `AbstractHttpAdapter` is implemented: the verbs,
 
 Three members are inherited and unchanged: `setCookie()` / `clearCookie()` (written on `appendHeader()`) and `setOnRouteTriggered()` / `getOnRouteTriggered()` (read and invoked by the core). `registerSecurityHook()` is an own property in `packages/core/src/core/server/server-adapter.ts`; `NestHonoApplication` (`packages/core/src/core/server/application.ts`) is the counterpart of `NestExpressApplication` and `NestFastifyApplication`.
 
-On the WebSocket side `create()`, `bindMessageHandlers()`, `bindClientDisconnect()`, `close()` and `dispose()` are implemented, and `bindClientConnect()` is inherited.
+On the WebSocket side Nest's own `@nestjs/platform-ws` `WsAdapter` serves: the bridge in `@ailura/nestjs-platform-hono-ws` replaces `create()`, and every other member — `bindMessageHandlers()`, `bindClientDisconnect()`, `bindErrorHandler()`, `close()`, `dispose()` — is the stock implementation.
 
 ## HTTP adapter
 
@@ -58,25 +58,19 @@ Only the positional forms — `(port)`, `(port, hostname)`, `(port, callback)`, 
 
 Against `@nestjs/platform-ws`:
 
-### `setMessageParser()` — implemented
-
-`HonoWsAdapter` takes Nest 12 `WsAdapter`'s `messageParser` constructor option and `setMessageParser()` method, reading every frame with the parser in use (`parseFrame()` in `packages/ws/src/client/frames.ts` is the built-in). A throwing parser is an application bug and is reported; the built-in reads client input, so its failures stay quiet. Either way the frame is dropped, as on `platform-ws`.
-
-### `bindErrorHandler()` — implemented
-
-`HonoWsAdapter.bindErrorHandler()` attaches an error listener to the `GatewayServer` and every socket it hands over (as `WsAdapter.bindErrorHandler(server)` does on `platform-ws`), so a failure is logged rather than thrown out of the event loop; `create()` calls it for every path.
+The bridge ships no adapter: Nest's `WsAdapter` is the adapter, and the bridge replaces its `create()` so a gateway is served as a route on the Hono application instead of a `ws.Server` built from the HTTP server. Everything else is the stock class — `bindMessageHandlers()`, `bindClientDisconnect()`, `bindErrorHandler()`, `close()`, `dispose()`, `messageParser` and `setMessageParser()` — so the wire protocol, the parser and the shutdown are `platform-ws`'s own.
 
 ### `create()` options — `path` only, the rest refused
 
-Only `path` is honoured. `server`, `namespace` and the WebSocket server options are refused by name (on `platform-ws` the rest is handed to its own `ws.Server`; a namespace gets the advice to use `@nestjs/platform-socket.io`), because the transport builds its support from the Hono application alone (`createWebSocket?: (app) => WebSocketSupport`); a non-zero `port` needs a second listener and a `server` would have to be driven by the transport. Documented in [docs/deployment.md](deployment.md#websockets).
+Only `path` is honoured. `port`, `namespace`, `server` and the WebSocket server options (`perMessageDeflate`, `maxPayload` and the rest) are refused by name, because every gateway is served on the adapter's own Hono application and the transport, not this adapter, builds the server. A `create()` call whose `httpServer` belongs to no registered application — an Express or Fastify deployment in the same process — falls through to the stock path unchanged. Documented in [docs/deployment.md](deployment.md#websockets).
 
-### `forceCloseConnections` — not honoured
+### `ws.Server` where the transport carries no websocket helper — unchanged
 
-`AbstractWsAdapter` exposes it and `IoAdapter` reads it; `HonoWsAdapter.close()` always closes the sockets on the path.
+Where the transport has no `createWebSocket` (`nodeServer()`, and the default transport on Node), `create()` falls through to `platform-ws`'s own path: a real `ws.Server` on the transport's HTTP server, serving the same gateway path. Only the server underneath differs.
 
 ### `@Ack()` and namespaces — at parity with `platform-ws`
 
-`WsAdapter` refuses a namespace and has no acknowledgement callback; the reply travels back as the echoed `id`. This is a gap only against Socket.IO, closed by `@ailura/nestjs-platform-hono-socket-io` without changing `@ailura/nestjs-platform-hono-ws`.
+`WsAdapter` refuses a namespace and wires no acknowledgement callback; the reply travels back as whatever the handler returned. That gap is against Socket.IO only, and `@ailura/nestjs-platform-hono-socket-io` closes it without changing `@ailura/nestjs-platform-hono-ws`.
 
 ### `@nestjs/platform-socket.io` — implemented, in `@ailura/nestjs-platform-hono-socket-io`
 

@@ -172,8 +172,6 @@
     },
     {
       "files": [
-        "packages/ws/src/client/**/*.ts",
-        "packages/ws/src/server.ts",
         "packages/core/src/core/ports/bindings.ts",
         "packages/core/src/servers/bun/**/*.ts",
         "packages/core/src/servers/node.ts",
@@ -190,23 +188,10 @@
         "packages/core/src/servers/bun-runtime.ts",
         "packages/core/src/servers/bun/**/*.ts",
         "packages/core/src/servers/node.ts",
-        "packages/ws/src/adapter.ts"
+        "packages/ws/src/patch.ts"
       ],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
-      }
-    },
-    {
-      "files": ["packages/ws/src/adapter.ts"],
-      "rules": {
-        "max-lines": [
-          "error",
-          {
-            "max": 450
-          }
-        ],
-        "typescript/no-unsafe-type-assertion": "off",
-        "unicorn/prefer-event-target": "off"
       }
     },
     {
@@ -335,7 +320,8 @@
       "files": [
         "packages/core/src/compat/**/*.ts",
         "packages/graphql/src/**/*.ts",
-        "packages/serve-static/src/**/*.ts"
+        "packages/serve-static/src/**/*.ts",
+        "packages/ws/src/**/*.ts"
       ],
       "rules": {
         "max-lines": [

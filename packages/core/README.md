@@ -16,13 +16,14 @@ bun add @ailura/nestjs-hono-adapter hono
 
 `@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server` are peers, so the application decides their versions. `@hono/node-server` is optional: only the `./node-server` transport reaches it, and a Bun or fetch deployment never loads it. Use `npm install` or `pnpm add` in place of `bun add` as needed.
 
-The three optional capabilities live in their own packages, each with a single entrypoint, so importing one loads none of the others:
+The two optional capabilities live in their own packages, each with a single entrypoint, so importing one loads none of the others:
 
-| Package                                  | For        | Installs                              |
-| ---------------------------------------- | ---------- | ------------------------------------- |
-| `@ailura/nestjs-platform-hono-multipart` | uploads    | `busboy`                              |
-| `@ailura/nestjs-platform-hono-ws`        | WebSockets | `@hono/node-ws`, `@nestjs/websockets` |
-| `@ailura/nestjs-platform-hono-socket-io` | socket.io  | `socket.io`, `@nestjs/websockets`     |
+| Package                                  | For       | Installs                          |
+| ---------------------------------------- | --------- | --------------------------------- |
+| `@ailura/nestjs-platform-hono-multipart` | uploads   | `busboy`                          |
+| `@ailura/nestjs-platform-hono-socket-io` | socket.io | `socket.io`, `@nestjs/websockets` |
+
+WebSockets are not a capability but a **compatibility bridge**: `@ailura/nestjs-platform-hono-ws` fits Nest's own `@nestjs/platform-ws` `WsAdapter` to Hono, so you install the package and write no import of it — `app.useWebSocketAdapter(new WsAdapter(app))` is the whole wiring. See [docs/compatibility.md](../../docs/compatibility.md).
 
 A socket.io gateway needs the Node transport, which `./node-server` provides on Node and on Bun.
 

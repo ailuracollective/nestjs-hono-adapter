@@ -11,17 +11,6 @@ const featureReachesFeature = (edges: readonly Edge[]): Edge[] =>
       capabilityOf(edge.from) !== capabilityOf(edge.to),
   );
 
-const featureReachesWs = (edges: readonly Edge[]): Edge[] =>
-  edges.filter((edge) => layerOf(edge.from) === 'features' && layerOf(edge.to) === 'ws');
-
-const wsReachesApp = (edges: readonly Edge[]): Edge[] =>
-  edges.filter(
-    (edge) =>
-      layerOf(edge.from) === 'ws' &&
-      (layerOf(edge.to) === 'core' || layerOf(edge.to) === 'features') &&
-      !edge.typeOnly,
-  );
-
 const MULTIPART_VALUE_EDGE = 'packages/core/src/core/multipart.ts';
 
 const multipartReachesApp = (edges: readonly Edge[]): Edge[] =>
@@ -41,7 +30,13 @@ const socketIoReachesApp = (edges: readonly Edge[]): Edge[] =>
       (layerOf(edge.to) === 'core' || layerOf(edge.to) === 'features'),
   );
 
-const BRIDGE_LAYERS: ReadonlySet<string> = new Set(['graphql', 'serve-static']);
+const BRIDGE_LAYERS: ReadonlySet<string> = new Set(['graphql', 'serve-static', 'ws']);
+
+/** A feature may not lean on a bridge: a bridge is installed, never imported. */
+const featureReachesBridge = (edges: readonly Edge[]): Edge[] =>
+  edges.filter(
+    (edge) => layerOf(edge.from) === 'features' && BRIDGE_LAYERS.has(layerOf(edge.to) ?? ''),
+  );
 
 /**
  * The edges a bridge package takes into the adapter.
@@ -63,9 +58,8 @@ const bridgeReachesApp = (edges: readonly Edge[]): Edge[] =>
 export {
   BRIDGE_LAYERS,
   bridgeReachesApp,
+  featureReachesBridge,
   featureReachesFeature,
-  featureReachesWs,
   multipartReachesApp,
   socketIoReachesApp,
-  wsReachesApp,
 };

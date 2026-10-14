@@ -2,19 +2,8 @@
   {
     "name": "ws",
     "path": "dist/index.js",
-    "limit": 1650,
+    "limit": 1150,
     "brotli": true,
-    "ignore": [
-      "@nestjs/common",
-      "@nestjs/core",
-      "@nestjs/websockets",
-      "rxjs",
-      "node:buffer",
-      "node:events",
-      "node:http",
-      "node:stream",
-      "node:util",
-      "@hono/node-ws"
-    ]
+    "ignore": ["@ailura/nestjs-hono-adapter", "@nestjs/platform-ws", "hono"]
   }
 ]

@@ -17,16 +17,17 @@ compat/
   express/           the Express surface and error middleware
 ```
 
-Only `express` is here, and it has to be: an Express-shaped response call and an Express-shaped error middleware are part of running a Nest application, not an optional capability like uploads or websockets, so they stay on the `.` entrypoint and every deployment gets them without installing anything.
+Only `express` is here, and it has to be: an Express-shaped response call and an Express-shaped error middleware are part of running a Nest application, not an optional capability like uploads or Socket.IO, so they stay on the `.` entrypoint and every deployment gets them without installing anything.
 
 A bridge that belongs to a platform Nest users write against lives in the package for that platform, and the region is what finds it:
 
 ```
 packages/serve-static/   @nestjs/serve-static, reading through the transport
 packages/graphql/        the stock @nestjs/apollo driver answering on Hono
+packages/ws/             the stock @nestjs/platform-ws WsAdapter serving on Hono
 ```
 
-Neither is named in an application's code. Installing the package is what installs the bridge — see [Discovery](#discovery).
+None of them is named in an application's code. Installing the package is what installs the bridge — see [Discovery](#discovery).
 
 ## What a bridge is
 
@@ -39,7 +40,7 @@ interface Bridge {
 
 A bridge is a named install. It runs once per Hono application, which is what lets an install patch a prototype: the second adapter in a process finds the application already fitted and does nothing.
 
-`BridgeTarget` is the Hono application and its transport. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
+`BridgeTarget` is the Hono application, its transport, and a lazy `server()` for the HTTP server underneath — the last one only so a bridge can recognise which application a call belongs to. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
 
 ## Discovery
 
@@ -51,6 +52,7 @@ So the region resolves them. `compat/registry/discover.ts` carries the list, and
 const BRIDGE_PACKAGES = [
   '@ailura/nestjs-platform-hono-graphql',
   '@ailura/nestjs-platform-hono-serve-static',
+  '@ailura/nestjs-platform-hono-ws',
 ];
 ```
 
@@ -66,9 +68,9 @@ It does nothing on import, so `sideEffects: false` is honest and an import of it
 
 Discovery is settled by `init()` like an install is, because the bridges it turns up have to be installed before Nest calls `onModuleInit` — which is when `@nestjs/graphql` starts the driver the bridge has to have patched by then.
 
-## The three bridges
+## The bridges
 
-One ships with the adapter and two ship with a package the adapter looks for. All three are described below.
+One ships with the adapter and three ship with a package the adapter looks for. All four are described below.
 
 ### `express`
 
@@ -106,6 +108,18 @@ Shipped as `@ailura/nestjs-platform-hono-serve-static`, which peers on `@nestjs/
 The swap is a patch of a third-party prototype, so it happens once per process and only when the peer is installed. It happens **before** the module's own `onModuleInit` runs, not after: that hook is what asks the loader to register, so a loader replaced once it has run is one nothing ever called.
 
 `setHeaders` is refused rather than faked. It wants an `fs.Stats` and an Express response, and no transport here builds either; a deployment that names it gets a `TypeError` that says so.
+
+### `ws`
+
+Shipped as `@ailura/nestjs-platform-hono-ws`, which peers on `@nestjs/platform-ws`. Nest's own `WsAdapter` builds a `ws.Server` out of the HTTP server, which a transport serving through a Hono application does not have: a gateway there is a route. So the bridge replaces the one member that builds a server, `WsAdapter.prototype.create`, and leaves the rest of the class alone — `bindMessageHandlers()`, `bindClientDisconnect()`, `bindErrorHandler()`, `close()` and `dispose()` are the stock implementation, which is why the wire protocol, the `messageParser` option and the refusals stay `platform-ws`'s own.
+
+```ts
+app.useWebSocketAdapter(new WsAdapter(app)); // @nestjs/platform-ws, unchanged
+```
+
+The patch is written on the prototype once per process. At call time it asks which of the registered applications owns `this.httpServer`; a call that owns none — an Express or Fastify deployment in the same process — falls through to the stock path unchanged. For an application it does own, `create()` refuses anything but `path` (`port`, `namespace`, `server` and the WebSocket server options), registers the path as a route on that application through the transport's websocket helper, and hands the adapter a server of its own — `clients`, `on('connection')`, `close(callback)` — so `bindMessageHandlers()`, `bindErrorHandler()` and `close()` run against it exactly as they run against `ws.Server`. A transport with no helper (`nodeServer()`) gets no route and no server of ours: the stock path serves a real `ws.Server` on the transport's HTTP server.
+
+A socket is bound on whichever event the helper fires first, because a helper that never calls `onOpen` — `@hono/cloudflare-workers` — still delivers messages.
 
 ### `graphql/apollo`
 
@@ -150,7 +164,7 @@ Two details the bridge had to get right, both of them the integration's behaviou
 
 A streaming answer is pulled a chunk at a time through a `ReadableStream`, so an incremental delivery starts before the operation does.
 
-Subscriptions answer on the **Node** transport. `ApolloDriver.start` opens a `GqlSubscriptionService` that builds a `ws` server and attaches it to `httpAdapter.getHttpServer()` by listening for `upgrade`; the Node transport is a real `node:http` server, so the upgrade arrives and `graphql-ws` answers. `Bun.serve` is not a `node:http` server, so there the listener is attached to an emitter nothing fires and the upgrade falls through to the HTTP pipeline, where the endpoint refuses it; the fetch transport serves no socket at all. Carrying it on Bun means registering `graphql-ws`'s own Bun handler (`graphql-ws/use/bun`) with the transport's WebSocket support, which is the WebSocket island's work and not this bridge's.
+Subscriptions answer on the **Node** transport. `ApolloDriver.start` opens a `GqlSubscriptionService` that builds a `ws` server and attaches it to `httpAdapter.getHttpServer()` by listening for `upgrade`; the Node transport is a real `node:http` server, so the upgrade arrives and `graphql-ws` answers. `Bun.serve` is not a `node:http` server, so there the listener is attached to an emitter nothing fires and the upgrade falls through to the HTTP pipeline, where the endpoint refuses it; the fetch transport serves no socket at all. Carrying it on Bun means registering `graphql-ws`'s own Bun handler (`graphql-ws/use/bun`) with the transport's WebSocket support, which is `@ailura/nestjs-platform-hono-ws`'s work and not this bridge's.
 
 ### The seam both drivers share
 
@@ -172,7 +186,7 @@ A bridge with nothing to resolve installs synchronously in the constructor, and 
 
 ## Extending it
 
-`registerBridge` is published from the `.` entrypoint. An island registers its bridge at import time and the next adapter installs it alongside the shipped ones:
+`registerBridge` is published from the `.` entrypoint. A consumer registers its bridge at import time and the next adapter installs it alongside the shipped ones:
 
 ```ts
 import { registerBridge } from '@ailura/nestjs-hono-adapter';
@@ -185,7 +199,7 @@ registerBridge({
 });
 ```
 
-Registering the bridge that is already registered is a no-op; registering a _different_ one under a taken name is refused with a warning, so an island and the adapter cannot disagree about what `serve-static` means. An install that throws is logged and skipped rather than taking the application down with it.
+Registering the bridge that is already registered is a no-op; registering a _different_ one under a taken name is refused with a warning, so a consumer and the adapter cannot disagree about what `serve-static` means. An install that throws is logged and skipped rather than taking the application down with it.
 
 `bridgeNames()` reports what is registered, which is what a deployment reaches for when a bridge is not behaving.
 
@@ -221,8 +235,8 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 ## The guard
 
-`test/layers.test.ts` holds rule 6: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a seventh rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `NestContext`, `Transport`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
+`test/layers.test.ts` holds rule 6: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a seventh rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
-`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all three trees: the region, and both bridge packages.
+`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all four trees: the region, and the three bridge packages.
 
-`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, and that `@nestjs/serve-static` serves a file through the transport.
+`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.

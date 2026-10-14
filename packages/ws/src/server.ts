@@ -1,43 +1,33 @@
-import { EventEmitter } from 'node:events';
-
-import { CLOSE_EVENT } from './client/index.ts';
-import type { HonoSocket } from './client/index.ts';
+import type { GatewayClient } from './client.ts';
+import { Emitter } from './emitter.ts';
 
 const CONNECTION_EVENT = 'connection';
 
-class GatewayServer extends EventEmitter {
-  private readonly sockets = new Set<HonoSocket>();
+const CLOSE_EVENT = 'close';
 
-  public accept(socket: HonoSocket): void {
-    this.sockets.add(socket);
-    socket.once(CLOSE_EVENT, () => {
-      this.sockets.delete(socket);
+/**
+ * What Nest treats as `platform-ws`'s `ws.Server`: it binds `connection` on it, and `close(server)`
+ * reads `clients` and terminates each one.
+ */
+class GatewayServer extends Emitter {
+  public readonly clients = new Set<GatewayClient>();
+
+  public accept(client: GatewayClient): void {
+    this.clients.add(client);
+    client.once(CLOSE_EVENT, () => {
+      this.clients.delete(client);
     });
-    this.emit(CONNECTION_EVENT, socket);
+    this.emit(CONNECTION_EVENT, client);
   }
 
-  public close(): void {
-    for (const socket of this.sockets) {
-      socket.close();
+  public close(callback?: (error?: Error) => void): void {
+    for (const client of this.clients) {
+      client.terminate();
     }
-    this.sockets.clear();
+    this.clients.clear();
+    if (callback === undefined) return;
+    callback();
   }
 }
 
-const ROOT_PATH = '/';
-
-interface HonoGatewayOptions {
-  readonly path?: string;
-  readonly [option: string]: unknown;
-}
-
-const normalizePath = (path?: string): string => {
-  if (path === undefined || path === '') return ROOT_PATH;
-  if (path.startsWith(ROOT_PATH)) {
-    return path;
-  }
-  return `/${path}`;
-};
-
-export { CONNECTION_EVENT, GatewayServer, normalizePath };
-export type { HonoGatewayOptions };
+export { GatewayServer };

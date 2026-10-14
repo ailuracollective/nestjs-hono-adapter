@@ -13,12 +13,11 @@ import {
   bridgeReachesApp,
   coreReachesCompat,
   coreReachesFeature,
+  featureReachesBridge,
   featureReachesFeature,
-  featureReachesWs,
   layerOf,
   multipartReachesApp,
   socketIoReachesApp,
-  wsReachesApp,
 } from './layers/rules.ts';
 import { refusalOf, scanAll } from './layers/tree.ts';
 
@@ -88,12 +87,8 @@ test('no feature reaches another feature', async () => {
   expect(featureReachesFeature(await scanAll())).toStrictEqual([]);
 });
 
-test('no feature reaches the ws island', async () => {
-  expect(featureReachesWs(await scanAll())).toStrictEqual([]);
-});
-
-test('the ws island reaches the application through no value', async () => {
-  expect(wsReachesApp(await scanAll())).toStrictEqual([]);
+test('no feature reaches a bridge package', async () => {
+  expect(featureReachesBridge(await scanAll())).toStrictEqual([]);
 });
 
 test('the upload island reaches the application through no value but the marker', async () => {
@@ -113,7 +108,7 @@ test('the upload island takes the application as a package', async () => {
   expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 
-test('the ws island takes the application as a package through types', async () => {
+test('the ws bridge takes the application as a package through its entrypoint', async () => {
   const edges = await scanAll();
   const intoApp = edges.filter(
     (edge) =>
@@ -122,7 +117,7 @@ test('the ws island takes the application as a package through types', async () 
   );
   const manifest = await readFile(path.join(ROOT, 'packages', 'ws', 'package.json'), 'utf8');
   expect(intoApp.length).toBeGreaterThan(0);
-  expect(intoApp.every((edge) => edge.to === CORE_ENTRY && edge.typeOnly)).toBe(true);
+  expect(intoApp.every((edge) => edge.to === CORE_ENTRY)).toBe(true);
   expect(manifest).toContain('@ailura/nestjs-hono-adapter');
 });
 

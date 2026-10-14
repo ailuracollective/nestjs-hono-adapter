@@ -88,10 +88,17 @@ test('the HTTP entry point reaches the server it serves by default', async () =>
   expect(names).toContain('bun.ts');
 });
 
-test('the WebSocket entry point does reach the island peers', async () => {
-  const peerFiles = await peersReachedBy(WS_ENTRY);
-  const names = peerFiles.map((file) => path.basename(file));
-  expect(names).toContain('adapter.ts');
+test('the WebSocket entry point reaches no island peer', async () => {
+  expect(await peersReachedBy(WS_ENTRY)).toStrictEqual([]);
+});
+
+test('the WebSocket package peers on the adapter it patches', () => {
+  const found = CAPABILITIES.filter((pkg) => pkg.name === `${PLATFORM_PREFIX}ws`);
+  expect(found).toHaveLength(1);
+  const [ws] = found;
+  if (ws === undefined) throw new TypeError('the WebSocket package is not published');
+  const peers = ws.manifest.peerDependencies ?? {};
+  expect(peers['@nestjs/platform-ws']).toBeDefined();
 });
 
 test.each(OTHER_ENTRY_POINTS)('%s reaches no socket.io peer', async (_name, source) => {

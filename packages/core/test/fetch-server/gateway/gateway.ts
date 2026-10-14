@@ -9,8 +9,11 @@ import { DOUBLING } from './hosts.ts';
 @WebSocketGateway({ path: '/ws' })
 class PingGateway {
   @SubscribeMessage('ping')
-  public ping(@MessageBody() data: { readonly amount: number }): { readonly doubled: number } {
-    return { doubled: data.amount * DOUBLING };
+  public ping(@MessageBody() data: { readonly amount: number }): {
+    readonly data: { readonly doubled: number };
+    readonly event: string;
+  } {
+    return { data: { doubled: data.amount * DOUBLING }, event: 'ping' };
   }
 }
 

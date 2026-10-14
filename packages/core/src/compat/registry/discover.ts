@@ -10,6 +10,7 @@ import { registerBridge } from './store.ts';
 const BRIDGE_PACKAGES = [
   '@ailura/nestjs-platform-hono-graphql',
   '@ailura/nestjs-platform-hono-serve-static',
+  '@ailura/nestjs-platform-hono-ws',
 ] as const;
 
 interface BridgePackage {

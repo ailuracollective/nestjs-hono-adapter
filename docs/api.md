@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `@ailura/nestjs-hono-adapter` | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
 | `@ailura/nestjs-platform-hono-multipart` | `.` | Upload interceptors (multer-style) |
-| `@ailura/nestjs-platform-hono-ws` | `.` | WebSocket adapter (`HonoWsAdapter`) |
+| `@ailura/nestjs-platform-hono-ws` | `.` | Nest's `@nestjs/platform-ws` `WsAdapter` on Hono (bridge) |
 | `@ailura/nestjs-platform-hono-socket-io` | `.` | Socket.IO adapter (`HonoIoAdapter`) |
 
 `./ws` moved to its own package; `./multipart` and `./socket-io` only ever existed on `main`. Install per the [README](../packages/core/README.md#migrating-from-the-old-subpaths).
@@ -61,7 +61,7 @@ app.getHttpServer().address(); // Server & http.Server
 
 `bunServer` is the default, so `new ServerAdapter()` serves through `Bun.serve`. `nodeServer()` runs on Node and Bun and takes two options. `autoCleanupIncoming` (default `true`) makes `@hono/node-server` drain and destroy the socket of a request whose body was never read; turn it off only for trusted clients, such as behind a reverse proxy that always reads the body through. `overrideGlobalObjects` (default `true`) is whether `@hono/node-server` may swap the global `Request` and `Response` for its lighter classes — the fastest path; the swap is process-wide and not restored, so set it `false` to leave the globals alone.
 
-A transport carries a websocket helper only where the runtime has one: `nodeServer` none, Bun only where `hono/bun` loads (never on Node), so the `/ws` island falls back to `@hono/node-ws`; an app serving no WebSocket never installs it.
+A transport carries a websocket helper only where the runtime has one: `nodeServer` none, Bun only where `hono/bun` loads (never on Node). A gateway on a transport without one is served by `@nestjs/platform-ws`'s own `ws.Server` on the transport's HTTP server; an app serving no WebSocket never builds one.
 
 `fetchServer` takes no port: `close()` does nothing and `listen()` rejects naming the fetch host. Static assets and WebSockets are host-specific: the host passes `serveStatic` and `upgradeWebSocket`, and asking for one without it throws. `fetchHandler(app)` wraps the Hono app as the exported `fetch`:
 
@@ -158,20 +158,13 @@ The island needs `busboy` (an optional peer) and works where Node streams do —
 
 ## WebSocket Adapter
 
-### `HonoWsAdapter`
+Shipped as `@ailura/nestjs-platform-hono-ws`, a **compatibility bridge**: installing the package is what installs it, and an application names Nest's own `@nestjs/platform-ws` `WsAdapter` — `app.useWebSocketAdapter(new WsAdapter(app))`. The package exports the bridge the region reads:
 
 ```ts
-import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
 ```
 
-Created internally by Nest for a `@WebSocketGateway()`.
-
-### `HonoGatewayOptions`
-
-| Option      | Type     | Default | Description                     |
-| ----------- | -------- | ------- | ------------------------------- |
-| `path`      | `string` | `'/'`   | The path the gateway listens on |
-| `namespace` | `string` | —       | Not supported (throws)          |
+Its `install(target)` patches `WsAdapter.prototype.create` once per process: for the adapter a gateway was created for, the gateway's `path` is registered on that adapter's Hono application instead of a `ws.Server` being built. Every other member — `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()`, `close()`, `dispose()`, `messageParser` — is the stock class's. Only `path` is honoured; a non-zero `port`, a `namespace`, a `server` and the WebSocket server options are refused by name. See [WebSockets](deployment.md#websockets).
 
 ## Types
 

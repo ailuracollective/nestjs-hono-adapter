@@ -2,10 +2,6 @@ import { expect, test } from 'bun:test';
 
 import { BaseWsExceptionFilter } from '@nestjs/websockets';
 
-import { bunAdapter } from '#test/bun-adapter';
-import { HonoSocket } from '#ws/client/index';
-import { HonoWsAdapter } from '#ws/index';
-import { GatewayServer } from '#ws/server';
 import { FAIL, GATEWAY_PATH } from './gateways.ts';
 import {
   ANY_PORT,
@@ -16,6 +12,8 @@ import {
   socketUrl,
   startGateways,
 } from './support.ts';
+
+const OTHER_PORT = 3000;
 
 const nestAnswersExceptions = (): boolean => {
   const candidate: unknown = Reflect.get(BaseWsExceptionFilter.prototype, 'isNativeWebSocket');
@@ -47,29 +45,22 @@ test('a handler that throws is answered the way Nest answers it', async () => {
   }
 });
 
-test('a failure on a path or its socket is reported, not thrown', () => {
-  const adapter = new HonoWsAdapter(bunAdapter());
-  const server = adapter.bindErrorHandler(new GatewayServer());
-  const socket = new HonoSocket();
-  server.emit('connection', socket);
-  expect(() => {
-    server.emit('error', new Error('the path failed'));
-  }).not.toThrow();
-  expect(() => {
-    socket.emit('error', new Error('the socket failed'));
-  }).not.toThrow();
-});
-
-test('a gateway option the adapter cannot serve is refused', () => {
-  const adapter = new HonoWsAdapter(bunAdapter());
-
-  expect(() => {
-    adapter.create(ANY_PORT, { namespace: '/chat' });
-  }).toThrow(TypeError);
-  expect(() => {
-    adapter.create(ANY_PORT, { perMessageDeflate: true });
-  }).toThrow(TypeError);
-  expect(() => {
-    adapter.create(ANY_PORT, { server: new GatewayServer() });
-  }).toThrow(TypeError);
+test('a gateway option the adapter cannot serve is refused', async () => {
+  const probe = await startGateways();
+  try {
+    expect(() => {
+      probe.ws.create(ANY_PORT, { namespace: '/chat' });
+    }).toThrow(TypeError);
+    expect(() => {
+      probe.ws.create(ANY_PORT, { perMessageDeflate: true });
+    }).toThrow(TypeError);
+    expect(() => {
+      probe.ws.create(ANY_PORT, { server: {} });
+    }).toThrow(TypeError);
+    expect(() => {
+      probe.ws.create(OTHER_PORT);
+    }).toThrow(TypeError);
+  } finally {
+    await probe.close();
+  }
 });

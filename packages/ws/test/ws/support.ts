@@ -2,13 +2,13 @@ import { expect } from 'bun:test';
 
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { firstValueFrom, from, fromEvent, throwError, timeout } from 'rxjs';
 
 import { bunAdapter } from '#test/bun-adapter';
+import { restoreWebClasses } from '#test/probe/in-process';
 import type { NestHonoApplication, ServerAdapter } from '#adapter/index';
-import type { MessageParser } from '#ws/client/index';
-import { HonoWsAdapter } from '#ws/index';
-import { ANSWER, GatewayModule, PING } from './gateways.ts';
+import { ANSWER, GatewayModule } from './gateways.ts';
 
 const TIMEOUT_MS = 5000;
 
@@ -18,16 +18,25 @@ const LOCALHOST = '127.0.0.1';
 
 const ANY_PORT = 0;
 
-const quiet = async (ms: number): Promise<void> => {
-  await Bun.sleep(ms);
-};
+interface WsFrame {
+  readonly data: unknown;
+  readonly event: string;
+}
+
+interface WsOptions {
+  readonly messageParser?: (data: unknown) => WsFrame | undefined;
+}
 
 interface WsProbe {
   readonly app: INestApplication;
-  readonly ws: HonoWsAdapter;
+  readonly ws: WsAdapter;
   readonly origin: string;
   close: () => Promise<void>;
 }
+
+const quiet = async (ms: number): Promise<void> => {
+  await Bun.sleep(ms);
+};
 
 const socketUrl = (probe: WsProbe, path: string): string => `ws://${probe.origin}${path}`;
 
@@ -43,12 +52,12 @@ const within = <Result>(work: Promise<Result>, label: string): Promise<Result> =
 
 const startGateways = async (
   adapter: ServerAdapter = bunAdapter(),
-  options?: { readonly messageParser?: MessageParser },
+  options?: WsOptions,
 ): Promise<WsProbe> => {
   const app = await NestFactory.create<NestHonoApplication>(GatewayModule, adapter, {
     logger: false,
   });
-  const ws = new HonoWsAdapter(app, options);
+  const ws = new WsAdapter(app, options);
   app.useWebSocketAdapter(ws);
   await app.listen(ANY_PORT, LOCALHOST);
   const address = adapter.getHttpServer().address();
@@ -56,7 +65,11 @@ const startGateways = async (
     throw new TypeError('the adapter is not listening on a port');
   return {
     app,
-    close: () => app.close(),
+    // A Bun server installs its own lightweight web classes; the probe puts the process ones back.
+    close: async () => {
+      await app.close();
+      restoreWebClasses();
+    },
     origin: `${LOCALHOST}:${address.port}`,
     ws,
   };
@@ -77,10 +90,9 @@ const nextMessage = async (socket: WebSocket): Promise<unknown> => {
   return JSON.parse(String(event.data)) as unknown;
 };
 
-const ask = (socket: WebSocket, data: unknown, correlation?: string | number): Promise<unknown> => {
+const ask = (socket: WebSocket, data: unknown): Promise<unknown> => {
   const pending = nextMessage(socket);
-  const request = { data, event: PING, id: correlation };
-  socket.send(JSON.stringify(request));
+  socket.send(JSON.stringify({ data, event: 'ping' }));
   return pending;
 };
 
@@ -109,3 +121,4 @@ export {
   socketUrl,
   startGateways,
 };
+export type { WsFrame, WsOptions, WsProbe };
