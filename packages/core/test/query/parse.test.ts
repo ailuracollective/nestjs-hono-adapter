@@ -8,23 +8,22 @@ test('a repeated name becomes a list', () => {
   });
 });
 
-test('brackets build lists and nested objects', () => {
+test('bracketed names are literal keys', () => {
   expect(parseQuery('tags[]=a&tags[]=b')).toStrictEqual({
-    tags: ['a', 'b'],
+    'tags[]': ['a', 'b'],
   });
   expect(
     parseQuery('filter[name]=x&filter[deep][level]=y'),
   ).toStrictEqual({
-    filter: { deep: { level: 'y' }, name: 'x' },
+    'filter[deep][level]': 'y',
+    'filter[name]': 'x',
   });
 });
 
-test('a numeric bracket indexes a list', () => {
+test('a numeric bracket is a literal key too', () => {
   expect(parseQuery('ids[0]=a&ids[1]=b')).toStrictEqual({
-    ids: ['a', 'b'],
-  });
-  expect(parseQuery('rows[0][name]=a')).toStrictEqual({
-    rows: [{ name: 'a' }],
+    'ids[0]': 'a',
+    'ids[1]': 'b',
   });
 });
 
@@ -46,4 +45,10 @@ test('a leading question mark and empty pairs are ignored', () => {
 
 test('a value without an equals sign is empty', () => {
   expect(parseQuery('flag')).toStrictEqual({ flag: '' });
+});
+
+test('names that reach the prototype chain are dropped', () => {
+  expect(
+    parseQuery('__proto__=x&constructor=y&prototype=z&safe=1'),
+  ).toStrictEqual({ safe: '1' });
 });

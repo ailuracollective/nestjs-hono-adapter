@@ -10,11 +10,11 @@ adapter answers as `platform-fastify` does: the router scores
 routes rather than matching in registration order, the response
 is encapsulated with an escape hatch to the socket, a trailing
 slash is significant, the body limit is 1 MiB, and there is no
-`X-Powered-By` or `ETag` on the way out. Two defaults follow
-**Express 4** instead: `@Query()` and URL-encoded bodies parse
-with the `qs` grammar, and an empty JSON body reads as `{}`
-(Express 5 and Fastify read the query flat; bracket syntax nests
-here, so `filter[name]` is not a literal key).
+`X-Powered-By` or `ETag` on the way out. The query string and a
+URL-encoded body read flat, as Express 5 and Fastify read them:
+`filter[name]` is a literal key. One default follows **Express
+4** instead: an empty JSON body reads as `{}` (Express 5 refuses
+it).
 
 | Situation                                      | This adapter                                          | Express                                      | Fastify                    |
 | ---------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- | -------------------------- |
@@ -58,11 +58,13 @@ it sits, skipping `q` weights and earlier media ranges.
 
 ## Query strings
 
-`@Query()` gets Express 4's `qs` shape: a repeated name becomes
-a list, `tags[]` appends, `tags[0]` indexes and `filter[name]`
-nests; values are percent-decoded, `+` reads as a space, and
+`@Query()` reads the query flat, as Express 5 and Fastify do: a
+repeated name becomes a list, and every other name is a literal
+key, so `tags[]` and `filter[name]` are keys of their own and
+build no list or object. A URL-encoded body reads the same way.
+Values are percent-decoded, `+` reads as a space, and
 `__proto__`, `constructor` and `prototype` are dropped rather
-than written into the tree.
+than written into the object.
 
 ## Request bodies
 

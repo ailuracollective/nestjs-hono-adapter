@@ -5,7 +5,7 @@ import { HttpStatus } from '@nestjs/common';
 import { startProbe } from '#adapter-test/support/index';
 import { request } from '#test/probe';
 
-test('a form body is parsed the way a query string is', async () => {
+test('a form body is parsed flat, as a query string is', async () => {
   const probe = await startProbe({
     mode: 'in-process',
   });
@@ -19,7 +19,7 @@ test('a form body is parsed the way a query string is', async () => {
     });
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({
-      filter: { name: 'x' },
+      'filter[name]': 'x',
       ids: ['1', '2'],
     });
   } finally {
@@ -27,7 +27,7 @@ test('a form body is parsed the way a query string is', async () => {
   }
 });
 
-test('deep brackets in a form body fold instead of failing', async () => {
+test('brackets in a form body stay literal keys', async () => {
   const probe = await startProbe({
     mode: 'in-process',
   });
@@ -41,11 +41,7 @@ test('deep brackets in a form body fold instead of failing', async () => {
     });
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({
-      alpha: {
-        beta: {
-          gamma: { delta: { epsilon: { '[zeta][eta]': 'h' } } },
-        },
-      },
+      'alpha[beta][gamma][delta][epsilon][zeta][eta]': 'h',
     });
   } finally {
     await probe.close();
@@ -63,7 +59,7 @@ test('a query string reaches @Query() with its lists', async () => {
     );
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.body).toStrictEqual({
-      filter: { name: 'x' },
+      'filter[name]': 'x',
       ids: ['1', '2'],
       page: '3',
     });
