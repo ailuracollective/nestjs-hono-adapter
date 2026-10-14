@@ -4,10 +4,8 @@ import type { StreamableFile } from '@nestjs/common';
 
 import {
   defaultContentType,
-  headerInit,
   setDisposition,
 } from '#adapter/core/response/headers';
-import type { HeaderRecord } from '#adapter/core/response/headers';
 
 import {
   BINARY_CONTENT_TYPE,
@@ -26,24 +24,21 @@ const toBodyStream = (stream: Readable): ReadableStream => {
 const toTextResponse = (
   body: string | number | boolean | bigint,
   status: number,
-  headers: HeaderRecord,
+  headers: Headers,
 ): Response => {
   defaultContentType(headers, TEXT_CONTENT_TYPE);
-  return new Response(String(body), {
-    headers: headerInit(headers),
-    status,
-  });
+  return new Response(String(body), { headers, status });
 };
 
 /** Streams a file Nest built, keeping the headers it declares. */
 const toFileResponse = (
   file: StreamableFile,
   status: number,
-  headers: HeaderRecord,
+  headers: Headers,
 ): Response => {
   const { type, disposition, length } = file.getHeaders();
   if (type !== '') {
-    headers['content-type'] = type;
+    headers.set('content-type', type);
   }
   if (disposition !== undefined) {
     for (const value of Array.isArray(disposition)
@@ -53,10 +48,10 @@ const toFileResponse = (
     }
   }
   if (length !== undefined) {
-    headers['content-length'] = String(length);
+    headers.set('content-length', String(length));
   }
   return new Response(toBodyStream(file.getStream()), {
-    headers: headerInit(headers),
+    headers,
     status,
   });
 };
@@ -65,13 +60,10 @@ const toFileResponse = (
 const toBinaryResponse = (
   body: Uint8Array | ArrayBuffer | ReadableStream,
   status: number,
-  headers: HeaderRecord,
+  headers: Headers,
 ): Response => {
   defaultContentType(headers, BINARY_CONTENT_TYPE);
-  return new Response(body, {
-    headers: headerInit(headers),
-    status,
-  });
+  return new Response(body, { headers, status });
 };
 
 export {

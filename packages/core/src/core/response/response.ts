@@ -1,6 +1,6 @@
 import type { NestContext } from '#adapter/core/context';
 import { toResponse } from './builders.ts';
-import { recordedHeaders } from './headers.ts';
+import { responseHeaders } from './headers.ts';
 
 /** Builds the Web response for a value Nest returned. */
 const buildResponse = (
@@ -8,7 +8,7 @@ const buildResponse = (
   body: unknown,
   status: number,
 ): Response => {
-  const headers = recordedHeaders(context);
+  const headers = responseHeaders(context);
   context.res = undefined;
   return toResponse(body, status, headers);
 };
