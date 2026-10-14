@@ -21,6 +21,7 @@ class ViewRenderer {
     defaults: {},
     directories: [],
     engine: undefined,
+    engineName: undefined,
     extension: '',
   };
 
@@ -43,10 +44,10 @@ class ViewRenderer {
   /** Configures the views, by name or by Fastify's own options. */
   public useEngine(engine: EngineConfig): void {
     if (typeof engine === 'string') {
-      this.state.extension = extensionFor(
-        this.state.engine,
-        engine,
-      );
+      this.state.extension = extensionFor(engine);
+      if (this.state.engine === undefined) {
+        this.state.engineName = engine;
+      }
       return;
     }
 

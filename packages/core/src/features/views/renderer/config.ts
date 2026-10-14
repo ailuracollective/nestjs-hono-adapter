@@ -5,10 +5,7 @@ import {
 } from '#adapter/features/views/options';
 
 import type { ViewState } from './data.ts';
-import type {
-  ViewEngine,
-  ViewEngineOptions,
-} from '#adapter/features/views/types';
+import type { ViewEngineOptions } from '#adapter/features/views/types';
 
 /** Reads the names such a configuration carries onto the views. */
 const applyNames = (
@@ -40,21 +37,8 @@ const applyConfig = (
   applyNames(state, options);
 };
 
-/**
- * The extension a name renders by, or a throw when no engine is
- * set.
- */
-const extensionFor = (
-  engine: ViewEngine | undefined,
-  name: string,
-): string => {
-  if (engine === undefined) {
-    throw new TypeError(
-      'The adapter renders with the engine it was given, so ' +
-        'pass `views.engine` before naming one.',
-    );
-  }
-  return toExtension(name);
-};
+/** The extension a view name is completed with. */
+const extensionFor = (name: string): string =>
+  toExtension(name);
 
 export { applyConfig, extensionFor };

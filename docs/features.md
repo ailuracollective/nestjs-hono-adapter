@@ -72,11 +72,14 @@ reason rather than stored.
 A handler marks its route with `@Render('hello')`, and the
 engine's extension is appended, so the file looked up is
 `views/hello.hbs`. A missing view is answered as
-`NotFoundException`; naming an engine before one is configured
-throws rather than rendering an empty page. The answer carries
-the status the route declared — `@HttpCode(HttpStatus.ACCEPTED)`
-with `@Render()` answers `202`, and a route declaring none
-answers the method's status: `200` for `GET`, `201` for `POST`.
+`NotFoundException`. Naming the engine (`setViewEngine('hbs')`)
+resolves it on first render: the module `hbs` is imported and
+adapted — a `(source, data)` function, or one carrying `render`.
+A module that will not load, or answers nothing callable, fails
+that render with a `TypeError`. The answer carries the status
+the route declared — `@HttpCode(HttpStatus.ACCEPTED)` with
+`@Render()` answers `202`, and a route declaring none answers
+the method's status: `200` for `GET`, `201` for `POST`.
 
 ## Static assets
 

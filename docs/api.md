@@ -110,16 +110,16 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 
 ### Application methods
 
-| Method            | Signature                                                                    | Description                                      |
-| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on CORS; no options allows every origin    |
-| `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix |
-| `setBaseViewsDir` | `(directory: string \| readonly string[]) => this`                           | Names the directories a view is read from        |
-| `setViewEngine`   | `(engine: string) => this`                                                   | Names the engine by the extension it renders     |
-| `setLocal`        | `(key: string, value: unknown) => this`                                      | Adds one value to every template render          |
-| `set`             | `(name: string, value: unknown) => this`                                     | Honours the settings that name behaviour         |
-| `enable`          | `(name: string) => this`                                                     | `set(name, true)`                                |
-| `disable`         | `(name: string) => this`                                                     | `set(name, false)`                               |
+| Method            | Signature                                                                    | Description                                                              |
+| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on CORS; no options allows every origin                            |
+| `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix                         |
+| `setBaseViewsDir` | `(directory: string \| readonly string[]) => this`                           | Names the directories a view is read from                                |
+| `setViewEngine`   | `(engine: string) => this`                                                   | Names the engine by the extension it renders, loading it on first render |
+| `setLocal`        | `(key: string, value: unknown) => this`                                      | Adds one value to every template render                                  |
+| `set`             | `(name: string, value: unknown) => this`                                     | Honours the settings that name behaviour                                 |
+| `enable`          | `(name: string) => this`                                                     | `set(name, true)`                                                        |
+| `disable`         | `(name: string) => this`                                                     | `set(name, false)`                                                       |
 
 Express's `app.get(name)` and `engine()` are absent: the first
 collides with the container's `get()` and the GET registrar, the
@@ -322,12 +322,12 @@ type TrustProxy = boolean | number | string[];
 
 ## Error behaviour
 
-| Situation                              | Behaviour                                                 |
-| -------------------------------------- | --------------------------------------------------------- |
-| Gateway asks for its own port          | `TypeError` at startup                                    |
-| Gateway asks for a namespace           | `TypeError` at startup                                    |
-| `setViewEngine` without `views.engine` | `TypeError` at startup                                    |
-| `render` without a configured engine   | `TypeError` at request time                               |
-| `optionsSuccessStatus` ≠ `204`         | `TypeError` at startup (unless `preflightContinue: true`) |
-| `etag: false` on static assets         | `TypeError` at startup                                    |
-| `setHeaders` on static assets          | `TypeError` at startup                                    |
+| Situation                            | Behaviour                                                 |
+| ------------------------------------ | --------------------------------------------------------- |
+| Gateway asks for its own port        | `TypeError` at startup                                    |
+| Gateway asks for a namespace         | `TypeError` at startup                                    |
+| A named engine that cannot be loaded | `TypeError` at request time                               |
+| `render` without an engine or name   | `TypeError` at request time                               |
+| `optionsSuccessStatus` ≠ `204`       | `TypeError` at startup (unless `preflightContinue: true`) |
+| `etag: false` on static assets       | `TypeError` at startup                                    |
+| `setHeaders` on static assets        | `TypeError` at startup                                    |

@@ -17,6 +17,8 @@ interface ViewState {
   directories: readonly string[];
   /** The engine a render is handed the source of. */
   engine: ViewEngine | undefined;
+  /** The module a named engine is loaded from, until it is. */
+  engineName: string | undefined;
   /** The extension a view name is completed with. */
   extension: string;
 }

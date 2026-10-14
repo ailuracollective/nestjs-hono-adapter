@@ -46,10 +46,28 @@ test('a view that does not exist is a not-found answer', async () => {
   }
 });
 
-test('naming an engine without one configured is refused', () => {
+test('naming an engine does not throw before it is loaded', () => {
   const adapter = bunAdapter();
 
   expect(() => {
-    adapter.setViewEngine(ENGINE);
-  }).toThrow(TypeError);
+    adapter.setViewEngine('ejs');
+  }).not.toThrow();
+});
+
+test('a named engine that cannot be loaded fails the render', async () => {
+  const probe = await startProbe({
+    configure: (app) => {
+      app.setBaseViewsDir(FIXTURES);
+      app.setViewEngine('an-engine-that-is-not-installed');
+    },
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(probe, '/view');
+    expect(response.status).toBe(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  } finally {
+    await probe.close();
+  }
 });
