@@ -1,0 +1,16 @@
+[
+  {
+    "name": "graphql",
+    "path": "dist/index.js",
+    "limit": 1500,
+    "brotli": true,
+    "ignore": [
+      "@apollo/server",
+      "@nestjs/apollo",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/graphql",
+      "graphql"
+    ]
+  }
+]

@@ -21,6 +21,14 @@
         "../packages/multipart/test/*.ts",
         "../packages/multipart/test/*"
       ],
+      "#serve-static/*": [
+        "../packages/serve-static/src/*.ts",
+        "../packages/serve-static/src/*"
+      ],
+      "#serve-static-test/*": [
+        "../packages/serve-static/test/*.ts",
+        "../packages/serve-static/test/*"
+      ],
       "#ws/*": [
         "../packages/ws/src/*.ts",
         "../packages/ws/src/*"
@@ -49,6 +57,9 @@
       ],
       "@ailura/nestjs-platform-hono-multipart": [
         "../packages/multipart/src/index.ts"
+      ],
+      "@ailura/nestjs-platform-hono-serve-static": [
+        "../packages/serve-static/src/index.ts"
       ],
       "@ailura/nestjs-platform-hono-socket-io": [
         "../packages/socket-io/src/index.ts"

@@ -1,3 +1,4 @@
+import { settleBridges } from '#adapter/compat/index';
 import type { CorsConfig } from '#adapter/features/cors/index';
 import { toByteLimit } from '#adapter/core/request/body/index';
 import type {
@@ -264,6 +265,20 @@ class ServerAdapter extends HonoLifecycle {
   /** Installs the exception mapper as an own property. */
   private installMapException(): void {
     this.mapException = mapFrameworkError;
+  }
+
+  /**
+   * Lets the compatibility bridges finish installing. Nest
+   * awaits `init()` before it runs `onModuleInit`, which is the
+   * window a bridge that patches a third-party prototype has to
+   * land in: `@nestjs/serve-static` would otherwise boot
+   * against its own Express loader. A bridge with nothing to
+   * resolve installs synchronously in the constructor, so this
+   * is an already-settled await for a deployment that runs none
+   * of them.
+   */
+  public override async init(): Promise<void> {
+    await settleBridges();
   }
 
   /** Sets the handler for unmatched requests. */

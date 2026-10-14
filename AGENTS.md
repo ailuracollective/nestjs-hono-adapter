@@ -91,22 +91,40 @@ so a deployment on Node names `nodeServer()`.
 (the adapter), `./bun-server`, `./node-server` and `./fetch`.
 Each optional capability is a single-entrypoint package —
 WebSockets in `@ailura/nestjs-platform-hono-ws`, uploads in
-`@ailura/nestjs-platform-hono-multipart`, Socket.IO in
+`@ailura/nestjs-platform-hono-multipart`, and Socket.IO in
 `@ailura/nestjs-platform-hono-socket-io` — and the adapter names
 none of them.
+
+GraphQL is deliberately **not** one of those packages: it ships
+as `@ailura/nestjs-platform-hono-graphql`, which patches one
+branch of `@nestjs/apollo`'s own `ApolloDriver`, so a deployment
+names the stock driver. `@nestjs/serve-static` is the same, in
+`@ailura/nestjs-platform-hono-serve-static`. Both are
+**compatibility bridges** rather than capabilities, and the
+difference is how they arrive: a capability is imported, a
+bridge is not. `compat/registry/discover.ts` resolves each name
+in `BRIDGE_PACKAGES` out of the application's own tree, so
+installing the package is what installs the bridge and an
+application writes no import of either. The adapter names none
+of the packages, and the bridge packages peer on it.
 
 The adapter's implementation is `packages/core`: `src/core/`
 holds the request decode, response encode, and lifecycle bridge,
 plus the `Server` and `Transport` ports; `src/features/` holds
 the optional capabilities (CORS, guards, instrumentation hooks,
-SSE, static assets, views); `src/servers/` holds the runtime
-transports (`bun.ts`, `node.ts`, `fetch.ts`), reached through
-their subpaths — the Bun one also from
+SSE, static assets, views); `src/compat/` holds the region's
+mechanism — the `Bridge` port, the registry, the peer loader,
+the discovery — and the one bridge that cannot be optional,
+Express's response surface and error middleware; `src/servers/`
+holds the runtime transports (`bun.ts`, `node.ts`, `fetch.ts`),
+reached through their subpaths — the Bun one also from
 `core/server/server-adapter.ts`, the composition root and the
 default transport. The repository root is only the private Bun
 workspace root: no published package, no `src/`, no exports. The
 layout, import rules, and bundle ceilings are in
-[docs/architecture.md](docs/architecture.md).
+[docs/architecture.md](docs/architecture.md); the compatibility
+region is covered in
+[docs/compatibility.md](docs/compatibility.md).
 
 ## Repository-specific conventions
 
@@ -136,6 +154,14 @@ layout, import rules, and bundle ceilings are in
   fails when a ceiling in a package's `.size-limit.json` is
   exceeded. Each package carries its own beside its
   `package.json`. This is a gate, not a report.
+- **A compatibility bridge is small on purpose.** The region and
+  each bridge package's `src/` cap at 100 lines, where the
+  repository's own ceiling is 400, and a comment is at most two
+  lines: the reasoning lives in
+  [docs/compatibility.md](docs/compatibility.md), not beside the
+  code it explains. `test/layers.test.ts` holds the seventh
+  rule, that a bridge package reaches the adapter only through
+  the published entrypoint.
 - **The compat matrix tests NestJS 11 and 12 on Bun.** Every
   Nest package moves together; a mixed install is what a
   WebSocket or microservice case would fail on.
@@ -213,10 +239,17 @@ rules, and a README section for user-facing behavior.
 - [docs/architecture.md](docs/architecture.md) — the layer map,
   import rules, and Node boundary. Read before editing the
   adapter.
+- [docs/compatibility.md](docs/compatibility.md) — the
+  compatibility region: what a bridge is, how the region
+  discovers a bridge package without an import, what each of the
+  three bridges does, what the `init()` seam is for, and what a
+  new bridge costs. Read before adding a shim or a platform call
+  shape.
 - [packages/core/.size-limit.json](packages/core/.size-limit.json)
   — the adapter's bundle ceilings; `packages/ws`,
-  `packages/socket-io` and `packages/multipart` each carry their
-  own beside their `package.json`.
+  `packages/socket-io`, `packages/multipart`, `packages/graphql`
+  and `packages/serve-static` each carry their own beside their
+  `package.json`.
 - [packages/benchmarks/README.md](packages/benchmarks/README.md)
   — the comparison suite and the methodology it follows.
 - [release-please-config.json](release-please-config.json) — the

@@ -20,6 +20,16 @@
       "component": "multipart",
       "include-component-in-tag": true,
       "bump-minor-pre-major": true
+    },
+    "packages/graphql": {
+      "component": "graphql",
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true
+    },
+    "packages/serve-static": {
+      "component": "serve-static",
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true
     }
   }
 }

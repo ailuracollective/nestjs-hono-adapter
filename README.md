@@ -12,15 +12,28 @@ fetch host's Web `Request`/`Response`.
 
 ## Packages
 
-| Package                                                                  | Entrypoints                                     | What it is                          |
-| ------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------- |
-| [`@ailura/nestjs-hono-adapter`](packages/core/README.md)                 | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
-| [`@ailura/nestjs-platform-hono-ws`](packages/ws/README.md)               | `.`                                             | WebSocket gateways                  |
-| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md) | `.`                                             | Socket.IO gateways                  |
-| [`@ailura/nestjs-platform-hono-multipart`](packages/multipart/README.md) | `.`                                             | Upload interceptors (multer-style)  |
+| Package                                                                        | Entrypoints                                     | What it is                          |
+| ------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------- |
+| [`@ailura/nestjs-hono-adapter`](packages/core/README.md)                       | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
+| [`@ailura/nestjs-platform-hono-ws`](packages/ws/README.md)                     | `.`                                             | WebSocket gateways                  |
+| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md)       | `.`                                             | Socket.IO gateways                  |
+| [`@ailura/nestjs-platform-hono-multipart`](packages/multipart/README.md)       | `.`                                             | Upload interceptors (multer-style)  |
+| [`@ailura/nestjs-platform-hono-graphql`](packages/graphql/README.md)           | `.`                                             | GraphQL for `@nestjs/apollo`        |
+| [`@ailura/nestjs-platform-hono-serve-static`](packages/serve-static/README.md) | `.`                                             | `@nestjs/serve-static` on Hono      |
 
 The adapter does the work; each capability package is optional
 and imports alone. The adapter's README is the detailed one.
+
+The last two are **compatibility bridges**, and they behave
+differently from the three above: you write no import for them.
+Installing the package is what installs the bridge, because the
+adapter's compatibility region resolves it out of your own tree.
+So `GraphQLModule.forRoot({ driver: ApolloDriver })` keeps
+naming the stock
+[`@nestjs/apollo`](https://www.npmjs.com/package/@nestjs/apollo)
+driver, and `ServeStaticModule.forRoot()` keeps naming the stock
+`@nestjs/serve-static`; neither knows this repository exists.
+See [docs/compatibility.md](docs/compatibility.md).
 
 ## Install
 
@@ -49,6 +62,7 @@ transports, options and migration.
 | Topic                                                        | What it covers                                                                                             |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | [docs/platform-differences.md](docs/platform-differences.md) | Where Express and Fastify disagree, and how this adapter answers; routes, query strings, bodies, responses |
+| [docs/compatibility.md](docs/compatibility.md)               | The bridges that let Nest's own Express, `@nestjs/serve-static` and Apollo code run here                   |
 | [docs/parity.md](docs/parity.md)                             | What of Nest's four platform packages is implemented here, and what is still missing                       |
 | [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
 | [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |

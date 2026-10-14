@@ -4,6 +4,7 @@ import { secureHeaders } from 'hono/secure-headers';
 
 import type { Server as NativeServer } from 'node:http';
 
+import { installBridges } from '#adapter/compat/index';
 import type { NestEnv, NestHono } from '#adapter/core/context';
 import type { Server } from '#adapter/core/ports/server';
 import type { Transport } from '#adapter/core/ports/transport';
@@ -128,6 +129,22 @@ abstract class HonoLifecycle extends RouteAdapter {
   /** Whether a closing application answers 503. */
   private return503OnClosing = false;
 
+  /**
+   * Installs everything the application is built with before a
+   * route is registered: the security headers, the request
+   * steps, and the compatibility bridges. Kept apart from the
+   * constructor so the constructor reads as the field
+   * initialisation it is.
+   */
+  private installPieces(
+    hono: NestHono,
+    options: TransportOptions,
+  ): void {
+    this.installSecurityHeaders(options.secureHeaders ?? false);
+    this.installGuards(hono);
+    installBridges({ hono, transport: this.transport });
+  }
+
   /** Builds the lifecycle with the transport options. */
   protected constructor(options: TransportOptions) {
     const hono = new Hono<NestEnv>();
@@ -140,8 +157,7 @@ abstract class HonoLifecycle extends RouteAdapter {
     this.beforeClose = (): void => {
       this.closing = true;
     };
-    this.installSecurityHeaders(options.secureHeaders ?? false);
-    this.installGuards(hono);
+    this.installPieces(hono, options);
   }
 
   /** Installs the steps every request crosses before a route. */

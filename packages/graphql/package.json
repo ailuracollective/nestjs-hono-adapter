@@ -1,0 +1,73 @@
+{
+  "name": "@ailura/nestjs-platform-hono-graphql",
+  "version": "1.4.1",
+  "description": "The GraphQL bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/apollo driver answering on Hono, in its own package.",
+  "keywords": [
+    "adapter",
+    "apollo",
+    "graphql",
+    "hono",
+    "nestjs"
+  ],
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
+  "bugs": {
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
+  },
+  "license": "MIT",
+  "author": "Ailura Code",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "imports": {
+    "#graphql/*": "./dist/*.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
+    "size": "size-limit",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
+    "@apollo/server": ">=5 <6",
+    "@nestjs/apollo": ">=11 <13",
+    "@nestjs/graphql": ">=11 <13",
+    "graphql": "^16.0.0 || ^17.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@apollo/server": {
+      "optional": true
+    },
+    "@nestjs/apollo": {
+      "optional": true
+    },
+    "@nestjs/graphql": {
+      "optional": true
+    },
+    "graphql": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

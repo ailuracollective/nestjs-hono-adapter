@@ -153,7 +153,7 @@
         "import/max-dependencies": [
           "error",
           {
-            "max": 14
+            "max": 15
           }
         ],
         "max-lines": [
@@ -179,7 +179,7 @@
         "import/max-dependencies": [
           "error",
           {
-            "max": 12
+            "max": 13
           }
         ],
         "typescript/no-unsafe-type-assertion": "off"
@@ -356,6 +356,31 @@
       "files": ["packages/socket-io/src/engine.ts"],
       "rules": {
         "oxc/no-optional-chaining": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/compat/**/*.ts",
+        "packages/graphql/src/**/*.ts",
+        "packages/serve-static/src/**/*.ts"
+      ],
+      "rules": {
+        "max-lines": [
+          "error",
+          {
+            "max": 100,
+            "skipBlankLines": false,
+            "skipComments": false
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/compat/express/middleware-fit.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
       }
     }
   ],

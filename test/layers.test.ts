@@ -3,8 +3,19 @@ import path from 'node:path';
 
 import { expect, test } from 'bun:test';
 
-import { CORE_ENTRY, ROOT } from './layers/model.ts';
 import {
+  COMPOSITION_ROOTS,
+  CORE_ENTRY,
+  ROOT,
+} from './layers/model.ts';
+import type { Edge, Layer } from './layers/model.ts';
+import {
+  BRIDGE_TOOLKIT,
+  COMPAT_INDEX,
+  EXPRESS_SURFACE,
+  EXPRESS_SURFACE_CALLER,
+  bridgeReachesApp,
+  coreReachesCompat,
   coreReachesFeature,
   featureReachesFeature,
   featureReachesWs,
@@ -13,14 +24,102 @@ import {
   socketIoReachesApp,
   wsReachesApp,
 } from './layers/rules.ts';
-import { refusalOf, scan, scanAll } from './layers/tree.ts';
+import { refusalOf, scanAll } from './layers/tree.ts';
 
 test('no socket.io module reaches the application', async () => {
   expect(socketIoReachesApp(await scanAll())).toStrictEqual([]);
 });
 
+test('no bridge package reaches past the published entrypoint', async () => {
+  expect(bridgeReachesApp(await scanAll())).toStrictEqual([]);
+});
+
+/** The edges one layer takes into another. */
+const between = (
+  edges: readonly Edge[],
+  from: Layer,
+  to: Layer,
+): Edge[] =>
+  edges.filter(
+    (edge) =>
+      layerOf(edge.from) === from && layerOf(edge.to) === to,
+  );
+
+/** The edges of the whole walk, once. */
+const walked = (): Promise<Edge[]> => scanAll();
+
 test('core reaches no feature outside the composition roots', async () => {
-  expect(coreReachesFeature(await scanAll())).toStrictEqual([]);
+  const edges = await walked();
+  expect(coreReachesFeature(edges)).toStrictEqual([]);
+});
+
+test('core reaches no compatibility bridge outside the composition roots and the one request seam', async () => {
+  const edges = await walked();
+  expect(coreReachesCompat(edges)).toStrictEqual([]);
+});
+
+test('the request path takes the Express surface and nothing else from compat', async () => {
+  const edges = between(
+    await walked(),
+    'core',
+    'compat',
+  ).filter(
+    (edge) =>
+      !COMPOSITION_ROOTS.has(edge.from) &&
+      edge.from !== CORE_ENTRY,
+  );
+  expect(
+    edges.map((edge) => `${edge.from} -> ${edge.to}`),
+  ).toStrictEqual([
+    `${EXPRESS_SURFACE_CALLER} -> ${EXPRESS_SURFACE}`,
+  ]);
+});
+
+test('the published entrypoint reaches the region by its index and the toolkit', async () => {
+  const edges = between(
+    await walked(),
+    'core',
+    'compat',
+  ).filter((edge) => edge.from === CORE_ENTRY);
+  expect(edges.length).toBeGreaterThan(0);
+  expect(
+    edges.every(
+      (edge) =>
+        edge.to === COMPAT_INDEX || edge.to === BRIDGE_TOOLKIT,
+    ),
+  ).toBe(true);
+});
+
+test('the composition roots reach the region through its index', async () => {
+  const edges = between(
+    await walked(),
+    'core',
+    'compat',
+  ).filter((edge) => COMPOSITION_ROOTS.has(edge.from));
+  expect(edges.length).toBe(COMPOSITION_ROOTS.size);
+  expect(edges.every((edge) => edge.to === COMPAT_INDEX)).toBe(
+    true,
+  );
+});
+
+test('a bridge reaches core and features, which is its job', async () => {
+  const edges = await walked();
+  const targets = new Set(
+    edges
+      .filter((edge) => layerOf(edge.from) === 'compat')
+      .map((edge) => layerOf(edge.to)),
+  );
+  expect(targets.has('core')).toBe(true);
+  expect(targets.has('features') || targets.has('core')).toBe(
+    true,
+  );
+});
+
+test('no feature reaches a compatibility bridge', async () => {
+  const edges = await walked();
+  expect(between(edges, 'features', 'compat')).toStrictEqual(
+    [],
+  );
 });
 
 test('no feature reaches another feature', async () => {
@@ -84,24 +183,17 @@ test('the ws island takes the application as a package through types', async () 
 });
 
 test('the walk reads an import out of every layer', async () => {
-  const edges = [
-    ...(await scanAll()),
-    ...(await scan(
-      path.join(ROOT, 'packages', 'socket-io', 'src'),
-      [],
-    )),
-    ...(await scan(
-      path.join(ROOT, 'packages', 'ws', 'src'),
-      [],
-    )),
-  ];
+  const edges = await scanAll();
   const layers = [
     ...new Set(edges.map((edge) => layerOf(edge.from))),
   ].filter((layer) => layer !== undefined);
   expect(layers.toSorted()).toStrictEqual([
+    'compat',
     'core',
     'features',
+    'graphql',
     'multipart',
+    'serve-static',
     'socket-io',
     'ws',
   ]);

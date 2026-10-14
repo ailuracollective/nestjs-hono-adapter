@@ -268,6 +268,41 @@ equivalent would be a new feature, not a port. Recorded as
 unsupported in
 [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
+## GraphQL
+
+`@nestjs/graphql` ships no platform adapter of its own; its
+**drivers** are the platform-coupled half. `@nestjs/apollo`'s
+`ApolloDriver.start()` branches on `httpAdapter.getType()` and
+throws `No support for current HttpAdapter` for anything that is
+not Express or Fastify, and `@nestjs/mercurius`'s
+`MercuriusDriver.start()` refuses the same way.
+
+- **`ApolloDriver` — implemented, in
+  `@ailura/nestjs-platform-hono-graphql`.** The bridge replaces
+  that one branch on `ApolloDriver.prototype` and mounts the
+  endpoint through `registerGraphQLRoute()`. A deployment names
+  the stock driver and imports nothing: installing the package
+  is what installs the bridge, because the compatibility region
+  resolves it. Queries and mutations, both code-first and
+  schema-first, answer on Hono.
+- **GraphiQL / the Apollo landing page — implemented.** The
+  plugin is one `@nestjs/apollo` puts into `options.plugins`
+  before the driver registers, so the bridge hands it to the
+  engine untouched and the page answers on a `GET` that accepts
+  `text/html`.
+- **Subscriptions — not implemented.** `ApolloDriver.start()`
+  opens a `GqlSubscriptionService` on the adapter's HTTP server,
+  which a transport serving no socket has nothing to attach to.
+- **`MercuriusDriver` — not implemented.** Mercurius is itself a
+  Fastify plugin, so adapting it means a Fastify-shaped façade
+  over the Hono application. The seam it would mount through
+  (`registerGraphQLRoute()`) and the resolver context naming
+  (`c`, `ctx`, `req`) exist and are covered by the Apollo
+  bridge's tests.
+
+The reasoning, and what the bridge costs, are in
+[compatibility.md](compatibility.md#graphqlapollo).
+
 ## Backlog
 
 The list's one item — Socket.IO support — is settled as

@@ -13,37 +13,39 @@ const crossing = (
   typeOnly = false,
 ): Edge => ({ from, to, typeOnly });
 
-/** The directory each island is rooted at, and its layer. */
-const ISLANDS: Readonly<Record<string, Layer>> = {
-  'packages/core/src/features': 'features',
-  'packages/multipart/src': 'multipart',
-  'packages/socket-io/src': 'socket-io',
-  'packages/ws/src': 'ws',
-};
+/**
+ * Each region of the tree, the prefix it is rooted at, and the
+ * layer it belongs to. A region covers its own directory and
+ * everything nested under it, which is why a module two folders
+ * deep still reports as its island.
+ */
+const REGIONS: readonly (readonly [string, Layer])[] = [
+  ['packages/core/src/core', 'core'],
+  ['packages/core/src/features', 'features'],
+  ['packages/core/src/compat', 'compat'],
+  ['packages/graphql/src', 'graphql'],
+  ['packages/multipart/src', 'multipart'],
+  ['packages/serve-static/src', 'serve-static'],
+  ['packages/socket-io/src', 'socket-io'],
+  ['packages/ws/src', 'ws'],
+];
+
+/** Whether a path is under a prefix, as the layers are. */
+const under = (directory: string, prefix: string): boolean =>
+  directory === prefix || directory.startsWith(`${prefix}/`);
 
 /** The layer a source path belongs to, and none for the roots. */
 const layerOf = (file: string): Layer | undefined => {
   const directory = path.dirname(file);
-  if (
-    file === CORE_ENTRY ||
-    directory === 'packages/core/src/core' ||
-    directory.startsWith('packages/core/src/core/')
-  ) {
+  if (file === CORE_ENTRY) {
     return 'core';
   }
-  if (
-    directory === 'packages/core/src/features' ||
-    directory.startsWith('packages/core/src/features/')
-  ) {
-    return 'features';
+  for (const [prefix, layer] of REGIONS) {
+    if (under(directory, prefix)) {
+      return layer;
+    }
   }
-  if (directory.startsWith('packages/multipart/src/')) {
-    return 'multipart';
-  }
-  if (directory.startsWith('packages/socket-io/src/')) {
-    return 'socket-io';
-  }
-  return ISLANDS[directory];
+  return undefined;
 };
 
 /** The edges a core module takes into a feature. */
@@ -54,6 +56,39 @@ const coreReachesFeature = (edges: readonly Edge[]): Edge[] =>
       edge.from !== CORE_ENTRY &&
       layerOf(edge.to) === 'features' &&
       !COMPOSITION_ROOTS.has(edge.from),
+  );
+
+/** The one file in `core/` allowed to reach into `compat/`. */
+const EXPRESS_SURFACE_CALLER =
+  'packages/core/src/core/route/handler-bridge/request.ts';
+
+/** The one bridge the request path is allowed to name. */
+const EXPRESS_SURFACE =
+  'packages/core/src/compat/express/surface-fit.ts';
+
+/**
+ * The edges a core module takes into a compatibility bridge.
+ *
+ * `compat/` is the region that speaks for the platforms Nest
+ * users write against. It reaches `core/` and `features/`
+ * freely — that is its job — but nothing reaches it sideways:
+ * only the two composition roots may name it, exactly as only
+ * they may name a feature. The one further exception is the
+ * request path, which names a bridge to fit the Express
+ * response surface onto a `@Res()` object; `EXPRESS_SURFACE` is
+ * that seam and nothing else may take it.
+ */
+const coreReachesCompat = (edges: readonly Edge[]): Edge[] =>
+  edges.filter(
+    (edge) =>
+      layerOf(edge.from) === 'core' &&
+      edge.from !== CORE_ENTRY &&
+      layerOf(edge.to) === 'compat' &&
+      !COMPOSITION_ROOTS.has(edge.from) &&
+      !(
+        edge.from === EXPRESS_SURFACE_CALLER &&
+        edge.to === EXPRESS_SURFACE
+      ),
   );
 
 /**
@@ -67,8 +102,11 @@ const capabilityOf = (file: string): string => {
 };
 
 export {
-  ISLANDS,
+  EXPRESS_SURFACE,
+  EXPRESS_SURFACE_CALLER,
+  REGIONS,
   capabilityOf,
+  coreReachesCompat,
   coreReachesFeature,
   crossing,
   layerOf,

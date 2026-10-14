@@ -29,6 +29,24 @@ const closingAnswer = (): Response =>
     status: HttpStatus.SERVICE_UNAVAILABLE,
   });
 
+/**
+ * Runs a continuation and hands back only what Hono may store
+ * as the answer.
+ *
+ * Hono's `next()` resolves to the **context**, not to `void`:
+ * `compose()` ends with `return context`. A middleware that
+ * returns it makes Hono write `context.res = context`, and
+ * every later read of `context.res.headers` then throws. The
+ * value is only ever useful when the continuation answered with
+ * a response of its own, which is what this keeps.
+ */
+const passed = async (
+  run: () => Promise<unknown>,
+): Promise<Response | undefined> => {
+  const answered = await run();
+  return answered instanceof Response ? answered : undefined;
+};
+
 /** Writes the closing refusal over the headers CORS just added. */
 const refuse = async (
   context: Context<NestEnv, string>,
@@ -49,10 +67,10 @@ const guardStep =
       if (closing) {
         return closingAnswer();
       }
-      return next();
+      return passed(next);
     }
     if (!closing) {
-      return state.cors(context, next);
+      return passed(() => state.cors(context, next));
     }
     await refuse(context, state.cors);
     return context.res;

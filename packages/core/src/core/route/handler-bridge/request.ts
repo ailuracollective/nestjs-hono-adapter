@@ -6,7 +6,7 @@ import type {
   RequestOptions,
 } from '#adapter/core/request/request';
 import { finalizeOnResponse } from '#adapter/core/response/response-helpers';
-import { installExpressSurface } from '#adapter/core/server/express-surface';
+import { installSurface } from '#adapter/compat/express/surface-fit';
 
 import { describe, logger } from './types.ts';
 import type { BridgeOptions, Outcome } from './types.ts';
@@ -25,7 +25,7 @@ const prepareRequest = async (
     context,
     requestOptions(options),
   );
-  installExpressSurface(context);
+  installSurface(context);
   finalizeOnResponse(context);
   if (!options.bodyParsingEnabled()) {
     return request;

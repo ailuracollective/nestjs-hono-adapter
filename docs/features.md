@@ -103,6 +103,11 @@ passed, so a deployment is told at startup: `setHeaders`,
 `etag: false`, and `immutable` without a `maxAge`. An ETag is
 always written.
 
+`@nestjs/serve-static` is served by the same machinery through a
+compatibility bridge, so the refusal above applies to its
+`serveStaticOptions` too. See
+[compatibility.md](compatibility.md#what-is-refused-and-why).
+
 ## CORS
 
 `app.enableCors()` records the options instead of installing
@@ -251,8 +256,7 @@ object with `res.type()` and `res.send()`, which a Hono context
 does not carry. Without them such a route answers `500`.
 
 The adapter installs both on the Hono context prototype, once
-per process, in
-`packages/core/src/core/server/express-surface.ts`:
+per application, in `packages/core/src/compat/express/`:
 
 - `res.type(value)` writes `Content-Type` and returns the
   context, as Express does for chaining.

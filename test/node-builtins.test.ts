@@ -3,11 +3,27 @@ import path from 'node:path';
 
 import { expect, test } from 'bun:test';
 
-/** Where the package source lives. */
+/** The repository root, so a refusal can name what it found. */
+const REPOSITORY = path.resolve(import.meta.dirname, '..');
+
+/** The core package's own tree, which is what the source is. */
 const SOURCE_ROOT = path.resolve(
   import.meta.dirname,
   '../packages/core/src',
 );
+
+/**
+ * The trees that hold a compatibility bridge: the region inside
+ * the adapter, and the package that carries the bridge
+ * belonging to the one platform still outside it.
+ */
+const BRIDGE_ROOTS = [
+  path.join(SOURCE_ROOT, 'compat'),
+  path.resolve(
+    import.meta.dirname,
+    '../packages/serve-static/src',
+  ),
+];
 
 /** Every `node:` builtin the source is allowed to name. */
 const FROZEN_NODE_BUILTINS = [
@@ -36,20 +52,18 @@ const groupOf = (
   return groups[name] ?? '';
 };
 
-/** Every source file under the source root, sorted. */
-const sourceFiles = async (): Promise<string[]> => {
-  const found = await readdir(SOURCE_ROOT, { recursive: true });
+/** Every source file under a root, absolute and sorted. */
+const sourceFiles = async (root: string): Promise<string[]> => {
+  const found = await readdir(root, { recursive: true });
   return found
     .filter((name) => name.endsWith('.ts'))
+    .map((name) => path.join(root, name))
     .toSorted();
 };
 
 /** The Node builtins one source file imports. */
 const builtinsIn = async (file: string): Promise<string[]> => {
-  const source = await readFile(
-    path.join(SOURCE_ROOT, file),
-    'utf8',
-  );
+  const source = await readFile(file, 'utf8');
   const named = [...source.matchAll(IMPORT)];
   const bare = [...source.matchAll(BARE_IMPORT)];
   const specifiers = [...named, ...bare].map((match) =>
@@ -60,9 +74,30 @@ const builtinsIn = async (file: string): Promise<string[]> => {
   );
 };
 
+/** The source files of every bridge tree, root by root. */
+const filesPerBridgeRoot = (): Promise<string[]>[] =>
+  BRIDGE_ROOTS.map((root) => sourceFiles(root));
+
+/** Every source file of every bridge. */
+const bridgeFiles = async (): Promise<string[]> => {
+  const perRoot = await Promise.all(filesPerBridgeRoot());
+  return perRoot.flat();
+};
+
+/**
+ * The builtins one file names, paired with a
+ * repository-relative name.
+ */
+const cited = async (
+  file: string,
+): Promise<{ builtins: string[]; name: string }> => ({
+  builtins: await builtinsIn(file),
+  name: path.relative(REPOSITORY, file),
+});
+
 /** Every Node builtin imported anywhere under the source root. */
 const nodeBuiltins = async (): Promise<string[]> => {
-  const files = await sourceFiles();
+  const files = await sourceFiles(SOURCE_ROOT);
   const perFile = await Promise.all(
     files.map((file) => builtinsIn(file)),
   );
@@ -75,4 +110,31 @@ test('the source imports no Node builtin beyond the frozen list', async () => {
   expect(imported).toStrictEqual(
     [...FROZEN_NODE_BUILTINS].toSorted(),
   );
+});
+
+test('the guard walks every bridge tree, not only the one in the adapter', async () => {
+  const perRoot = await Promise.all(filesPerBridgeRoot());
+  expect(perRoot.every((files) => files.length > 0)).toBe(true);
+});
+
+test('a compatibility bridge names no runtime', async () => {
+  const bridges = await bridgeFiles();
+  expect(bridges.length).toBeGreaterThan(0);
+  const perFile = await Promise.all(
+    bridges.map((file) => builtinsIn(file)),
+  );
+  expect(perFile.flat()).toStrictEqual([]);
+});
+
+test('a compatibility bridge reads files through the transport, not a filesystem API', async () => {
+  const perRoot = await Promise.all(filesPerBridgeRoot());
+  const citedPerRoot = await Promise.all(
+    perRoot.flat().map((file) => cited(file)),
+  );
+  const filesystem = citedPerRoot.filter(
+    (file) =>
+      file.builtins.includes('node:fs') ||
+      file.builtins.includes('node:fs/promises'),
+  );
+  expect(filesystem.map((file) => file.name)).toStrictEqual([]);
 });

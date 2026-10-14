@@ -15,6 +15,11 @@ export type {
   WebSocketSupport,
 } from './core/ports/transport.ts';
 export type { NestHonoApplication } from './core/server/application.ts';
+export { bridgeNames, registerBridge } from './compat/index.ts';
+export type { Bridge, BridgeTarget } from './compat/index.ts';
+export { loadPeer } from './compat/peer-load.ts';
+export { toHonoPath } from './core/request/path.ts';
+export { toNestRequest } from './core/request/request.ts';
 export type {
   InjectCookie,
   InjectOptions,
@@ -29,6 +34,7 @@ export type {
   NestHandler,
   NestRequest,
   NextHandler,
+  RequestOptions,
   TrustProxy,
 } from './core/request/request.ts';
 

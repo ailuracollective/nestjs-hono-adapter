@@ -1,6 +1,11 @@
 import path from 'node:path';
 
-import { REQUIRED, ROOT, SOURCE } from '#test/layers/model';
+import {
+  BRIDGE_ENTRYPOINTS,
+  REQUIRED,
+  ROOT,
+  SOURCE,
+} from '#test/layers/model';
 import type { Edge } from '#test/layers/model';
 
 import { edgesFrom, readTree } from './edges.ts';
@@ -24,6 +29,19 @@ const scan = async (
   );
   return edges.flat();
 };
+/**
+ * The edges of each compatibility bridge package, if it is
+ * there.
+ */
+const bridgeTrees = async (): Promise<Edge[]> => {
+  const trees = await Promise.all(
+    Object.entries(BRIDGE_ENTRYPOINTS).map(([name, expected]) =>
+      scan(path.join(ROOT, 'packages', name, 'src'), expected),
+    ),
+  );
+  return trees.flat();
+};
+
 /** The edges of the core tree and of the packages that left it. */
 const scanAll = async (): Promise<Edge[]> => [
   ...(await scan(SOURCE)),
@@ -36,6 +54,7 @@ const scanAll = async (): Promise<Edge[]> => [
     path.join(ROOT, 'packages', 'multipart', 'src'),
     [],
   )),
+  ...(await bridgeTrees()),
 ];
 
 /** What a refused walk says, or the empty string if it did not. */

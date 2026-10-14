@@ -41,6 +41,8 @@ jobs:
             socket-io-v*) echo "dir=./packages/socket-io" >> "$GITHUB_OUTPUT" ;;
             ws-v*) echo "dir=./packages/ws" >> "$GITHUB_OUTPUT" ;;
             multipart-v*) echo "dir=./packages/multipart" >> "$GITHUB_OUTPUT" ;;
+            graphql-v*) echo "dir=./packages/graphql" >> "$GITHUB_OUTPUT" ;;
+            serve-static-v*) echo "dir=./packages/serve-static" >> "$GITHUB_OUTPUT" ;;
             v*) echo "dir=./packages/core" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::no package is configured for tag '$TAG'"

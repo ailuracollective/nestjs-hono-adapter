@@ -10,8 +10,9 @@ packages/
   core/      the adapter, published as
              @ailura/nestjs-hono-adapter: its src/core/ (the Nest
              <-> Hono translation and the ports), src/features/
-             (the optional capabilities), src/servers/ (the
-             runtime transports)
+             (the optional capabilities), src/compat/ (the
+             bridges to the platforms Nest users write against),
+             src/servers/ (the runtime transports)
   socket-io/ the Socket.IO island, published as
              @ailura/nestjs-platform-hono-socket-io
   ws/        the WebSocket island, published as
@@ -33,6 +34,18 @@ and names no runtime.
 **`features/`** holds the capabilities a deployment may turn on:
 CORS, event streams, static assets, views. Each is optional at
 runtime, and none may reach sideways into another.
+
+**`compat/`** holds the bridges: the shims that exist only
+because the code they serve was written for Express or Fastify —
+`res.send()`, an `(err, req, res, next)` middleware, a
+`@nestjs/serve-static` loader. It is a region of this package,
+not a capability, so it is not a package of its own: an
+Express-shaped call is part of running a Nest application, and a
+deployment gets it from the `.` entrypoint without installing
+anything. It reaches `core/` and `features/` freely and nothing
+reaches it sideways. What it is, what it costs and how a
+deployment extends it are in
+[compatibility.md](compatibility.md).
 
 **The transports** are `servers/bun.ts`, `servers/node.ts` and
 `servers/fetch.ts`. Each is reached only through its own subpath
@@ -59,7 +72,7 @@ it.
 
 ## The dependency rules
 
-Five rules, all enforced by `test/layers.test.ts`:
+Six rules, all enforced by `test/layers.test.ts`:
 
 1. `core/` never reaches `features/`, **except** from
    `core/server/hono-lifecycle.ts` and
@@ -73,6 +86,11 @@ Five rules, all enforced by `test/layers.test.ts`:
    upload island.
 5. The socket.io island reaches `core/` and `features/` not at
    all, as a value or as a type.
+6. `core/` reaches `compat/` only from the two composition
+   roots, and `features/` never reaches it at all. The one
+   further exception is `core/route/handler-bridge/request.ts`,
+   which names `compat/express/surface.ts` to fit `res.send()`
+   onto a `@Res()` object.
 
 The rule-1 exceptions are the composition root, the modules that
 turn a capability into a running adapter; everything else in
@@ -207,6 +225,49 @@ package declares another.
 entrypoint guard is conservative and the layer guard must be
 precise for rule 4.
 
+## The compatibility region
+
+`compat/` holds the bridges, and nothing else does. A bridge is
+a named install — a `name` and an `install(target)` — held in
+`compat/registry/`, installed once per Hono application from the
+composition root and, when it has to resolve an optional peer,
+settled from `ServerAdapter.init()`, the hook Nest awaits before
+`onModuleInit`.
+
+Three bridges ship. One is here: `express`, the `res.send()` /
+`res.type()` surface and the `(err, req, res, next)` middleware,
+which every deployment gets without installing anything. The
+other two belong to a platform Nest users write against and live
+in their own packages — `serve-static`, the loader swap for
+`@nestjs/serve-static`, and `graphql/apollo`, the one branch of
+`@nestjs/apollo`'s own driver that refuses an unknown platform.
+
+A deployment names no import of either. The region resolves
+them: `compat/registry/discover.ts` asks the **application's**
+tree for each name in `BRIDGE_PACKAGES`, and a package that is
+installed publishes its `bridge` for the registry to install.
+Installing the package is what installs the bridge.
+`registerBridge` is published from the `.` entrypoint too, so an
+island or a consumer can add one without a package at all.
+
+No bridge names a runtime. The `serve-static` bridge reads files
+through `transport.serveStatic()` and its SPA fallback through
+the same call, so a fetch host works exactly as a Bun one does —
+`test/node-builtins.test.ts` holds that all three trees import
+no `node:` builtin at all.
+
+A bridge package reaches the adapter only through the published
+entrypoint. Every name it needs is exported there — `Bridge`,
+`BridgeTarget`, `NestContext`, `Transport`, `loadPeer`,
+`toHonoPath`, `toNestRequest` — so a `#adapter/` import would be
+the same bridge reaching past the door into the tree behind it.
+`test/layers.test.ts` holds that as a seventh rule.
+
+The region is covered in [compatibility.md](compatibility.md):
+what each bridge does, the `init()` seam, what it costs per
+request (nothing), the hook it refuses, and which platform names
+still live in a feature rather than here, and why.
+
 ## The compatibility face
 
 Names that carry the shape the package published before the
@@ -307,10 +368,13 @@ filesystem with `node:fs/promises` and `node:path`; the Node
 transport builds an `http.Server` with `node:https` for TLS.
 Static assets are not on the list:
 `features/static-assets/index.ts` imports no builtin and leaves
-reading to the transport's `serveStatic()`.
-`test/node-builtins.test.ts` freezes the set, scanning
-`packages/core/src/`; adding one is a deliberate edit to both
-the source and the freeze.
+reading to the transport's `serveStatic()`, and neither the
+compatibility region nor a bridge package imports one, which is
+what lets `@ailura/nestjs-platform-hono-serve-static` answer
+`@nestjs/serve-static` on a fetch host that has no filesystem.
+`test/node-builtins.test.ts` freezes the set and scans all three
+trees; adding one is a deliberate edit to both the source and
+the freeze.
 
 The upload package is outside that scan and reaches four
 builtins the core does not: `node:crypto`, `node:fs`, `node:os`
@@ -376,14 +440,14 @@ measured baseline.
 
 ## Where the guards live
 
-| File                                               | What it holds                       |
-| -------------------------------------------------- | ----------------------------------- |
-| `test/layers.test.ts`                              | the five dependency rules           |
-| `test/entry-points.test.ts`                        | subpath isolation, declarations     |
-| `test/node-builtins.test.ts`                       | the frozen builtin set              |
-| `packages/core/test/types/application-surface.ts`  | the types a consumer reads through  |
-| `packages/core/test/types/route-adapter-compat.ts` | the members two Nest versions share |
-| `.oxlintrc.json`                                   | rule exceptions, each with a reason |
+| File                                               | What it holds                                        |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| `test/layers.test.ts`                              | the six dependency rules                             |
+| `test/entry-points.test.ts`                        | subpath isolation, declarations                      |
+| `test/node-builtins.test.ts`                       | the frozen builtin set, and that a bridge names none |
+| `packages/core/test/types/application-surface.ts`  | the types a consumer reads through                   |
+| `packages/core/test/types/route-adapter-compat.ts` | the members two Nest versions share                  |
+| `.oxlintrc.json`                                   | rule exceptions, each with a reason                  |
 
 The root `test/` holds only what guards the monorepo and what
 more than one package shares: the guards above and the shared
@@ -413,6 +477,36 @@ lines and stays whole: rule 2 leaves it no seam, since any edge
 between two files of `features/` fails the guard. Its analogues
 are larger — `express-adapter.ts` 710 lines,
 `fastify-adapter.ts` 1,433.
+
+The `.oxlintrc.json` exceptions that are not about `multipart`
+are on `compat/`:
+
+- `compat/express/middleware-fit.ts` relaxes
+  `typescript/no-unsafe-type-assertion`. It replaces `hono.use`
+  with a shim over `unknown[]`, because Hono's own `use` is a
+  pair of overloads and the shim has to accept both plus the
+  four-argument error middleware.
+- `compat/**/*.ts` caps the region at 100 lines, where the
+  repository's own ceiling is 400. The region is small on
+  purpose: every file is one seam, and a comment is at most two
+  lines because the reasoning lives in
+  [compatibility.md](compatibility.md). Two further rules —
+  `max-params` and `only-throw-error` — are disabled inline in
+  the two files that need them, with the reason on the line: the
+  four-parameter Express signature, and rethrowing whatever an
+  error middleware reported.
+
+`packages/serve-static/` is split along its seams:
+`peer-load.ts` and `peer-read.ts` (the optional peers),
+`peer-shapes.ts` (their types), `swap.ts` (the prototype patch),
+`exclude.ts`, `global-prefix.ts`, `mount-roots.ts` and
+`mount-type.ts`, `index-file-read.ts` and `index-file-answer.ts`
+(the SPA fallback), and `loader{,-resolve,-mount,-fallback}.ts`
+tying them to an adapter. The split is what keeps the
+third-party typing in `peer-shapes.ts` instead of behind forty
+lint exceptions on one file. The 100-line cap and the two-line
+comment rule the region carries apply to each bridge package's
+`src/` as well.
 
 The Bun transport is split along its seam:
 `servers/bun-runtime.ts` holds Bun's server and TLS option
