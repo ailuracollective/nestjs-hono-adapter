@@ -1,6 +1,5 @@
 import type { Bindings } from '#adapter/core/ports/bindings';
 
-/** The native server an in-process request is run with. */
 const SYNTHETIC_SERVER = {
   hostname: undefined,
   port: undefined,

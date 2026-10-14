@@ -1,10 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Readable } from 'node:stream';
 
-import type {
-  NestContext,
-  NestRequest,
-} from '@ailura/nestjs-hono-adapter';
+import type { NestContext, NestRequest } from '@ailura/nestjs-hono-adapter';
 import type {
   MultipartOptions,
   MultipartStorageEngine,
@@ -24,10 +21,6 @@ import type { UploadSpec } from './multipart.parser.limits.ts';
 import { resolveLimits } from './multipart.parser.limits.ts';
 import { transformException } from './multipart.utils.ts';
 
-/**
- * Parses a multipart body into `req.body`, `req.file` and
- * `req.files`.
- */
 const processMultipart = async (
   context: NestContext,
   request: NestRequest,
@@ -40,19 +33,12 @@ const processMultipart = async (
     return;
   }
   const web = context.req.raw.body;
-  if (web === null) {
-    throw new BadRequestException(
-      busboyExceptions.MULTIPART_UNEXPECTED_END_OF_FORM,
-    );
-  }
+  if (web === null)
+    throw new BadRequestException(busboyExceptions.MULTIPART_UNEXPECTED_END_OF_FORM);
 
   const limits = resolveLimits(request, options);
-  const busboy = createBusboy(
-    configFor(contentType, limits, options),
-  );
-  const source = Readable.fromWeb(
-    web as unknown as Parameters<typeof Readable.fromWeb>[0],
-  );
+  const busboy = createBusboy(configFor(contentType, limits, options));
+  const source = Readable.fromWeb(web as unknown as Parameters<typeof Readable.fromWeb>[0]);
 
   const body: Record<string, unknown> = Object.create(null);
   const slots: (UploadedMultipartFile | undefined)[] = [];
@@ -67,9 +53,7 @@ const processMultipart = async (
   let position = 0;
 
   busboy.on('field', (name, value, info) => {
-    if (failure !== undefined) {
-      return;
-    }
+    if (failure !== undefined) return;
     try {
       appendTextField(body, name, value, info, limits);
     } catch (error) {
@@ -85,27 +69,15 @@ const processMultipart = async (
       return;
     }
     let remaining = left.get(name) ?? 0;
-    if (spec.fields === 'ANY') {
-      remaining = Infinity;
-    }
+    if (spec.fields === 'ANY') remaining = Infinity;
     if (remaining <= 0) {
-      failure ??= new MultipartError(
-        'LIMIT_UNEXPECTED_FILE',
-        name,
-      );
+      failure ??= new MultipartError('LIMIT_UNEXPECTED_FILE', name);
       stream.resume();
       return;
     }
     left.set(name, remaining - 1);
     tasks.push(
-      handleFile(
-        name,
-        stream,
-        info,
-        options,
-        request,
-        storage,
-      ).then(
+      handleFile(name, stream, info, options, request, storage).then(
         (file) => {
           slots[slot] = file;
         },
@@ -131,10 +103,7 @@ const processMultipart = async (
   try {
     await new Promise<void>((resolve, reject) => {
       const cancel = (error: unknown): void => {
-        const reason =
-          error instanceof Error
-            ? error
-            : new Error(String(error));
+        const reason = error instanceof Error ? error : new Error(String(error));
         source.unpipe(busboy);
         busboy.destroy(reason);
         reject(reason);
@@ -150,9 +119,7 @@ const processMultipart = async (
   await Promise.all(tasks);
 
   const error = failure ?? parseError;
-  const files = slots.filter(
-    (file): file is UploadedMultipartFile => file !== undefined,
-  );
+  const files = slots.filter((file): file is UploadedMultipartFile => file !== undefined);
   if (error !== undefined) {
     await removeFiles(storage, request, files);
     throw transformException(error);
@@ -168,8 +135,7 @@ const processMultipart = async (
       break;
     }
     case 'OBJECT': {
-      const grouped: Record<string, UploadedMultipartFile[]> =
-        Object.create(null);
+      const grouped: Record<string, UploadedMultipartFile[]> = Object.create(null);
       for (const file of files) {
         (grouped[file.fieldname] ??= []).push(file);
       }

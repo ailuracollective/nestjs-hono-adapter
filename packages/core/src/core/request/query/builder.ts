@@ -1,19 +1,9 @@
-import {
-  MAX_PAIRS,
-  accepts,
-  decode,
-  repeated,
-  sidesOf,
-  withoutQuestionMark,
-} from './names.ts';
+import { MAX_PAIRS, accepts, decode, repeated, sidesOf, withoutQuestionMark } from './names.ts';
 import type { ParsedQuery } from './names.ts';
 
-/** Builds a flat query object one pair at a time. */
 class QueryBuilder {
-  /** The object built so far. */
   private readonly query: ParsedQuery = {};
 
-  /** Parses a query string into literal keys. */
   public parse(source: string): ParsedQuery {
     const pairs = withoutQuestionMark(source).split('&');
     for (const pair of pairs.slice(0, MAX_PAIRS)) {
@@ -22,11 +12,8 @@ class QueryBuilder {
     return this.query;
   }
 
-  /** Adds one pair, a repeated name becoming a list. */
   private addPair(pair: string): void {
-    if (pair === '') {
-      return;
-    }
+    if (pair === '') return;
     const [name, value] = sidesOf(pair);
     const key = decode(name);
     if (!accepts(key)) {
@@ -36,8 +23,6 @@ class QueryBuilder {
   }
 }
 
-/** Parses a query string, with or without its leading `?`. */
-const parseQuery = (source: string): ParsedQuery =>
-  new QueryBuilder().parse(source);
+const parseQuery = (source: string): ParsedQuery => new QueryBuilder().parse(source);
 
 export { parseQuery };

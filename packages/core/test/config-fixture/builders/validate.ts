@@ -2,16 +2,9 @@ import { Module } from '@nestjs/common';
 import type { Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import {
-  ConfigController,
-  ENV_FILE,
-} from '#adapter-test/config-fixture/controllers';
-import {
-  APP_NAME_SCHEMA,
-  requireAppName,
-} from '#adapter-test/config-fixture/validation';
+import { ConfigController, ENV_FILE } from '#adapter-test/config-fixture/controllers';
+import { APP_NAME_SCHEMA, requireAppName } from '#adapter-test/config-fixture/validation';
 
-/** An application whose configuration passes a function. */
 const withValidate = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
@@ -26,7 +19,6 @@ const withValidate = (): Type<unknown> => {
   return ValidatedModule;
 };
 
-/** An application whose configuration is rejected. */
 const withRejectedConfig = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
@@ -43,7 +35,6 @@ const withRejectedConfig = (): Type<unknown> => {
   return RejectedModule;
 };
 
-/** An application that validates through a schema. */
 const withValidationSchema = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
@@ -58,7 +49,6 @@ const withValidationSchema = (): Type<unknown> => {
   return SchemaValidatedModule;
 };
 
-/** An application that transforms what it loaded. */
 const withTransformingValidate = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
@@ -75,9 +65,4 @@ const withTransformingValidate = (): Type<unknown> => {
   return TransformedModule;
 };
 
-export {
-  withRejectedConfig,
-  withTransformingValidate,
-  withValidate,
-  withValidationSchema,
-};
+export { withRejectedConfig, withTransformingValidate, withValidate, withValidationSchema };

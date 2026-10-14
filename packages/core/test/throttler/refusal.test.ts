@@ -8,15 +8,9 @@ import { exhaust, withProbe } from './support.ts';
 
 test('requests up to the limit are all answered', async () => {
   await withProbe(async (probe) => {
-    const answers = await Promise.all(
-      Array.from({ length: LIMIT }, () =>
-        request(probe, '/ping'),
-      ),
-    );
+    const answers = await Promise.all(Array.from({ length: LIMIT }, () => request(probe, '/ping')));
 
-    expect(
-      answers.map((answered) => answered.status),
-    ).toStrictEqual(
+    expect(answers.map((answered) => answered.status)).toStrictEqual(
       Array.from({ length: LIMIT }, () => HttpStatus.OK),
     );
   });

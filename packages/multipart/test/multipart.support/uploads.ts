@@ -5,11 +5,9 @@ import { request, startProbe } from '#test/probe';
 import { LIMIT } from './constants.ts';
 import { UploadController } from './controller.ts';
 
-/** The module that registers the upload controller. */
 @Module({ controllers: [UploadController] })
 class UploadModule {}
 
-/** The upload module whose limits arrive from `registerAsync`. */
 @Module({
   controllers: [UploadController],
   imports: [
@@ -20,7 +18,6 @@ class UploadModule {}
 })
 class AsyncUploadModule {}
 
-/** Sends one form to a route of a fresh application. */
 const upload = async (
   route: string,
   form: FormData,

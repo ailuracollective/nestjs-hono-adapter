@@ -1,9 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import {
-  coreReachesFeature,
-  crossing,
-} from '#test/layers/rules';
+import { coreReachesFeature, crossing } from '#test/layers/rules';
 import { edgesIn } from '#test/layers/tree';
 
 test('an alias names the file its relative form named', () => {
@@ -34,9 +31,7 @@ test('core reaching a feature is refused', () => {
     'packages/core/src/core/request/body/index.ts',
     'packages/core/src/features/sse.ts',
   );
-  expect(coreReachesFeature([forbidden])).toStrictEqual([
-    forbidden,
-  ]);
+  expect(coreReachesFeature([forbidden])).toStrictEqual([forbidden]);
 });
 
 test('the two composition roots are the exception', () => {

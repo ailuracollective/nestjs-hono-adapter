@@ -2,22 +2,9 @@ import { expect, test } from 'bun:test';
 
 import { ServerAdapter } from '#adapter/index';
 import { nodeServer } from '#adapter/servers/node';
-import {
-  DOUBLED,
-  GATEWAY_PATH,
-  INPUT,
-  OTHER_PATH,
-  PING,
-} from './gateways.ts';
-import {
-  ask,
-  expectAnswered,
-  open,
-  socketUrl,
-  startGateways,
-} from './support.ts';
+import { DOUBLED, GATEWAY_PATH, INPUT, OTHER_PATH, PING } from './gateways.ts';
+import { ask, expectAnswered, open, socketUrl, startGateways } from './support.ts';
 
-/** The correlation an acknowledgement is asked with. */
 const CORRELATION = 7;
 
 test('a gateway answers on the Hono server', async () => {
@@ -33,9 +20,7 @@ test('a gateway answers on the Hono server', async () => {
 });
 
 test('a gateway answers on the Node transport', async () => {
-  const probe = await startGateways(
-    new ServerAdapter({ transport: nodeServer() }),
-  );
+  const probe = await startGateways(new ServerAdapter({ transport: nodeServer() }));
   const socket = await open(socketUrl(probe, GATEWAY_PATH));
   try {
     await expectAnswered(socket, { amount: INPUT });
@@ -50,11 +35,7 @@ test('a frame that asked for a correlation is answered with it', async () => {
   const probe = await startGateways();
   const socket = await open(socketUrl(probe, GATEWAY_PATH));
   try {
-    const answer = await ask(
-      socket,
-      { amount: INPUT },
-      CORRELATION,
-    );
+    const answer = await ask(socket, { amount: INPUT }, CORRELATION);
     expect(answer).toStrictEqual({
       data: { doubled: DOUBLED },
       event: PING,

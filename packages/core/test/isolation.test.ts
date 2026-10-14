@@ -7,7 +7,6 @@ import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
 import { startAdapter } from './support/index.ts';
 
-/** Proves a Bun application still answers its own route. */
 const answersBeside = async (): Promise<void> => {
   const probe = await startAdapter(bunAdapter());
   try {

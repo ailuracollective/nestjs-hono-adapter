@@ -1,38 +1,19 @@
 import path from 'node:path';
 
-import {
-  BRIDGE_ENTRYPOINTS,
-  REQUIRED,
-  ROOT,
-  SOURCE,
-} from '#test/layers/model';
+import { BRIDGE_ENTRYPOINTS, REQUIRED, ROOT, SOURCE } from '#test/layers/model';
 import type { Edge } from '#test/layers/model';
 
 import { edgesFrom, readTree } from './edges.ts';
 
-/** The edges of a tree, once it has been shown to be the tree. */
-const scan = async (
-  root: string,
-  expected: readonly string[] = REQUIRED,
-): Promise<Edge[]> => {
+const scan = async (root: string, expected: readonly string[] = REQUIRED): Promise<Edge[]> => {
   const files = await readTree(root);
-  const missing = expected.filter(
-    (name) => !files.includes(name),
-  );
+  const missing = expected.filter((name) => !files.includes(name));
   if (missing.length > 0) {
-    throw new Error(
-      `the walk of ${root} found no ${missing.join(', ')}`,
-    );
+    throw new Error(`the walk of ${root} found no ${missing.join(', ')}`);
   }
-  const edges = await Promise.all(
-    files.map((file) => edgesFrom(file)),
-  );
+  const edges = await Promise.all(files.map((file) => edgesFrom(file)));
   return edges.flat();
 };
-/**
- * The edges of each compatibility bridge package, if it is
- * there.
- */
 const bridgeTrees = async (): Promise<Edge[]> => {
   const trees = await Promise.all(
     Object.entries(BRIDGE_ENTRYPOINTS).map(([name, expected]) =>
@@ -42,22 +23,14 @@ const bridgeTrees = async (): Promise<Edge[]> => {
   return trees.flat();
 };
 
-/** The edges of the core tree and of the packages that left it. */
 const scanAll = async (): Promise<Edge[]> => [
   ...(await scan(SOURCE)),
   ...(await scan(path.join(ROOT, 'packages', 'ws', 'src'), [])),
-  ...(await scan(
-    path.join(ROOT, 'packages', 'socket-io', 'src'),
-    [],
-  )),
-  ...(await scan(
-    path.join(ROOT, 'packages', 'multipart', 'src'),
-    [],
-  )),
+  ...(await scan(path.join(ROOT, 'packages', 'socket-io', 'src'), [])),
+  ...(await scan(path.join(ROOT, 'packages', 'multipart', 'src'), [])),
   ...(await bridgeTrees()),
 ];
 
-/** What a refused walk says, or the empty string if it did not. */
 const refusalOf = async (root: string): Promise<string> => {
   try {
     await scan(root);

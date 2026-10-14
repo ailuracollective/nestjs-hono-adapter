@@ -1,14 +1,6 @@
 import { candidates } from './peer-resolution.ts';
 
-/**
- * Loads one optional peer **the way the application resolved
- * it**.
- */
-
-/** One candidate's load, and nothing when it cannot be loaded. */
-const tryImport = async (
-  candidate: string,
-): Promise<unknown> => {
+const tryImport = async (candidate: string): Promise<unknown> => {
   try {
     return await import(candidate);
   } catch {
@@ -17,15 +9,11 @@ const tryImport = async (
 };
 
 /**
- * Loads one optional peer, treating an absent one as an absent
- * capability: the first candidate that loads is the answer.
+ * Loads one optional peer, treating an absent one as an absent capability: the first candidate that
+ * loads is the answer.
  */
-const loadPeer = async (
-  specifier: string,
-): Promise<unknown> => {
-  const loaded = await Promise.all(
-    candidates(specifier).map((one) => tryImport(one)),
-  );
+const loadPeer = async (specifier: string): Promise<unknown> => {
+  const loaded = await Promise.all(candidates(specifier).map((one) => tryImport(one)));
   return loaded.find((one) => one !== undefined);
 };
 

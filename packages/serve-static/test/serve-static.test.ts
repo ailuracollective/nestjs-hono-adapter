@@ -5,13 +5,10 @@ import { request, startProbe } from '#test/probe';
 
 import { staticModule } from './fixture.ts';
 
-/** The path the fixture serves its files under. */
 const PATH = '/static';
 
-/** The status an answered file carries. */
 const OK = 200;
 
-/** The status a file that is not there carries. */
 const NOT_FOUND = 404;
 
 test('the region finds the installed bridge package on its own', async () => {
@@ -31,9 +28,7 @@ test('a file the directory holds is answered', async () => {
   try {
     const response = await request(probe, `${PATH}/hello.txt`);
     expect(response.status).toBe(OK);
-    expect(response.text).toBe(
-      'the loader answers the files a transport reads',
-    );
+    expect(response.text).toBe('the loader answers the files a transport reads');
   } finally {
     await probe.close();
   }
@@ -52,7 +47,6 @@ test('a file the directory does not hold is not answered', async () => {
   }
 });
 
-/** A hook the transport cannot honour, as a case writes one. */
 const setHeaders = (): void => undefined;
 
 test('setHeaders is refused rather than ignored', async () => {

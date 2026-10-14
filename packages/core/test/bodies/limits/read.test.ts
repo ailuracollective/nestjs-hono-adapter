@@ -7,13 +7,7 @@ import { startProbe } from '#adapter-test/support/index';
 import { request } from '#test/probe';
 import { BODY_LIMIT } from '#adapter-test/bodies/support';
 
-import {
-  BYTES_LIMIT,
-  CHUNK,
-  KIB,
-  LOOKAHEAD_CHUNKS,
-  chunkedBody,
-} from './fixture.ts';
+import { BYTES_LIMIT, CHUNK, KIB, LOOKAHEAD_CHUNKS, chunkedBody } from './fixture.ts';
 
 test('a body that declares no length is refused while it is read', async () => {
   const stream = chunkedBody();
@@ -29,9 +23,7 @@ test('a body that declares no length is refused while it is read', async () => {
       method: 'POST',
     });
     expect(response.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
-    expect(stream.pulled()).toBeLessThanOrEqual(
-      LOOKAHEAD_CHUNKS * CHUNK,
-    );
+    expect(stream.pulled()).toBeLessThanOrEqual(LOOKAHEAD_CHUNKS * CHUNK);
     expect(stream.pulled()).toBeLessThan(stream.total);
   } finally {
     await probe.close();

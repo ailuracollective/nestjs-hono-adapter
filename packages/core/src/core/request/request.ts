@@ -1,16 +1,9 @@
 import type { IncomingMessage } from 'node:http';
 
 import type { NestContext } from '#adapter/core/context';
-import type {
-  Incoming,
-  Socket,
-} from '#adapter/core/ports/bindings';
+import type { Incoming, Socket } from '#adapter/core/ports/bindings';
 import { tuneableSocket } from '#adapter/core/server/socket';
-import {
-  forwardedOf,
-  incomingOf,
-  urlPartsOf,
-} from './bag-state.ts';
+import { forwardedOf, incomingOf, urlPartsOf } from './bag-state.ts';
 import type { BagState } from './bag-state.ts';
 import { addressOf } from './forwarded.ts';
 import type { RequestOptions } from './forwarded.ts';
@@ -19,40 +12,24 @@ import { parseQuery } from './query/index.ts';
 import type { ParsedQuery } from './query/index.ts';
 import type { NestRequest } from './types.ts';
 
-/** The symbol a request keeps the bag Nest reads under. */
 const REQUEST = Symbol('nestRequest');
 
-/** A context that holds the bag of its own request. */
 type RequestHolder = Record<symbol, RequestBag | undefined>;
 
-/** The request object Nest expects. */
 class RequestBag implements NestRequest {
-  /** The parsed request body. */
   public body: unknown;
 
-  /** The single upload an interceptor stored. */
   public file: unknown;
 
-  /** The uploads an interceptor stored. */
-  public files:
-    | Record<string, unknown>
-    | readonly unknown[]
-    | undefined;
+  public files: Record<string, unknown> | readonly unknown[] | undefined;
 
-  /** The raw request body, when kept. */
   public rawBody: Buffer | undefined;
 
-  /** The session Nest attached. */
   public session: unknown;
 
-  /** The fields this bag builds on demand. */
   private readonly state: BagState;
 
-  /** Builds the bag for one request. */
-  public constructor(
-    context: NestContext,
-    options: RequestOptions,
-  ) {
+  public constructor(context: NestContext, options: RequestOptions) {
     this.state = {
       context,
       forwarded: undefined,
@@ -76,14 +53,12 @@ class RequestBag implements NestRequest {
     this.session = undefined;
   }
 
-  /** The request headers. */
   public get headers(): Record<string, string> {
     const { state } = this;
     state.headers ??= state.context.req.header();
     return state.headers;
   }
 
-  /** The host the request names. */
   public get hostname(): string {
     const { state } = this;
     if (state.hostname === undefined) {
@@ -93,19 +68,16 @@ class RequestBag implements NestRequest {
     return state.hostname;
   }
 
-  /** The host parameters. */
   public get hosts(): Record<string, string> {
     const { state } = this;
     state.hosts ??= {};
     return state.hosts;
   }
 
-  /** Replaces the host parameters, as Nest's host filter does. */
   public set hosts(hosts: Record<string, string>) {
     this.state.hosts = hosts;
   }
 
-  /** The client address. */
   public get ip(): string | undefined {
     const { state } = this;
     state.ip ??= addressOf(
@@ -116,26 +88,22 @@ class RequestBag implements NestRequest {
     return state.ip;
   }
 
-  /** The addresses in the forwarding chain. */
   public get ips(): string[] {
     return forwardedOf(this.state).addresses;
   }
 
-  /** The request method. */
   public get method(): string {
     const { state } = this;
     state.method ??= state.context.req.method;
     return state.method;
   }
 
-  /** The original request URL. */
   public get originalUrl(): string {
     const parts = urlPartsOf(this.state);
     parts.route ??= `${parts.pathname}${parts.search}`;
     return parts.route;
   }
 
-  /** The route parameters. */
   public get params(): Record<string, string> {
     const { state } = this;
     const at = state.context.req.routeIndex;
@@ -146,82 +114,53 @@ class RequestBag implements NestRequest {
     return state.params;
   }
 
-  /** The request path. */
   public get path(): string {
     return urlPartsOf(this.state).pathname;
   }
 
-  /** The request protocol. */
   public get protocol(): string {
     const { state } = this;
     if (state.protocol === undefined) {
       const [forwardedProtocol] = forwardedOf(state).protocols;
-      state.protocol =
-        forwardedProtocol ?? urlPartsOf(state).protocol;
+      state.protocol = forwardedProtocol ?? urlPartsOf(state).protocol;
     }
     return state.protocol;
   }
 
-  /** The parsed query string. */
   public get query(): ParsedQuery {
     const { state } = this;
     state.query ??= parseQuery(urlPartsOf(state).search);
     return state.query;
   }
 
-  /** The Node message the request arrived on, when there is one. */
   public get raw(): (IncomingMessage & Incoming) | undefined {
-    return incomingOf(this.state) as
-      | (IncomingMessage & Incoming)
-      | undefined;
+    return incomingOf(this.state) as (IncomingMessage & Incoming) | undefined;
   }
 
-  /** Whether the request is secure. */
   public get secure(): boolean {
     return this.protocol === 'https';
   }
 
-  /** The socket the request arrived on, when there is one. */
-  public get socket():
-    | (IncomingMessage['socket'] & Socket)
-    | undefined {
+  public get socket(): (IncomingMessage['socket'] & Socket) | undefined {
     const incoming = incomingOf(this.state);
-    if (incoming === undefined) {
-      return undefined;
-    }
-    return tuneableSocket(incoming.socket) as
-      | (IncomingMessage['socket'] & Socket)
-      | undefined;
+    if (incoming === undefined) return undefined;
+    return tuneableSocket(incoming.socket) as (IncomingMessage['socket'] & Socket) | undefined;
   }
 
-  /** The request URL. */
   public get url(): string {
     return this.originalUrl;
   }
 }
 
-/** Maps a Hono context onto the request object Nest expects. */
-const toNestRequest = (
-  context: NestContext,
-  options: RequestOptions,
-): NestRequest => {
+const toNestRequest = (context: NestContext, options: RequestOptions): NestRequest => {
   const holder = context as unknown as RequestHolder;
   const held = holder[REQUEST];
-  if (held !== undefined) {
-    return held;
-  }
+  if (held !== undefined) return held;
   const built = new RequestBag(context, options);
   holder[REQUEST] = built;
   return built;
 };
 
 export { toNestRequest };
-export type {
-  RequestOptions,
-  TrustProxy,
-} from './forwarded.ts';
-export type {
-  NestHandler,
-  NestRequest,
-  NextHandler,
-} from './types.ts';
+export type { RequestOptions, TrustProxy } from './forwarded.ts';
+export type { NestHandler, NestRequest, NextHandler } from './types.ts';

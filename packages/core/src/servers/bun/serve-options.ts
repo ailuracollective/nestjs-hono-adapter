@@ -2,12 +2,8 @@ import { MAX_BODY_SIZE } from '#adapter/servers/bun-runtime';
 
 import type { BunRuntime } from '#adapter/servers/bun-runtime';
 
-/** The options every server is given, whatever its transport. */
 const baseOptions = (
-  fetch: (
-    request: Request,
-    server: BunRuntime,
-  ) => Response | Promise<Response>,
+  fetch: (request: Request, server: BunRuntime) => Response | Promise<Response>,
   websocket: unknown,
   tls: unknown,
 ): Record<string, unknown> => {
@@ -15,16 +11,11 @@ const baseOptions = (
     fetch,
     maxRequestBodySize: MAX_BODY_SIZE,
   };
-  if (websocket !== undefined) {
-    options.websocket = websocket;
-  }
-  if (tls !== undefined) {
-    options.tls = tls;
-  }
+  if (websocket !== undefined) options.websocket = websocket;
+  if (tls !== undefined) options.tls = tls;
   return options;
 };
 
-/** Fills in the address to listen on and names any unix path. */
 const applyAddress = (
   options: Record<string, unknown>,
   port: string | number,
@@ -35,9 +26,7 @@ const applyAddress = (
     return port;
   }
   options.port = port;
-  if (hostname !== undefined) {
-    options.hostname = hostname;
-  }
+  if (hostname !== undefined) options.hostname = hostname;
   return undefined;
 };
 

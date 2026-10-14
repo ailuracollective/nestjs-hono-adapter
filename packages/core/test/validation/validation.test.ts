@@ -7,7 +7,6 @@ import { request } from '#test/probe';
 
 import { ValidationModule } from './fixture.ts';
 
-/** The pipe every case runs the body through. */
 const pipe = (): ValidationPipe =>
   new ValidationPipe({
     transform: true,
@@ -15,7 +14,6 @@ const pipe = (): ValidationPipe =>
     whitelist: true,
   });
 
-/** Starts a probe with the pipe installed. */
 const withPipe = (): ReturnType<typeof startProbe> =>
   startProbe({
     configure: (app) => {

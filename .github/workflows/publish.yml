@@ -60,6 +60,4 @@ jobs:
             exit 1
           fi
       - name: Publish to npm
-        run:
-          npm publish "${{ steps.package.outputs.dir }}"
-          --provenance
+        run: npm publish "${{ steps.package.outputs.dir }}" --provenance

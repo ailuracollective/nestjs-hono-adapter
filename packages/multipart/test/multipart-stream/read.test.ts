@@ -5,21 +5,8 @@ import { describe, expect, test } from 'bun:test';
 import { filePart } from '#multipart-test/multipart.support/parts';
 import { asRecord } from '#multipart-test/multipart.support/requests';
 import { request } from '#test/probe';
-import {
-  BAD_REQUEST,
-  CREATED,
-  SMALL_PIECES,
-  SMALL_PIECE,
-  TOO_LARGE,
-} from './constants.ts';
-import {
-  answered,
-  app,
-  pacedBody,
-  pacedInit,
-  send,
-  sendBody,
-} from './support.ts';
+import { BAD_REQUEST, CREATED, SMALL_PIECES, SMALL_PIECE, TOO_LARGE } from './constants.ts';
+import { answered, app, pacedBody, pacedInit, send, sendBody } from './support.ts';
 
 describe('a streamed upload, read as it arrives', () => {
   test('the handler reads the bytes as they arrive', async () => {
@@ -40,11 +27,7 @@ describe('a streamed upload, read as it arrives', () => {
   test('the fields before the file are parsed, the ones after are not', async () => {
     const form = new FormData();
     form.append('title', 'before');
-    form.append(
-      'file',
-      new Blob(['x'], { type: 'text/plain' }),
-      'a.txt',
-    );
+    form.append('file', new Blob(['x'], { type: 'text/plain' }), 'a.txt');
     form.append('after', 'later');
 
     const result = await send('/read', form);
@@ -56,10 +39,7 @@ describe('a streamed upload, read as it arrives', () => {
   });
 
   test('a file in another field is refused', async () => {
-    const result = await send(
-      '/read',
-      filePart('x', { name: 'other' }),
-    );
+    const result = await send('/read', filePart('x', { name: 'other' }));
 
     expect(result.status).toBe(BAD_REQUEST);
   });
@@ -69,10 +49,7 @@ describe('a streamed upload a route caps or filters', () => {
   test('a file over the limit fails the read, not the parse', async () => {
     const paced = pacedBody(SMALL_PIECES, SMALL_PIECE);
 
-    const outcome = answered(
-      await sendBody('/limited', pacedInit(paced)),
-      'capped upload',
-    );
+    const outcome = answered(await sendBody('/limited', pacedInit(paced)), 'capped upload');
 
     expect(outcome.status).toBe(TOO_LARGE);
   });

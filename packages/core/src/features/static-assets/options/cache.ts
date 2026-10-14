@@ -1,18 +1,9 @@
 import { unsupported } from './assert.ts';
-import {
-  DEFAULT_INDEX,
-  CACHE_CONTROL,
-  SECOND,
-  UNIT_MS,
-  DURATION,
-} from './types.ts';
+import { DEFAULT_INDEX, CACHE_CONTROL, SECOND, UNIT_MS, DURATION } from './types.ts';
 import type { StaticAssetsOptions } from './types.ts';
 
-/** The milliseconds a cache lifetime names. */
 const toMilliseconds = (maxAge: number | string): number => {
-  if (typeof maxAge === 'number') {
-    return maxAge;
-  }
+  if (typeof maxAge === 'number') return maxAge;
 
   const match = DURATION.exec(maxAge.trim());
   if (match === null) {
@@ -28,14 +19,8 @@ const toMilliseconds = (maxAge: number | string): number => {
   return Number(amount) * scale;
 };
 
-/** Writes the cache lifetime the deployment asked for. */
-const setCacheControl = (
-  response: Response,
-  options: StaticAssetsOptions,
-): void => {
-  if (options.maxAge === undefined) {
-    return;
-  }
+const setCacheControl = (response: Response, options: StaticAssetsOptions): void => {
+  if (options.maxAge === undefined) return;
 
   const milliseconds = toMilliseconds(options.maxAge);
   const seconds = Math.floor(milliseconds / SECOND);
@@ -48,23 +33,14 @@ const setCacheControl = (
   response.headers.set(CACHE_CONTROL, value);
 };
 
-/** The index file a directory request is answered with. */
 const indexOf = (options: StaticAssetsOptions): string => {
-  if (typeof options.index === 'string') {
-    return options.index;
-  }
+  if (typeof options.index === 'string') return options.index;
 
   return DEFAULT_INDEX;
 };
 
-/** The request path without the prefix the assets hang under. */
-const withoutPrefix = (
-  requestPath: string,
-  prefix: string | undefined,
-): string => {
-  if (prefix === undefined || prefix === '') {
-    return requestPath;
-  }
+const withoutPrefix = (requestPath: string, prefix: string | undefined): string => {
+  if (prefix === undefined || prefix === '') return requestPath;
 
   return requestPath.slice(prefix.length);
 };

@@ -3,10 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
-import {
-  startAdapter,
-  startProbe,
-} from '#adapter-test/support/index';
+import { startAdapter, startProbe } from '#adapter-test/support/index';
 
 test('a QUERY request reaches the handler registered for it', async () => {
   const probe = await startProbe({ mode: 'in-process' });

@@ -4,12 +4,7 @@ import { Test } from '@nestjs/testing';
 
 import { bunAdapter } from '#test/bun-adapter';
 
-import {
-  ask,
-  overConnection,
-  withApplication,
-  withOverriddenGuard,
-} from './application.ts';
+import { ask, overConnection, withApplication, withOverriddenGuard } from './application.ts';
 import {
   ANY_PORT,
   ClosedModule,
@@ -20,10 +15,7 @@ import {
 } from './fixture.ts';
 
 test('an application built by the testing package routes', async () => {
-  const answered = await withApplication(
-    OpenModule,
-    (application) => ask(application, '/ping'),
-  );
+  const answered = await withApplication(OpenModule, (application) => ask(application, '/ping'));
 
   expect(answered.status).toBe(HttpStatus.OK);
   expect(answered.text).toBe(JSON.stringify(OPEN));
@@ -40,9 +32,8 @@ test('the compiled module resolves what the application resolved', async () => {
 });
 
 test('an override replaces the guard the routes ran under', async () => {
-  const answered = await withOverriddenGuard(
-    ClosedModule,
-    (application) => ask(application, '/ping'),
+  const answered = await withOverriddenGuard(ClosedModule, (application) =>
+    ask(application, '/ping'),
   );
 
   expect(answered.status).toBe(HttpStatus.OK);
@@ -50,15 +41,10 @@ test('an override replaces the guard the routes ran under', async () => {
 });
 
 test('a guard that refuses is answered by Nest through the adapter', async () => {
-  const answered = await withApplication(
-    ClosedModule,
-    (application) => ask(application, '/ping'),
-  );
+  const answered = await withApplication(ClosedModule, (application) => ask(application, '/ping'));
 
   expect(answered.status).toBe(HttpStatus.FORBIDDEN);
-  expect(answered.text).toContain(
-    `"statusCode":${HttpStatus.FORBIDDEN}`,
-  );
+  expect(answered.text).toContain(`"statusCode":${HttpStatus.FORBIDDEN}`);
 });
 
 test('an application built by the testing package answers over a connection', async () => {

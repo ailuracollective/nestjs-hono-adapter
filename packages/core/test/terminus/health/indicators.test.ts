@@ -6,11 +6,7 @@ import { request } from '#test/probe';
 
 import { DEGRADED } from '#adapter-test/terminus/fixture';
 
-import {
-  FAILED_BODY,
-  HEALTHY_BODY,
-  withProbe,
-} from '#adapter-test/terminus/support';
+import { FAILED_BODY, HEALTHY_BODY, withProbe } from '#adapter-test/terminus/support';
 
 test('a check whose indicators are healthy is answered as healthy', async () => {
   await withProbe(async (probe) => {
@@ -25,9 +21,7 @@ test('a check whose indicator failed is answered as down', async () => {
   await withProbe(async (probe) => {
     const response = await request(probe, '/health/failing');
 
-    expect(response.status).toBe(
-      HttpStatus.SERVICE_UNAVAILABLE,
-    );
+    expect(response.status).toBe(HttpStatus.SERVICE_UNAVAILABLE);
     expect(response.body).toStrictEqual(FAILED_BODY);
   });
 });

@@ -4,17 +4,9 @@ import { HttpStatus } from '@nestjs/common';
 
 import { request, startProbe } from '#test/probe';
 
-import {
-  HEALTHY,
-  HealthModule,
-  NO_CACHE,
-  UP,
-} from '#adapter-test/terminus/fixture';
+import { HEALTHY, HealthModule, NO_CACHE, UP } from '#adapter-test/terminus/fixture';
 
-import {
-  HEALTHY_BODY,
-  withProbe,
-} from '#adapter-test/terminus/support';
+import { HEALTHY_BODY, withProbe } from '#adapter-test/terminus/support';
 
 test('a check carries the key its indicator answered under', async () => {
   await withProbe(async (probe) => {
@@ -30,9 +22,7 @@ test('the check is answered with the cache the decorator sets', async () => {
   await withProbe(async (probe) => {
     const response = await request(probe, '/health');
 
-    expect(response.headers.get('cache-control')).toBe(
-      NO_CACHE,
-    );
+    expect(response.headers.get('cache-control')).toBe(NO_CACHE);
   });
 });
 
@@ -41,9 +31,7 @@ test('a degraded check is answered with the same cache header', async () => {
     const response = await request(probe, '/health/degraded');
 
     expect(response.status).toBe(HttpStatus.OK);
-    expect(response.headers.get('cache-control')).toBe(
-      NO_CACHE,
-    );
+    expect(response.headers.get('cache-control')).toBe(NO_CACHE);
   });
 });
 

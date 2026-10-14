@@ -5,12 +5,7 @@ import { toNestRequest } from '#adapter/core/request/request';
 import type { NestHandler } from '#adapter/core/request/request';
 import { finalizeOnResponse } from '#adapter/core/response/response-helpers';
 
-import {
-  prepareRequest,
-  requestOptions,
-  settledAs,
-  watchFailure,
-} from './request.ts';
+import { prepareRequest, requestOptions, settledAs, watchFailure } from './request.ts';
 import { forwardFrom } from './forwarded.ts';
 import { NOOP_NEXT } from './types.ts';
 import type {
@@ -21,7 +16,6 @@ import type {
   StreamInterceptor,
 } from './types.ts';
 
-/** Bridges one Nest handler to Hono. */
 const createRouteHandler =
   (
     handler: NestHandler,
@@ -31,13 +25,9 @@ const createRouteHandler =
   async (context, next) => {
     const request = await prepareRequest(context, options);
     void request.params;
-    const started = interceptor(context, () =>
-      options.pendingStatus(context),
-    );
+    const started = interceptor(context, () => options.pendingStatus(context));
     const forwarded = forwardFrom(next);
-    const handled = Promise.resolve(
-      handler(request, context, forwarded.next),
-    );
+    const handled = Promise.resolve(handler(request, context, forwarded.next));
     const outcome = await Promise.race([
       settledAs(handled, 'handled'),
       settledAs(started, 'streaming'),
@@ -50,7 +40,6 @@ const createRouteHandler =
     return context.res;
   };
 
-/** Runs one Nest handler outside the Hono route pipeline. */
 const runNestHandler = async (
   handler: NestHandler,
   context: NestContext,
@@ -61,36 +50,19 @@ const runNestHandler = async (
   return context.res;
 };
 
-/** Maps a framework error to the exception filters expect. */
 const mapFrameworkError = (error: unknown): unknown => {
-  if (
-    error instanceof SyntaxError ||
-    error instanceof URIError
-  ) {
+  if (error instanceof SyntaxError || error instanceof URIError)
     return new BadRequestException(error.message);
-  }
   return error;
 };
 
-/** Builds the runner for the exception layer. */
 const createExceptionRunner =
-  (
-    handler: NestExceptionHandler,
-    options: BridgeOptions,
-  ): ExceptionRunner =>
+  (handler: NestExceptionHandler, options: BridgeOptions): ExceptionRunner =>
   async (error, context) => {
-    const request = toNestRequest(
-      context,
-      requestOptions(options),
-    );
+    const request = toNestRequest(context, requestOptions(options));
     finalizeOnResponse(context);
     await handler(error, request, context, NOOP_NEXT);
     return context.res;
   };
 
-export {
-  createExceptionRunner,
-  createRouteHandler,
-  mapFrameworkError,
-  runNestHandler,
-};
+export { createExceptionRunner, createRouteHandler, mapFrameworkError, runNestHandler };

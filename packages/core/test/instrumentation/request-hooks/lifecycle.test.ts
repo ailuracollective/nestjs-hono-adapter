@@ -22,8 +22,7 @@ test('the route waits for the hook to continue', async () => {
 });
 
 test('done releases the route while the hook promise is pending', async () => {
-  const { promise, resolve } =
-    Promise.withResolvers<undefined>();
+  const { promise, resolve } = Promise.withResolvers<undefined>();
   const order: string[] = [];
   const app = probeApp(
     {
@@ -66,27 +65,23 @@ test.each([
         then: promise.then.bind(promise),
       }),
   },
-])(
-  'the route waits for a deferred $name hook',
-  async ({ wrap }) => {
-    const { promise, resolve } =
-      Promise.withResolvers<undefined>();
-    const order: string[] = [];
-    const app = probeApp(
-      {
-        onRequest: () => {
-          order.push('hook');
-          return wrap(promise);
-        },
+])('the route waits for a deferred $name hook', async ({ wrap }) => {
+  const { promise, resolve } = Promise.withResolvers<undefined>();
+  const order: string[] = [];
+  const app = probeApp(
+    {
+      onRequest: () => {
+        order.push('hook');
+        return wrap(promise);
       },
-      order,
-    );
-    const pending = app.request('/ping');
-    await Bun.sleep(0);
-    expect(order).toStrictEqual(['hook']);
-    resolve();
-    const response = await pending;
-    expect(order).toStrictEqual(['hook', 'route']);
-    expect(response.status).toBe(HttpStatus.OK);
-  },
-);
+    },
+    order,
+  );
+  const pending = app.request('/ping');
+  await Bun.sleep(0);
+  expect(order).toStrictEqual(['hook']);
+  resolve();
+  const response = await pending;
+  expect(order).toStrictEqual(['hook', 'route']);
+  expect(response.status).toBe(HttpStatus.OK);
+});

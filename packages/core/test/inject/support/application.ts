@@ -8,7 +8,6 @@ import type { NestHonoApplication } from '#adapter/index';
 
 import { InjectModule } from './fixture.ts';
 
-/** Builds the application under test without listening. */
 const build = async (): Promise<NestHonoApplication> => {
   const created = await NestFactory.create<NestHonoApplication>(
     InjectModule,
@@ -19,16 +18,13 @@ const build = async (): Promise<NestHonoApplication> => {
   return created;
 };
 
-/** The one application every case asks for. */
 const state: { started?: Promise<NestHonoApplication> } = {};
 
-/** The application, built on first ask. */
 const app = (): Promise<NestHonoApplication> => {
   state.started ??= build();
   return state.started;
 };
 
-/** Wires the shared application into the cases of one file. */
 const registerApplication = (): void => {
   beforeAll(async () => {
     await app();

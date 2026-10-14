@@ -22,68 +22,53 @@ import type {
   UploadedMultipartFile,
 } from '#multipart/interfaces/index';
 
-/** The bytes one random file name stands for. */
 const RANDOM_BYTES = 16;
 
-/** Answers a resolved folder or file name. */
-type NameCallback = (
-  error: Error | null,
-  value: string,
-) => void;
+type NameCallback = (error: Error | null, value: string) => void;
 
-/** Names a folder, or a file within one. */
-type NameResolver = (
-  request: unknown,
-  file: IncomingMultipartFile,
-  callback: NameCallback,
-) => void;
+type NameResolver = (request: unknown, file: IncomingMultipartFile, callback: NameCallback) => void;
 
-/** What `diskStorage()` accepts. */
 interface DiskStorageOptions {
-  /** The folder files are written to. */
   destination?: string | NameResolver;
-  /** The name within `destination`, random hex by default. */
   filename?: NameResolver;
 }
 
-/** Resolves a name through one of the engine's resolvers. */
 const resolveName = (
   resolver: NameResolver,
   request: unknown,
   file: IncomingMultipartFile,
 ): Promise<string> =>
   new Promise((resolve, reject) => {
-    resolver(
-      request,
-      file,
-      (error: Error | null | undefined, value) => {
-        if (error === null || error === undefined) {
-          resolve(value);
-        } else {
-          reject(error);
-        }
-      },
-    );
+    resolver(request, file, (error: Error | null | undefined, value) => {
+      if (error === null || error === undefined) {
+        resolve(value);
+      } else {
+        reject(error);
+      }
+    });
   });
 
-/** Writes one file and answers what disk storage recorded. */
+const containedTarget = (destination: string, filename: string): string => {
+  const resolvedDestination = path.resolve(destination);
+  const resolvedTarget = path.resolve(resolvedDestination, filename);
+  if (
+    resolvedTarget !== resolvedDestination &&
+    !resolvedTarget.startsWith(resolvedDestination + path.sep)
+  ) {
+    throw new TypeError('Unsafe path');
+  }
+  return resolvedTarget;
+};
+
 const store = async (
   request: unknown,
   file: IncomingMultipartFile,
   resolveDestination: NameResolver,
   resolveFilename: NameResolver,
 ): Promise<Partial<UploadedMultipartFile>> => {
-  const destination = await resolveName(
-    resolveDestination,
-    request,
-    file,
-  );
-  const filename = await resolveName(
-    resolveFilename,
-    request,
-    file,
-  );
-  const target = path.join(destination, filename);
+  const destination = await resolveName(resolveDestination, request, file);
+  const filename = await resolveName(resolveFilename, request, file);
+  const target = containedTarget(destination, filename);
   file.path = target;
   const out = createWriteStream(target);
   try {
@@ -100,7 +85,6 @@ const store = async (
   };
 };
 
-/** Resolves the destination and filename configuration. */
 const resolveDiskStorageOptions = (
   options: DiskStorageOptions,
 ): {
@@ -133,22 +117,13 @@ const resolveDiskStorageOptions = (
   return { destination, filename };
 };
 
-/** Writes each file to disk, with multer's defaults. */
-const diskStorage = (
-  options: DiskStorageOptions = {},
-): MultipartStorageEngine => {
-  const { destination, filename } =
-    resolveDiskStorageOptions(options);
+const diskStorage = (options: DiskStorageOptions = {}): MultipartStorageEngine => {
+  const { destination, filename } = resolveDiskStorageOptions(options);
 
   return {
     async _handleFile(request, file, callback) {
       try {
-        const info = await store(
-          request,
-          file,
-          destination,
-          filename,
-        );
+        const info = await store(request, file, destination, filename);
         callback(null, info);
       } catch (error) {
         callback(error);

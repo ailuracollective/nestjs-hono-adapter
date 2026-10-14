@@ -8,7 +8,6 @@ import {
   databaseConfig,
 } from '#adapter-test/config-fixture/controllers';
 
-/** An application that registers a slice by hand. */
 const withRegisteredSlice = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController, SliceController],
@@ -24,7 +23,6 @@ const withRegisteredSlice = (): Type<unknown> => {
   return RegisteredSliceModule;
 };
 
-/** The same application with the configuration cached. */
 const withCache = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
@@ -40,7 +38,6 @@ const withCache = (): Type<unknown> => {
   return CachedModule;
 };
 
-/** An application told to ignore the process environment. */
 const withSkipProcessEnv = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],

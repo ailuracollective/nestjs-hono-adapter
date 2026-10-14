@@ -4,14 +4,8 @@ import { HttpStatus } from '@nestjs/common';
 
 import { request, startProbe } from '#test/probe';
 
-import {
-  CountingJob,
-  JobModule,
-} from '#adapter-test/schedule/fixture';
-import {
-  runsReportedBy,
-  windows,
-} from '#adapter-test/schedule/helpers';
+import { CountingJob, JobModule } from '#adapter-test/schedule/fixture';
+import { runsReportedBy, windows } from '#adapter-test/schedule/helpers';
 
 test('a scheduled job runs with the application up', async () => {
   const probe = await startProbe({

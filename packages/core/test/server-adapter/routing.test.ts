@@ -2,10 +2,7 @@ import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
 import { request } from '#test/probe';
-import {
-  jsonRequest,
-  startProbe,
-} from '#adapter-test/support/index';
+import { jsonRequest, startProbe } from '#adapter-test/support/index';
 
 test('a route answers with the value it returned', async () => {
   const probe = await startProbe({ mode: 'in-process' });
@@ -34,11 +31,7 @@ test('a primitive is answered as text', async () => {
 test('a JSON body reaches the handler that asked for it', async () => {
   const probe = await startProbe({ mode: 'in-process' });
   try {
-    const response = await request(
-      probe,
-      '/echo',
-      jsonRequest({ hello: 'world' }),
-    );
+    const response = await request(probe, '/echo', jsonRequest({ hello: 'world' }));
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({ hello: 'world' });
   } finally {

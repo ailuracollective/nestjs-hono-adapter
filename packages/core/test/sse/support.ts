@@ -1,8 +1,4 @@
-export {
-  collect,
-  failAfter,
-  framesOf,
-} from './support/frames.ts';
+export { collect, failAfter, framesOf } from './support/frames.ts';
 export {
   bodyOf,
   openStream,

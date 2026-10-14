@@ -4,43 +4,26 @@ import { validateGlobalPrefix } from './exclude.ts';
 import { normaliseRoot, rewriteUnder } from './mount-roots.ts';
 import type { ServeStaticConfig } from './options.ts';
 
-/** Everything one registration resolved to. */
 interface Resolved {
-  /** The directory the files are read from. */
   readonly clientPath: string;
-  /** The paths the option excludes. */
   readonly exclude: unknown;
-  /** Whether a miss falls through to the next handler. */
   readonly fallthrough: boolean;
-  /** The root the directory is mounted at, or none. */
   readonly serveRoot: string | undefined;
 }
 
-/**
- * The index file a directory answers with, when it answers with
- * one.
- */
 const indexOf = (options: ServeStaticConfig): string => {
   const { serveStaticOptions } = options;
-  if (serveStaticOptions === undefined) {
-    return 'index.html';
-  }
+  if (serveStaticOptions === undefined) return 'index.html';
   const { index } = serveStaticOptions;
-  return index === false || index === undefined
-    ? 'index.html'
-    : index;
+  return index === false || index === undefined ? 'index.html' : index;
 };
 
-/** Whether a miss falls through to the next handler. */
 const fallthroughOf = (options: ServeStaticConfig): boolean => {
   const { serveStaticOptions } = options;
-  if (serveStaticOptions === undefined) {
-    return true;
-  }
+  if (serveStaticOptions === undefined) return true;
   return serveStaticOptions.fallthrough !== false;
 };
 
-/** The root a registration serves from, prefix included. */
 const withPrefix = (
   options: ServeStaticConfig,
   globalPrefix: string | undefined,
@@ -52,12 +35,9 @@ const withPrefix = (
   ) {
     return normaliseRoot(options.serveRoot);
   }
-  return normaliseRoot(
-    `/${globalPrefix}${options.serveRoot ?? ''}`,
-  );
+  return normaliseRoot(`/${globalPrefix}${options.serveRoot ?? ''}`);
 };
 
-/** Resolves one registration against the deployment's prefix. */
 const resolve = (
   options: ServeStaticConfig,
   defaultRoot: string,
@@ -70,13 +50,10 @@ const resolve = (
 });
 
 /**
- * The options the transport serves a directory with. The
- * rewrite is left out entirely when there is none, because
+ * The options the transport serves a directory with. The rewrite is left out entirely when there is
+ * none, because
  */
-const staticOptionsOf = (
-  options: ServeStaticConfig,
-  resolved: Resolved,
-): StaticOptions => {
+const staticOptionsOf = (options: ServeStaticConfig, resolved: Resolved): StaticOptions => {
   const rewrite = rewriteUnder(resolved.serveRoot);
   if (rewrite === undefined) {
     return {

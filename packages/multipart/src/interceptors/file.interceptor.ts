@@ -6,7 +6,6 @@ import {
   createMultipartStreamInterceptor,
 } from '#multipart/multipart/multipart.interceptor.factory';
 
-/** Accepts one file in `fieldName`, exposed as `req.file`. */
 const FileInterceptor = (
   fieldName: string,
   localOptions?: MultipartOptions,
@@ -19,14 +18,9 @@ const FileInterceptor = (
     localOptions,
   );
 
-/**
- * Accepts one file in `fieldName` and hands it over as a live
- * stream.
- */
 const FileStreamInterceptor = (
   fieldName: string,
   localOptions?: Omit<MultipartOptions, 'dest' | 'storage'>,
-): Type<NestInterceptor> =>
-  createMultipartStreamInterceptor(fieldName, localOptions);
+): Type<NestInterceptor> => createMultipartStreamInterceptor(fieldName, localOptions);
 
 export { FileInterceptor, FileStreamInterceptor };

@@ -9,9 +9,7 @@ test('a stream that errors after a frame ends with an error event', async () => 
   try {
     const response = await probe.respond('/sse/broken');
     expect(response.status).toBe(HttpStatus.OK);
-    expect(response.headers.get('content-type')).toContain(
-      'text/event-stream',
-    );
+    expect(response.headers.get('content-type')).toContain('text/event-stream');
     const text = await streamText(probe, '/sse/broken');
     expect(text).toContain('data: open');
     expect(text).toContain('event: error\n');

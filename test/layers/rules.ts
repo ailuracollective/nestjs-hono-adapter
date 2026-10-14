@@ -1,10 +1,8 @@
-/** The one module a composition root may import the region by. */
 const COMPAT_INDEX = 'packages/core/src/compat/index.ts';
 
 /**
- * The peer resolver, published so that a bridge package can
- * load the peer it patches the way the application resolved
- * it.
+ * The peer resolver, published so that a bridge package can load the peer it patches the way the
+ * application resolved it.
  */
 const BRIDGE_TOOLKIT = 'packages/core/src/compat/peer-load.ts';
 

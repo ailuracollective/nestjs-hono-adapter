@@ -1,4 +1,3 @@
-/** One step of a bracket-notation field name. */
 interface PathStep {
   type: 'object' | 'array';
   key: string | number;
@@ -7,22 +6,12 @@ interface PathStep {
   nextType?: 'object' | 'array';
 }
 
-/** Field names that would reach the prototype chain. */
-const FORBIDDEN_KEYS = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-]);
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
-/** Splits a bracket-notation field name into steps. */
 const parsePath = (key: string): PathStep[] => {
-  const failure = (): PathStep[] => [
-    { type: 'object', key, last: true },
-  ];
+  const failure = (): PathStep[] => [{ type: 'object', key, last: true }];
   const first = /^[^[]*/u.exec(key)?.[0] ?? '';
-  if (first === '') {
-    return failure();
-  }
+  if (first === '') return failure();
 
   let position = first.length;
   let tail: PathStep = { type: 'object', key: first };
@@ -32,9 +21,7 @@ const parsePath = (key: string): PathStep[] => {
     if (key[position] === '[' && key[position + 1] === ']') {
       position += 2;
       tail.append = true;
-      if (position !== key.length) {
-        return failure();
-      }
+      if (position !== key.length) return failure();
       continue;
     }
     const rest = key.slice(position);
@@ -63,21 +50,15 @@ const parsePath = (key: string): PathStep[] => {
   return steps;
 };
 
-/** Names the kind of value a step holds. */
 const valueType = (value: unknown): string => {
-  if (value === undefined) {
-    return 'undefined';
-  }
+  if (value === undefined) return 'undefined';
   if (Array.isArray(value)) {
     return 'array';
   }
-  if (typeof value === 'object') {
-    return 'object';
-  }
+  if (typeof value === 'object') return 'object';
   return 'scalar';
 };
 
-/** Writes the value at the last step. */
 const setLastValue = (
   context: Record<string, unknown>,
   step: PathStep,
@@ -86,8 +67,7 @@ const setLastValue = (
 ): Record<string, unknown> => {
   switch (valueType(current)) {
     case 'undefined':
-      context[step.key] =
-        step.append === true ? [value] : value;
+      context[step.key] = step.append === true ? [value] : value;
       break;
     case 'array':
       (context[step.key] as unknown[]).push(value);
@@ -106,28 +86,22 @@ const setLastValue = (
   return context;
 };
 
-/** Writes the value at a step, creating containers. */
 const setValue = (
   context: Record<string, unknown>,
   step: PathStep,
   current: unknown,
   value: unknown,
 ): Record<string, unknown> => {
-  if (step.last === true) {
-    return setLastValue(context, step, current, value);
-  }
+  if (step.last === true) return setLastValue(context, step, current, value);
   let object: Record<string, unknown>;
   switch (valueType(current)) {
     case 'undefined':
-      context[step.key] =
-        step.nextType === 'array' ? [] : Object.create(null);
+      context[step.key] = step.nextType === 'array' ? [] : Object.create(null);
       return context[step.key] as Record<string, unknown>;
     case 'object':
       return current as Record<string, unknown>;
     case 'array':
-      if (step.nextType === 'array') {
-        return current as unknown as Record<string, unknown>;
-      }
+      if (step.nextType === 'array') return current as unknown as Record<string, unknown>;
       object = Object.create(null);
       context[step.key] = object;
       (current as unknown[]).forEach((item, index) => {
@@ -144,21 +118,13 @@ const setValue = (
   }
 };
 
-/** Adds one text field to `store` in bracket notation. */
-const appendField = (
-  store: Record<string, unknown>,
-  key: string,
-  value: unknown,
-): boolean => {
+const appendField = (store: Record<string, unknown>, key: string, value: unknown): boolean => {
   const steps = parsePath(key);
-  if (
-    steps.some((step) => FORBIDDEN_KEYS.has(String(step.key)))
-  ) {
+  if (steps.some((step) => FORBIDDEN_KEYS.has(String(step.key)))) {
     return false;
   }
   steps.reduce<Record<string, unknown>>(
-    (context, step) =>
-      setValue(context, step, context[step.key], value),
+    (context, step) => setValue(context, step, context[step.key], value),
     store,
   );
   return true;

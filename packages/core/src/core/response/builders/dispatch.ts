@@ -1,41 +1,16 @@
 import { defaultContentType } from '#adapter/core/response/headers';
 
-import {
-  JSON_CONTENT_TYPE,
-  NULL_BODY_STATUS,
-  isBinaryBody,
-  isPrimitive,
-} from './content.ts';
-import {
-  isStreamableFile,
-  toBinaryResponse,
-  toFileResponse,
-  toTextResponse,
-} from './encode.ts';
+import { JSON_CONTENT_TYPE, NULL_BODY_STATUS, isBinaryBody, isPrimitive } from './content.ts';
+import { isStreamableFile, toBinaryResponse, toFileResponse, toTextResponse } from './encode.ts';
 
-const jsonResponse = (
-  body: unknown,
-  headers: Headers,
-  status: number,
-): Response => {
+const jsonResponse = (body: unknown, headers: Headers, status: number): Response => {
   const serialized = JSON.stringify(body);
-  if (typeof serialized !== 'string') {
-    throw new TypeError('The data is not JSON serializable');
-  }
+  if (typeof serialized !== 'string') throw new TypeError('The data is not JSON serializable');
   return new Response(serialized, { headers, status });
 };
 
-/** Turns a returned value into a Web response. */
-const toResponse = (
-  body: unknown,
-  status: number,
-  headers: Headers,
-): Response => {
-  if (
-    body === undefined ||
-    body === null ||
-    NULL_BODY_STATUS.has(status)
-  ) {
+const toResponse = (body: unknown, status: number, headers: Headers): Response => {
+  if (body === undefined || body === null || NULL_BODY_STATUS.has(status)) {
     return new Response(undefined, { headers, status });
   }
   if (isStreamableFile(body)) {

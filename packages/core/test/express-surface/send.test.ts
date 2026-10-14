@@ -13,9 +13,7 @@ describe('what res.send() answers', () => {
       async (probe) => {
         const result = await request(probe, '/reference');
         expect(result.status).toBe(SERVED);
-        expect(result.contentType).toBe(
-          'text/html; charset=UTF-8',
-        );
+        expect(result.contentType).toBe('text/html; charset=UTF-8');
         expect(result.text).toContain('<title>page</title>');
       },
     );
@@ -43,9 +41,7 @@ describe('what res.send() answers', () => {
       async (probe) => {
         const result = await request(probe, '/reference');
         expect(result.status).toBe(SERVED);
-        expect(result.contentType).toContain(
-          'application/json',
-        );
+        expect(result.contentType).toContain('application/json');
         expect(result.body).toEqual({ sent: true });
       },
     );

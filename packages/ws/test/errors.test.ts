@@ -5,25 +5,17 @@ import { WSContext } from 'hono/ws';
 
 import { ServerAdapter } from '#adapter/index';
 import type { NestEnv } from '#adapter/index';
-import type {
-  WebSocketEvents,
-  WebSocketSupport,
-} from '#adapter/core/ports/transport';
+import type { WebSocketEvents, WebSocketSupport } from '#adapter/core/ports/transport';
 import { nodeServer } from '#adapter/servers/node';
 import { HonoWsAdapter } from '#ws/index';
 import type { HonoSocket } from '#ws/client/index';
 
-/** The callbacks and clients captured by a transport probe. */
 interface Connections {
-  /** The events each captured upgrade handed the adapter. */
   events: WebSocketEvents[];
-  /** The clients the adapter bound. */
   clients: HonoSocket[];
-  /** The adapter under test. */
   adapter: HonoWsAdapter;
 }
 
-/** Captures the transport callbacks without opening a socket. */
 const connections = async (): Promise<Connections> => {
   const events: WebSocketEvents[] = [];
   const clients: HonoSocket[] = [];
@@ -52,7 +44,6 @@ const connections = async (): Promise<Connections> => {
   return { adapter, clients, events };
 };
 
-/** Binds each connection using the transport's open callback. */
 const openConnections = (probe: Connections): void => {
   const socket = new WSContext({
     close: (): void => undefined,
@@ -60,14 +51,11 @@ const openConnections = (probe: Connections): void => {
     send: (): void => undefined,
   });
   for (const events of probe.events) {
-    if (events.onOpen === undefined) {
-      throw new Error('Missing open callback');
-    }
+    if (events.onOpen === undefined) throw new Error('Missing open callback');
     events.onOpen({}, socket);
   }
 };
 
-/** Observes the connection-local error channel. */
 const collectErrors = (client: HonoSocket): unknown[] => {
   const seen: unknown[] = [];
   client.on('error', (error: unknown) => {
@@ -76,24 +64,13 @@ const collectErrors = (client: HonoSocket): unknown[] => {
   return seen;
 };
 
-/** Requires the callback the adapter must hand its transport. */
-const errorCallback = (
-  events: WebSocketEvents | undefined,
-): ((error: unknown) => void) => {
-  if (events === undefined) {
-    throw new Error('Missing connection');
-  }
-  if (events.onError === undefined) {
-    throw new Error('Missing error callback');
-  }
+const errorCallback = (events: WebSocketEvents | undefined): ((error: unknown) => void) => {
+  if (events === undefined) throw new Error('Missing connection');
+  if (events.onError === undefined) throw new Error('Missing error callback');
   return events.onError;
 };
 
-/** Sends errors before and after a connection is bound. */
-const exerciseErrors = (
-  probe: Connections,
-  failure: Error,
-): void => {
+const exerciseErrors = (probe: Connections, failure: Error): void => {
   const onError = errorCallback(probe.events[0]);
   onError(failure);
   expect(probe.clients).toHaveLength(0);
@@ -105,17 +82,11 @@ const exerciseErrors = (
 
 test('transport errors reach only their client and are safe before binding', async () => {
   const probe = await connections();
-  const logged = spyOn(
-    Logger.prototype,
-    'error',
-  ).mockImplementation((): void => undefined);
+  const logged = spyOn(Logger.prototype, 'error').mockImplementation((): void => undefined);
   const failure = new Error('transport failure');
   try {
     exerciseErrors(probe, failure);
-    expect(logged.mock.calls).toStrictEqual([
-      [failure],
-      [failure],
-    ]);
+    expect(logged.mock.calls).toStrictEqual([[failure], [failure]]);
   } finally {
     logged.mockRestore();
     await probe.adapter.dispose();

@@ -12,11 +12,7 @@ export type {
   MultipartOptionsFactory,
 } from './interfaces/index.ts';
 export { MultipartModule } from './multipart.module.ts';
-export {
-  diskStorage,
-  memoryStorage,
-  type DiskStorageOptions,
-} from './storage/index.ts';
+export { diskStorage, memoryStorage, type DiskStorageOptions } from './storage/index.ts';
 export type {
   IncomingMultipartFile,
   MultipartField,

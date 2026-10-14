@@ -3,19 +3,12 @@
 import type { NestContext } from '#adapter/core/context';
 import { SseResponse } from '#adapter/core/response/sse-stream/index';
 
-import {
-  RAW_STATE,
-  installedOn,
-  startWaiter,
-} from './state.ts';
+import { RAW_STATE, installedOn, startWaiter } from './state.ts';
 import type { SseHolder } from './state.ts';
 import { installSurface, watchDisconnect } from './surface.ts';
 
-/** Defines the raw getter on the context prototype, once. */
 const installRawGetter = (context: NestContext): void => {
-  const prototype = Object.getPrototypeOf(
-    context,
-  ) as unknown as object;
+  const prototype = Object.getPrototypeOf(context) as unknown as object;
   if (installedOn.has(prototype)) {
     return;
   }
@@ -46,11 +39,7 @@ const installRawGetter = (context: NestContext): void => {
   });
 };
 
-/** Opens an event stream and answers when it starts. */
-const mountSse = (
-  context: NestContext,
-  status: () => number | undefined,
-): Promise<unknown> => {
+const mountSse = (context: NestContext, status: () => number | undefined): Promise<unknown> => {
   installRawGetter(context);
   const waiter = startWaiter();
   const holder = context as unknown as SseHolder;

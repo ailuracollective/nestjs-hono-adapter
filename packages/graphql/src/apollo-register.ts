@@ -5,40 +5,20 @@ import { registerGraphQLRoute } from './route.ts';
 import { isContextFactory } from './apollo-context-read.ts';
 import { createApolloHandler } from './apollo-handler.ts';
 import { buildApolloServer } from './apollo-server.ts';
-import {
-  DEFAULT_GRAPHQL_PATH,
-  GRAPHQL_METHODS,
-} from './peer-shapes.ts';
-import type {
-  ApolloDriverConfig,
-  ApolloDriverShape,
-} from './peer-shapes.ts';
+import { DEFAULT_GRAPHQL_PATH, GRAPHQL_METHODS } from './peer-shapes.ts';
+import type { ApolloDriverConfig, ApolloDriverShape } from './peer-shapes.ts';
 
-/** What the bridge needs in order to start Apollo on Hono. */
 interface OnHono {
-  /** The driver Nest is booting. */
   readonly driver: ApolloDriverShape;
-  /** The Hono application to mount the endpoint on. */
   readonly hono: NestHono;
-  /** The configuration `@nestjs/apollo` handed the driver. */
   readonly options: ApolloDriverConfig;
 }
 
-/**
- * Starts Apollo on Hono: what `registerExpress` does, minus the
- * parts that are Express's.
- */
-const registerApolloOnHono = async (
-  target: OnHono,
-): Promise<void> => {
+const registerApolloOnHono = async (target: OnHono): Promise<void> => {
   const { driver, hono, options } = target;
   const server = await buildApolloServer(options);
-  if (server === undefined) {
-    return;
-  }
-  const factory = isContextFactory(options.context)
-    ? options.context
-    : undefined;
+  if (server === undefined) return;
+  const factory = isContextFactory(options.context) ? options.context : undefined;
   registerGraphQLRoute(hono, {
     handler: createApolloHandler(server, factory),
     methods: [...GRAPHQL_METHODS],

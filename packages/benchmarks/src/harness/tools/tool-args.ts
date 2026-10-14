@@ -17,21 +17,14 @@ interface ToolOptions {
 
 /** Builds command-line arguments for the oha load generator. */
 const ohaArgs = (options: ToolOptions): string[] => {
-  const { connections, durationSeconds, scenario, url } =
-    options;
-  const headers = Object.entries(
-    scenario.headers ?? {},
-  ).flatMap(([name, value]) => ['-H', `${name}: ${value}`]);
+  const { connections, durationSeconds, scenario, url } = options;
+  const headers = Object.entries(scenario.headers ?? {}).flatMap(([name, value]) => [
+    '-H',
+    `${name}: ${value}`,
+  ]);
   const requestBody = scenario.body;
   const body =
-    requestBody === undefined
-      ? []
-      : [
-          '-T',
-          scenario.contentType ?? BODY_JSON,
-          '-d',
-          requestBody,
-        ];
+    requestBody === undefined ? [] : ['-T', scenario.contentType ?? BODY_JSON, '-d', requestBody];
   return [
     '-z',
     `${durationSeconds}s`,
@@ -54,25 +47,14 @@ const bombardierHeaders = (scenario: Scenario): string[] => {
   const withType =
     scenario.body === undefined
       ? declared
-      : [
-          ['Content-Type', scenario.contentType ?? BODY_JSON],
-          ...declared,
-        ];
-  return withType.flatMap(([name, value]) => [
-    '-H',
-    `${name}: ${value}`,
-  ]);
+      : [['Content-Type', scenario.contentType ?? BODY_JSON], ...declared];
+  return withType.flatMap(([name, value]) => ['-H', `${name}: ${value}`]);
 };
 
-/**
- * Builds command-line arguments for the bombardier load
- * generator.
- */
+/** Builds command-line arguments for the bombardier load generator. */
 const bombardierArgs = (options: ToolOptions): string[] => {
-  const { connections, durationSeconds, scenario, url } =
-    options;
-  const body =
-    scenario.body === undefined ? [] : ['-b', scenario.body];
+  const { connections, durationSeconds, scenario, url } = options;
+  const body = scenario.body === undefined ? [] : ['-b', scenario.body];
   return [
     '-c',
     String(connections),

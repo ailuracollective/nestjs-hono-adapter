@@ -1,7 +1,4 @@
-export {
-  reads,
-  readsWithoutNamingTheType,
-} from './application-surface/helpers.ts';
+export { reads, readsWithoutNamingTheType } from './application-surface/helpers.ts';
 export { readsAnyOtherInstance } from './application-surface/assertions.ts';
 export type {
   TheAdapterBehindTheApplicationIsThisOne,

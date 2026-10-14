@@ -12,19 +12,14 @@ import type { Bridge } from '#adapter/compat/index';
 
 import { FAKE, fakeBridge, targetOver } from './fixture.ts';
 
-/**
- * The names the package ships with, before anything is
- * resolved.
- */
 const SHIPPED = ['express'];
 
 /**
- * The names the region finds on its own once a deployment has
- * installed the packages, in the order it looks for them.
+ * The names the region finds on its own once a deployment has installed the packages, in the order
+ * it looks for them.
  */
 const DISCOVERED = ['graphql/apollo', 'serve-static'];
 
-/** How many applications two installs of one bridge would reach. */
 const TWO_APPLICATIONS = 2;
 
 test('the package ships one bridge, and only that one', () => {
@@ -36,10 +31,7 @@ test('a deployment names no import of a bridge package', async () => {
   resetBridges();
   installBridges(targetOver());
   await settleBridges();
-  expect(bridgeNames()).toStrictEqual([
-    ...SHIPPED,
-    ...DISCOVERED,
-  ]);
+  expect(bridgeNames()).toStrictEqual([...SHIPPED, ...DISCOVERED]);
 });
 
 test('a discovery that runs twice registers each bridge once', async () => {
@@ -160,8 +152,7 @@ test('a bridge registered by one application is installed by the next', () => {
 test('an install that rejects is reported, not thrown at the caller', () => {
   resetBridges();
   registerBridge({
-    install: () =>
-      Promise.reject(new Error('refused on purpose')),
+    install: () => Promise.reject(new Error('refused on purpose')),
     name: 'rejecting',
   });
   installBridges(targetOver());
@@ -175,9 +166,7 @@ test('a bridge is handed the application and the transport', () => {
   const target = targetOver();
   installBridges(target);
   const [seen] = bridge.seen;
-  if (seen === undefined) {
-    throw new Error('the bridge was handed nothing');
-  }
+  if (seen === undefined) throw new Error('the bridge was handed nothing');
   expect(seen.hono).toBe(target.hono);
   expect(seen.transport).toBe(target.transport);
 });
@@ -186,8 +175,5 @@ test('the shipped and the discovered bridges both install', async () => {
   resetBridges();
   installBridges(targetOver());
   await settleBridges();
-  expect(bridgeNames()).toStrictEqual([
-    ...SHIPPED,
-    ...DISCOVERED,
-  ]);
+  expect(bridgeNames()).toStrictEqual([...SHIPPED, ...DISCOVERED]);
 });

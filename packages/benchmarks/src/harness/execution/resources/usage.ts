@@ -2,9 +2,8 @@ import type { ResourceUsage } from '#benchmarks/harness/config/index';
 import type { ResourceSample } from './types.ts';
 
 /**
- * Converts a raw resource sample into the reported usage,
- * deriving the per-request CPU cost from the answered
- * requests.
+ * Converts a raw resource sample into the reported usage, deriving the per-request CPU cost from
+ * the answered requests.
  */
 const toResourceUsage = (
   sample: ResourceSample | undefined,
@@ -14,8 +13,7 @@ const toResourceUsage = (
     return undefined;
   }
   return {
-    cpuMsPerRequest:
-      requests > 0 ? sample.cpuMillis / requests : 0,
+    cpuMsPerRequest: requests > 0 ? sample.cpuMillis / requests : 0,
     cpuPercent: sample.cpuPercent,
     rssMeanBytes: sample.rssMeanBytes,
     rssPeakBytes: sample.rssPeakBytes,

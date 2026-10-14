@@ -1,33 +1,17 @@
-import type {
-  InjectQuery,
-  InjectUrl,
-  Target,
-} from '#adapter/core/inject/types';
+import type { InjectQuery, InjectUrl, Target } from '#adapter/core/inject/types';
 
-/** The origin a relative target is resolved against. */
 const ORIGIN = 'http://localhost';
 
-/** The string form of a target, with its method split off. */
 const TARGET = /^(?<method>[A-Za-z]+) +(?<url>[\S\s]*)$/u;
 
-/** One value or a list of them as a list. */
-const toValues = (
-  value: string | number | readonly string[],
-): readonly string[] => {
-  if (typeof value === 'string') {
-    return [value];
-  }
-  if (typeof value === 'number') {
-    return [String(value)];
-  }
+const toValues = (value: string | number | readonly string[]): readonly string[] => {
+  if (typeof value === 'string') return [value];
+  if (typeof value === 'number') return [String(value)];
   return value;
 };
 
-/** Serialises a query into a query string. */
 const toQueryString = (query: InjectQuery): string => {
-  if (typeof query === 'string') {
-    return query.replace(/^\?/u, '');
-  }
+  if (typeof query === 'string') return query.replace(/^\?/u, '');
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     for (const each of toValues(value)) {
@@ -37,40 +21,25 @@ const toQueryString = (query: InjectQuery): string => {
   return params.toString();
 };
 
-/** The query string a call asked for, or nothing. */
 const askedQuery = (query: InjectQuery | undefined): string => {
-  if (query === undefined) {
-    return '';
-  }
+  if (query === undefined) return '';
   return toQueryString(query);
 };
 
-/** The two query strings a call may carry, joined. */
-const mergeQueries = (
-  inner: string,
-  appended: string,
-): string => {
-  if (inner === '') {
-    return appended;
-  }
-  if (appended === '') {
-    return inner;
-  }
+const mergeQueries = (inner: string, appended: string): string => {
+  if (inner === '') return appended;
+  if (appended === '') return inner;
   return `${inner}&${appended}`;
 };
 
-/** Appends a query string to a URL that may already carry one. */
 const withQuery = (url: string, query: string): string => {
-  if (query === '') {
-    return url;
-  }
+  if (query === '') return url;
   if (url.includes('?')) {
     return `${url}&${query}`;
   }
   return `${url}?${query}`;
 };
 
-/** The origin the object form of a target names. */
 const originOf = (target: InjectUrl): string => {
   const { hostname, port, protocol } = target;
   const host = hostname ?? 'localhost';
@@ -81,11 +50,7 @@ const originOf = (target: InjectUrl): string => {
   return `${scheme}//${host}:${port}`;
 };
 
-/** The absolute URL a Web `Request` is built from. */
-const toUrl = (
-  target: string | InjectUrl,
-  query: InjectQuery | undefined,
-): string => {
+const toUrl = (target: string | InjectUrl, query: InjectQuery | undefined): string => {
   const appended = askedQuery(query);
   if (typeof target === 'string') {
     const url = new URL(target, ORIGIN);
@@ -97,7 +62,6 @@ const toUrl = (
   return withQuery(`${originOf(target)}${pathname}`, merged);
 };
 
-/** Splits a target string into its method and its URL. */
 const splitTarget = (target: string): Target => {
   const trimmed = target.trim();
   const match = TARGET.exec(trimmed);

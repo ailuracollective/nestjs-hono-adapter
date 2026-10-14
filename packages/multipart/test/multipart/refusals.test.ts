@@ -39,10 +39,7 @@ describe('no files', () => {
 
 describe('limits', () => {
   test('a file over the limit is refused with 413', async () => {
-    const result = await upload(
-      '/limited',
-      filePart(OVER_LIMIT),
-    );
+    const result = await upload('/limited', filePart(OVER_LIMIT));
 
     expect(result.status).toBe(TOO_LARGE);
     expect(result.body).toMatchObject({
@@ -91,9 +88,7 @@ describe('a field name that would reach the prototype', () => {
       message: `Invalid field name - ${FORBIDDEN_FIELD}`,
       statusCode: BAD_REQUEST,
     });
-    expect(
-      ({} as Record<string, unknown>)[POLLUTED],
-    ).toBeUndefined();
+    expect(({} as Record<string, unknown>)[POLLUTED]).toBeUndefined();
   });
 
   test('a nested step onto the same chain is refused too', async () => {
@@ -103,8 +98,6 @@ describe('a field name that would reach the prototype', () => {
     const result = await upload('/single', form);
 
     expect(result.status).toBe(BAD_REQUEST);
-    expect(
-      ({} as Record<string, unknown>)[POLLUTED],
-    ).toBeUndefined();
+    expect(({} as Record<string, unknown>)[POLLUTED]).toBeUndefined();
   });
 });

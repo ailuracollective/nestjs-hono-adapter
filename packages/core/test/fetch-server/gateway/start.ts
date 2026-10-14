@@ -1,26 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 
-import {
-  fetchHandler,
-  fetchServer,
-  webSocketFromHost,
-} from '#adapter/servers/fetch';
+import { fetchHandler, fetchServer, webSocketFromHost } from '#adapter/servers/fetch';
 import { ServerAdapter } from '#adapter/index';
 import { HonoWsAdapter } from '#ws/index';
 
 import { GatewayModule } from './gateway.ts';
 import type { DrivenHost } from './hosts.ts';
 
-/** A gateway running on the fetch transport. */
 interface GatewayProbe {
   readonly fetch: (request: Request) => Promise<Response>;
   close: () => Promise<void>;
 }
 
-/** Starts a gateway over one host helper. */
-const startGateway = async (
-  host: DrivenHost,
-): Promise<GatewayProbe> => {
+const startGateway = async (host: DrivenHost): Promise<GatewayProbe> => {
   const adapter = new ServerAdapter({
     transport: fetchServer({
       upgradeWebSocket: webSocketFromHost(host.helper),

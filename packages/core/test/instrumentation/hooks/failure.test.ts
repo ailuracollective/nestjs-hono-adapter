@@ -33,17 +33,12 @@ test('a request hook that fails reaches the error path', async () => {
   app.onError((error, context) => {
     caught.push(error);
     order.push('error');
-    return context.text(
-      'hook failed',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+    return context.text('hook failed', HttpStatus.INTERNAL_SERVER_ERROR);
   });
   const response = await app.request('/ping');
   expect(caught[0]).toBe(failure);
   expect(order).toStrictEqual(['response', 'error']);
-  expect(response.status).toBe(
-    HttpStatus.INTERNAL_SERVER_ERROR,
-  );
+  expect(response.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
 });
 
 test('a request hook rejection reaches the error path', async () => {
@@ -63,15 +58,10 @@ test('a request hook rejection reaches the error path', async () => {
   app.onError((error, context) => {
     caught.push(error);
     order.push('error');
-    return context.text(
-      'hook failed',
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+    return context.text('hook failed', HttpStatus.INTERNAL_SERVER_ERROR);
   });
   const response = await app.request('/ping');
   expect(caught[0]).toBe(failure);
   expect(order).toStrictEqual(['response', 'error']);
-  expect(response.status).toBe(
-    HttpStatus.INTERNAL_SERVER_ERROR,
-  );
+  expect(response.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
 });

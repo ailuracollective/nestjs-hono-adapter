@@ -1,12 +1,7 @@
 import type { Target, Tool } from './env.types.ts';
 
 /** All HTTP server implementation targets under test. */
-const ALL_TARGETS: readonly Target[] = [
-  'bun',
-  'node',
-  'express',
-  'fastify',
-];
+const ALL_TARGETS: readonly Target[] = ['bun', 'node', 'express', 'fastify'];
 
 /** All supported load generators the harness can drive. */
 const ALL_TOOLS: readonly Tool[] = ['oha', 'bombardier'];

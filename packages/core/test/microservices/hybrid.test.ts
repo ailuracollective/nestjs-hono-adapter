@@ -1,14 +1,7 @@
 import { expect, test } from 'bun:test';
 
 import { TOTAL } from './fixture.ts';
-import {
-  clientFor,
-  closeAll,
-  expectPing,
-  freePort,
-  startHybrid,
-  sum,
-} from './support.ts';
+import { clientFor, closeAll, expectPing, freePort, startHybrid, sum } from './support.ts';
 
 test('a TCP microservice answers while HTTP still serves', async () => {
   const port = await freePort();

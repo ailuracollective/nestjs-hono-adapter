@@ -19,21 +19,13 @@ interface CommandResult {
 /**
  * Runs a command and captures its exit code and output streams.
  *
- * A tool that never produced an exit code either is missing
- * from `PATH` or was terminated by a signal; both are reported
- * instead of a bare undefined code.
+ * A tool that never produced an exit code either is missing from `PATH` or was terminated by a
+ * signal; both are reported instead of a bare undefined code.
  */
-const runCommand = async (
-  command: string,
-  args: readonly string[],
-): Promise<CommandResult> => {
-  const {
-    exitCode,
-    isTerminated,
-    originalMessage,
-    stderr,
-    stdout,
-  } = await execa(command, args, { reject: false });
+const runCommand = async (command: string, args: readonly string[]): Promise<CommandResult> => {
+  const { exitCode, isTerminated, originalMessage, stderr, stdout } = await execa(command, args, {
+    reject: false,
+  });
   if (exitCode === undefined) {
     throw new Error(
       isTerminated
@@ -44,10 +36,7 @@ const runCommand = async (
   return { code: exitCode, stderr, stdout };
 };
 
-/**
- * Extracts the JSON substring from raw tool output by locating
- * '{'.
- */
+/** Extracts the JSON substring from raw tool output by locating '{'. */
 const jsonFrom = (raw: string): string => {
   const start = raw.indexOf(JSON_START);
   if (start === NOT_FOUND) {
@@ -56,14 +45,8 @@ const jsonFrom = (raw: string): string => {
   return raw.slice(start);
 };
 
-/**
- * Reads an optional numeric percentile from a record,
- * defaulting to 0.
- */
-const pick = (
-  record: Readonly<Record<string, number>> | undefined,
-  key: string,
-): number => {
+/** Reads an optional numeric percentile from a record, defaulting to 0. */
+const pick = (record: Readonly<Record<string, number>> | undefined, key: string): number => {
   if (record === undefined) {
     return 0;
   }

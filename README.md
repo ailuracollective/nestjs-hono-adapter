@@ -1,39 +1,23 @@
 # NestJS Hono adapter
 
-An HTTP adapter that runs a NestJS application on
-[Hono](https://hono.dev), with no Express or Fastify underneath,
-plus its optional capabilities, each in a package of its own.
-The adapter is runtime-neutral: a **transport** serves it
-through Bun's own server by default, `@hono/node-server`, or a
-fetch host's Web `Request`/`Response`.
+An HTTP adapter that runs a NestJS application on [Hono](https://hono.dev), with no Express or Fastify underneath, plus its optional capabilities, each in a package of its own. The adapter is runtime-neutral: a **transport** serves it through Bun's own server by default, `@hono/node-server`, or a fetch host's Web `Request`/`Response`.
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml)
-[![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 ## Packages
 
-| Package                                                                        | Entrypoints                                     | What it is                          |
-| ------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------- |
-| [`@ailura/nestjs-hono-adapter`](packages/core/README.md)                       | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
-| [`@ailura/nestjs-platform-hono-ws`](packages/ws/README.md)                     | `.`                                             | WebSocket gateways                  |
-| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md)       | `.`                                             | Socket.IO gateways                  |
-| [`@ailura/nestjs-platform-hono-multipart`](packages/multipart/README.md)       | `.`                                             | Upload interceptors (multer-style)  |
-| [`@ailura/nestjs-platform-hono-graphql`](packages/graphql/README.md)           | `.`                                             | GraphQL for `@nestjs/apollo`        |
-| [`@ailura/nestjs-platform-hono-serve-static`](packages/serve-static/README.md) | `.`                                             | `@nestjs/serve-static` on Hono      |
+| Package | Entrypoints | What it is |
+| --- | --- | --- |
+| [`@ailura/nestjs-hono-adapter`](packages/core/README.md) | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
+| [`@ailura/nestjs-platform-hono-ws`](packages/ws/README.md) | `.` | WebSocket gateways |
+| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md) | `.` | Socket.IO gateways |
+| [`@ailura/nestjs-platform-hono-multipart`](packages/multipart/README.md) | `.` | Upload interceptors (multer-style) |
+| [`@ailura/nestjs-platform-hono-graphql`](packages/graphql/README.md) | `.` | GraphQL for `@nestjs/apollo` |
+| [`@ailura/nestjs-platform-hono-serve-static`](packages/serve-static/README.md) | `.` | `@nestjs/serve-static` on Hono |
 
-The adapter does the work; each capability package is optional
-and imports alone. The adapter's README is the detailed one.
+The adapter does the work; each capability package is optional and imports alone. The adapter's README is the detailed one.
 
-The last two are **compatibility bridges**, and they behave
-differently from the three above: you write no import for them.
-Installing the package is what installs the bridge, because the
-adapter's compatibility region resolves it out of your own tree.
-So `GraphQLModule.forRoot({ driver: ApolloDriver })` keeps
-naming the stock
-[`@nestjs/apollo`](https://www.npmjs.com/package/@nestjs/apollo)
-driver, and `ServeStaticModule.forRoot()` keeps naming the stock
-`@nestjs/serve-static`; neither knows this repository exists.
-See [docs/compatibility.md](docs/compatibility.md).
+The last two are **compatibility bridges**, and they behave differently from the three above: you write no import for them. Installing the package is what installs the bridge, because the adapter's compatibility region resolves it out of your own tree. So `GraphQLModule.forRoot({ driver: ApolloDriver })` keeps naming the stock [`@nestjs/apollo`](https://www.npmjs.com/package/@nestjs/apollo) driver, and `ServeStaticModule.forRoot()` keeps naming the stock `@nestjs/serve-static`; neither knows this repository exists. See [docs/compatibility.md](docs/compatibility.md).
 
 ## Install
 
@@ -46,75 +30,52 @@ import { NestFactory } from '@nestjs/core';
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { bunServer } from '@ailura/nestjs-hono-adapter/bun-server';
 
-const app = await NestFactory.create(
-  AppModule,
-  new ServerAdapter({ transport: bunServer() }),
-);
+const app = await NestFactory.create(AppModule, new ServerAdapter({ transport: bunServer() }));
 await app.listen(3000);
 ```
 
-Leaving `transport` out serves through Bun's own server. Read
-[the adapter's README](packages/core/README.md) for the
-transports, options and migration.
+Leaving `transport` out serves through Bun's own server. Read [the adapter's README](packages/core/README.md) for the transports, options and migration.
 
 ## Documentation
 
-| Topic                                                        | What it covers                                                                                             |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Topic | What it covers |
+| --- | --- |
 | [docs/platform-differences.md](docs/platform-differences.md) | Where Express and Fastify disagree, and how this adapter answers; routes, query strings, bodies, responses |
-| [docs/compatibility.md](docs/compatibility.md)               | The bridges that let Nest's own Express, `@nestjs/serve-static` and Apollo code run here                   |
-| [docs/parity.md](docs/parity.md)                             | What of Nest's four platform packages is implemented here, and what is still missing                       |
-| [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
-| [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
-| [docs/development.md](docs/development.md)                   | Requirements, build and test commands, release process                                                     |
-| [docs/api.md](docs/api.md)                                   | API reference: classes, options, and types                                                                 |
-| [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
-| [docs/bundle-baseline.md](docs/bundle-baseline.md)           | Verified bundle and package measurements, and what the evidence supports                                   |
-| [docs/benchmarks.md](docs/benchmarks.md)                     | Adapter comparison against Express and Fastify, generated by the private benchmark suite                   |
-| [examples/](examples/)                                       | Cloudflare Workers examples — one application per transport that runs on a Worker                          |
+| [docs/compatibility.md](docs/compatibility.md) | The bridges that let Nest's own Express, `@nestjs/serve-static` and Apollo code run here |
+| [docs/parity.md](docs/parity.md) | What of Nest's four platform packages is implemented here, and what is still missing |
+| [docs/features.md](docs/features.md) | Server-sent events, views, static assets, CORS, request-level security |
+| [docs/deployment.md](docs/deployment.md) | TLS, proxies, shutdown, the Hono API, WebSockets, microservices |
+| [docs/development.md](docs/development.md) | Requirements, build and test commands, release process |
+| [docs/api.md](docs/api.md) | API reference: classes, options, and types |
+| [docs/architecture.md](docs/architecture.md) | The layer map, import rules, bundle ceilings, and Node boundary |
+| [docs/bundle-baseline.md](docs/bundle-baseline.md) | Verified bundle and package measurements, and what the evidence supports |
+| [docs/benchmarks.md](docs/benchmarks.md) | Adapter comparison against Express and Fastify, generated by the private benchmark suite |
+| [examples/](examples/) | Cloudflare Workers examples — one application per transport that runs on a Worker |
 
 ## Development
 
-Requires Bun 1.2+ (or Node 22.12+), Nest 11 or 12, and Hono 4.
-From a fresh clone:
+Requires Bun 1.2+ (or Node 22.12+), Nest 11 or 12, and Hono 4. From a fresh clone:
 
 ```sh
 bun install --frozen-lockfile
 bun run check
 ```
 
-`bun run check` is exactly what CI runs: lint, format,
-typecheck, test, build and the bundle size gate.
+`bun run check` is exactly what CI runs: lint, format, typecheck, test, build and the bundle size gate.
 
 ## Contributing
 
-Contributions are welcome via
-[pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls);
-open an
-[issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues)
-for bugs or feature requests, including the Nest and Hono
-versions, a minimal reproduction, and the expected versus actual
-behaviour. A contribution must:
+Contributions are welcome via [pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls); open an [issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues) for bugs or feature requests, including the Nest and Hono versions, a minimal reproduction, and the expected versus actual behaviour. A contribution must:
 
-- Follow the
-  [Conventional Commits](https://www.conventionalcommits.org/)
-  specification (enforced by the contribution policy).
-- Pass the project's
-  [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and
-  [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html)
-  configuration — the enforced coding standard.
-- Pass `bun run check` before the PR is opened: lint, format,
-  typecheck, test, build, and the bundle size gate.
-- Cover new behaviour with tests; the suite runs against both
-  Nest 11 and 12 on Bun.
-- Read [docs/architecture.md](docs/architecture.md) before
-  editing the adapter: the layer map, import rules, and bundle
-  ceilings.
+- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (enforced by the contribution policy).
+- Pass the project's [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) configuration — the enforced coding standard.
+- Pass `bun run check` before the PR is opened: lint, format, typecheck, test, build, and the bundle size gate.
+- Cover new behaviour with tests; the suite runs against both Nest 11 and 12 on Bun.
+- Read [docs/architecture.md](docs/architecture.md) before editing the adapter: the layer map, import rules, and bundle ceilings.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for the vulnerability reporting
-process.
+See [SECURITY.md](SECURITY.md) for the vulnerability reporting process.
 
 ## License
 

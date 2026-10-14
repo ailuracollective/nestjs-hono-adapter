@@ -2,7 +2,7 @@
   {
     "name": "multipart",
     "path": "dist/index.js",
-    "limit": 4250,
+    "limit": 4300,
     "brotli": true,
     "ignore": [
       "@ailura/nestjs-hono-adapter",

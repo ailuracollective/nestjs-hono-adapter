@@ -8,12 +8,7 @@ import type { WebSocket as ServerSocket } from 'ws';
 import { ServerAdapter } from '#adapter/index';
 import type { Transport } from '#adapter/core/ports/transport';
 import { nodeServer } from '#adapter/servers/node';
-import {
-  FACTOR,
-  GATEWAY_PATH,
-  INPUT,
-  PING,
-} from './gateways.ts';
+import { FACTOR, GATEWAY_PATH, INPUT, PING } from './gateways.ts';
 import {
   QUIET_MS,
   ask,
@@ -25,10 +20,8 @@ import {
   startGateways,
 } from './support.ts';
 
-/** The disposer a fake install answers. */
 const noDisposer = (): void => undefined;
 
-/** A node transport whose helper has no `onOpen`. */
 const withoutOnOpen = (): Transport => {
   const base = nodeServer();
   return {
@@ -45,15 +38,9 @@ const withoutOnOpen = (): Transport => {
           node.upgradeWebSocket((context) => {
             const events = factory(context);
             const kept: WSEvents<ServerSocket> = {};
-            if (events.onClose) {
-              kept.onClose = events.onClose;
-            }
-            if (events.onError) {
-              kept.onError = events.onError;
-            }
-            if (events.onMessage) {
-              kept.onMessage = events.onMessage;
-            }
+            if (events.onClose) kept.onClose = events.onClose;
+            if (events.onError) kept.onError = events.onError;
+            if (events.onMessage) kept.onMessage = events.onMessage;
             return kept;
           }),
       };
@@ -62,11 +49,7 @@ const withoutOnOpen = (): Transport => {
   };
 };
 
-/** Says the socket answered each frame exactly once. */
-const expectOneReplyEach = async (
-  frames: () => unknown[],
-  sent: number[],
-): Promise<void> => {
+const expectOneReplyEach = async (frames: () => unknown[], sent: number[]): Promise<void> => {
   await quiet(QUIET_MS);
   expect(frames()).toStrictEqual(
     sent.map((amount) => ({

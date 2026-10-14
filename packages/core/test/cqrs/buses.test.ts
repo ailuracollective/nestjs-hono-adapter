@@ -4,23 +4,16 @@ import { HttpStatus } from '@nestjs/common';
 import { request, startProbe } from '#test/probe';
 import type { Probe } from '#test/probe';
 
-import {
-  CqrsModuleFixture,
-  GreetedListener,
-} from './fixture.ts';
+import { CqrsModuleFixture, GreetedListener } from './fixture.ts';
 import { ANSWER, GREETING } from './messages.ts';
 
-/** The request a case posts to the command route. */
 const COMMAND_REQUEST = {
   body: JSON.stringify({ name: 'nest' }),
   headers: { 'content-type': 'application/json' },
   method: 'POST',
 };
 
-/** Starts the fixture and hands it to the case. */
-const withProbe = async <Answer>(
-  read: (probe: Probe) => Promise<Answer>,
-): Promise<Answer> => {
+const withProbe = async <Answer>(read: (probe: Probe) => Promise<Answer>): Promise<Answer> => {
   GreetedListener.seen.length = 0;
   const probe = await startProbe({
     mode: 'in-process',
@@ -35,11 +28,7 @@ const withProbe = async <Answer>(
 
 test('a route answers through a command the bus executed', async () => {
   await withProbe(async (probe) => {
-    const response = await request(
-      probe,
-      '/greet',
-      COMMAND_REQUEST,
-    );
+    const response = await request(probe, '/greet', COMMAND_REQUEST);
 
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({ greeting: GREETING });

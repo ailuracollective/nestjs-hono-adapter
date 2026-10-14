@@ -6,7 +6,6 @@ import { request } from '#test/probe';
 
 import { ExpressShapedModule } from './express-fixture.ts';
 
-/** Answers one path of the Express-shaped fixture. */
 const ask = async (
   path: string,
 ): Promise<{

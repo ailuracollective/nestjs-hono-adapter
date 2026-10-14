@@ -60,9 +60,7 @@ test('listen() answers with the reason instead of waiting', async () => {
     try {
       await app.listen(0);
     } catch (error) {
-      if (error instanceof Error) {
-        refusal = error.message;
-      }
+      if (error instanceof Error) refusal = error.message;
     }
     expect(refusal).toContain('fetch host');
   } finally {

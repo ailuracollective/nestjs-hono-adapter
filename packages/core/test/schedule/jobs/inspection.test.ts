@@ -4,10 +4,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import { request, startProbe } from '#test/probe';
 
-import {
-  CountingJob,
-  JobModule,
-} from '#adapter-test/schedule/fixture';
+import { CountingJob, JobModule } from '#adapter-test/schedule/fixture';
 import { windows } from '#adapter-test/schedule/helpers';
 
 test('the bootstrap hook ran before any request arrived', async () => {
@@ -65,9 +62,7 @@ test('a scheduled application answers over a real connection', async () => {
     const response = await request(probe, '/jobs/bootstrapped');
 
     expect(response.status).toBe(HttpStatus.OK);
-    expect(response.text).toBe(
-      JSON.stringify({ bootstrapped: true }),
-    );
+    expect(response.text).toBe(JSON.stringify({ bootstrapped: true }));
   } finally {
     await probe.close();
   }

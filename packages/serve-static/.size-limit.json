@@ -4,10 +4,6 @@
     "path": "dist/index.js",
     "limit": 1850,
     "brotli": true,
-    "ignore": [
-      "@nestjs/common",
-      "@nestjs/core",
-      "@nestjs/serve-static"
-    ]
+    "ignore": ["@nestjs/common", "@nestjs/core", "@nestjs/serve-static"]
   }
 ]

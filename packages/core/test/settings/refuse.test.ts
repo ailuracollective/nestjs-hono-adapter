@@ -6,12 +6,8 @@ import { ENGINE, engine } from './fixture.ts';
 
 test('view engine refuses arrays and non-string values', () => {
   const adapter = bunAdapter({ views: { engine } });
-  expect(() => adapter.set('view engine', [ENGINE])).toThrow(
-    'it takes a string',
-  );
-  expect(() => adapter.set('view engine', true)).toThrow(
-    'it takes a string',
-  );
+  expect(() => adapter.set('view engine', [ENGINE])).toThrow('it takes a string');
+  expect(() => adapter.set('view engine', true)).toThrow('it takes a string');
 });
 
 test('set refuses a setting the transport owns, by name', () => {

@@ -3,7 +3,6 @@ import path from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
 
-/** The extension a view engine names. */
 const toExtension = (engine: string): string => {
   if (engine.startsWith('.')) {
     return engine;
@@ -12,11 +11,7 @@ const toExtension = (engine: string): string => {
   return `.${engine}`;
 };
 
-/** The file a view name reads, completed with the extension. */
-const fileNameFor = (
-  view: string,
-  extension: string,
-): string => {
+const fileNameFor = (view: string, extension: string): string => {
   if (extension === '' || path.extname(view) !== '') {
     return view;
   }
@@ -24,7 +19,13 @@ const fileNameFor = (
   return `${view}${extension}`;
 };
 
-/** Reads the first template that exists in the directories. */
+const isMissing = (error: unknown): boolean => {
+  if (!(error instanceof Error) || !('code' in error)) {
+    return false;
+  }
+  return Reflect.get(error, 'code') === 'ENOENT';
+};
+
 const readFrom = async (
   fileName: string,
   directories: readonly string[],
@@ -32,17 +33,15 @@ const readFrom = async (
 ): Promise<string> => {
   const directory = directories[position];
   if (directory === undefined) {
-    throw new NotFoundException(
-      `No view named ${fileName} was found.`,
-    );
+    throw new NotFoundException(`No view named ${fileName} was found.`);
   }
 
   try {
-    return await readFile(
-      path.join(directory, fileName),
-      'utf8',
-    );
-  } catch {
+    return await readFile(path.join(directory, fileName), 'utf8');
+  } catch (error) {
+    if (!isMissing(error)) {
+      throw error;
+    }
     return readFrom(fileName, directories, position + 1);
   }
 };

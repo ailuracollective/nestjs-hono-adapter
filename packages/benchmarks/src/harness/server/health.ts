@@ -4,10 +4,7 @@
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 
-/**
- * Maximum number of health check retry attempts before timing
- * out.
- */
+/** Maximum number of health check retry attempts before timing out. */
 const READY_ATTEMPTS = 200;
 
 /** Milliseconds interval between health check attempts. */
@@ -33,25 +30,16 @@ const findFreePort = (): Promise<number> =>
 /** Probes the server health route to verify responsiveness. */
 const isHealthy = async (port: number): Promise<boolean> => {
   try {
-    const response = await fetch(
-      `http://127.0.0.1:${port}/health`,
-    );
+    const response = await fetch(`http://127.0.0.1:${port}/health`);
     return response.ok;
   } catch {
     return false;
   }
 };
 
-/**
- * Polls the server until /health answers or attempts are
- * exhausted.
- */
+/** Polls the server until /health answers or attempts are exhausted. */
 const waitForHealth = async (port: number): Promise<void> => {
-  for (
-    let attempt = 0;
-    attempt < READY_ATTEMPTS;
-    attempt += 1
-  ) {
+  for (let attempt = 0; attempt < READY_ATTEMPTS; attempt += 1) {
     if (await isHealthy(port)) {
       return;
     }

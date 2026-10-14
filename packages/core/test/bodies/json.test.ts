@@ -2,11 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { HttpStatus } from '@nestjs/common';
 
-import {
-  jsonRequest,
-  startAdapter,
-  startProbe,
-} from '#adapter-test/support/index';
+import { jsonRequest, startAdapter, startProbe } from '#adapter-test/support/index';
 import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
 
@@ -15,11 +11,7 @@ test('a JSON body reaches the handler that asked for it', async () => {
     mode: 'in-process',
   });
   try {
-    const response = await request(
-      probe,
-      '/echo',
-      jsonRequest({ hello: 'world' }),
-    );
+    const response = await request(probe, '/echo', jsonRequest({ hello: 'world' }));
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({ hello: 'world' });
   } finally {
@@ -39,11 +31,7 @@ test.each(['arrayBuffer', 'text'] as const)(
       mode: 'in-process',
     });
     try {
-      const response = await request(
-        probe,
-        '/echo',
-        jsonRequest({ hello: 'world' }),
-      );
+      const response = await request(probe, '/echo', jsonRequest({ hello: 'world' }));
       expect(response.status).toBe(HttpStatus.CREATED);
       expect(response.body).toStrictEqual({ hello: 'world' });
     } finally {

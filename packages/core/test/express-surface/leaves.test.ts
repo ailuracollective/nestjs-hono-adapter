@@ -12,9 +12,7 @@ describe('what the adapter leaves alone', () => {
     try {
       const result = await request(probe, '/text');
       expect(result.status).toBe(SERVED);
-      expect(result.contentType).toBe(
-        'text/plain; charset=UTF-8',
-      );
+      expect(result.contentType).toBe('text/plain; charset=UTF-8');
       expect(result.text).toBe('plain');
     } finally {
       await probe.close();

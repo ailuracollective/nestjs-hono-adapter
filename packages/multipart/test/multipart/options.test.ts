@@ -9,11 +9,7 @@ import {
   TOO_LARGE,
 } from '#multipart-test/multipart.support/constants';
 import { filePart } from '#multipart-test/multipart.support/parts';
-import {
-  AsyncUploadModule,
-  UploadModule,
-  upload,
-} from '#multipart-test/multipart.support/uploads';
+import { AsyncUploadModule, UploadModule, upload } from '#multipart-test/multipart.support/uploads';
 import { request, startProbe } from '#test/probe';
 
 describe('module options from registerAsync', () => {
@@ -35,10 +31,7 @@ describe('module options from registerAsync', () => {
   });
 
   test('the same upload passes when no module names a limit', async () => {
-    const result = await upload(
-      '/single',
-      filePart(OVER_LIMIT),
-    );
+    const result = await upload('/single', filePart(OVER_LIMIT));
 
     expect(result.status).toBe(CREATED);
   });
@@ -54,8 +47,7 @@ describe('a malformed multipart body', () => {
       const result = await request(probe, '/single', {
         body: 'a body that never names the boundary it declared',
         headers: {
-          'content-type':
-            'multipart/form-data; boundary=----absent',
+          'content-type': 'multipart/form-data; boundary=----absent',
         },
         method: 'POST',
       });

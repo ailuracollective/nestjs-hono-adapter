@@ -7,9 +7,7 @@ test('a disconnect reaches the gateway', async () => {
   const started = await start();
   const client = await open(started.url);
   const { id } = client;
-  if (id === undefined) {
-    throw new TypeError('the client connected with no id');
-  }
+  if (id === undefined) throw new TypeError('the client connected with no id');
   client.close();
   await quiet();
   expect(gone).toContain(id);

@@ -7,22 +7,15 @@ import type { NestEnv } from '#adapter/index';
 import { guardStep } from '#adapter/features/front-steps/index';
 import { startProbe } from './support/index.ts';
 
-/** The answer a request gets once the server is closing. */
 const REFUSED = {
   message: 'Service Unavailable',
   statusCode: HttpStatus.SERVICE_UNAVAILABLE,
 };
 
-/** A CORS step that does nothing. */
-const noCorsStep: MiddlewareHandler<NestEnv> = (
-  _context,
-  next,
-) => next();
+const noCorsStep: MiddlewareHandler<NestEnv> = (_context, next) => next();
 
-/** What an application that never enabled CORS reports. */
 const noCorsEnabled = (): boolean => false;
 
-/** An application that reports whether it is shutting down. */
 const probeApp = (isClosing: () => boolean): Hono<NestEnv> => {
   const app = new Hono<NestEnv>();
   app.use(
@@ -61,9 +54,7 @@ test('the refusal starts when shutdown starts, not when the server closes', asyn
     probe.adapter.beforeClose();
 
     const draining = await probe.respond('/ping');
-    expect(draining.status).toBe(
-      HttpStatus.SERVICE_UNAVAILABLE,
-    );
+    expect(draining.status).toBe(HttpStatus.SERVICE_UNAVAILABLE);
     expect(draining.headers.get('connection')).toBe('close');
   } finally {
     await probe.close();

@@ -6,30 +6,19 @@ import { NestFactory } from '@nestjs/core';
 import { ServerAdapter } from '#adapter/index';
 import { nodeServer } from '#adapter/servers/node';
 
-/** The port the process picks, so no case reserves one. */
 const ANY_PORT = 0;
-/** Where the cases listen. */
 const LOCALHOST = '127.0.0.1';
-/** How long a close gets before it counts as hung. */
 const BUDGET_MS = 2000;
 
-/** The close the adapter replaced, which takes a callback. */
 interface CallbackClose {
-  readonly close: (
-    answer: (error?: Error) => void,
-  ) => Promise<void>;
+  readonly close: (answer: (error?: Error) => void) => Promise<void>;
 }
 
-/** A module with nothing to serve. */
 @Module({})
 class QuietModule {}
 
-/** True when the work completed inside the budget. */
-const settled = async (
-  work: Promise<unknown>,
-): Promise<boolean> => {
-  let timer: ReturnType<typeof setTimeout> | undefined =
-    undefined;
+const settled = async (work: Promise<unknown>): Promise<boolean> => {
+  let timer: ReturnType<typeof setTimeout> | undefined = undefined;
   try {
     return await Promise.race([
       work.then(() => true),
@@ -45,7 +34,6 @@ const settled = async (
   }
 };
 
-/** An adapter on the Node transport, listening. */
 const serving = async (): Promise<{
   readonly adapter: ServerAdapter;
   readonly app: INestApplication;
@@ -60,7 +48,6 @@ const serving = async (): Promise<{
   return { adapter, app };
 };
 
-/** The server, as the code that replaces its close sees it. */
 const closing = (adapter: ServerAdapter): CallbackClose =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the adapter replaced this method at runtime, so what it answers with takes a callback while the port's declared signature does not; src/servers/node.ts casts the same way.
   adapter.getHttpServer() as unknown as CallbackClose;

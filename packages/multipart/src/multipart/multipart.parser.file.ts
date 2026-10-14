@@ -13,7 +13,6 @@ import {
   storeFile,
 } from './multipart.parser.fields.ts';
 
-/** Stores one file and answers the shape multer gives it. */
 const handleFile = async (
   name: string,
   stream: Truncatable,

@@ -13,16 +13,12 @@ test('a plain path is left alone', () => {
 });
 
 test('a constraint becomes the braced form', () => {
-  expect(toHonoPath(String.raw`/users/:id(\d+)`)).toBe(
-    String.raw`/users/:id{\d+}`,
-  );
+  expect(toHonoPath(String.raw`/users/:id(\d+)`)).toBe(String.raw`/users/:id{\d+}`);
 });
 
 test('an optional segment becomes an optional parameter', () => {
   expect(toHonoPath('/users{/:id}')).toBe('/users/:id?');
-  expect(toHonoPath(String.raw`/users{/:id(\d+)}`)).toBe(
-    String.raw`/users/:id{\d+}?`,
-  );
+  expect(toHonoPath(String.raw`/users{/:id(\d+)}`)).toBe(String.raw`/users/:id{\d+}?`);
 });
 
 test('a named wildcard becomes an anonymous one', () => {
@@ -32,9 +28,7 @@ test('a named wildcard becomes an anonymous one', () => {
 
 test('a path the router cannot read is refused', () => {
   expect(() => toHonoPath('/users{name}')).toThrow(TypeError);
-  expect(() => toHonoPath('/users{/:id/:tab}')).toThrow(
-    TypeError,
-  );
+  expect(() => toHonoPath('/users{/:id/:tab}')).toThrow(TypeError);
   expect(() => toHonoPath('/users/:id(')).toThrow(TypeError);
   expect(() => toHonoPath('/users(:id')).toThrow(TypeError);
 });
@@ -42,10 +36,7 @@ test('a path the router cannot read is refused', () => {
 test('a wildcard is captured under the key the router reads it by', async () => {
   const probe = await startProbe({ mode: 'in-process' });
   try {
-    const response = await request(
-      probe,
-      '/files/reports/2024/q1.csv',
-    );
+    const response = await request(probe, '/files/reports/2024/q1.csv');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.body).toStrictEqual({
       params: { '*': 'reports/2024/q1.csv' },

@@ -3,9 +3,7 @@ import pidusage from 'pidusage';
 import type { ProcessSample } from './types.ts';
 
 /** Reads a process's cumulative CPU time and current RSS. */
-const readSample = async (
-  pid: number,
-): Promise<ProcessSample> => {
+const readSample = async (pid: number): Promise<ProcessSample> => {
   const stats = await pidusage(pid);
   return { cpuMillis: stats.ctime, rssBytes: stats.memory };
 };

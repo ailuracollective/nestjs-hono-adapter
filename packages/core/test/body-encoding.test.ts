@@ -2,10 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { fileURLToPath } from 'node:url';
 
-/** The path of the unsupported-charset fixture. */
-const FIXTURE = fileURLToPath(
-  new URL('fixtures/unsupported-charset.ts', import.meta.url),
-);
+const FIXTURE = fileURLToPath(new URL('fixtures/unsupported-charset.ts', import.meta.url));
 
 test('a runtime without UTF-16BE starts and answers unsupported requests with 415', async () => {
   const child = Bun.spawn([process.execPath, 'test', FIXTURE], {

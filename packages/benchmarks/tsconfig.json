@@ -8,15 +8,9 @@
       "#adapter/*": ["../core/src/*.ts", "../core/src/*"],
       "#benchmarks/*": ["./src/*.ts", "./src/*"],
       "@ailura/nestjs-hono-adapter": ["../core/src/index.ts"],
-      "@ailura/nestjs-hono-adapter/bun-server": [
-        "../core/src/servers/bun.ts"
-      ],
-      "@ailura/nestjs-hono-adapter/node-server": [
-        "../core/src/servers/node.ts"
-      ],
-      "@ailura/nestjs-hono-adapter/fetch": [
-        "../core/src/servers/fetch.ts"
-      ]
+      "@ailura/nestjs-hono-adapter/bun-server": ["../core/src/servers/bun.ts"],
+      "@ailura/nestjs-hono-adapter/node-server": ["../core/src/servers/node.ts"],
+      "@ailura/nestjs-hono-adapter/fetch": ["../core/src/servers/fetch.ts"]
     }
   },
   "include": ["src/**/*.ts"]

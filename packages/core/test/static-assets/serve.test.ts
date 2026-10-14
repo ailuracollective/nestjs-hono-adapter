@@ -4,12 +4,7 @@ import { HttpStatus } from '@nestjs/common';
 import { startProbe } from '#adapter-test/support/index';
 import { request } from '#test/probe';
 
-import {
-  FIXTURES,
-  INDEX,
-  WEEK_HEADER,
-  WEEK_IN_MS,
-} from './fixture.ts';
+import { FIXTURES, INDEX, WEEK_HEADER, WEEK_IN_MS } from './fixture.ts';
 
 test('a file under the prefix is served', async () => {
   const probe = await startProbe({
@@ -59,9 +54,7 @@ test('a maximum age is written as a cache header', async () => {
   });
   try {
     const response = await request(probe, '/public/hello.txt');
-    expect(response.headers.get('cache-control')).toBe(
-      WEEK_HEADER,
-    );
+    expect(response.headers.get('cache-control')).toBe(WEEK_HEADER);
   } finally {
     await probe.close();
   }
@@ -75,10 +68,7 @@ test('a file that does not exist reaches the routes', async () => {
     mode: 'in-process',
   });
   try {
-    const response = await request(
-      probe,
-      '/public/missing.txt',
-    );
+    const response = await request(probe, '/public/missing.txt');
     expect(response.status).toBe(HttpStatus.NOT_FOUND);
   } finally {
     await probe.close();

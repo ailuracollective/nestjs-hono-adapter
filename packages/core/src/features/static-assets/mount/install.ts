@@ -8,7 +8,6 @@ import { directoryHandler, mountsFor } from './handlers.ts';
 import { directoriesOf, optionsOf } from './target.ts';
 import type { StaticTarget } from './target.ts';
 
-/** Mounts the directories a deployment named, under its prefix. */
 const mountStaticAssets = (target: StaticTarget): void => {
   const { hono, transport } = target;
   const directories = directoriesOf(target);
@@ -19,10 +18,7 @@ const mountStaticAssets = (target: StaticTarget): void => {
 
   for (const directory of directories) {
     for (const mount of mountsFor(options)) {
-      hono.use(
-        mount,
-        directoryHandler(directory, transport, options),
-      );
+      hono.use(mount, directoryHandler(directory, transport, options));
     }
   }
 };

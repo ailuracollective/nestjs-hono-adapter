@@ -4,12 +4,7 @@ import { Logger } from '@nestjs/common';
 
 import { bunAdapter } from '#test/bun-adapter';
 import type { WsFrame } from '#ws/client/index';
-import {
-  ANSWER,
-  GATEWAY_PATH,
-  INPUT,
-  PING,
-} from './gateways.ts';
+import { ANSWER, GATEWAY_PATH, INPUT, PING } from './gateways.ts';
 import {
   QUIET_MS,
   collect,
@@ -20,25 +15,18 @@ import {
   startGateways,
 } from './support.ts';
 
-/** The fixture's own dialect, `<event>:<amount>`. */
 const colonParser = (raw: unknown): WsFrame | undefined => {
-  if (typeof raw !== 'string') {
-    return undefined;
-  }
+  if (typeof raw !== 'string') return undefined;
   const [event = '', amount = '0'] = raw.split(':');
   return { data: { amount: Number(amount) }, event };
 };
 
-/** Watches the adapter's logger. */
 const watchLogger = (): {
   readonly restore: () => void;
   readonly seen: unknown[];
 } => {
   const seen: unknown[] = [];
-  const spy = spyOn(
-    Logger.prototype,
-    'error',
-  ).mockImplementation((message: unknown) => {
+  const spy = spyOn(Logger.prototype, 'error').mockImplementation((message: unknown) => {
     seen.push(message);
   });
   return {
@@ -49,7 +37,6 @@ const watchLogger = (): {
   };
 };
 
-/** Opens a gateway whose parser throws. */
 const parseFailureProbe = async (
   failure: Error,
 ): Promise<{
@@ -107,9 +94,7 @@ test('setMessageParser() replaces the reader in place', async () => {
 });
 
 test('a parser that throws drops the frame and is reported', async () => {
-  const failure = new Error(
-    'a parser the application replaced',
-  );
+  const failure = new Error('a parser the application replaced');
   const outcome = await parseFailureProbe(failure);
   expect(outcome.frames).toStrictEqual([]);
   expect(outcome.open).toBe(true);

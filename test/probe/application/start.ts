@@ -10,10 +10,7 @@ import {
   originOf,
   restoreWebClasses,
 } from '#test/probe/in-process';
-import {
-  IN_PROCESS_MODE,
-  SOCKET_MODE,
-} from '#test/probe/types';
+import { IN_PROCESS_MODE, SOCKET_MODE } from '#test/probe/types';
 import type { Probe, ProbeOptions } from '#test/probe/types';
 
 const startApplication = async (
@@ -21,14 +18,8 @@ const startApplication = async (
   module: Type<unknown>,
   options: ProbeOptions = {},
 ): Promise<Probe> => {
-  const app = await NestFactory.create(
-    module,
-    adapter,
-    applicationOptions(options.application),
-  );
-  if (options.configure !== undefined) {
-    options.configure(app);
-  }
+  const app = await NestFactory.create(module, adapter, applicationOptions(options.application));
+  if (options.configure !== undefined) options.configure(app);
   if (options.mode === IN_PROCESS_MODE) {
     await app.init();
     return {
@@ -38,9 +29,7 @@ const startApplication = async (
       mode: IN_PROCESS_MODE,
       respond: (path, init) => {
         restoreWebClasses();
-        return Promise.resolve(
-          adapter.getHono().request(path, init, IN_PROCESS_ENV),
-        );
+        return Promise.resolve(adapter.getHono().request(path, init, IN_PROCESS_ENV));
       },
     };
   }
@@ -57,7 +46,5 @@ const startApplication = async (
     },
   };
 };
-
-/** Reports what one request saw, whichever path answered it. */
 
 export { startApplication };

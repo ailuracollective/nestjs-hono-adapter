@@ -1,13 +1,7 @@
 import { expect, test } from 'bun:test';
 
 import type { CorsOptions } from '#adapter/features/cors/index';
-import {
-  ALLOWED,
-  FOREIGN,
-  SERVER_ERROR,
-  bridged,
-  namedOrigin,
-} from './support.ts';
+import { ALLOWED, FOREIGN, SERVER_ERROR, bridged, namedOrigin } from './support.ts';
 
 test('an origin callback decides for each request', async () => {
   const decided: CorsOptions = {
@@ -23,9 +17,7 @@ test('an origin callback decides for each request', async () => {
     headers: { origin: FOREIGN },
   });
 
-  expect(
-    allowed.headers.get('access-control-allow-origin'),
-  ).toBe(ALLOWED);
+  expect(allowed.headers.get('access-control-allow-origin')).toBe(ALLOWED);
   expect(namedOrigin(foreign)).toBe(false);
 });
 
@@ -51,9 +43,7 @@ test('a delegate decides the options for each request', async () => {
     headers: { origin: ALLOWED },
   });
 
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe(ALLOWED);
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
 });
 
 test('the options a delegate answers are the ones applied', async () => {
@@ -64,7 +54,5 @@ test('the options a delegate answers are the ones applied', async () => {
     headers: { origin: ALLOWED },
   });
 
-  expect(
-    response.headers.get('access-control-allow-credentials'),
-  ).toBe('true');
+  expect(response.headers.get('access-control-allow-credentials')).toBe('true');
 });

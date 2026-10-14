@@ -1,34 +1,19 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import {
-  DOUBLING,
-  DrivenHost,
-  INPUT,
-  startGateway,
-} from './gateway.fixture.ts';
+import { DOUBLING, DrivenHost, INPUT, startGateway } from './gateway.fixture.ts';
 import type { GatewayProbe } from './gateway.fixture.ts';
 
-/** How long a case waits for an answer. */
 const QUIET_MS = 150;
 
-/** Waits, without a timer the case has to keep track of. */
 const quiet = async (ms: number): Promise<void> => {
   await Bun.sleep(ms);
 };
 
-/** Pushes one frame and answers what came. */
-const frameThrough = async (
-  probe: GatewayProbe,
-  host: DrivenHost,
-): Promise<unknown[]> => {
-  const upgraded = await probe.fetch(
-    new Request('http://host.test/ws'),
-  );
+const frameThrough = async (probe: GatewayProbe, host: DrivenHost): Promise<unknown[]> => {
+  const upgraded = await probe.fetch(new Request('http://host.test/ws'));
   expect(upgraded.status).toBe(HttpStatus.SWITCHING_PROTOCOLS);
-  if (host.deliver === undefined) {
-    throw new TypeError('the upgrade did not reach the host');
-  }
+  if (host.deliver === undefined) throw new TypeError('the upgrade did not reach the host');
   host.deliver(
     JSON.stringify({
       data: { amount: INPUT },

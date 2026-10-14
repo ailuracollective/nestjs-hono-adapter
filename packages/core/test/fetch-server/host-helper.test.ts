@@ -1,28 +1,16 @@
 import { expect, test } from 'bun:test';
 
-import {
-  fetchServer,
-  webSocketFromHost,
-} from '#adapter/servers/fetch';
+import { fetchServer, webSocketFromHost } from '#adapter/servers/fetch';
 import type { FetchHostWebSocket } from '#adapter/servers/fetch';
 import { ServerAdapter } from '#adapter/index';
 import type { WebSocketSupport } from '#adapter/core/ports/transport';
 
-/** A host helper that answers an upgrade with nothing. */
-const idleHelper: FetchHostWebSocket = () => () =>
-  Promise.resolve();
+const idleHelper: FetchHostWebSocket = () => () => Promise.resolve();
 
-/** The websocket surface the adapter built. */
-const supportOf = (
-  adapter: ServerAdapter,
-): WebSocketSupport => {
+const supportOf = (adapter: ServerAdapter): WebSocketSupport => {
   const transport = adapter.getTransport();
   const factory = transport.createWebSocket;
-  if (factory === undefined) {
-    throw new TypeError(
-      'the transport carried no websocket helper',
-    );
-  }
+  if (factory === undefined) throw new TypeError('the transport carried no websocket helper');
   return factory(adapter.getHono());
 };
 

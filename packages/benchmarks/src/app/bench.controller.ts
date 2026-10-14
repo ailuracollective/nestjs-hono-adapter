@@ -78,9 +78,6 @@ export class BenchController {
    */
   @Get('boom')
   public boom(): never {
-    throw new HttpException(
-      'the bench teapot',
-      HttpStatus.I_AM_A_TEAPOT,
-    );
+    throw new HttpException('the bench teapot', HttpStatus.I_AM_A_TEAPOT);
   }
 }

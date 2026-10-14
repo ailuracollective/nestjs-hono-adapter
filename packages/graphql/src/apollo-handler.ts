@@ -7,25 +7,15 @@ import type { ContextFactory } from './apollo-context-read.ts';
 import { createResolverContext } from './apollo-context.ts';
 import { requestHeaders } from './apollo-write.ts';
 
-/** The server members the handler calls. */
 interface ApolloServer {
-  /** Runs one GraphQL request and answers with its result. */
-  readonly executeHTTPGraphQLRequest: (
-    request: ApolloRequest,
-  ) => Promise<ApolloAnswer>;
-  /** Marks the server ready to answer. */
+  readonly executeHTTPGraphQLRequest: (request: ApolloRequest) => Promise<ApolloAnswer>;
   start?: () => Promise<void>;
 }
 
-/** The one request Apollo is asked to execute. */
 interface ApolloRequest {
   readonly context: () => Promise<unknown>;
   readonly httpGraphQLRequest: {
     readonly body: unknown;
-    /**
-     * A real `Headers`: the engine negotiates the answer's type
-     * off it.
-     */
     readonly headers: Headers;
     readonly method: string;
     readonly search: string;
@@ -33,8 +23,8 @@ interface ApolloRequest {
 }
 
 /**
- * The Hono handler for one Apollo server. Apollo's own
- * integrations are an Express middleware and a Fastify route
+ * The Hono handler for one Apollo server. Apollo's own integrations are an Express middleware and a
+ * Fastify route
  */
 const createApolloHandler =
   (
@@ -45,8 +35,7 @@ const createApolloHandler =
     const { req } = honoContext;
     const body = await readBody(honoContext);
     const answer = await server.executeHTTPGraphQLRequest({
-      context: () =>
-        createResolverContext(honoContext, context),
+      context: () => createResolverContext(honoContext, context),
       httpGraphQLRequest: {
         body,
         headers: requestHeaders(honoContext),

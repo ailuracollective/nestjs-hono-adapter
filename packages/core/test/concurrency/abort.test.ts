@@ -5,7 +5,6 @@ import { request, startProbe } from '#test/probe';
 
 import { ConcurrencyModule } from './fixture.ts';
 
-/** A body that sends one chunk and never ends. */
 const unfinished = (): ReadableStream<Uint8Array> =>
   new ReadableStream<Uint8Array>({
     start(source): void {

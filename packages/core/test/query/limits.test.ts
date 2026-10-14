@@ -2,25 +2,15 @@ import { expect, test } from 'bun:test';
 
 import { parseQuery } from '#adapter/core/request/query/index';
 
-/** The pair ceiling the parser keeps. */
 const PAIRS_KEPT = 1000;
 
-/** A run of `count` distinct assignments, `k0=v0` upwards. */
 const pairsOf = (count: number): string[] =>
-  Array.from(
-    { length: count },
-    (_unused, index) => `k${index}=v${index}`,
-  );
+  Array.from({ length: count }, (_unused, index) => `k${index}=v${index}`);
 
 test('a long list is not capped, a long query string is', () => {
-  const names = Array.from(
-    { length: 40 },
-    (_unused, index) => `k${index}`,
-  );
+  const names = Array.from({ length: 40 }, (_unused, index) => `k${index}`);
   const long = names.map((name) => `${name}=v`).join('&');
-  expect(Object.keys(parseQuery(long))).toHaveLength(
-    names.length,
-  );
+  expect(Object.keys(parseQuery(long))).toHaveLength(names.length);
 
   const source = pairsOf(PAIRS_KEPT + 1).join('&');
   const query = parseQuery(source);

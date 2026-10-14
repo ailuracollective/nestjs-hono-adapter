@@ -19,9 +19,7 @@ test('the guard writes the limit it was given onto the answer', async () => {
   await withProbe(async (probe) => {
     const response = await request(probe, '/ping');
 
-    expect(response.headers.get('x-ratelimit-limit')).toBe(
-      String(LIMIT),
-    );
+    expect(response.headers.get('x-ratelimit-limit')).toBe(String(LIMIT));
   });
 });
 
@@ -30,12 +28,8 @@ test('the guard counts down what is left of the window', async () => {
     const first = await request(probe, '/ping');
     const second = await request(probe, '/ping');
 
-    expect(first.headers.get('x-ratelimit-remaining')).toBe(
-      String(LIMIT - 1),
-    );
-    expect(second.headers.get('x-ratelimit-remaining')).toBe(
-      String(LIMIT - TWO_REQUESTS),
-    );
+    expect(first.headers.get('x-ratelimit-remaining')).toBe(String(LIMIT - 1));
+    expect(second.headers.get('x-ratelimit-remaining')).toBe(String(LIMIT - TWO_REQUESTS));
   });
 });
 
@@ -53,11 +47,7 @@ test('the three limit headers travel together', async () => {
   await withProbe(async (probe) => {
     const { headers } = await request(probe, '/ping');
 
-    for (const name of [
-      'x-ratelimit-limit',
-      'x-ratelimit-remaining',
-      'x-ratelimit-reset',
-    ]) {
+    for (const name of ['x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset']) {
       expect(headers.get(name)).not.toBeNull();
     }
   });

@@ -2,11 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { HttpStatus } from '@nestjs/common';
 
-import {
-  jsonRequest,
-  startAdapter,
-  startProbe,
-} from '#adapter-test/support/index';
+import { jsonRequest, startAdapter, startProbe } from '#adapter-test/support/index';
 import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
 import { BODY_LIMIT } from '#adapter-test/bodies/support';

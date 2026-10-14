@@ -1,8 +1,4 @@
-export {
-  request,
-  startApplication,
-  startProbe,
-} from './probe/application.ts';
+export { request, startApplication, startProbe } from './probe/application.ts';
 export type {
   Probe,
   ProbeApplication,

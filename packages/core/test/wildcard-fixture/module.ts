@@ -11,18 +11,11 @@ import {
   TailController,
 } from './controllers.ts';
 
-/** The module declaring the wildcard controllers. */
 @Module({
-  controllers: [
-    PlainController,
-    SiblingController,
-    TailController,
-    NamedController,
-  ],
+  controllers: [PlainController, SiblingController, TailController, NamedController],
 })
 class WildcardModule {}
 
-/** The probe that serves every one of those routes. */
 const WILDCARD_PROBE: ProbeOptions = { module: WildcardModule };
 
 export { WILDCARD_PROBE };

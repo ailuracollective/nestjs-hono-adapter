@@ -1,26 +1,17 @@
 import { expressBridge } from './express/index.ts';
-import {
-  clearBridges,
-  registerBridge,
-} from './registry/index.ts';
+import { clearBridges, registerBridge } from './registry/index.ts';
+import { clearDiscovery } from './registry/discover.ts';
 import type { Bridge } from './types.ts';
 
-/**
- * The bridges this package ships: only `express`, which shapes
- * what Nest hands a controller.
- */
 const SHIPPED: readonly Bridge[] = [expressBridge];
 
 for (const bridge of SHIPPED) {
   registerBridge(bridge);
 }
 
-/**
- * Puts the registry back to what this package ships; for the
- * tests.
- */
 function resetBridges(): void {
   clearBridges();
+  clearDiscovery();
   for (const bridge of SHIPPED) {
     registerBridge(bridge);
   }

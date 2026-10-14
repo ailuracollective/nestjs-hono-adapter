@@ -1,9 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import {
-  declareMultipart,
-  parsesMultipart,
-} from '#adapter/core/multipart';
+import { declareMultipart, parsesMultipart } from '#adapter/core/multipart';
 import { ServerAdapter } from '#adapter/index';
 
 test('declareMultipart() marks the newest adapter', () => {

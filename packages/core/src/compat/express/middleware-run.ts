@@ -5,13 +5,9 @@ import { continueChain } from './middleware-shape.ts';
 import type { ExpressErrorMiddleware } from './middleware-shape.ts';
 import { expressRequest, expressResponse } from './request.ts';
 
-/** Runs an Express-style error middleware inside Hono's chain. */
 const wrapExpressMiddleware =
   (handler: ExpressErrorMiddleware) =>
-  async (
-    context: NestContext,
-    next: () => Promise<void>,
-  ): Promise<void> => {
+  async (context: NestContext, next: () => Promise<void>): Promise<void> => {
     // An Express middleware may hand next() to something it never awaits (nestjs-i18n does), so the bridge has to hold the continuation open itself.
     const forwarded = forwardFrom(next);
     await handler(

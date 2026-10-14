@@ -9,10 +9,8 @@ import { HttpStatus } from '@nestjs/common';
 import { startProbe } from '#adapter-test/support/index';
 import { request } from '#test/probe';
 
-/** A JSON document, in the bytes a case sends it as. */
 const JSON_BODY = '{"hello":"world"}';
 
-/** One payload a socket reader is handed and answers. */
 interface DeclaredCase {
   readonly body: Uint8Array;
   readonly headers: Record<string, string>;
@@ -21,7 +19,6 @@ interface DeclaredCase {
   readonly value?: unknown;
 }
 
-/** What a reader does with a declared encoding. */
 const declaredCases = async (): Promise<DeclaredCase[]> => [
   {
     body: Buffer.from(JSON_BODY, 'utf16le').swap16(),
@@ -76,9 +73,7 @@ test('a socket reader honours what the payload declares', async () => {
     );
     for (const { item, response } of answers) {
       expect(response.status).toBe(item.status);
-      if (item.value !== undefined) {
-        expect(response.body).toStrictEqual(item.value);
-      }
+      if (item.value !== undefined) expect(response.body).toStrictEqual(item.value);
     }
   } finally {
     await probe.close();

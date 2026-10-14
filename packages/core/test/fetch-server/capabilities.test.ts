@@ -15,11 +15,7 @@ test('a capability the fetch transport does not port is refused', () => {
     });
   }).toThrow(TypeError);
   const upgrade = transport.createWebSocket;
-  if (upgrade === undefined) {
-    throw new TypeError(
-      'the fetch transport carries no websocket helper',
-    );
-  }
+  if (upgrade === undefined) throw new TypeError('the fetch transport carries no websocket helper');
   expect(() => {
     upgrade(adapter.getHono());
   }).toThrow(TypeError);

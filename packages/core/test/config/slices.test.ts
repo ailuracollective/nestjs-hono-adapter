@@ -14,36 +14,26 @@ import {
   withRegisteredSlice,
   withSkipProcessEnv,
 } from '#adapter-test/config-fixture';
-import {
-  DATABASE,
-  snapshotEnvironment,
-  withProbe,
-} from './support.ts';
+import { DATABASE, snapshotEnvironment, withProbe } from './support.ts';
 
 beforeEach(snapshotEnvironment);
 
 test('a registered slice reaches the constructor that asked for it', async () => {
-  await withProbe(
-    configured(withRegisteredSlice()),
-    async (probe) => {
-      const response = await request(probe, '/slice/database');
-      expect(response.status).toBe(HttpStatus.OK);
-      expect(response.body).toStrictEqual(DATABASE);
-    },
-  );
+  await withProbe(configured(withRegisteredSlice()), async (probe) => {
+    const response = await request(probe, '/slice/database');
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.body).toStrictEqual(DATABASE);
+  });
 });
 
 test('a registered slice is readable by name through the service', async () => {
-  const read = await withProbe(
-    configured(withRegisteredSlice()),
-    (probe) => {
-      const config = probe.app.get(ConfigService);
-      return {
-        host: config.get<string>('database.host'),
-        port: config.get<number>('database.port'),
-      };
-    },
-  );
+  const read = await withProbe(configured(withRegisteredSlice()), (probe) => {
+    const config = probe.app.get(ConfigService);
+    return {
+      host: config.get<string>('database.host'),
+      port: config.get<number>('database.port'),
+    };
+  });
 
   expect(read).toStrictEqual(DATABASE);
 });
@@ -78,17 +68,11 @@ test('an uncached configuration reads the environment again', async () => {
 });
 
 test('the process is not answered for when it is told to be skipped', async () => {
-  await withProbe(
-    configured(withSkipProcessEnv()),
-    async (probe) => {
-      process.env.APP_NAME = 'from-the-process';
+  await withProbe(configured(withSkipProcessEnv()), async (probe) => {
+    process.env.APP_NAME = 'from-the-process';
 
-      const response = await request(
-        probe,
-        '/config/env/APP_NAME',
-      );
-      expect(response.status).toBe(HttpStatus.OK);
-      expect(response.text).toBe('');
-    },
-  );
+    const response = await request(probe, '/config/env/APP_NAME');
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.text).toBe('');
+  });
 });

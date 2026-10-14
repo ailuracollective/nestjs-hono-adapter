@@ -8,11 +8,7 @@ import { ORDER_REQUEST, withProbe } from './support.ts';
 
 test('a route answers after emitting an event', async () => {
   await withProbe(async (probe) => {
-    const response = await request(
-      probe,
-      '/order',
-      ORDER_REQUEST,
-    );
+    const response = await request(probe, '/order', ORDER_REQUEST);
 
     expect(response.status).toBe(HttpStatus.CREATED);
     expect(response.body).toStrictEqual({ emitted: EVENT });
@@ -33,16 +29,10 @@ test('the event a route emitted reached a listener', async () => {
 
 test('an event with no listener named still leaves the route answered', async () => {
   await withProbe(async (probe) => {
-    const response = await request(
-      probe,
-      '/order',
-      ORDER_REQUEST,
-    );
+    const response = await request(probe, '/order', ORDER_REQUEST);
 
     expect(response.status).toBe(HttpStatus.CREATED);
-    expect(response.text).toBe(
-      JSON.stringify({ emitted: EVENT }),
-    );
+    expect(response.text).toBe(JSON.stringify({ emitted: EVENT }));
   });
 });
 
@@ -69,9 +59,7 @@ test('the emitter and its listeners answer over a real connection', async () => 
     const response = await request(probe, '/orders');
 
     expect(response.status).toBe(HttpStatus.OK);
-    expect(response.text).toBe(
-      JSON.stringify({ handled: ['placed'] }),
-    );
+    expect(response.text).toBe(JSON.stringify({ handled: ['placed'] }));
   } finally {
     await probe.close();
   }

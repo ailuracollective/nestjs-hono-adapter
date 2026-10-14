@@ -8,17 +8,10 @@ import {
   PREFLIGHT_STATUS,
   headerList,
 } from '#adapter/features/cors/options';
-import {
-  middlewareOrigin,
-  staticOrigin,
-} from '#adapter/features/cors/origins';
-import type {
-  AllowedOrigins,
-  CorsOptions,
-} from '#adapter/features/cors/types';
+import { middlewareOrigin, staticOrigin } from '#adapter/features/cors/origins';
+import type { AllowedOrigins, CorsOptions } from '#adapter/features/cors/types';
 import type { MiddlewareHandler } from 'hono';
 
-/** Translates CORS options into Hono's middleware. */
 const corsMiddleware = (
   options: CorsOptions,
   resolved?: AllowedOrigins,
@@ -37,16 +30,10 @@ const corsMiddleware = (
   }
 
   return cors({
-    allowHeaders: headerList(
-      options.allowedHeaders,
-      NO_HEADERS,
-    ),
+    allowHeaders: headerList(options.allowedHeaders, NO_HEADERS),
     allowMethods: headerList(options.methods, ALLOWED_METHODS),
     credentials: options.credentials ?? false,
-    exposeHeaders: headerList(
-      options.exposedHeaders,
-      NO_HEADERS,
-    ),
+    exposeHeaders: headerList(options.exposedHeaders, NO_HEADERS),
     maxAge: options.maxAge ?? MAX_AGE_SECONDS,
     origin: middlewareOrigin(named),
   });

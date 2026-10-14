@@ -2,10 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { HttpStatus } from '@nestjs/common';
 
-import {
-  MarkerFilter,
-  startProbe,
-} from '#adapter-test/support/index';
+import { MarkerFilter, startProbe } from '#adapter-test/support/index';
 import { request } from '#test/probe';
 
 test('a malformed body is answered by the exception layer', async () => {

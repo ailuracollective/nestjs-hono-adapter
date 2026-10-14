@@ -1,22 +1,13 @@
-import {
-  BadRequestException,
-  PayloadTooLargeException,
-} from '@nestjs/common';
+import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import { Readable } from 'node:stream';
 
-import type {
-  NestContext,
-  NestRequest,
-} from '@ailura/nestjs-hono-adapter';
+import type { NestContext, NestRequest } from '@ailura/nestjs-hono-adapter';
 import type {
   IncomingMultipartFile,
   MultipartFileStream,
   MultipartOptions,
 } from '#multipart/interfaces/index';
-import {
-  busboyExceptions,
-  multerExceptions,
-} from './multipart.constants.ts';
+import { busboyExceptions, multerExceptions } from './multipart.constants.ts';
 import { MultipartError } from './multipart.error.ts';
 import {
   appendTextField,
@@ -27,21 +18,14 @@ import {
   isMultipart,
 } from './multipart.parser.fields.ts';
 import { resolveLimits } from './multipart.parser.limits.ts';
-import {
-  drainBody,
-  pending,
-} from './multipart.parser.pending.ts';
+import { drainBody, pending } from './multipart.parser.pending.ts';
 import { transformException } from './multipart.utils.ts';
 
-/** What a streaming parse leaves for the interceptor. */
 interface StreamParse {
-  /** The file the form named, if it carried one. */
   file: MultipartFileStream | undefined;
-  /** Discards what is left of the body. */
   drain: () => Promise<void>;
 }
 
-/** Parses a multipart body as far as the first named file. */
 const processStream = async (
   context: NestContext,
   request: NestRequest,
@@ -53,19 +37,12 @@ const processStream = async (
     return undefined;
   }
   const web = context.req.raw.body;
-  if (web === null) {
-    throw new BadRequestException(
-      busboyExceptions.MULTIPART_UNEXPECTED_END_OF_FORM,
-    );
-  }
+  if (web === null)
+    throw new BadRequestException(busboyExceptions.MULTIPART_UNEXPECTED_END_OF_FORM);
 
   const limits = resolveLimits(request, options);
-  const busboy = createBusboy(
-    configFor(contentType, limits, options),
-  );
-  const source = Readable.fromWeb(
-    web as unknown as Parameters<typeof Readable.fromWeb>[0],
-  );
+  const busboy = createBusboy(configFor(contentType, limits, options));
+  const source = Readable.fromWeb(web as unknown as Parameters<typeof Readable.fromWeb>[0]);
   const body: Record<string, unknown> = Object.create(null);
   request.body = body;
   request.file = undefined;
@@ -77,17 +54,10 @@ const processStream = async (
   let failure: unknown = undefined;
 
   const fail = (error: unknown): void => {
-    if (failure !== undefined) {
-      return;
-    }
+    if (failure !== undefined) return;
     failure = error;
-    if (handed !== undefined && !handed.stream.destroyed) {
-      handed.stream.destroy(
-        error instanceof Error
-          ? error
-          : new Error(String(error)),
-      );
-    }
+    if (handed !== undefined && !handed.stream.destroyed)
+      handed.stream.destroy(error instanceof Error ? error : new Error(String(error)));
     ready.reject(error);
   };
 
@@ -119,11 +89,7 @@ const processStream = async (
       return;
     }
     const refuse = (): void => {
-      stream.destroy(
-        new PayloadTooLargeException(
-          multerExceptions.LIMIT_FILE_SIZE,
-        ),
-      );
+      stream.destroy(new PayloadTooLargeException(multerExceptions.LIMIT_FILE_SIZE));
     };
     if (stream.truncated === true) {
       refuse();
@@ -142,9 +108,7 @@ const processStream = async (
   };
 
   busboy.on('field', (name, value, info) => {
-    if (taken || failure !== undefined) {
-      return;
-    }
+    if (taken || failure !== undefined) return;
     try {
       appendTextField(body, name, value, info, limits);
     } catch (error: unknown) {

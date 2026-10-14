@@ -22,10 +22,7 @@ beforeEach(snapshotEnvironment);
 
 test('a variable loaded from a file reaches a route', async () => {
   await withProbe(configured(withEnvFile()), async (probe) => {
-    const response = await request(
-      probe,
-      '/config/env/APP_NAME',
-    );
+    const response = await request(probe, '/config/env/APP_NAME');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.body).toBe(APP_NAME);
   });
@@ -33,10 +30,7 @@ test('a variable loaded from a file reaches a route', async () => {
 
 test('every variable of the file is loaded, not only the first', async () => {
   await withProbe(configured(withEnvFile()), async (probe) => {
-    const response = await request(
-      probe,
-      '/config/env/APP_PORT',
-    );
+    const response = await request(probe, '/config/env/APP_PORT');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.body).toBe(APP_PORT);
   });
@@ -44,38 +38,23 @@ test('every variable of the file is loaded, not only the first', async () => {
 
 test('a key nothing loaded is answered as absent', async () => {
   await withProbe(configured(withEnvFile()), async (probe) => {
-    const response = await request(
-      probe,
-      '/config/env/APP_MISSING',
-    );
+    const response = await request(probe, '/config/env/APP_MISSING');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.text).toBe('');
   });
 });
 
 test('a variable is left as written when expansion is not asked for', async () => {
-  await withProbe(
-    configured(withUnexpandedEnvFile()),
-    async (probe) => {
-      const response = await request(
-        probe,
-        '/config/env/APP_GREETING',
-      );
-      expect(response.text).toBe(APP_GREETING_WRITTEN);
-    },
-  );
+  await withProbe(configured(withUnexpandedEnvFile()), async (probe) => {
+    const response = await request(probe, '/config/env/APP_GREETING');
+    expect(response.text).toBe(APP_GREETING_WRITTEN);
+  });
 });
 
 test('expansion resolves a variable written in terms of another', async () => {
-  await withProbe(
-    configured(withExpandedEnvFile()),
-    async (probe) => {
-      const response = await request(
-        probe,
-        '/config/env/APP_GREETING',
-      );
-      expect(response.status).toBe(HttpStatus.OK);
-      expect(response.body).toBe(APP_GREETING);
-    },
-  );
+  await withProbe(configured(withExpandedEnvFile()), async (probe) => {
+    const response = await request(probe, '/config/env/APP_GREETING');
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.body).toBe(APP_GREETING);
+  });
 });

@@ -40,10 +40,7 @@ test('two requests do not share one request-scoped provider', async () => {
 
 test('two requests in flight at once do not share a provider', async () => {
   await withProbe(async (probe) => {
-    const answers = await Promise.all([
-      seenBy(probe),
-      seenBy(probe),
-    ]);
+    const answers = await Promise.all([seenBy(probe), seenBy(probe)]);
     const [first, second] = answers;
 
     expect(second.serial).not.toBe(first.serial);

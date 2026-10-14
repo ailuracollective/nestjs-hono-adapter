@@ -13,9 +13,7 @@ test('a feature reaching another feature is refused', () => {
     'packages/core/src/features/views/index.ts',
     'packages/core/src/features/sse.ts',
   );
-  expect(featureReachesFeature([forbidden])).toStrictEqual([
-    forbidden,
-  ]);
+  expect(featureReachesFeature([forbidden])).toStrictEqual([forbidden]);
 });
 
 test('a feature reaching the ws island is refused', () => {
@@ -23,9 +21,7 @@ test('a feature reaching the ws island is refused', () => {
     'packages/core/src/features/static-assets/index.ts',
     'packages/ws/src/adapter.ts',
   );
-  expect(featureReachesWs([forbidden])).toStrictEqual([
-    forbidden,
-  ]);
+  expect(featureReachesWs([forbidden])).toStrictEqual([forbidden]);
 });
 
 test('ws reaching the application is refused when it is a value', () => {
@@ -57,15 +53,11 @@ test('the first three rules count a type import as an edge', () => {
     'packages/core/src/features/sse.ts',
     true,
   );
-  expect(featureReachesFeature([alsoTyped])).toStrictEqual([
-    alsoTyped,
-  ]);
+  expect(featureReachesFeature([alsoTyped])).toStrictEqual([alsoTyped]);
   const stillTyped = crossing(
     'packages/core/src/features/static-assets/index.ts',
     'packages/ws/src/adapter.ts',
     true,
   );
-  expect(featureReachesWs([stillTyped])).toStrictEqual([
-    stillTyped,
-  ]);
+  expect(featureReachesWs([stillTyped])).toStrictEqual([stillTyped]);
 });

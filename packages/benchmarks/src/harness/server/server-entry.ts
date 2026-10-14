@@ -20,9 +20,7 @@ const isTarget = (value: string | undefined): value is Target =>
 /** Validates and retrieves the target parameter. */
 const readTarget = (): Target => {
   if (!isTarget(targetArg)) {
-    throw new Error(
-      'the target must be bun, node, express or fastify',
-    );
+    throw new Error('the target must be bun, node, express or fastify');
   }
   return targetArg;
 };

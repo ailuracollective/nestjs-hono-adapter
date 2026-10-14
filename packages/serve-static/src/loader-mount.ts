@@ -4,7 +4,6 @@ import { staticOptionsOf } from './loader-resolve.ts';
 import type { Resolved } from './loader-resolve.ts';
 import type { Mounting } from './loader-fallback.ts';
 
-/** Serves the directory itself, under its root. */
 const mountDirectory = (
   mounting: Mounting,
   options: ServeStaticConfig,

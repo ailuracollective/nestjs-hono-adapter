@@ -1,28 +1,13 @@
 import { Hono } from 'hono';
 
-import {
-  CarrierSocket,
-  RequestCarrier,
-} from '#adapter/core/ports/bindings';
-import type {
-  Bindings,
-  Socket,
-} from '#adapter/core/ports/bindings';
+import { CarrierSocket, RequestCarrier } from '#adapter/core/ports/bindings';
+import type { Bindings, Socket } from '#adapter/core/ports/bindings';
 import { toNestRequest } from '#adapter/core/request/request';
-import type {
-  NestContext,
-  NestEnv,
-  NestRequest,
-} from '#adapter/index';
+import type { NestContext, NestEnv, NestRequest } from '#adapter/index';
 import { SYNTHETIC_SERVER } from '#test/bun-bindings';
 
-const TUNING = [
-  'setKeepAlive',
-  'setNoDelay',
-  'setTimeout',
-] as const;
+const TUNING = ['setKeepAlive', 'setNoDelay', 'setTimeout'] as const;
 
-/** A socket whose runtime provides the tuning calls itself. */
 const socketWithTuning = (): Socket => {
   const socket = new CarrierSocket('127.0.0.1');
   const tuning = (): Socket => socket;
@@ -32,7 +17,6 @@ const socketWithTuning = (): Socket => {
   return socket;
 };
 
-/** The request the translation builds over a synthesized socket. */
 const bagOver = async (): Promise<NestRequest> => {
   const incoming = new RequestCarrier('127.0.0.1');
   const binding = {
@@ -47,9 +31,7 @@ const bagOver = async (): Promise<NestRequest> => {
   });
   await app.request('/read', undefined, binding);
   const [context] = captured;
-  if (context === undefined) {
-    throw new Error('the route did not run');
-  }
+  if (context === undefined) throw new Error('the route did not run');
   return toNestRequest(context, { trustProxy: false });
 };
 

@@ -17,7 +17,6 @@ const withEnvFile = (): Type<unknown> => {
   return EnvFileModule;
 };
 
-/** The same application with expansion asked for. */
 const withExpandedEnvFile = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
@@ -32,20 +31,13 @@ const withExpandedEnvFile = (): Type<unknown> => {
   return ExpandedEnvFileModule;
 };
 
-/** The same file read without expansion asked for. */
 const withUnexpandedEnvFile = (): Type<unknown> => {
   @Module({
     controllers: [ConfigController],
-    imports: [
-      ConfigModule.forRoot({ envFilePath: EXPANDED_ENV_FILE }),
-    ],
+    imports: [ConfigModule.forRoot({ envFilePath: EXPANDED_ENV_FILE })],
   })
   class UnexpandedEnvFileModule {}
   return UnexpandedEnvFileModule;
 };
 
-export {
-  withEnvFile,
-  withExpandedEnvFile,
-  withUnexpandedEnvFile,
-};
+export { withEnvFile, withExpandedEnvFile, withUnexpandedEnvFile };

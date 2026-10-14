@@ -2,12 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { HttpStatus } from '@nestjs/common';
 
-import {
-  GIVEN_HEADER,
-  SENT_COOKIE,
-  app,
-  registerApplication,
-} from './support.ts';
+import { GIVEN_HEADER, SENT_COOKIE, app, registerApplication } from './support.ts';
 
 registerApplication();
 

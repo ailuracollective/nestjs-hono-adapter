@@ -1,8 +1,4 @@
-import type {
-  CallHandler,
-  ExecutionContext,
-  NestInterceptor,
-} from '@nestjs/common';
+import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import type { Observable } from 'rxjs';
 
@@ -16,10 +12,7 @@ export class BenchInterceptor implements NestInterceptor {
    * @param next - The call handler to invoke next.
    * @returns An observable of the response stream.
    */
-  public intercept(
-    _context: ExecutionContext,
-    next: CallHandler,
-  ): Observable<unknown> {
+  public intercept(_context: ExecutionContext, next: CallHandler): Observable<unknown> {
     return next.handle();
   }
 }

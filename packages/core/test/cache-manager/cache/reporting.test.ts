@@ -4,11 +4,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import { request, startProbe } from '#test/probe';
 
-import {
-  CacheModuleFixture,
-  resetCalls,
-  withProbe,
-} from '#adapter-test/cache-manager/fixture';
+import { CacheModuleFixture, resetCalls, withProbe } from '#adapter-test/cache-manager/fixture';
 
 test('the interceptor says on the answer whether it was a miss', async () => {
   await withProbe(async (probe) => {

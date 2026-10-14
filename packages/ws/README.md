@@ -1,9 +1,6 @@
 # @ailura/nestjs-platform-hono-ws
 
-WebSocket gateways for
-[`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter).
-A gateway is declared the way Nest declares one, and its `path`
-is registered on the same Hono application the routes hang on.
+WebSocket gateways for [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter). A gateway is declared the way Nest declares one, and its `path` is registered on the same Hono application the routes hang on.
 
 ## Install
 
@@ -11,8 +8,7 @@ is registered on the same Hono application the routes hang on.
 bun add @ailura/nestjs-platform-hono-ws @hono/node-ws @nestjs/websockets
 ```
 
-`@ailura/nestjs-hono-adapter`, `@nestjs/common`, `hono` and
-`rxjs` are peers too; install the adapter and Hono alongside it.
+`@ailura/nestjs-hono-adapter`, `@nestjs/common`, `hono` and `rxjs` are peers too; install the adapter and Hono alongside it.
 
 ## Use
 
@@ -27,8 +23,7 @@ app.useWebSocketAdapter(new HonoWsAdapter(app));
 await app.listen(3000);
 ```
 
-`HonoWsAdapter` takes the application, as Nest's own `WsAdapter`
-does; the `ServerAdapter` itself is accepted too.
+`HonoWsAdapter` takes the application, as Nest's own `WsAdapter` does; the `ServerAdapter` itself is accepted too.
 
 ```ts
 @WebSocketGateway({ path: '/ws' })
@@ -40,11 +35,7 @@ class EventsGateway {
 }
 ```
 
-A client sends `{ event, data, id? }` — or a bare string, which
-reads as the event name — and receives `{ event, data }`, with
-the `id` echoed when it asked for one. A handler that returns an
-observable is subscribed per connection and unsubscribed when
-that connection closes.
+A client sends `{ event, data, id? }` — or a bare string, which reads as the event name — and receives `{ event, data }`, with the `id` echoed when it asked for one. A handler that returns an observable is subscribed per connection and unsubscribed when that connection closes.
 
 A deployment whose frames are not JSON replaces the reader:
 
@@ -55,24 +46,13 @@ const ws = new HonoWsAdapter(adapter, {
 ws.setMessageParser(otherParser); // or later
 ```
 
-The parser answers a `{ event, data }`, or nothing, which drops
-the frame. Only `path` is honoured — every other gateway option
-(`port`, `namespace`, `server`, and the WebSocket server
-options) is refused when the gateway starts, naming the option
-it read. `@Ack()` is not wired; the acknowledgement travels back
-as the echoed `id`.
+The parser answers a `{ event, data }`, or nothing, which drops the frame. Only `path` is honoured — every other gateway option (`port`, `namespace`, `server`, and the WebSocket server options) is refused when the gateway starts, naming the option it read. `@Ack()` is not wired; the acknowledgement travels back as the echoed `id`.
 
-The upgrade is served by the transport when it carries a
-websocket helper — `hono/bun` with `bunServer()`, or the helper
-a `fetchServer()` host was handed — and by `@hono/node-ws`
-otherwise, which includes `nodeServer()` and the default
-transport on a Node runtime.
+The upgrade is served by the transport when it carries a websocket helper — `hono/bun` with `bunServer()`, or the helper a `fetchServer()` host was handed — and by `@hono/node-ws` otherwise, which includes `nodeServer()` and the default transport on a Node runtime.
 
 ## Documentation
 
-See
-[WebSockets](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/deployment.md#websockets)
-for the gateway contract, the custom parser and the refusals.
+See [WebSockets](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/deployment.md#websockets) for the gateway contract, the custom parser and the refusals.
 
 ## License
 

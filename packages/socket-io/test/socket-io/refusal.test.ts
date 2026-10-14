@@ -9,10 +9,7 @@ import { HonoIoAdapter } from '#socket-io/index';
 import { GatewayModule } from './gateways.ts';
 import { ANY_PORT, LOCALHOST } from './support.ts';
 
-/** The message the application refused to start with, or none. */
-const refusalOf = async (
-  app: INestApplication,
-): Promise<string> => {
+const refusalOf = async (app: INestApplication): Promise<string> => {
   try {
     await app.listen(ANY_PORT, LOCALHOST);
   } catch (error) {
@@ -35,7 +32,5 @@ test('a transport with no node server is refused by name', async () => {
 
 test('attachment without an HTTP server is refused', () => {
   const adapter = new HonoIoAdapter();
-  expect(() => adapter.create(ANY_PORT)).toThrow(
-    /needs a Node http\.Server/u,
-  );
+  expect(() => adapter.create(ANY_PORT)).toThrow(/needs a Node http\.Server/u);
 });

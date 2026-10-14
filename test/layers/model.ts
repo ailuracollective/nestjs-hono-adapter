@@ -1,18 +1,12 @@
 import path from 'node:path';
 
-/** One source import, and whether it is a type or the marker. */
 interface Edge {
-  /** The file the import is in. */
   readonly from: string;
-  /** The module it names. */
   readonly to: string;
-  /** Whether the statement is a type import. */
   readonly typeOnly: boolean;
-  /** Whether it names only the multipart marker. */
   readonly markerOnly?: boolean;
 }
 
-/** The layers of the tree, and the root is not one of them. */
 type Layer =
   | 'compat'
   | 'core'
@@ -23,19 +17,11 @@ type Layer =
   | 'socket-io'
   | 'ws';
 
-/** The repository root. */
 const ROOT = path.resolve(import.meta.dir, '..', '..');
-/** The adapter's source tree. */
 const SOURCE = path.join(ROOT, 'packages', 'core', 'src');
-/** The name the adapter core publishes under. */
 const CORE_PACKAGE = '@ailura/nestjs-hono-adapter';
-/** The adapter core's entry point, repository-relative. */
 const CORE_ENTRY = 'packages/core/src/index.ts';
 
-/**
- * The alias each source tree is named by, and the tree it
- * names.
- */
 const ALIASES: Readonly<Record<string, string>> = {
   '#adapter/': 'packages/core/src/',
   '#graphql/': 'packages/graphql/src/',
@@ -46,13 +32,11 @@ const ALIASES: Readonly<Record<string, string>> = {
   '#ws/': 'packages/ws/src/',
 };
 
-/** The two core modules that may name a feature or a bridge. */
 const COMPOSITION_ROOTS = new Set([
   'packages/core/src/core/server/hono-lifecycle.ts',
   'packages/core/src/core/server/server-adapter.ts',
 ]);
 
-/** The modules a walk of the core tree has to find. */
 const REQUIRED = [
   ...COMPOSITION_ROOTS,
   'packages/core/src/compat/index.ts',
@@ -70,8 +54,8 @@ const REQUIRED = [
 ];
 
 /**
- * The modules a walk of each bridge package has to find; the
- * entrypoint that publishes, and the bridge it holds.
+ * The modules a walk of each bridge package has to find; the entrypoint that publishes, and the
+ * bridge it holds.
  */
 const BRIDGE_ENTRYPOINTS: Readonly<Record<string, string[]>> = {
   graphql: [
@@ -79,10 +63,7 @@ const BRIDGE_ENTRYPOINTS: Readonly<Record<string, string[]>> = {
     'packages/graphql/src/apollo.ts',
     'packages/graphql/src/route.ts',
   ],
-  'serve-static': [
-    'packages/serve-static/src/index.ts',
-    'packages/serve-static/src/bridge.ts',
-  ],
+  'serve-static': ['packages/serve-static/src/index.ts', 'packages/serve-static/src/bridge.ts'],
 };
 
 export {

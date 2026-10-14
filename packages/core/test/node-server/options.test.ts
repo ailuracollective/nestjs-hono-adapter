@@ -4,19 +4,11 @@ import { HttpStatus } from '@nestjs/common';
 import { ServerAdapter } from '#adapter/index';
 import { request } from '#test/probe';
 import { startAdapter } from '#adapter-test/support/index';
-import {
-  ADAPTER_SOURCE,
-  NODE_SOURCE,
-  TLS_CHECK,
-  nodeAdapter,
-  runNode,
-} from './fixture.ts';
+import { ADAPTER_SOURCE, NODE_SOURCE, TLS_CHECK, nodeAdapter, runNode } from './fixture.ts';
 
 test('the Node transport carries no websocket helper', () => {
   const adapter = nodeAdapter();
-  expect(
-    adapter.getTransport().createWebSocket,
-  ).toBeUndefined();
+  expect(adapter.getTransport().createWebSocket).toBeUndefined();
 });
 
 test('the Node transport swaps the global objects by default', async () => {
@@ -76,10 +68,6 @@ test('the options that are not a transport are still read', async () => {
 });
 
 test('httpsOptions select the HTTPS server', async () => {
-  const answers = await runNode('node', [
-    '--input-type=module',
-    '-e',
-    TLS_CHECK,
-  ]);
+  const answers = await runNode('node', ['--input-type=module', '-e', TLS_CHECK]);
   expect(answers).toBe('true,false');
 });

@@ -12,10 +12,7 @@ test('a multipart request fills the body and the files', async () => {
   try {
     const form = new FormData();
     form.set('title', 'note');
-    form.set(
-      'upload',
-      new File(['bytes'], 'note.txt', { type: 'text/plain' }),
-    );
+    form.set('upload', new File(['bytes'], 'note.txt', { type: 'text/plain' }));
     const response = await request(probe, '/upload', {
       body: form,
       method: 'POST',

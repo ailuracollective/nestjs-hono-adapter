@@ -53,10 +53,7 @@ test('a query string reaches @Query() with its lists', async () => {
     mode: 'in-process',
   });
   try {
-    const response = await request(
-      probe,
-      '/query?ids=1&ids=2&filter[name]=x&page=3',
-    );
+    const response = await request(probe, '/query?ids=1&ids=2&filter[name]=x&page=3');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.body).toStrictEqual({
       'filter[name]': 'x',

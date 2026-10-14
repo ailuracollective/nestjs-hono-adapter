@@ -5,27 +5,22 @@ import { toNestRequest } from '#adapter/core/request/request';
 import type { NestContext, NestEnv } from '#adapter/index';
 import { SYNTHETIC_SERVER } from '#test/bun-bindings';
 
-/** A binding that carries no request carrier. */
 const NO_REQUEST_CARRIER = {
   server: SYNTHETIC_SERVER,
 } satisfies NestEnv['Bindings'];
 
-/** A context reached through a binding with no carrier. */
-const contextWithoutCarrier =
-  async (): Promise<NestContext> => {
-    const app = new Hono<NestEnv>();
-    const captured: NestContext[] = [];
-    app.get('/read', (context) => {
-      captured.push(context);
-      return context.text('ok');
-    });
-    await app.request('/read', undefined, NO_REQUEST_CARRIER);
-    const [context] = captured;
-    if (context === undefined) {
-      throw new Error('the route did not run');
-    }
-    return context;
-  };
+const contextWithoutCarrier = async (): Promise<NestContext> => {
+  const app = new Hono<NestEnv>();
+  const captured: NestContext[] = [];
+  app.get('/read', (context) => {
+    captured.push(context);
+    return context.text('ok');
+  });
+  await app.request('/read', undefined, NO_REQUEST_CARRIER);
+  const [context] = captured;
+  if (context === undefined) throw new Error('the route did not run');
+  return context;
+};
 
 test('the address is undefined rather than thrown when none arrived', async () => {
   const bag = toNestRequest(await contextWithoutCarrier(), {

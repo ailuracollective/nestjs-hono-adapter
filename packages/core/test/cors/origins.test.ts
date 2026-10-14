@@ -1,25 +1,14 @@
 import { expect, test } from 'bun:test';
 
-import {
-  ALLOWED,
-  CROSS_SITE,
-  FOREIGN,
-  OK,
-  bridged,
-  namedOrigin,
-} from './support.ts';
+import { ALLOWED, CROSS_SITE, FOREIGN, OK, bridged, namedOrigin } from './support.ts';
 
 test('an allowed origin is echoed back with credentials', async () => {
   const response = await bridged(CROSS_SITE).request('/', {
     headers: { origin: ALLOWED },
   });
 
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe(ALLOWED);
-  expect(
-    response.headers.get('access-control-allow-credentials'),
-  ).toBe('true');
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
+  expect(response.headers.get('access-control-allow-credentials')).toBe('true');
   expect(response.headers.get('vary')).toBe('Origin');
 });
 
@@ -53,9 +42,7 @@ test('a deployment that names no origin allows every one', async () => {
     headers: { origin: FOREIGN },
   });
 
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe('*');
+  expect(response.headers.get('access-control-allow-origin')).toBe('*');
 });
 
 test('a deployment may allow any origin', async () => {
@@ -64,9 +51,7 @@ test('a deployment may allow any origin', async () => {
     origin: true,
   }).request('/', { headers: { origin: FOREIGN } });
 
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe(FOREIGN);
+  expect(response.headers.get('access-control-allow-origin')).toBe(FOREIGN);
 });
 
 test('an origin may be matched by a pattern', async () => {
@@ -75,9 +60,7 @@ test('an origin may be matched by a pattern', async () => {
     origin: [/^https:\/\/[a-z]+\.example\.com$/u],
   }).request('/', { headers: { origin: ALLOWED } });
 
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe(ALLOWED);
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
 });
 
 test('an origin of * is answered literally', async () => {
@@ -85,8 +68,6 @@ test('an origin of * is answered literally', async () => {
     headers: { origin: FOREIGN },
   });
 
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe('*');
+  expect(response.headers.get('access-control-allow-origin')).toBe('*');
   expect(response.headers.get('vary')).toBeNull();
 });

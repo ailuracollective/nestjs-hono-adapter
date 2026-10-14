@@ -4,8 +4,8 @@ import { isMatcherPeer, isModulePeer } from './peer-read.ts';
 import type { Peers } from './peer-shapes.ts';
 
 /**
- * Loads both peers once; the only await in the bridge. They are
- * the application's, because the loader swapped is theirs.
+ * Loads both peers once; the only await in the bridge. They are the application's, because the
+ * loader swapped is theirs.
  */
 const loadPeers = async (): Promise<Peers> => {
   const [matcher, module] = await Promise.all([

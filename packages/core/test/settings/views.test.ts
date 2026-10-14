@@ -50,10 +50,7 @@ test('set reads views from a directory array in order', async () => {
     adapter: { views: { engine } },
     configure: (app) => {
       app.set('view engine', ENGINE);
-      app.set('views', [
-        path.join(FIXTURES, 'missing'),
-        FIXTURES,
-      ]);
+      app.set('views', [path.join(FIXTURES, 'missing'), FIXTURES]);
       app.setLocal('title', 'from the second directory');
     },
     mode: 'in-process',
@@ -61,9 +58,7 @@ test('set reads views from a directory array in order', async () => {
   try {
     const response = await request(probe, '/view');
     expect(response.status).toBe(HttpStatus.OK);
-    expect(response.text).toBe(
-      'hello from the second directory\n',
-    );
+    expect(response.text).toBe('hello from the second directory\n');
   } finally {
     await probe.close();
   }
@@ -72,10 +67,7 @@ test('set reads views from a directory array in order', async () => {
 test.each(
   // oxlint-disable-next-line unicorn/no-null -- null is an invalid public setting value worth checking.
   [true, null, {}, [FIXTURES, 1]].map((value) => ({ value })),
-)(
-  'views refuses an invalid directory value: %j',
-  ({ value }) => {
-    const adapter = bunAdapter();
-    expect(() => adapter.set('views', value)).toThrow('views');
-  },
-);
+)('views refuses an invalid directory value: %j', ({ value }) => {
+  const adapter = bunAdapter();
+  expect(() => adapter.set('views', value)).toThrow('views');
+});

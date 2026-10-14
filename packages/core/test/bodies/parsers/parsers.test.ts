@@ -1,9 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import {
-  jsonRequest,
-  startProbe,
-} from '#adapter-test/support/index';
+import { jsonRequest, startProbe } from '#adapter-test/support/index';
 import { request } from '#test/probe';
 import { BODY_LIMIT } from '#adapter-test/bodies/support';
 
@@ -20,11 +17,7 @@ test.each(['json', 'urlencoded', 'text', 'raw', undefined])(
     });
     try {
       probe.adapter.useBodyParser(type, true);
-      const parsed = await request(
-        probe,
-        '/echo',
-        jsonRequest({ name: 'note' }),
-      );
+      const parsed = await request(probe, '/echo', jsonRequest({ name: 'note' }));
       expect(parsed.body).toStrictEqual({ name: 'note' });
       await assertRaw(probe, '{"name":"note"}');
       await assertLimit(probe);
@@ -46,11 +39,7 @@ test.each(['yaml', 'multipart', '', 'JSON'])(
       expect(() => {
         probe.adapter.useBodyParser(type, true, { limit: 1 });
       }).toThrow(TypeError);
-      const unparsed = await request(
-        probe,
-        '/echo',
-        jsonRequest({ name: 'note' }),
-      );
+      const unparsed = await request(probe, '/echo', jsonRequest({ name: 'note' }));
       expect(unparsed.text).toBe('');
       probe.adapter.registerParserMiddleware();
       await assertRaw(probe, '');
@@ -69,9 +58,7 @@ test('refuses a parser option it cannot honour', async () => {
     try {
       probe.adapter.useBodyParser('urlencoded', false, options);
     } catch (error) {
-      if (error instanceof Error) {
-        refusal = error.message;
-      }
+      if (error instanceof Error) refusal = error.message;
     }
     expect(refusal).toContain('extended');
   } finally {

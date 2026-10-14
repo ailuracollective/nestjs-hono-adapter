@@ -2,18 +2,8 @@ import { expect, test } from 'bun:test';
 
 import { firstValueFrom, timeout } from 'rxjs';
 
-import {
-  SseModule,
-  startProbe,
-  torn,
-} from '#adapter-test/support/index';
-import {
-  FRAME_TIMEOUT,
-  bodyOf,
-  openStream,
-  respondOverBareSocket,
-  streamText,
-} from './support.ts';
+import { SseModule, startProbe, torn } from '#adapter-test/support/index';
+import { FRAME_TIMEOUT, bodyOf, openStream, respondOverBareSocket, streamText } from './support.ts';
 
 test('a client that walks away unsubscribes the handler', async () => {
   const probe = await startProbe({ module: SseModule });
@@ -34,13 +24,8 @@ test('a request that ends unsubscribes the handler', async () => {
     module: SseModule,
   });
   try {
-    const { incoming } = await respondOverBareSocket(
-      probe,
-      '/sse/open',
-    );
-    const gone = firstValueFrom(
-      torn.pipe(timeout(FRAME_TIMEOUT)),
-    );
+    const { incoming } = await respondOverBareSocket(probe, '/sse/open');
+    const gone = firstValueFrom(torn.pipe(timeout(FRAME_TIMEOUT)));
     incoming.emit('close');
     await gone;
   } finally {
@@ -54,13 +39,8 @@ test('a reader that lets go unsubscribes the handler', async () => {
     module: SseModule,
   });
   try {
-    const { response } = await respondOverBareSocket(
-      probe,
-      '/sse/open',
-    );
-    const gone = firstValueFrom(
-      torn.pipe(timeout(FRAME_TIMEOUT)),
-    );
+    const { response } = await respondOverBareSocket(probe, '/sse/open');
+    const gone = firstValueFrom(torn.pipe(timeout(FRAME_TIMEOUT)));
     await bodyOf(response).cancel();
     await gone;
   } finally {

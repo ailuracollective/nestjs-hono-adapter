@@ -17,18 +17,16 @@ test('the adapter reports itself to Nest', async () => {
 
 test('an error the framework raised is mapped to a bad request', () => {
   const adapter = bunAdapter();
-  const mapped = adapter.mapException(
-    new URIError('URI malformed'),
-  );
+  const mapped = adapter.mapException(new URIError('URI malformed'));
   expect(mapped).toBeInstanceOf(BadRequestException);
   expect(mapped).toMatchObject({ message: 'URI malformed' });
 });
 
 test('an invalid JSON body is mapped to a bad request too', () => {
   const adapter = bunAdapter();
-  expect(
-    adapter.mapException(new SyntaxError('Unexpected token')),
-  ).toBeInstanceOf(BadRequestException);
+  expect(adapter.mapException(new SyntaxError('Unexpected token'))).toBeInstanceOf(
+    BadRequestException,
+  );
 });
 
 test('an error of no known shape is passed through unchanged', () => {

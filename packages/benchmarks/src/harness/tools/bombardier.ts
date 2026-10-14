@@ -1,7 +1,4 @@
-import type {
-  LatencyMs,
-  LoadResult,
-} from '#benchmarks/harness/config/index';
+import type { LatencyMs, LoadResult } from '#benchmarks/harness/config/index';
 import { jsonFrom, pick } from './command.ts';
 
 /** Conversion factor from microseconds to milliseconds. */
@@ -42,9 +39,7 @@ interface BombardierReport {
 }
 
 /** Converts bombardier microsecond latencies into milliseconds. */
-const bombardierLatency = (
-  latency: BombardierReport['result']['latency'],
-): LatencyMs => ({
+const bombardierLatency = (latency: BombardierReport['result']['latency']): LatencyMs => ({
   max: latency.max / MICROS_PER_MILLISECOND,
   mean: latency.mean / MICROS_PER_MILLISECOND,
   min: 0,
@@ -54,30 +49,17 @@ const bombardierLatency = (
   p99: pick(latency.percentiles, '99') / MICROS_PER_MILLISECOND,
 });
 
-/**
- * Parses raw bombardier JSON output into a normalized
- * LoadResult.
- */
+/** Parses raw bombardier JSON output into a normalized LoadResult. */
 const parseBombardier = (raw: string): LoadResult => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- external JSON contract.
-  const { result } = JSON.parse(
-    jsonFrom(raw),
-  ) as unknown as BombardierReport;
+  const { result } = JSON.parse(jsonFrom(raw)) as unknown as BombardierReport;
   return {
-    bytesPerSecond:
-      result.timeTakenSeconds > 0
-        ? result.bytesRead / result.timeTakenSeconds
-        : 0,
+    bytesPerSecond: result.timeTakenSeconds > 0 ? result.bytesRead / result.timeTakenSeconds : 0,
     errors: result.req4xx + result.req5xx + result.others,
     latencyMs: bombardierLatency(result.latency),
     requestsPerSecond: result.rps.mean,
     total:
-      result.req1xx +
-      result.req2xx +
-      result.req3xx +
-      result.req4xx +
-      result.req5xx +
-      result.others,
+      result.req1xx + result.req2xx + result.req3xx + result.req4xx + result.req5xx + result.others,
   };
 };
 

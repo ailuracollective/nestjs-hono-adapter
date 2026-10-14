@@ -5,13 +5,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
 import { SECRET } from './constants.ts';
-import {
-  GuardedController,
-  TokenController,
-} from './controllers.ts';
+import { GuardedController, TokenController } from './controllers.ts';
 import { TokenStrategy } from './strategy.ts';
 
-/** The module that wires the token fixture. */
 @Module({
   controllers: [TokenController, GuardedController],
   imports: [

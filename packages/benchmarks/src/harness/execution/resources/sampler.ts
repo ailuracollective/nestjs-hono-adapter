@@ -42,9 +42,7 @@ interface ClosedWindow {
 }
 
 /** Reads one sample, or nothing when the process is gone. */
-const readSampleOrUndefined = async (
-  pid: number,
-): Promise<ProcessSample | undefined> => {
+const readSampleOrUndefined = async (pid: number): Promise<ProcessSample | undefined> => {
   try {
     return await readSample(pid);
   } catch {
@@ -52,15 +50,8 @@ const readSampleOrUndefined = async (
   }
 };
 
-/**
- * Polls the process RSS until stopped or the process
- * disappears.
- */
-const pollRss = async (
-  pid: number,
-  memories: number[],
-  stopped: () => boolean,
-): Promise<void> => {
+/** Polls the process RSS until stopped or the process disappears. */
+const pollRss = async (pid: number, memories: number[], stopped: () => boolean): Promise<void> => {
   while (!stopped()) {
     await delay(POLL_INTERVAL_MS);
     if (stopped()) {
@@ -83,16 +74,10 @@ const openWindow = (start: ProcessSample): OpenWindow => ({
 
 /** Aggregates raw readings into one window's resource usage. */
 const summarize = (window: ClosedWindow): ResourceSample => {
-  const cpuMillis = Math.max(
-    window.end.cpuMillis - window.start.cpuMillis,
-    0,
-  );
+  const cpuMillis = Math.max(window.end.cpuMillis - window.start.cpuMillis, 0);
   return {
     cpuMillis,
-    cpuPercent:
-      window.elapsedMillis > 0
-        ? (cpuMillis / window.elapsedMillis) * PERCENT
-        : 0,
+    cpuPercent: window.elapsedMillis > 0 ? (cpuMillis / window.elapsedMillis) * PERCENT : 0,
     rssMeanBytes: mean(window.memories),
     rssPeakBytes: peak(window.memories),
   };
@@ -135,11 +120,11 @@ const measureWindow = async <Value>(
 };
 
 /**
- * Runs a task while polling a process's CPU and memory, so the
- * returned usage covers exactly the task's window.
+ * Runs a task while polling a process's CPU and memory, so the returned usage covers exactly the
+ * task's window.
  *
- * Sampling is best effort: a process that cannot be read on
- * this platform yields no usage rather than failing the run.
+ * Sampling is best effort: a process that cannot be read on this platform yields no usage rather
+ * than failing the run.
  */
 const sampleResources = async <Value>(
   pid: number | undefined,

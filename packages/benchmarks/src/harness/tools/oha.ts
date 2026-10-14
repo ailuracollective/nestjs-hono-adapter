@@ -18,25 +18,14 @@ interface StatusTotals {
   readonly total: number;
 }
 
-/**
- * Sums status code distribution map into total and error
- * counts.
- */
-const statusTotals = (
-  distribution: Readonly<Record<string, number>> | undefined,
-): StatusTotals => {
+/** Sums status code distribution map into total and error counts. */
+const statusTotals = (distribution: Readonly<Record<string, number>> | undefined): StatusTotals => {
   let total = 0;
   let errors = 0;
-  for (const [code, count] of Object.entries(
-    distribution ?? {},
-  )) {
+  for (const [code, count] of Object.entries(distribution ?? {})) {
     const numeric = Number(code);
     total += count;
-    if (
-      Number.isNaN(numeric) ||
-      numeric < SUCCESS_MIN ||
-      numeric >= ERROR_MIN
-    ) {
+    if (Number.isNaN(numeric) || numeric < SUCCESS_MIN || numeric >= ERROR_MIN) {
       errors += count;
     }
   }
@@ -68,12 +57,8 @@ interface OhaReport {
 /** Parses raw oha JSON output into a normalized LoadResult. */
 const parseOha = (raw: string): LoadResult => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- external JSON contract.
-  const data = JSON.parse(
-    jsonFrom(raw),
-  ) as unknown as OhaReport;
-  const { errors, total } = statusTotals(
-    data.statusCodeDistribution,
-  );
+  const data = JSON.parse(jsonFrom(raw)) as unknown as OhaReport;
+  const { errors, total } = statusTotals(data.statusCodeDistribution);
   return {
     bytesPerSecond: data.summary.sizePerSec,
     errors,
@@ -82,9 +67,7 @@ const parseOha = (raw: string): LoadResult => {
       mean: data.metrics.latency_ms.mean,
       min: data.metrics.latency_ms.min,
       p50: data.metrics.latency_ms.p50,
-      p90:
-        pick(data.latencyPercentiles, 'p90') *
-        MILLIS_PER_SECOND,
+      p90: pick(data.latencyPercentiles, 'p90') * MILLIS_PER_SECOND,
       p95: data.metrics.latency_ms.p95,
       p99: data.metrics.latency_ms.p99,
     },

@@ -24,18 +24,14 @@ permissions:
   contents: read
 
 concurrency:
-  group:
-    cloudflare-examples-${{ github.workflow }}-${{ github.ref }}
+  group: cloudflare-examples-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   deploy:
     name: ${{ matrix.example }}
     if: >-
-      github.event.action != 'closed' && (github.event_name !=
-      'pull_request' ||
-      github.event.pull_request.head.repo.full_name ==
-      github.repository)
+      github.event.action != 'closed' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -59,13 +55,9 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Workers Previews need wrangler >= 4.136.3; the repo pins 4.136.2.
           wranglerVersion: '4.149.0'
-          workingDirectory:
-            examples/cloudflare/${{ matrix.example }}
+          workingDirectory: examples/cloudflare/${{ matrix.example }}
           packageManager: bun
-          command:
-            ${{ github.event_name == 'pull_request' &&
-            format('preview --name pr-{0}',
-            github.event.pull_request.number) || 'deploy' }}
+          command: ${{ github.event_name == 'pull_request' && format('preview --name pr-{0}', github.event.pull_request.number) || 'deploy' }}
       - name: Comment the preview URL
         if: >-
           github.event_name == 'pull_request' && !cancelled()
@@ -74,8 +66,7 @@ jobs:
           EXAMPLE: ${{ matrix.example }}
           OUTCOME: ${{ steps.cf.outcome }}
           PREVIEW_URL: ${{ steps.cf.outputs.preview-url }}
-          PREVIEW_DEPLOYMENT_URL:
-            ${{ steps.cf.outputs.preview-deployment-url }}
+          PREVIEW_DEPLOYMENT_URL: ${{ steps.cf.outputs.preview-deployment-url }}
         with:
           script: |
             const marker = `<!-- cloudflare-examples:${process.env.EXAMPLE} -->`;
@@ -118,9 +109,7 @@ jobs:
   cleanup:
     name: cleanup ${{ matrix.example }}
     if: >-
-      github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name ==
-      github.repository
+      github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -141,10 +130,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.149.0'
-          workingDirectory:
-            examples/cloudflare/${{ matrix.example }}
+          workingDirectory: examples/cloudflare/${{ matrix.example }}
           packageManager: bun
-          command:
-            ${{ format('preview delete --name pr-{0}
-            --skip-confirmation',
-            github.event.pull_request.number) }}
+          command: ${{ format('preview delete --name pr-{0} --skip-confirmation', github.event.pull_request.number) }}

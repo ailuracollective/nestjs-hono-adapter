@@ -59,30 +59,23 @@ test.each([
   ip: string | undefined;
   ips: string[];
   trust: boolean;
-}[])(
-  'an opted-in header resolves with proxy policy: %j',
-  async ({ headers, ip, ips, trust }) => {
-    const probe = await startFetch(
-      ProbeModule,
-      {
-        clientAddress: (request) =>
-          request.headers.get('cf-connecting-ip') ?? undefined,
-      },
-      trust,
-    );
-    try {
-      const response = await probe.fetch(
-        new Request('http://host.test/request', { headers }),
-      );
-      const body: unknown = await response.json();
-      if (ip === undefined) {
-        expect(body).not.toHaveProperty('ip');
-      } else {
-        expect(body).toMatchObject({ ip });
-      }
-      expect(body).toMatchObject({ ips });
-    } finally {
-      await probe.close();
+}[])('an opted-in header resolves with proxy policy: %j', async ({ headers, ip, ips, trust }) => {
+  const probe = await startFetch(
+    ProbeModule,
+    {
+      clientAddress: (request) => request.headers.get('cf-connecting-ip') ?? undefined,
+    },
+    trust,
+  );
+  try {
+    const response = await probe.fetch(new Request('http://host.test/request', { headers }));
+    const body: unknown = await response.json();
+    if (ip === undefined) expect(body).not.toHaveProperty('ip');
+    else {
+      expect(body).toMatchObject({ ip });
     }
-  },
-);
+    expect(body).toMatchObject({ ips });
+  } finally {
+    await probe.close();
+  }
+});

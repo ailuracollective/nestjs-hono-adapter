@@ -1,20 +1,12 @@
-import {
-  VERSION_NEUTRAL,
-  VersioningType,
-} from '@nestjs/common';
+import { VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
 import type { VersioningOptions } from '@nestjs/common';
 
 import type { NestHandler } from '#adapter/core/request/request';
 
-import {
-  isNeutral,
-  matchesVersion,
-  readHeader,
-} from './match.ts';
+import { isNeutral, matchesVersion, readHeader } from './match.ts';
 import type { VersionValue } from './match.ts';
 import { readMediaTypeVersion } from './media-type.ts';
 
-/** Guards a route by the version its extractor resolves. */
 const createCustomFilter =
   (
     handler: NestHandler,
@@ -28,13 +20,8 @@ const createCustomFilter =
     return next();
   };
 
-/** Guards a route by the version in its media type. */
 const createMediaTypeFilter =
-  (
-    handler: NestHandler,
-    version: VersionValue,
-    key: string,
-  ): NestHandler =>
+  (handler: NestHandler, version: VersionValue, key: string): NestHandler =>
   (request, response, next) => {
     const supplied = readMediaTypeVersion(request, key);
     if (supplied === undefined) {
@@ -49,13 +36,8 @@ const createMediaTypeFilter =
     return next();
   };
 
-/** Guards a route by the version in its header. */
 const createHeaderFilter =
-  (
-    handler: NestHandler,
-    version: VersionValue,
-    name: string,
-  ): NestHandler =>
+  (handler: NestHandler, version: VersionValue, name: string): NestHandler =>
   (request, response, next) => {
     const supplied = readHeader(request, name.toLowerCase());
     if (supplied === undefined) {
@@ -70,28 +52,16 @@ const createHeaderFilter =
     return next();
   };
 
-/** Guards a route handler by request version. */
 const createVersionFilter = (
   handler: NestHandler,
   version: VersionValue,
   options: VersioningOptions,
 ): NestHandler => {
-  if (
-    version === VERSION_NEUTRAL ||
-    options.type === VersioningType.URI
-  ) {
-    return handler;
-  }
-  if (options.type === VersioningType.CUSTOM) {
-    return createCustomFilter(
-      handler,
-      version,
-      options.extractor,
-    );
-  }
-  if (options.type === VersioningType.MEDIA_TYPE) {
+  if (version === VERSION_NEUTRAL || options.type === VersioningType.URI) return handler;
+  if (options.type === VersioningType.CUSTOM)
+    return createCustomFilter(handler, version, options.extractor);
+  if (options.type === VersioningType.MEDIA_TYPE)
     return createMediaTypeFilter(handler, version, options.key);
-  }
   return createHeaderFilter(handler, version, options.header);
 };
 

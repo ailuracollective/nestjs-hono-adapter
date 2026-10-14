@@ -7,10 +7,7 @@ import type { Target } from '#benchmarks/harness/config/index';
 import { findFreePort, waitForHealth } from './health.ts';
 
 /** Absolute path to the server-entry.js worker script. */
-const serverEntry = path.join(
-  import.meta.dir,
-  'server-entry.js',
-);
+const serverEntry = path.join(import.meta.dir, 'server-entry.js');
 
 /** Active child process metadata. */
 interface Running {
@@ -24,18 +21,14 @@ interface Running {
   readonly port: number;
 }
 
-/**
- * Spawns a server process for the target and waits until
- * healthy.
- */
+/** Spawns a server process for the target and waits until healthy. */
 const start = async (target: Target): Promise<Running> => {
   const port = await findFreePort();
   const runtime = target === 'bun' ? 'bun' : 'node';
-  const process = execa(
-    runtime,
-    [serverEntry, target, String(port)],
-    { reject: false, stdio: ['ignore', 'inherit', 'inherit'] },
-  );
+  const process = execa(runtime, [serverEntry, target, String(port)], {
+    reject: false,
+    stdio: ['ignore', 'inherit', 'inherit'],
+  });
   await waitForHealth(port);
   return {
     child: process.nodeChildProcess,

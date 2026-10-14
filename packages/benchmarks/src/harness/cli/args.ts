@@ -1,7 +1,4 @@
-import type {
-  Options,
-  Target,
-} from '#benchmarks/harness/config/index';
+import type { Options, Target } from '#benchmarks/harness/config/index';
 import { resolveTools } from './parsers.ts';
 import { buildProgram } from './program.ts';
 
@@ -36,13 +33,8 @@ const isHelpError = (error: unknown): boolean =>
   'code' in error &&
   error.code === 'commander.helpDisplayed';
 
-/**
- * Parses raw argv strings into structured Options or help
- * signal.
- */
-const parseArgs = (
-  argv: readonly string[],
-): Options | 'help' => {
+/** Parses raw argv strings into structured Options or help signal. */
+const parseArgs = (argv: readonly string[]): Options | 'help' => {
   const cli = buildProgram();
   try {
     cli.parse(argv, { from: 'user' });

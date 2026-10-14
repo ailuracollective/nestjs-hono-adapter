@@ -4,11 +4,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import { request } from '#test/probe';
 
-import {
-  ENGINE,
-  FIXTURES,
-  engine,
-} from '#adapter-test/views/engine';
+import { ENGINE, FIXTURES, engine } from '#adapter-test/views/engine';
 import { startProbe } from '#adapter-test/support/index';
 
 test('a view is rendered with the engine the deployment gave', async () => {

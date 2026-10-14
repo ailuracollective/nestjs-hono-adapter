@@ -5,14 +5,9 @@ import { HttpStatus } from '@nestjs/common';
 import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
 
-import {
-  ENGINE,
-  FIXTURES,
-  engine,
-} from '#adapter-test/views/engine';
+import { ENGINE, FIXTURES, engine } from '#adapter-test/views/engine';
 import { startProbe } from '#adapter-test/support/index';
 
-/** An engine wrapped in a render object. */
 const fastifyEngine = { render: engine };
 
 test("Fastify's options object configures the views", async () => {

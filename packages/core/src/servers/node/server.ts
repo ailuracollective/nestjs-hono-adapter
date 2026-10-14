@@ -9,30 +9,21 @@ import type { MiddlewareHandler } from 'hono';
 
 import type { NestEnv, NestHono } from '#adapter/core/context';
 import type { Server } from '#adapter/core/ports/server';
-import type {
-  ServerOptions,
-  StaticOptions,
-  Transport,
-} from '#adapter/core/ports/transport';
+import type { ServerOptions, StaticOptions, Transport } from '#adapter/core/ports/transport';
 
 import { asServer } from './listen.ts';
 
-/** The options `@hono/node-server` accepts to build the server. */
 type AdaptorOptions = Parameters<typeof createAdaptorServer>[0];
 
-/** What `nodeServer` accepts beyond the adapter's own options. */
 interface NodeServerOptions {
   /**
-   * Whether `@hono/node-server` drains unread request bodies
-   * and destroys the socket. Disabling is faster but only safe
-   * for trusted clients.
+   * Whether `@hono/node-server` drains unread request bodies and destroys the socket. Disabling is
+   * faster but only safe for trusted clients.
    */
   readonly autoCleanupIncoming?: boolean;
-  /** Whether the server replaces the global Web classes. */
   readonly overrideGlobalObjects?: boolean;
 }
 
-/** Builds the server Nest drives over `@hono/node-server`. */
 const createNodeServer = (
   app: NestHono,
   options: ServerOptions,
@@ -40,45 +31,33 @@ const createNodeServer = (
 ): Server => {
   const adaptor: Record<string, unknown> = {
     fetch: app.fetch,
-    overrideGlobalObjects:
-      transport.overrideGlobalObjects ?? true,
+    overrideGlobalObjects: transport.overrideGlobalObjects ?? true,
   };
-  if (transport.autoCleanupIncoming !== undefined) {
+  if (transport.autoCleanupIncoming !== undefined)
     adaptor.autoCleanupIncoming = transport.autoCleanupIncoming;
-  }
   const certificate = options.httpsOptions;
   if (certificate !== undefined) {
     adaptor.createServer = createHttpsServer;
     adaptor.serverOptions = certificate;
   }
-  const server = createAdaptorServer(
-    adaptor as unknown as AdaptorOptions,
-  ) as unknown as HttpServer;
+  const server = createAdaptorServer(adaptor as unknown as AdaptorOptions) as unknown as HttpServer;
   return asServer(server);
 };
 
-/** The middleware that serves one directory from the filesystem. */
-const nodeServeStatic = (
-  options: StaticOptions,
-): MiddlewareHandler<NestEnv> => {
+const nodeServeStatic = (options: StaticOptions): MiddlewareHandler<NestEnv> => {
   const config: Record<string, unknown> = {
     index: options.index,
     root: options.root,
   };
-  if (options.rewriteRequestPath !== undefined) {
+  if (options.rewriteRequestPath !== undefined)
     config.rewriteRequestPath = options.rewriteRequestPath;
-  }
   return serveStatic(
     config as unknown as Parameters<typeof serveStatic>[0],
   ) as MiddlewareHandler<NestEnv>;
 };
 
-/** The Node transport, for `new ServerAdapter({ transport })`. */
-const nodeServer = (
-  options: NodeServerOptions = {},
-): Transport => ({
-  createServer: (app, serverOptions) =>
-    createNodeServer(app, serverOptions, options),
+const nodeServer = (options: NodeServerOptions = {}): Transport => ({
+  createServer: (app, serverOptions) => createNodeServer(app, serverOptions, options),
   serveStatic: nodeServeStatic,
 });
 

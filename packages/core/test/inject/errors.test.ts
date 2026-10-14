@@ -26,9 +26,7 @@ test('refuses an option it cannot honour', async () => {
       url: '/ping',
     });
   } catch (error) {
-    if (error instanceof Error) {
-      refusal = error.message;
-    }
+    if (error instanceof Error) refusal = error.message;
   }
   expect(refusal).toContain('remoteAddress');
 });

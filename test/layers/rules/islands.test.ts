@@ -12,9 +12,7 @@ test('the socket.io island reaching the application is refused', () => {
     'packages/socket-io/src/adapter.ts',
     'packages/core/src/core/server/server-adapter.ts',
   );
-  expect(socketIoReachesApp([forbidden])).toStrictEqual([
-    forbidden,
-  ]);
+  expect(socketIoReachesApp([forbidden])).toStrictEqual([forbidden]);
 });
 
 test('and refused as a type too, unlike the ws island', () => {
@@ -34,14 +32,8 @@ test.each([
 ] as const)(
   'nested socket.io modules reaching %s are refused (type only: %s)',
   (target, typeOnly) => {
-    const forbidden = crossing(
-      'packages/socket-io/src/nested/helper.ts',
-      target,
-      typeOnly,
-    );
-    expect(socketIoReachesApp([forbidden])).toStrictEqual([
-      forbidden,
-    ]);
+    const forbidden = crossing('packages/socket-io/src/nested/helper.ts', target, typeOnly);
+    expect(socketIoReachesApp([forbidden])).toStrictEqual([forbidden]);
   },
 );
 test('the upload island reaching the application is refused when it is a value', () => {
@@ -49,9 +41,7 @@ test('the upload island reaching the application is refused when it is a value',
     'packages/multipart/src/storage/disk.storage.ts',
     'packages/core/src/core/request/body/index.ts',
   );
-  expect(multipartReachesApp([forbidden])).toStrictEqual([
-    forbidden,
-  ]);
+  expect(multipartReachesApp([forbidden])).toStrictEqual([forbidden]);
 });
 
 test('the marker is the one value edge the island may take', () => {
@@ -78,9 +68,7 @@ test.each(['graphql', 'serve-static'])(
       `packages/${bridge}/src/apollo-patch.ts`,
       'packages/core/src/core/context.ts',
     );
-    expect(bridgeReachesApp([forbidden])).toStrictEqual([
-      forbidden,
-    ]);
+    expect(bridgeReachesApp([forbidden])).toStrictEqual([forbidden]);
   },
 );
 
@@ -94,9 +82,6 @@ test('a bridge reaching an internal as a type is refused too', () => {
 });
 
 test('the published entrypoint is the one door a bridge has', () => {
-  const published = crossing(
-    'packages/serve-static/src/index.ts',
-    'packages/core/src/index.ts',
-  );
+  const published = crossing('packages/serve-static/src/index.ts', 'packages/core/src/index.ts');
   expect(bridgeReachesApp([published])).toStrictEqual([]);
 });

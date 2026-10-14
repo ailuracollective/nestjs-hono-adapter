@@ -12,9 +12,7 @@ test('bracketed names are literal keys', () => {
   expect(parseQuery('tags[]=a&tags[]=b')).toStrictEqual({
     'tags[]': ['a', 'b'],
   });
-  expect(
-    parseQuery('filter[name]=x&filter[deep][level]=y'),
-  ).toStrictEqual({
+  expect(parseQuery('filter[name]=x&filter[deep][level]=y')).toStrictEqual({
     'filter[deep][level]': 'y',
     'filter[name]': 'x',
   });
@@ -48,7 +46,5 @@ test('a value without an equals sign is empty', () => {
 });
 
 test('names that reach the prototype chain are dropped', () => {
-  expect(
-    parseQuery('__proto__=x&constructor=y&prototype=z&safe=1'),
-  ).toStrictEqual({ safe: '1' });
+  expect(parseQuery('__proto__=x&constructor=y&prototype=z&safe=1')).toStrictEqual({ safe: '1' });
 });

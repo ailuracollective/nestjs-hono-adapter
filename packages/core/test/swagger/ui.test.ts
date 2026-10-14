@@ -24,10 +24,7 @@ describe('the swagger UI page', () => {
 
   it('serves a swagger UI asset off the filesystem', async () => {
     await withProbe(async (probe) => {
-      const result = await request(
-        probe,
-        '/docs/swagger-ui.css',
-      );
+      const result = await request(probe, '/docs/swagger-ui.css');
       expect(result.status).toBe(HttpStatus.OK);
       expect(result.contentType).toContain('text/css');
     });
@@ -35,14 +32,9 @@ describe('the swagger UI page', () => {
 
   it('serves the bootstrap script as JavaScript', async () => {
     await withProbe(async (probe) => {
-      const result = await request(
-        probe,
-        '/docs/swagger-ui-init.js',
-      );
+      const result = await request(probe, '/docs/swagger-ui-init.js');
       expect(result.status).toBe(HttpStatus.OK);
-      expect(result.contentType).toContain(
-        'application/javascript',
-      );
+      expect(result.contentType).toContain('application/javascript');
     });
   });
 });

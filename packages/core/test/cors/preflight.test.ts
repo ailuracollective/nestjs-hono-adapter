@@ -21,9 +21,7 @@ test('a preflight for a deployment that names no origin allows it', async () => 
   });
 
   expect(response.status).toBe(NO_CONTENT);
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe('*');
+  expect(response.headers.get('access-control-allow-origin')).toBe('*');
 });
 
 test('a preflight is answered before any route is reached', async () => {
@@ -36,14 +34,8 @@ test('a preflight is answered before any route is reached', async () => {
   });
 
   expect(response.status).toBe(NO_CONTENT);
-  expect(
-    headerText(
-      response.headers.get('access-control-allow-methods'),
-    ),
-  ).toMatch(/POST/u);
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe(ALLOWED);
+  expect(headerText(response.headers.get('access-control-allow-methods'))).toMatch(/POST/u);
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
 });
 
 test('a preflight for a foreign origin carries nothing', async () => {
@@ -73,9 +65,7 @@ test('a preflight asked to continue reaches the router', async () => {
 
   expect(response.status).toBe(OK);
   expect(await response.text()).toBe('reached');
-  expect(
-    response.headers.get('access-control-allow-origin'),
-  ).toBe(ALLOWED);
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
 });
 
 test('a preflight names every method the deployment answers', async () => {
@@ -87,9 +77,7 @@ test('a preflight names every method the deployment answers', async () => {
     method: 'OPTIONS',
   });
 
-  const methods = headerText(
-    response.headers.get('access-control-allow-methods'),
-  ).split(',');
+  const methods = headerText(response.headers.get('access-control-allow-methods')).split(',');
   expect(methods).toContain('POST');
   expect(methods).toContain('OPTIONS');
 });

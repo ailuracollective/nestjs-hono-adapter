@@ -17,31 +17,17 @@ import {
   startGateways,
 } from './support.ts';
 
-/** Whether the installed Nest answers a thrown handler. */
 const nestAnswersExceptions = (): boolean => {
-  const candidate: unknown = Reflect.get(
-    BaseWsExceptionFilter.prototype,
-    'isNativeWebSocket',
-  );
+  const candidate: unknown = Reflect.get(BaseWsExceptionFilter.prototype, 'isNativeWebSocket');
   return typeof candidate === 'function';
 };
 
-/** What a window that saw no answer resolves to. */
 const NOTHING = Symbol('nothing');
 
-/** Sends one event and answers what came, or nothing. */
-const sendOrNothing = async (
-  socket: WebSocket,
-  event: string,
-): Promise<unknown> => {
+const sendOrNothing = async (socket: WebSocket, event: string): Promise<unknown> => {
   socket.send(JSON.stringify({ event }));
-  const outcome = await Promise.race([
-    nextMessage(socket),
-    quiet(QUIET_MS).then(() => NOTHING),
-  ]);
-  if (outcome === NOTHING) {
-    return NOTHING;
-  }
+  const outcome = await Promise.race([nextMessage(socket), quiet(QUIET_MS).then(() => NOTHING)]);
+  if (outcome === NOTHING) return NOTHING;
   return outcome;
 };
 

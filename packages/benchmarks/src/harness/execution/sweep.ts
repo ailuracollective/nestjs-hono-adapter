@@ -9,18 +9,12 @@ import type {
   Tool,
 } from '#benchmarks/harness/config/index';
 import { measure } from '#benchmarks/harness/tools/load';
-import {
-  sampleResources,
-  toResourceUsage,
-} from './resources/index.ts';
+import { sampleResources, toResourceUsage } from './resources/index.ts';
 
 /** Configuration and measurement handle for a target sweep. */
 interface Sweep {
   /** Function returning a load measurement promise. */
-  readonly measure: (
-    scenario: Scenario,
-    tool: Tool,
-  ) => (seconds: number) => Promise<LoadResult>;
+  readonly measure: (scenario: Scenario, tool: Tool) => (seconds: number) => Promise<LoadResult>;
   /** Options guiding the execution. */
   readonly options: Options;
   /** OS process id of the server, when known. */
@@ -64,20 +58,15 @@ const sweepFor = (spec: SweepSpec): Sweep => ({
 });
 
 /** Warms up and measures a single scenario with a tool. */
-const runScenario = async (
-  sweep: Sweep,
-  scenario: Scenario,
-  tool: Tool,
-): Promise<Sample[]> => {
+const runScenario = async (sweep: Sweep, scenario: Scenario, tool: Tool): Promise<Sample[]> => {
   const samples: Sample[] = [];
   const load = sweep.measure(scenario, tool);
   if (sweep.options.warmupSeconds > 0) {
     await load(sweep.options.warmupSeconds);
   }
   for (let index = 0; index < sweep.options.runs; index += 1) {
-    const { result, usage } = await sampleResources(
-      sweep.pid,
-      () => load(sweep.options.durationSeconds),
+    const { result, usage } = await sampleResources(sweep.pid, () =>
+      load(sweep.options.durationSeconds),
     );
     samples.push({
       resources: toResourceUsage(usage, result.total),

@@ -5,11 +5,7 @@ import { HttpStatus } from '@nestjs/common';
 import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
 
-import {
-  ENGINE,
-  FIXTURES,
-  engine,
-} from '#adapter-test/views/engine';
+import { ENGINE, FIXTURES, engine } from '#adapter-test/views/engine';
 import { startProbe } from '#adapter-test/support/index';
 
 test('a view directory named on the application is read from', async () => {
@@ -64,9 +60,7 @@ test('a named engine that cannot be loaded fails the render', async () => {
   });
   try {
     const response = await request(probe, '/view');
-    expect(response.status).toBe(
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+    expect(response.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
   } finally {
     await probe.close();
   }

@@ -1,13 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "unicorn",
-    "oxc",
-    "import",
-    "promise",
-    "node"
-  ],
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node"],
   "categories": {
     "correctness": "error",
     "suspicious": "error",
@@ -58,6 +51,7 @@
       }
     ],
     "one-var": ["error", "never"],
+    "curly": "off",
     "capitalized-comments": [
       "error",
       "always",
@@ -85,12 +79,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "src/**/*.ts",
-        "test/**/*.ts",
-        "packages/*/src/**/*.ts",
-        "packages/*/test/**/*.ts"
-      ],
+      "files": ["src/**/*.ts", "test/**/*.ts", "packages/*/src/**/*.ts", "packages/*/test/**/*.ts"],
       "env": {
         "builtin": true,
         "node": true
@@ -146,9 +135,7 @@
       }
     },
     {
-      "files": [
-        "packages/core/src/core/server/server-adapter.ts"
-      ],
+      "files": ["packages/core/src/core/server/server-adapter.ts"],
       "rules": {
         "import/max-dependencies": [
           "error",
@@ -172,9 +159,7 @@
       }
     },
     {
-      "files": [
-        "packages/core/src/core/server/hono-lifecycle.ts"
-      ],
+      "files": ["packages/core/src/core/server/hono-lifecycle.ts"],
       "rules": {
         "import/max-dependencies": [
           "error",
@@ -273,17 +258,13 @@
       }
     },
     {
-      "files": [
-        "packages/multipart/src/interceptors/files.interceptor.ts"
-      ],
+      "files": ["packages/multipart/src/interceptors/files.interceptor.ts"],
       "rules": {
         "oxc/no-rest-spread-properties": "off"
       }
     },
     {
-      "files": [
-        "packages/multipart/src/multipart/append-field.util.ts"
-      ],
+      "files": ["packages/multipart/src/multipart/append-field.util.ts"],
       "rules": {
         "init-declarations": "off",
         "max-params": "off",
@@ -303,26 +284,20 @@
       }
     },
     {
-      "files": [
-        "packages/multipart/src/multipart/multipart.constants.ts"
-      ],
+      "files": ["packages/multipart/src/multipart/multipart.constants.ts"],
       "rules": {
         "sort-keys": "off"
       }
     },
     {
-      "files": [
-        "packages/multipart/src/multipart/multipart.interceptor.factory.ts"
-      ],
+      "files": ["packages/multipart/src/multipart/multipart.interceptor.factory.ts"],
       "rules": {
         "max-classes-per-file": "off",
         "oxc/no-optional-chaining": "off"
       }
     },
     {
-      "files": [
-        "packages/multipart/src/multipart/multipart.parser*.ts"
-      ],
+      "files": ["packages/multipart/src/multipart/multipart.parser*.ts"],
       "rules": {
         "max-lines-per-function": "off",
         "max-params": "off",
@@ -344,9 +319,7 @@
       }
     },
     {
-      "files": [
-        "packages/multipart/src/multipart/multipart.utils.ts"
-      ],
+      "files": ["packages/multipart/src/multipart/multipart.utils.ts"],
       "rules": {
         "max-statements": "off",
         "oxc/no-rest-spread-properties": "off"
@@ -376,9 +349,7 @@
       }
     },
     {
-      "files": [
-        "packages/core/src/compat/express/middleware-fit.ts"
-      ],
+      "files": ["packages/core/src/compat/express/middleware-fit.ts"],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }

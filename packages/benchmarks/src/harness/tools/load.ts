@@ -1,8 +1,4 @@
-import type {
-  LoadResult,
-  Scenario,
-  Tool,
-} from '#benchmarks/harness/config/index';
+import type { LoadResult, Scenario, Tool } from '#benchmarks/harness/config/index';
 import { parseBombardier } from './bombardier.ts';
 import { runCommand } from './command.ts';
 import { parseOha } from './oha.ts';
@@ -23,21 +19,14 @@ interface LoadOptions {
 }
 
 /** Drives one load tool for one duration and parses its report. */
-const measure = async (
-  options: LoadOptions,
-): Promise<LoadResult> => {
+const measure = async (options: LoadOptions): Promise<LoadResult> => {
   const { tool } = options;
-  const args =
-    tool === 'oha' ? ohaArgs(options) : bombardierArgs(options);
+  const args = tool === 'oha' ? ohaArgs(options) : bombardierArgs(options);
   const result = await runCommand(tool, args);
   if (result.code !== 0) {
-    throw new Error(
-      `${tool} exited with ${String(result.code)}:\n${result.stderr}`,
-    );
+    throw new Error(`${tool} exited with ${String(result.code)}:\n${result.stderr}`);
   }
-  return tool === 'oha'
-    ? parseOha(result.stdout)
-    : parseBombardier(result.stdout);
+  return tool === 'oha' ? parseOha(result.stdout) : parseBombardier(result.stdout);
 };
 
 export type { LoadOptions };

@@ -80,10 +80,4 @@ interface Summary {
   readonly tool: Tool;
 }
 
-export type {
-  LatencyMs,
-  LoadResult,
-  ResourceUsage,
-  Sample,
-  Summary,
-};
+export type { LatencyMs, LoadResult, ResourceUsage, Sample, Summary };

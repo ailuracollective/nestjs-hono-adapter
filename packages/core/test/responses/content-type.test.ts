@@ -14,9 +14,7 @@ test('a StreamableFile is streamed with its headers', async () => {
     const response = await request(probe, '/response/file');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.contentType).toContain('text/plain');
-    expect(response.headers.get('content-disposition')).toBe(
-      'attachment; filename="note.txt"',
-    );
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="note.txt"');
     expect(response.text).toBe('streamed');
   } finally {
     await probe.close();
@@ -29,10 +27,7 @@ test('a declared content type wins over the inferred one', async () => {
     module: ResponseModule,
   });
   try {
-    const response = await request(
-      probe,
-      '/response/declared-type',
-    );
+    const response = await request(probe, '/response/declared-type');
     expect(response.contentType).toBe('application/xml');
   } finally {
     await probe.close();
@@ -45,13 +40,8 @@ test('a value with no declared type is answered as JSON', async () => {
     module: ResponseModule,
   });
   try {
-    const response = await request(
-      probe,
-      '/response/inferred-type',
-    );
-    expect(response.contentType).toBe(
-      'application/json; charset=UTF-8',
-    );
+    const response = await request(probe, '/response/inferred-type');
+    expect(response.contentType).toBe('application/json; charset=UTF-8');
     expect(response.body).toStrictEqual({ inferred: 'json' });
   } finally {
     await probe.close();
@@ -64,10 +54,7 @@ test('a declared content type is honoured on a string body', async () => {
     module: ResponseModule,
   });
   try {
-    const response = await request(
-      probe,
-      '/response/declared-type-text',
-    );
+    const response = await request(probe, '/response/declared-type-text');
     expect(response.contentType).toBe('text/csv');
     expect(response.text).toBe('a,b');
   } finally {

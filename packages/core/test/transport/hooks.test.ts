@@ -6,16 +6,11 @@ import { bunAdapter } from '#test/bun-adapter';
 import { request } from '#test/probe';
 
 import { securityHookOf } from './helpers.ts';
-import {
-  startAdapter,
-  startProbe,
-} from '#adapter-test/support/index';
+import { startAdapter, startProbe } from '#adapter-test/support/index';
 
 test('a Hono route registered before listening is served', async () => {
   const adapter = bunAdapter();
-  adapter
-    .getHono()
-    .get('/native', (context) => context.text('native'));
+  adapter.getHono().get('/native', (context) => context.text('native'));
   const probe = await startAdapter(adapter);
   try {
     const response = await request(probe, '/native');
@@ -47,15 +42,12 @@ test('a failure the security hook reports is answered by Nest', async () => {
   const probe = await startAdapter(adapter);
   try {
     const response = await request(probe, '/ping');
-    expect(response.status).toBe(
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+    expect(response.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
   } finally {
     await probe.close();
   }
 });
 
-/** The application options Nest 12 added a flag to. */
 type ClosingOptions = NestApplicationOptions & {
   readonly return503OnClosing?: boolean;
 };

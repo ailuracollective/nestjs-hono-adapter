@@ -12,33 +12,25 @@ import type { ServeStaticConfig } from './options.ts';
 import type { Peers } from './peer-shapes.ts';
 import type { Handler } from './mount-roots.ts';
 
-/** The parts of the adapter the loader reaches for. */
 interface LoaderAdapter {
   getHono: () => { use: (path: string, fn: Handler) => void };
   getTransport: () => Transport;
 }
 
 /**
- * The Hono-shaped stand-in for `@nestjs/serve-static`'s loader,
- * which builds an Express router: here the transport reads the
+ * The Hono-shaped stand-in for `@nestjs/serve-static`'s loader, which builds an Express router:
+ * here the transport reads the
  */
 class HonoServeStaticLoader {
-  /** The peer's default client directory. */
   private readonly defaultRoot: string;
 
-  /** The peers the exclusions are compiled against. */
   private readonly peers: Peers;
 
-  /**
-   * Builds the loader on the peers `@nestjs/serve-static`
-   * names.
-   */
   public constructor(peers: Peers, defaultRoot: string) {
     this.peers = peers;
     this.defaultRoot = defaultRoot;
   }
 
-  /** Registers static assets and the SPA fallback on an adapter. */
   public register(
     httpAdapter: LoaderAdapter,
     config: { getGlobalPrefix?: () => string | undefined },
@@ -51,25 +43,15 @@ class HonoServeStaticLoader {
     };
     const prefix = globalPrefixOf(config);
     for (const options of registrations) {
-      this.registerOne(
-        mounting,
-        options,
-        resolve(options, this.defaultRoot, prefix),
-      );
+      this.registerOne(mounting, options, resolve(options, this.defaultRoot, prefix));
     }
   }
 
-  /** The index file one directory answers with. */
   public getIndexFilePath(clientPath: string): string {
     return indexPath(clientPath);
   }
 
-  /** Registers one directory and the fallback that follows it. */
-  private registerOne(
-    mounting: Mounting,
-    options: ServeStaticConfig,
-    resolved: Resolved,
-  ): void {
+  private registerOne(mounting: Mounting, options: ServeStaticConfig, resolved: Resolved): void {
     assertNoHooks(options);
     mountDirectory(mounting, options, resolved);
     mountFallback(mounting, resolved);

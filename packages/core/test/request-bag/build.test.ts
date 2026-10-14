@@ -5,31 +5,17 @@ import type { IncomingMessage } from 'node:http';
 
 import { RequestCarrier } from '#adapter/core/ports/bindings';
 import { toNestRequest } from '#adapter/core/request/request';
-import type {
-  Incoming,
-  NestContext,
-  NestEnv,
-} from '#adapter/index';
+import type { Incoming, NestContext, NestEnv } from '#adapter/index';
 import { SYNTHETIC_SERVER } from '#test/bun-bindings';
 
-/**
- * A request no listener sent, read for its raw request and
- * socket.
- */
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- named as the two faces the package publishes, the carrier Nest reads and the `IncomingMessage` a deployment read before the transports split.
-const SYNTHETIC_INCOMING = new RequestCarrier(
-  undefined,
-) as unknown as IncomingMessage & Incoming;
+const SYNTHETIC_INCOMING = new RequestCarrier(undefined) as unknown as IncomingMessage & Incoming;
 
-/** How often the translation reached for the socket. */
 interface Reached {
   incoming: number;
 }
 
-/** A context over a binding that counts how often it is read. */
-const contextOver = async (
-  target: string,
-): Promise<{ context: NestContext; reached: Reached }> => {
+const contextOver = async (target: string): Promise<{ context: NestContext; reached: Reached }> => {
   const reached: Reached = { incoming: 0 };
   const binding = {
     get incoming(): Incoming {
@@ -46,15 +32,12 @@ const contextOver = async (
   });
   await app.request(target, undefined, binding);
   const [context] = captured;
-  if (context === undefined) {
-    throw new Error('the route did not run');
-  }
+  if (context === undefined) throw new Error('the route did not run');
   return { context, reached };
 };
 
 test('the translation builds nothing the route does not read', async () => {
-  const { context, reached } =
-    await contextOver('/read?name=ada');
+  const { context, reached } = await contextOver('/read?name=ada');
   const bag = toNestRequest(context, { trustProxy: false });
   expect(reached.incoming).toBe(0);
   expect(bag.method).toBe('GET');
@@ -75,5 +58,3 @@ test('a property read twice is built once', async () => {
   expect(bag.ips).toStrictEqual([]);
   expect(reached.incoming).toBe(1);
 });
-
-/** A binding that carries no request carrier. */

@@ -1,10 +1,7 @@
 import type { NestContext } from '#adapter/core/context';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
-/** The Express-shaped request a module reads. */
-const expressRequest = (
-  context: NestContext,
-): Record<string, unknown> => {
+const expressRequest = (context: NestContext): Record<string, unknown> => {
   const headers: Record<string, string> = {};
   for (const [name, value] of context.req.raw.headers) {
     headers[name] = value;
@@ -17,8 +14,7 @@ const expressRequest = (
   return {
     body: undefined,
     cookies: {},
-    get: (name: string): string | undefined =>
-      context.req.header(name),
+    get: (name: string): string | undefined => context.req.header(name),
     headers,
     method: context.req.method,
     originalUrl: context.req.url,
@@ -29,26 +25,18 @@ const expressRequest = (
   };
 };
 
-/** The Express-shaped response a module writes through. */
-const expressResponse = (
-  context: NestContext,
-): Record<string, unknown> => {
+const expressResponse = (context: NestContext): Record<string, unknown> => {
   const response: Record<string, unknown> = {
-    getHeader: (name: string): string | null =>
-      context.res.headers.get(name),
+    getHeader: (name: string): string | null => context.res.headers.get(name),
     headersSent: false,
     json: (body: unknown): Response => context.json(body),
     locals: {},
     send: (body: unknown): Response =>
-      typeof body === 'string'
-        ? context.text(body)
-        : context.json(body),
+      typeof body === 'string' ? context.text(body) : context.json(body),
     setHeader: (name: string, value: string): void => {
       context.header(name, value);
     },
-    status: (
-      code: ContentfulStatusCode,
-    ): Record<string, unknown> => {
+    status: (code: ContentfulStatusCode): Record<string, unknown> => {
       response.statusCode = code;
       context.status(code);
       return response;

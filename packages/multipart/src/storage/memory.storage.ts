@@ -4,7 +4,6 @@ import { Buffer } from 'node:buffer';
 
 import type { MultipartStorageEngine } from '#multipart/interfaces/index';
 
-/** Buffers each file into `file.buffer`. */
 const memoryStorage = (): MultipartStorageEngine => ({
   _handleFile(_request, file, callback) {
     const chunks: Buffer[] = [];

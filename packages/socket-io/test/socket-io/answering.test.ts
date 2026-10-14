@@ -6,9 +6,7 @@ import { open, received, start } from './support.ts';
 test('a gateway answers the acknowledgement of a frame', async () => {
   const started = await start();
   const client = await open(started.url);
-  expect(
-    await client.emitWithAck(PING, { count: 1 }),
-  ).toStrictEqual({ echo: { count: 1 } });
+  expect(await client.emitWithAck(PING, { count: 1 })).toStrictEqual({ echo: { count: 1 } });
   client.close();
   await started.close();
 });

@@ -4,15 +4,11 @@ import { withDeadline } from '#multipart-test/multipart.support/requests';
 import { BOUNDARY, PADDING } from './constants.ts';
 import { StreamModule } from './controller.ts';
 
-/** A body delivered piece by piece, and how far it was read. */
 interface PacedBody {
-  /** The body as it is sent. */
   readonly body: ReadableStream<Uint8Array>;
-  /** Whether the reader reached the end. */
   readonly finished: () => boolean;
 }
 
-/** Builds a multipart body that arrives piece by piece. */
 const pacedBody = (count: number, size: number): PacedBody => {
   const encoder = new TextEncoder();
   const head =
@@ -39,14 +35,12 @@ const pacedBody = (count: number, size: number): PacedBody => {
   return { body, finished: () => pulled >= pieces.length };
 };
 
-/** Starts the streaming module in process. */
 const app = (): ReturnType<typeof startProbe> =>
   startProbe({
     mode: 'in-process',
     module: StreamModule,
   });
 
-/** Sends one form to a route of a fresh application. */
 const send = async (
   route: string,
   form: FormData,
@@ -62,26 +56,19 @@ const send = async (
   }
 };
 
-/** Sends one hand-built body to a route of a fresh application. */
 const sendBody = async (
   route: string,
   init: RequestInit & { duplex?: string },
 ): Promise<Awaited<ReturnType<typeof request>> | 'hung'> => {
   const probe = await app();
   try {
-    return await withDeadline(
-      request(probe, route, init),
-      ABORT_DEADLINE,
-    );
+    return await withDeadline(request(probe, route, init), ABORT_DEADLINE);
   } finally {
     await probe.close();
   }
 };
 
-/** Builds the request init a paced body is sent with. */
-const pacedInit = (
-  paced: PacedBody,
-): RequestInit & { duplex?: string } => ({
+const pacedInit = (paced: PacedBody): RequestInit & { duplex?: string } => ({
   body: paced.body,
   duplex: 'half',
   headers: {
@@ -90,11 +77,7 @@ const pacedInit = (
   method: 'POST',
 });
 
-/** Reports a request outcome, failing the case when it hung. */
-const answered = <Value>(
-  outcome: Value | 'hung',
-  what: string,
-): Value => {
+const answered = <Value>(outcome: Value | 'hung', what: string): Value => {
   if (outcome === 'hung') {
     throw new Error(`the ${what} never answered`);
   }

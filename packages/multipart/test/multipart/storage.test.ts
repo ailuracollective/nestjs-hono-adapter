@@ -18,10 +18,7 @@ import {
   cleanup,
   withDeadline,
 } from '#multipart-test/multipart.support/requests';
-import {
-  UploadModule,
-  upload,
-} from '#multipart-test/multipart.support/uploads';
+import { UploadModule, upload } from '#multipart-test/multipart.support/uploads';
 import { request, startProbe } from '#test/probe';
 
 afterAll(cleanup);
@@ -53,17 +50,12 @@ describe('over a connection', () => {
 
 describe('disk storage', () => {
   test('the file is written and its path is reported', async () => {
-    const result = await upload(
-      '/disk',
-      filePart(DISK_CONTENT),
-    );
+    const result = await upload('/disk', filePart(DISK_CONTENT));
     const { path: target } = asRecord(result.body);
 
     expect(result.status).toBe(CREATED);
     expect(typeof target).toBe('string');
-    if (typeof target !== 'string') {
-      throw new TypeError('disk storage reported no path');
-    }
+    if (typeof target !== 'string') throw new TypeError('disk storage reported no path');
     expect(await readFile(target, 'utf8')).toBe(DISK_CONTENT);
   });
 });
@@ -85,17 +77,10 @@ describe('an aborted upload', () => {
         method: 'POST',
       };
 
-      const outcome = await withDeadline(
-        request(probe, '/aborted', init),
-        ABORT_DEADLINE,
-      );
+      const outcome = await withDeadline(request(probe, '/aborted', init), ABORT_DEADLINE);
 
-      if (outcome === 'hung') {
-        throw new Error('the aborted upload never answered');
-      }
-      expect(outcome.status).toBeGreaterThanOrEqual(
-        BAD_REQUEST,
-      );
+      if (outcome === 'hung') throw new Error('the aborted upload never answered');
+      expect(outcome.status).toBeGreaterThanOrEqual(BAD_REQUEST);
       expect(await readdir(abortDirectory)).toEqual([]);
     } finally {
       await probe.close();

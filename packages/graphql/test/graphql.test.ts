@@ -1,41 +1,27 @@
 import { expect, test } from 'bun:test';
-import {
-  bridgeNames,
-  discoverBridges,
-} from '#adapter/compat/index';
+import { bridgeNames, discoverBridges } from '#adapter/compat/index';
 
 import { request, startProbe } from '#test/probe';
 
-import {
-  graphQlModule,
-  probeContext,
-} from './graphql-fixture.ts';
+import { graphQlModule, probeContext } from './graphql-fixture.ts';
 
-/** The path Apollo answers on when the deployment named none. */
 const PATH = '/graphql';
 
-/** The status an answered operation carries. */
 const OK = 200;
 
-/** The status an unanswered path carries. */
 const NOT_FOUND = 404;
 
-/** The status a refused operation carries at least. */
 const REFUSED = 400;
 
-/** The status a failure carries no more than. */
 const NOT_A_FAILURE = 500;
 
-/** One GraphQL operation, as a JSON request body. */
-const operation = (text: string): string =>
-  JSON.stringify({ query: text });
+const operation = (text: string): string => JSON.stringify({ query: text });
 
 test('the region finds the installed bridge package on its own', async () => {
   await discoverBridges();
   expect(bridgeNames()).toContain('graphql/apollo');
 });
 
-/** The request one GraphQL operation is sent with. */
 const ask = (): RequestInit => ({
   body: operation('{ echo }'),
   headers: { 'content-type': 'application/json' },
@@ -43,10 +29,9 @@ const ask = (): RequestInit => ({
 });
 
 /**
- * A GET carries no body, so the operation rides in the query
- * string. Apollo reads two headers on that path: the content
- * type, which it only accepts as `application/json`, and
- * `accept`, which it negotiates the answer's type from.
+ * A GET carries no body, so the operation rides in the query string. Apollo reads two headers on
+ * that path: the content type, which it only accepts as `application/json`, and `accept`, which it
+ * negotiates the answer's type from.
  */
 const get = (): RequestInit => ({
   headers: {
@@ -56,7 +41,6 @@ const get = (): RequestInit => ({
   method: 'GET',
 });
 
-/** A POST carrying whatever operation the case names. */
 const post = (text: string): RequestInit => ({
   body: operation(text),
   headers: { 'content-type': 'application/json' },
@@ -154,11 +138,7 @@ test('a GET carries no body and is answered', async () => {
     module: graphQlModule(),
   });
   try {
-    const response = await request(
-      probe,
-      `${PATH}?query={echo}`,
-      get(),
-    );
+    const response = await request(probe, `${PATH}?query={echo}`, get());
     expect(response.status).toBe(OK);
     expect(response.body).toStrictEqual({
       data: { echo: 'GET' },
