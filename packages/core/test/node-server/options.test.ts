@@ -19,7 +19,7 @@ test('the Node transport carries no websocket helper', () => {
   ).toBeUndefined();
 });
 
-test('the Node transport leaves the global objects alone by default', async () => {
+test('the Node transport swaps the global objects by default', async () => {
   const answer = await runNode('node', [
     '--input-type=module',
     '-e',
@@ -29,6 +29,28 @@ const { nodeServer } = await import(${JSON.stringify(NODE_SOURCE)});
 const { Server: HttpServer } = await import('node:http');
 const originalRequest = globalThis.Request;
 const adapter = new ServerAdapter({ transport: nodeServer() });
+adapter.initHttpServer({});
+process.stdout.write(String(
+  adapter.getHttpServer() instanceof HttpServer &&
+  globalThis.Request !== originalRequest
+));
+`,
+  ]);
+  expect(answer).toBe('true');
+});
+
+test('overrideGlobalObjects false leaves the global objects alone', async () => {
+  const answer = await runNode('node', [
+    '--input-type=module',
+    '-e',
+    `
+const { ServerAdapter } = await import(${JSON.stringify(ADAPTER_SOURCE)});
+const { nodeServer } = await import(${JSON.stringify(NODE_SOURCE)});
+const { Server: HttpServer } = await import('node:http');
+const originalRequest = globalThis.Request;
+const adapter = new ServerAdapter({
+  transport: nodeServer({ overrideGlobalObjects: false }),
+});
 adapter.initHttpServer({});
 process.stdout.write(String(
   adapter.getHttpServer() instanceof HttpServer &&

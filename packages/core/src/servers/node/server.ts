@@ -41,7 +41,7 @@ const createNodeServer = (
   const adaptor: Record<string, unknown> = {
     fetch: app.fetch,
     overrideGlobalObjects:
-      transport.overrideGlobalObjects ?? false,
+      transport.overrideGlobalObjects ?? true,
   };
   if (transport.autoCleanupIncoming !== undefined) {
     adaptor.autoCleanupIncoming = transport.autoCleanupIncoming;
