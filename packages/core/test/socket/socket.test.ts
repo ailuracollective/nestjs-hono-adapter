@@ -34,10 +34,14 @@ test('a socket the runtime cannot tune answers the calls', () => {
 
 test('the socket a request carries answers those calls', async () => {
   const bag = await bagOver();
-  for (const name of TUNING) {
-    expect(typeof bag.socket[name]).toBe('function');
+  const { raw, socket } = bag;
+  if (raw === undefined || socket === undefined) {
+    throw new Error('the request answered no socket');
   }
-  expect(bag.raw.socket).toBe(bag.socket);
+  for (const name of TUNING) {
+    expect(typeof socket[name]).toBe('function');
+  }
+  expect(raw.socket).toBe(socket);
 });
 
 test('a socket the runtime provides reports its own end', () => {

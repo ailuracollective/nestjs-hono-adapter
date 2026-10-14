@@ -22,8 +22,8 @@ interface NestRequest {
   query: ParsedQuery;
   params: Record<string, string>;
   hosts: Record<string, string>;
-  socket: IncomingMessage['socket'] & Socket;
-  raw: IncomingMessage & Incoming;
+  socket: (IncomingMessage['socket'] & Socket) | undefined;
+  raw: (IncomingMessage & Incoming) | undefined;
   body: unknown;
   rawBody: Buffer | undefined;
   session: unknown;

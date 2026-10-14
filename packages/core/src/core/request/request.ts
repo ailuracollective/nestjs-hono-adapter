@@ -9,7 +9,6 @@ import { tuneableSocket } from '#adapter/core/server/socket';
 import {
   forwardedOf,
   incomingOf,
-  required,
   urlPartsOf,
 } from './bag-state.ts';
 import type { BagState } from './bag-state.ts';
@@ -159,9 +158,11 @@ class RequestBag implements NestRequest {
     return state.query;
   }
 
-  /** The Node message the request arrived on. */
-  public get raw(): IncomingMessage & Incoming {
-    return required(this.state) as IncomingMessage & Incoming;
+  /** The Node message the request arrived on, when there is one. */
+  public get raw(): (IncomingMessage & Incoming) | undefined {
+    return incomingOf(this.state) as
+      | (IncomingMessage & Incoming)
+      | undefined;
   }
 
   /** Whether the request is secure. */
@@ -169,11 +170,17 @@ class RequestBag implements NestRequest {
     return this.protocol === 'https';
   }
 
-  /** The socket the request arrived on. */
-  public get socket(): IncomingMessage['socket'] & Socket {
-    return tuneableSocket(
-      required(this.state).socket,
-    ) as IncomingMessage['socket'] & Socket;
+  /** The socket the request arrived on, when there is one. */
+  public get socket():
+    | (IncomingMessage['socket'] & Socket)
+    | undefined {
+    const incoming = incomingOf(this.state);
+    if (incoming === undefined) {
+      return undefined;
+    }
+    return tuneableSocket(incoming.socket) as
+      | (IncomingMessage['socket'] & Socket)
+      | undefined;
   }
 
   /** The request URL. */
