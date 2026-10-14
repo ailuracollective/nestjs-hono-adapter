@@ -29,6 +29,7 @@ it).
 | `trustProxy: 1` (hops) / `['10.0.0.1']` (list) | supported, read as proxy-addr reads it                | through `trust proxy` settings               | supported                  |
 | `req.params['*']` for `@Get('files/*')`        | the wildcard capture                                  | `req.params.rest` (array, path-to-regexp v8) | `req.params['*']`          |
 | Middleware for every method                    | the path as a prefix, the way `router.use()` reads it | same                                         | same                       |
+| A preflight's allowed methods                  | every method it serves, `OPTIONS` included            | `GET,HEAD,PUT,PATCH,POST,DELETE`             | `GET,HEAD,POST`            |
 
 ## Routes
 

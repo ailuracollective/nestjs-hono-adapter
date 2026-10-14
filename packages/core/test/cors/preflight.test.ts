@@ -77,3 +77,19 @@ test('a preflight asked to continue reaches the router', async () => {
     response.headers.get('access-control-allow-origin'),
   ).toBe(ALLOWED);
 });
+
+test('a preflight names every method the deployment answers', async () => {
+  const response = await bridged(CROSS_SITE).request('/', {
+    headers: {
+      'access-control-request-method': 'POST',
+      origin: ALLOWED,
+    },
+    method: 'OPTIONS',
+  });
+
+  const methods = headerText(
+    response.headers.get('access-control-allow-methods'),
+  ).split(',');
+  expect(methods).toContain('POST');
+  expect(methods).toContain('OPTIONS');
+});
