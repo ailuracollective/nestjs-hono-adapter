@@ -58,14 +58,14 @@ assignable; not naming it costs nothing for `getHono()`
 
 ### `ServerAdapterOptions`
 
-| Option          | Type                            | Default       | Description                                                                      |
-| --------------- | ------------------------------- | ------------- | -------------------------------------------------------------------------------- |
-| `bodyLimit`     | `number`                        | `1 MiB`       | Largest request body in bytes; `0` removes the limit                             |
-| `rawBody`       | `boolean`                       | `false`       | Keep the bytes that were read in `NestRequest.rawBody`                           |
-| `secureHeaders` | `boolean \| object`             | `true`        | Install `hono/secure-headers` with defaults or with the given options            |
-| `transport`     | `Transport`                     | `bunServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()`   |
-| `trustProxy`    | `boolean \| number \| string[]` | `false`       | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                  |
-| `views`         | `ViewOptions`                   | —             | The engine a `@Render()` handler renders with, and where templates are read from |
+| Option          | Type                            | Default       | Description                                                                           |
+| --------------- | ------------------------------- | ------------- | ------------------------------------------------------------------------------------- |
+| `bodyLimit`     | `number`                        | `1 MiB`       | Largest request body in bytes; `0` removes the limit                                  |
+| `rawBody`       | `boolean`                       | `false`       | Keep the bytes that were read in `NestRequest.rawBody`                                |
+| `secureHeaders` | `boolean \| object`             | `false`       | Install `hono/secure-headers` with defaults or with the given options; off by default |
+| `transport`     | `Transport`                     | `bunServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()`        |
+| `trustProxy`    | `boolean \| number \| string[]` | `false`       | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                       |
+| `views`         | `ViewOptions`                   | —             | The engine a `@Render()` handler renders with, and where templates are read from      |
 
 ### Transports
 

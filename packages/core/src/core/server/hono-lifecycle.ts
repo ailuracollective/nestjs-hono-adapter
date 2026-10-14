@@ -140,7 +140,7 @@ abstract class HonoLifecycle extends RouteAdapter {
     this.beforeClose = (): void => {
       this.closing = true;
     };
-    this.installSecurityHeaders(options.secureHeaders ?? true);
+    this.installSecurityHeaders(options.secureHeaders ?? false);
     this.installGuards(hono);
   }
 
@@ -267,7 +267,7 @@ abstract class HonoLifecycle extends RouteAdapter {
     }
   }
 
-  /** Installs the security headers unless turned off. */
+  /** Installs the security headers only when asked for. */
   private installSecurityHeaders(
     headers: boolean | SecureHeadersOptions,
   ): void {

@@ -144,8 +144,10 @@ one deployment policy is baked in.
 ## Request-level security
 
 `secureHeaders: true` installs `hono/secure-headers` for the
-answers the adapter builds, which the platform adapters do not
-do by default.
+answers the adapter builds; it is off by default, so the adapter
+sends no more headers than the platform adapters do. Passing an
+options object installs it with those options instead of the
+defaults.
 
 Nest's own request-level security — the security headers and the
 CSRF check reached through `registerSecurityHook()` — is

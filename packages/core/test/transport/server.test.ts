@@ -23,8 +23,20 @@ test('httpsOptions are mapped onto Bun TLS options', () => {
   ).toStrictEqual({ cert: 'the cert', key: 'the key' });
 });
 
-test('security headers are sent unless they are turned off', async () => {
-  const sent = await startProbe();
+test('security headers are only sent when asked for', async () => {
+  const off = await startProbe();
+  try {
+    const response = await request(off, '/ping');
+    expect(
+      response.headers.get('x-content-type-options'),
+    ).toBeNull();
+  } finally {
+    await off.close();
+  }
+
+  const sent = await startProbe({
+    adapter: { secureHeaders: true },
+  });
   try {
     const response = await request(sent, '/ping');
     expect(response.headers.get('x-content-type-options')).toBe(
@@ -33,16 +45,18 @@ test('security headers are sent unless they are turned off', async () => {
   } finally {
     await sent.close();
   }
+});
 
-  const off = await startProbe({
-    adapter: { secureHeaders: false },
+test('a secureHeaders object is installed with its own options', async () => {
+  const probe = await startProbe({
+    adapter: { secureHeaders: { xFrameOptions: 'DENY' } },
   });
   try {
-    const response = await request(off, '/ping');
-    expect(
-      response.headers.get('x-content-type-options'),
-    ).toBeNull();
+    const response = await request(probe, '/ping');
+    expect(response.headers.get('x-frame-options')).toBe(
+      'DENY',
+    );
   } finally {
-    await off.close();
+    await probe.close();
   }
 });
