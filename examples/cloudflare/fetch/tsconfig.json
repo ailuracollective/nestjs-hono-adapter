@@ -15,6 +15,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "paths": {
+      "#adapter/*": ["../../../packages/core/src/*.ts", "../../../packages/core/src/*"],
       "@ailura/nestjs-hono-adapter": ["../../../packages/core/src/index.ts"],
       "@ailura/nestjs-hono-adapter/fetch": ["../../../packages/core/src/servers/fetch.ts"]
     }

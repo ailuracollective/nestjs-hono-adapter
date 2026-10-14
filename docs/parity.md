@@ -5,19 +5,10 @@ What this package implements of the surface
 `@nestjs/platform-socket.io` and `@nestjs/platform-ws` publish,
 what it leaves out, and what is still to be built.
 
-A row marked **missing** is work nobody has done; one marked
-**not applicable** is a framework-native feature Hono has no
-equivalent for and that this package does not intend to carry;
-one marked **in progress** is written but not merged.
-
-## Contents
-
-- [What is already at parity](#what-is-already-at-parity)
-- [HTTP adapter](#http-adapter)
-- [WebSocket adapter](#websocket-adapter)
-- [File uploads](#file-uploads)
-- [Fastify route decorators](#fastify-route-decorators)
-- [Backlog](#backlog)
+A row marked **missing** is work nobody has done; **not
+applicable** is a feature Hono has no equivalent for and this
+package does not intend to carry; **in progress** written but
+not merged.
 
 ## What is already at parity
 
@@ -32,14 +23,14 @@ implemented: the verbs, `use()`, `createMiddlewareFactory()`,
 `isRouteOrderSensitive()`, `listen()`, `close()` and
 `initHttpServer()`.
 
-Three members are inherited from the base class and work here
-unchanged: `setCookie()` and `clearCookie()`, which are written
-on top of `appendHeader()`, and the `setOnRouteTriggered()` /
-`getOnRouteTriggered()` pair, which the core reads and invokes
-itself. `registerSecurityHook()` is installed as an own property
-in `packages/core/src/core/server-adapter.ts`, and
-`NestHonoApplication` (`packages/core/src/core/application.ts`)
-is the counterpart of `NestExpressApplication` and
+Three members are inherited and unchanged: `setCookie()` /
+`clearCookie()` (written on `appendHeader()`) and
+`setOnRouteTriggered()` / `getOnRouteTriggered()` (read and
+invoked by the core). `registerSecurityHook()` is an own
+property in `packages/core/src/core/server/server-adapter.ts`;
+`NestHonoApplication`
+(`packages/core/src/core/server/application.ts`) is the
+counterpart of `NestExpressApplication` and
 `NestFastifyApplication`.
 
 On the WebSocket side `create()`, `bindMessageHandlers()`,
@@ -50,180 +41,121 @@ implemented, and `bindClientConnect()` is inherited.
 
 ### `mapException()` — implemented
 
-Nest hands `mapException()` every error the error layer
-receives, before the filters see it. Express maps a
-`SyntaxError` or a `URIError` to a `BadRequestException` and
-Fastify maps its own `FastifyError` to an `HttpException`; this
-adapter mirrors Express, and returns anything else unchanged.
-
-The `URIError` is the one that carries. A wildcard is
-percent-decoded when the params are read (`paramsOf` in
-`packages/core/src/core/params.ts`), so a path whose escape
-stands for no character — `/files/%FF` — is a `400` where it
-used to be a `500`. Query values decode themselves and keep the
-raw text when that fails (`packages/core/src/core/query.ts`), so
-they never raise it.
-
-Where the decode fails matters as much as the mapping. Nest
-wraps every route handler in a proxy that answers a failure
-itself, so an error raised inside it never reaches the error
-layer; `createRouteHandler` reads the params before it hands the
-request over, which is what puts this failure where the mapping
-can answer it.
+Nest hands it every error before the filters. It mirrors
+Express: `SyntaxError` or `URIError` → `BadRequestException`,
+`FastifyError` → `HttpException`, anything else unchanged. A
+wildcard is percent-decoded when the params are read
+(`paramsOf`, `packages/core/src/core/request/params.ts`), so
+`/files/%FF` is a `400` where it used to be a `500`;
+`createRouteHandler` reads the params before handing the request
+over, so the mapping answers it. Query values decode themselves
+and keep the raw text on failure
+(`packages/core/src/core/request/query/index.ts`), so they never
+raise it.
 
 ### `setOnRequestHook()` / `setOnResponseHook()` — implemented
 
-Both platform adapters implement them, and instrumentation and
-devtools call them. Nothing in Nest calls them itself, so an
-adapter that does not run them is an adapter where a registered
-hook never runs. `packages/core/src/features/front-steps.ts`
-builds the step that runs both, mounted in front of every route.
-
-The request hook is a `(request, response, done)` function
-called at the start of a request. It continues the chain by
-calling `done`, as it does on Express (`next`) and Fastify
-(`done`); one that answers the promise it returns instead is
-waited for just the same, and a failure either way reaches the
-error layer.
-
-The response hook is a `(request, response)` function called
-once the chain has settled, whether it answered or failed.
-Express runs it from the `finish` event, which the Bun and fetch
-transports do not have; the answer already exists by the time it
-runs, so a failure it raises is logged rather than answered.
-
-Both are handed the two objects the security hook Nest registers
-is handed: the request Nest reads, built by `toNestRequest()`,
-and the Node response where the transport carries one — the
-stand-in that writes through the Hono context where it does not.
+The request hook, `(request, response, done)`, runs at the start
+of a request and continues the chain by calling `done` (Express
+`next`, Fastify `done`) or resolving a returned thenable; a
+failure either way reaches the error layer. The response hook,
+`(request, response)`, runs once the chain settles, answered or
+failed: Express uses the `finish` event (absent on the Bun and
+fetch transports), so a failure it raises is logged, not
+answered. Both get the request Nest reads, built by
+`toNestRequest()`, and the Node response or the stand-in that
+writes through the Hono context.
+`packages/core/src/features/front-steps/index.ts` builds the
+step that runs both ahead of every route.
 
 ### `enableCors()` — both signatures
 
-Both are accepted: the fixed `CorsOptions`, and the
-`CorsOptionsDelegate` Express takes, whose callback is handed
-the request and answers the options that apply to it. A delegate
-runs per request inside the CORS bridge, which is why it builds
-the request a delegate reads — the same request bag a guard is
-handed, built with `toNestRequest()`. `options.origin` keeps
-working, and a delegate may combine the two.
+`CorsOptions` and Express's `CorsOptionsDelegate` are both
+accepted. A delegate runs per request inside the CORS bridge,
+which builds the request it reads with `toNestRequest()` (the
+same bag a guard is handed); `options.origin` still works and a
+delegate may combine the two.
 
 ### `useStaticAssets()` — both signatures
 
-Express takes `(path, options)` and Fastify takes `(options)`
-with the root inside it; both are read, so neither consumer has
-to change the call. The first argument decides: a string or an
-array of them names the directories, anything else is the
-options object, and `root` inside it does the same. `prefix`,
-`index`, `maxAge` and the rest keep their meaning in either
-form. A call that names no directory at all is refused rather
-than serving nothing. A `URL` root is not accepted, because
-`FastifyStaticOptions['root']` allows one where the directories
-here are filesystem paths.
+Express's `(path, options)` and Fastify's `(options)` are both
+read: a string or array first argument names the directories,
+anything else is the options object, and `root` inside it does
+the same. `prefix`, `index` and `maxAge` keep their meaning; a
+call naming no directory is refused; a `URL` root is not
+accepted, since `FastifyStaticOptions['root']` allows one where
+these are filesystem paths.
 
 ### `setViewEngine()` — both signatures
 
-Express's engine name and Fastify's options object
-(`FastifyViewOptions`) are both read. From the object the
-adapter takes `root` or `templates` as the directories,
-`viewExt` as the extension, and `defaultContext` as data the
-handler's own overrides. The `engine` it names has to be a
-single engine — the function itself, or the `render` an engine
-such as `ejs` or `pug` exposes — because this adapter compiles
-from the template's source rather than from its path.
-`includeViewExtension`, `maxCache` and `production` are accepted
-and inert, since the adapter has no cache and always reads the
-template it was named. Every other field Fastify defines
+Express's engine name and Fastify's `FastifyViewOptions` are
+both read: from the object, `root` or `templates` are the
+directories, `viewExt` the extension, `defaultContext` handler
+overrides. `engine` must be a single engine (the function, or
+`ejs`/`pug`'s `render`) because compilation is from the
+template's source. `includeViewExtension`, `maxCache` and
+`production` are inert; every other field Fastify defines
 (`charset`, `layout`, `options`, `propertyName`,
-`asyncProperyName`) is refused by name rather than ignored. The
-engine the adapter was constructed with (`ViewOptions.engine`)
-still works on its own.
+`asyncProperyName`) is refused by name. `ViewOptions.engine`
+still works alone.
 
 ### `setLocal()`, `set()`, `enable()`, `disable()` — implemented
 
-Express reaches its application settings through
-`NestExpressApplication`; here they are on the adapter and on
-the application `NestFactory.create()` hands back.
-
-`setLocal(key, value)` stores locals separately from the
-`defaultContext` configured through `setViewEngine()`. Every
-render combines defaults, locals, and handler data in that
-order, so reconfiguring defaults preserves locals and a local
-set after startup reaches the next template. Special keys such
-as `__proto__` are passed as own data properties.
-
-`set(name, value)` reaches the two settings that name behaviour
-here: `view engine` delegates to `setViewEngine()` and `views`
-to `setBaseViewsDir()`. `views` accepts a string or a string
-array, searched in order; `view engine` accepts a string.
-`enable(name)` and `disable(name)` call it with `true` and
-`false`. Every other name is refused by name with a reason
-rather than stored, so a setting nothing reads fails where it is
-set. `trust proxy` points at the adapter options, because the
-transport reads it when the adapter is constructed, and `env`,
-`etag`, `query parser` and `x-powered-by` have no behaviour to
-reach.
+Settings live on the adapter and on the application
+`NestFactory.create()` returns. `setLocal(key, value)` keeps
+locals separate from the `defaultContext`; a render merges
+defaults, locals and handler data in that order, and
+`__proto__`-like keys are own data properties.
+`set(name, value)` handles `view engine` (→ `setViewEngine()`)
+and `views` (→ `setBaseViewsDir()`; string or string array,
+searched in order); `enable(name)` / `disable(name)` call it
+with `true` / `false`; every other name is refused with a
+reason. `trust proxy` reads the adapter options; `env`, `etag`,
+`query parser` and `x-powered-by` have no behaviour.
 
 ### `engine()` and `get()` — missing
 
-`engine()` registers a template engine by file extension, and
-nothing here reads that registry: `setViewEngine()` names the
-engine explicitly instead.
-
-`get()` is missing by collision rather than by choice. Nest's
-`INestApplicationContext.get()` already answers the DI container
-with `any[]`, and the adapter already declares
-`get(target, handler)`, the GET route registrar, so Express's
-`app.get(setting)` cannot be added without a `TS2430` override
-error and a `TS4114` implicit-override error. Naming the
-adapter's own `get` would shadow the container's, which is the
-one Nest and every Nest consumer already call.
+`engine()` registers a template engine by extension and nothing
+here reads that registry. `get()` collides: Nest's
+`INestApplicationContext.get()` answers the DI container with
+`any[]`, and the adapter declares `get(target, handler)`, the
+GET route registrar, so `app.get(setting)` cannot be added
+without a `TS2430` override error and a `TS4114`
+implicit-override error.
 
 ### `useMultipart()` — not applicable
 
-Fastify's explicit opt-in for `@fastify/multipart`. Here a body
-is read on demand through Hono's `parseBody()`, and the upload
-interceptors (see [File uploads](#file-uploads)) are the
-supported path, so there is nothing to turn on. It is recorded
-as a non-goal in
+Fastify's `@fastify/multipart` opt-in; a body is read on demand
+through Hono's `parseBody()`, and the upload interceptors (see
+[File uploads](#file-uploads)) are the path. Recorded as a
+non-goal in
 [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 ### `inject()` — implemented
 
-Fastify's light-my-request in-process testing helper, reached as
-`app.inject()`. It is declared on the adapter and answers
-through Hono's own `app.request()`, so a suite reaches its
-routes without binding a port. Both call forms are read — the
-options object and the `'GET /path'` string — along with
+Fastify's light-my-request helper, `app.inject()`, declared on
+the adapter and answered through Hono's `app.request()`. Both
+call forms (options object, `'GET /path'`) are read with
 `url`/`path`, `method`, `headers`, `query`, `payload`/`body`,
-`cookies` and `signal`. The answer carries `statusCode`,
-`statusMessage`, `headers` (with `set-cookie` as a list),
+`cookies` and `signal`; the answer carries `statusCode`,
+`statusMessage`, `headers` (`set-cookie` as a list),
 `rawPayload`, `payload`, `body`, `json()`, `stream()` and
-`cookies`. Four options - `remoteAddress`, `authority`,
-`Request` and `payloadAsStream` — are refused by name rather
-than ignored, and `raw` and `trailers` are absent rather than
-faked, as
+`cookies`. Four options — `remoteAddress`, `authority`,
+`Request`, `payloadAsStream` — are refused by name, and `raw`
+and `trailers` are absent rather than faked, as
 [platform-differences.md](platform-differences.md#what-inject-does-not-carry)
 records.
 
 ### `listen()` — the object form is not accepted
 
-Fastify's application accepts its listen options as an object
-(`{ port, host }`); this adapter does not. `listen()` reads the
-positional form only — `(port)`, `(port, hostname)`,
-`(port, callback)` and `(port, hostname, callback)`, the shapes
-Nest's own `NestApplication.listen()` calls it in. A Fastify
-bootstrap that passes `{ port }` passes the port instead.
-
-The divergence is deliberate, and it is taken where the
-transports end. `packages/core/src/core/server.ts` is the
-`Server` port Nest drives, and every transport builds one with
-`listen(port, hostname?, callback?)` and nothing else. Reading a
-bag of bind options would promise fields two of the three have
-nowhere to put: `./bun-server` binds through `Bun.serve`, and
-`./fetch` has no listening server at all — a fetch host hands
-the adapter a request rather than the other way around. The
-positional form works on every transport, so that is the one
-this adapter carries.
+Only the positional forms — `(port)`, `(port, hostname)`,
+`(port, callback)`, `(port, hostname, callback)` — the shapes
+`NestApplication.listen()` uses; Fastify's `{ port, host }`
+object is not read. Every transport builds the `Server` port
+(`packages/core/src/core/ports/server.ts`) with
+`listen(port, hostname?, callback?)` and nothing else:
+`./bun-server` binds through `Bun.serve` and `./fetch` has no
+listening server, so a bind-options bag has nowhere to go.
 
 ## WebSocket adapter
 
@@ -231,156 +163,97 @@ Against `@nestjs/platform-ws`:
 
 ### `setMessageParser()` — implemented
 
-Nest 12's `WsAdapter` accepts a `messageParser` in its
-constructor and exposes `setMessageParser()` for a deployment
-whose frames are not JSON. `HonoWsAdapter` takes the same option
-and exposes the same method, and reads every frame with the
-parser in use; `parseFrame()` in `packages/ws/src/client.ts` is
-the built-in one.
-
-A parser that throws is an application bug and is reported. The
-built-in one reads client-controlled input, so its failures stay
-quiet: reporting those would turn a public socket into a log
-flood target. Either way the frame is dropped, as it is on
-`platform-ws`.
+`HonoWsAdapter` takes Nest 12 `WsAdapter`'s `messageParser`
+constructor option and `setMessageParser()` method, reading
+every frame with the parser in use (`parseFrame()` in
+`packages/ws/src/client/frames.ts` is the built-in). A throwing
+parser is an application bug and is reported; the built-in reads
+client input, so its failures stay quiet. Either way the frame
+is dropped, as on `platform-ws`.
 
 ### `bindErrorHandler()` — implemented
 
-`WsAdapter.bindErrorHandler(server)` attaches an error listener
-to the server and to every socket it hands over, so a failure is
-logged rather than thrown: an `EventEmitter` that raises `error`
-with no listener throws it out of the event loop.
-`HonoWsAdapter.bindErrorHandler()` attaches the same pair to a
-`GatewayServer` and answers it, and `create()` calls it for
-every path.
+`HonoWsAdapter.bindErrorHandler()` attaches an error listener to
+the `GatewayServer` and every socket it hands over (as
+`WsAdapter.bindErrorHandler(server)` does on `platform-ws`), so
+a failure is logged rather than thrown out of the event loop;
+`create()` calls it for every path.
 
 ### `create()` options — `path` only, the rest refused
 
-`platform-ws` reads `server`, `path` and `namespace` out of the
-options and hands everything else to its own `ws.Server`; it
-refuses a namespace too, with the same advice to use
-`@nestjs/platform-socket.io`. Only `path` can be honoured here.
-A non-zero `port` would need a second HTTP listener; a `server`
-would have to be driven by this adapter's transport; a namespace
-has no counterpart; and the WebSocket server options cannot be
-passed on, because the transport builds its support from the
-Hono application alone
-(`createWebSocket?: (app) => WebSocketSupport`). All of them are
-refused by name rather than dropped, which is documented in
+Only `path` is honoured. `server`, `namespace` and the WebSocket
+server options are refused by name (on `platform-ws` the rest is
+handed to its own `ws.Server`; a namespace gets the advice to
+use `@nestjs/platform-socket.io`), because the transport builds
+its support from the Hono application alone
+(`createWebSocket?: (app) => WebSocketSupport`); a non-zero
+`port` needs a second listener and a `server` would have to be
+driven by the transport. Documented in
 [docs/deployment.md](deployment.md#websockets).
 
 ### `forceCloseConnections` — not honoured
 
-`AbstractWsAdapter` exposes it and `IoAdapter` reads it in
-`close()`. `HonoWsAdapter.close()` always closes the sockets on
-the path.
+`AbstractWsAdapter` exposes it and `IoAdapter` reads it;
+`HonoWsAdapter.close()` always closes the sockets on the path.
 
 ### `@Ack()` and namespaces — at parity with `platform-ws`
 
 `WsAdapter` refuses a namespace and has no acknowledgement
-callback either; the reply travels back as the echoed `id`.
-These are only a gap against Socket.IO, and
-`@ailura/nestjs-platform-hono-socket-io` closes it without
-changing `@ailura/nestjs-platform-hono-ws`.
+callback; the reply travels back as the echoed `id`. This is a
+gap only against Socket.IO, closed by
+`@ailura/nestjs-platform-hono-socket-io` without changing
+`@ailura/nestjs-platform-hono-ws`.
 
 ### `@nestjs/platform-socket.io` — implemented, in `@ailura/nestjs-platform-hono-socket-io`
 
-`HonoIoAdapter` is the counterpart of that package's
-`IoAdapter`: `create()`, `createIOServer()`, `mapPayload()`,
-`bindMessageHandlers()`, `bindClientDisconnect()` and `close()`,
-so a gateway keeps its namespaces, its rooms, its broadcasts and
-its acknowledgement callbacks. It is a new package beside
-`@ailura/nestjs-platform-hono-ws`, not a change to it.
-
-It attaches to a Node `http.Server`, and only the Node transport
-answers with one: `./node-server` runs on Node and on Bun, so a
-Bun deployment that wants socket.io serves through it. The Bun
-transport serves through `Bun.serve`, whose server carries `on`,
-`listen` and `close` but never fires a Node request event, and
-the fetch transport has no server at all; the adapter refuses
-both by name instead of failing inside socket.io. That is the
-one thing a consumer moving from Fastify has to change.
+`HonoIoAdapter` is the counterpart of `IoAdapter` — `create()`,
+`createIOServer()`, `mapPayload()`, `bindMessageHandlers()`,
+`bindClientDisconnect()` and `close()` — so a gateway keeps its
+namespaces, rooms, broadcasts and acknowledgement callbacks. It
+attaches to a Node `http.Server`, which only the Node transport
+provides: `./node-server` runs on Node and Bun, so a Bun
+deployment that wants socket.io serves through it. The Bun
+(`Bun.serve`) and fetch transports are refused by name instead
+of failing inside socket.io — the one change a consumer moving
+from Fastify must make.
 
 ## File uploads
 
-`@nestjs/platform-express/multer` publishes `MulterModule`,
+`@nestjs/platform-express/multer` and
+`@nestjs/platform-fastify/multipart` publish `MulterModule`,
 `FileInterceptor`, `FilesInterceptor`, `FileFieldsInterceptor`,
-`AnyFilesInterceptor`, `NoFilesInterceptor` and the
-`diskStorage` / `memoryStorage` engines;
-`@nestjs/platform-fastify/multipart` publishes the same shape.
+`AnyFilesInterceptor`, `NoFilesInterceptor`, the `diskStorage` /
+`memoryStorage` engines, and the streaming
+`FileStreamInterceptor` with its `processStream`.
 
-That work is merged: `@ailura/nestjs-platform-hono-multipart`
-(`packages/multipart/src/**`) with the interceptors, the module,
-the two storage engines, the interfaces and
-`packages/multipart/test/multipart.test.ts`, with `busboy` as an
-optional peer of the adapter and a required one of the multipart
-package, and a ceiling of its own in
-`packages/multipart/.size-limit.json`.
+`@ailura/nestjs-platform-hono-multipart`
+(`packages/multipart/src/**`) implements that shape —
+interceptors, module, both storage engines, interfaces,
+`packages/multipart/test/multipart.test.ts` — producing the
+`MultipartFileStream` type, with `busboy` an optional peer of
+the adapter and a required one of this package, and its own
+ceiling in `packages/multipart/.size-limit.json`. An aborted
+upload cancels the parse, a non-adapter is refused, and an
+`undefined` file-filter or name-resolver error counts as
+failure.
 
-A review before the merge closed three things. An aborted upload
-now cancels the parse instead of leaving an unhandled error on
-the source stream and a request that never settles. An adapter
-that is not this one is refused, as the Fastify island refuses
-an adapter it was not written for. And an `undefined` error from
-a file filter or a name resolver counts as a failure, where disk
-storage used to store nothing and still report success.
+`processStream()` sits beside `processMultipart()` in the
+island's parser and feeds busboy from the Web body: the handler
+gets busboy's own stream, the take is marked synchronously so
+later parts are read but not parsed, and a file in any other
+field is a `400` — upstream's contract (upstream walks
+`req.parts()` and returns on the first file, leaving the
+iterator suspended). `context.req.raw` has no socket `close` to
+hang a drain on, so an answer that is a `StreamableFile` is
+drained before it goes out unless it is built from the stream
+the handler was handed (`StreamableFile.getStream()` makes that
+checkable); upstream defers that drain to `reply.raw`'s `close`
+instead. The discard reads rather than cancels (cancelling
+`request.raw.body` aborts the client), so an abort mid-upload
+surfaces as a read failure, not a hang.
 
-What was missing until this change is the streaming interceptor
-`@nestjs/platform-fastify/multipart` publishes:
-`FileStreamInterceptor`, and the `processStream` behind it. The
-`MultipartFileStream` type was exported with nothing to produce
-it, and the review had it removed rather than left dead; the
-interceptor produces it now.
-
-The exemption the island carried is narrower now: one block over
-`packages/multipart/src/**` that turned off around 35 rules
-became ten blocks over thirteen files, and the nine files that
-need none of those rules carry them again. The cases the suite
-was missing — `fileFilter`, `registerAsync`, a malformed
-boundary and a `__proto__` field name — are covered, and each
-was proven by mutation, so it fails when the behaviour it pins
-is removed.
-
-The streaming interceptor is implemented, and the three seams
-the reconnaissance found are closed by one design. Upstream
-`processStream` walks `req.parts()` and returns on the first
-file of the field it was asked for, leaving the iterator
-suspended so the handler reads a live stream; the interceptor
-then drains the rest, either before answering or from
-`reply.raw`'s `close` when the handler answers with a
-`StreamableFile`.
-
-Here `processStream()` sits beside `processMultipart()` in the
-island's parser and feeds busboy from the Web body, so the first
-seam closes on the fact that busboy emits a file part while it
-is still parsing: the handler is handed busboy's own stream
-rather than a stored file. The take is marked synchronously,
-before anything awaits, so the parts that follow the one being
-taken are read and not parsed — the contract upstream documents.
-A file in any other field is a `400`, as upstream answers one.
-
-The second seam is answered differently rather than solved.
-`context.req.raw` is a Web `Request` and there is no socket
-`close` to hang the drain on, so an answer that is a
-`StreamableFile` is drained before it goes out — unless it is
-built from the very stream the handler was handed, which
-`StreamableFile.getStream()` makes checkable and which the
-response drains itself as it is written. Upstream defers that
-drain to the socket and warns that answering with an unrelated
-`StreamableFile` before the upload is read fails on a connection
-that is not kept alive; draining first is stricter, never later.
-
-The third seam is why the discard reads rather than cancels:
-cancelling `request.raw.body` reaches the client as an aborted
-request, so the drain unpipes busboy, resumes the source and
-reads the rest into nothing, which is `raw.resume()` by another
-name. A client that aborts mid-upload has its error carried onto
-the stream the handler is reading, so the read fails rather than
-hangs.
-
-The ceiling decision the reconnaissance left open was taken, as
-the first item of the backlog asked: the multipart entry moved
-from 3800 B to 4250 B for 553 B of measured growth, recorded in
+The multipart entry moved from 3800 B to 4250 B for 553 B of
+measured growth, recorded in
 [bundle-baseline.md](bundle-baseline.md) and justified in
 [architecture.md](architecture.md#the-bundle-budget).
 
@@ -388,32 +261,20 @@ from 3800 B to 4250 B for 553 B of measured growth, recorded in
 
 `@nestjs/platform-fastify/decorators` publishes
 `@RouteSchema()`, `@RouteConfig()` and `@RouteConstraints()`,
-which write the metadata keys `__fastify_route_schema__`,
-`__fastify_route_config__` and `__fastify_route_constraints__`.
-Only `FastifyAdapter` reads them, in its route registration;
-nothing in the core's source does, so on this adapter the three
-decorators are no-ops.
-
-They describe Fastify's own route options — a JSON schema, a
-route config, a constraint — and a Hono equivalent would be a
-different feature rather than a port. They are recorded as
+writing `__fastify_route_schema__`, `__fastify_route_config__`
+and `__fastify_route_constraints__`. Only `FastifyAdapter` reads
+those keys, so on this adapter the three are no-ops; a Hono
+equivalent would be a new feature, not a port. Recorded as
 unsupported in
-[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)
-rather than emulated.
+[platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 ## Backlog
 
-Ordered by what it costs and what it unblocks.
-
-The one item this list carried — whether to support Socket.IO —
-is settled: it is `@ailura/nestjs-platform-hono-socket-io`, a
-package of its own, and the section above records what it covers
-and the one transport it needs. Nothing else the reconnaissance
-found is outstanding.
-
-The non-goals and the runtime surface are written down:
+The list's one item — Socket.IO support — is settled as
+`@ailura/nestjs-platform-hono-socket-io`, recorded above;
+nothing else the reconnaissance found is outstanding. The
+non-goals are recorded in
 [docs/platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement)
-records `useMultipart()`, the Express settings API and the
-Fastify route decorators, and
-[docs/architecture.md](architecture.md#the-runtime-surface)
-records which layer reaches which builtin.
+(`useMultipart()`, the Express settings API, the Fastify route
+decorators), and the runtime surface in
+[docs/architecture.md](architecture.md#the-runtime-surface).

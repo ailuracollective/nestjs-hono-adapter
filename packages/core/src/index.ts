@@ -1,17 +1,11 @@
-/**
- * The public surface of the adapter: the class a bootstrap
- * hands to `NestFactory.create`, the options it and
- * `enableCors` accept, and the types a handler or a middleware
- * needs to describe what it touches.
- */
-export { ServerAdapter } from './core/server-adapter.ts';
+export { ServerAdapter } from './core/server/server-adapter.ts';
 export type {
   Bindings,
   Incoming,
   Socket,
   SocketAddress,
-} from './core/bindings.ts';
-export type { Address, Server } from './core/server.ts';
+} from './core/ports/bindings.ts';
+export type { Address, Server } from './core/ports/server.ts';
 export type {
   ServerOptions,
   StaticOptions,
@@ -19,54 +13,45 @@ export type {
   WebSocketEvents,
   WebSocketFactory,
   WebSocketSupport,
-} from './core/transport.ts';
-export type { NestHonoApplication } from './core/application.ts';
+} from './core/ports/transport.ts';
+export type { NestHonoApplication } from './core/server/application.ts';
 export type {
   InjectCookie,
   InjectOptions,
   InjectResponse,
-} from './core/inject.ts';
+} from './core/inject/types.ts';
 export type {
   BodyParserOptions,
   ParsedBody,
   SecurityHook,
-} from './core/body.ts';
+} from './core/request/body/index.ts';
 export type {
   NestHandler,
   NestRequest,
   NextHandler,
   TrustProxy,
-} from './core/request.ts';
+} from './core/request/request.ts';
 
-/**
- * Marks an adapter whose `multipart/form-data` bodies a
- * capability package consumes. It is public because the upload
- * package lives outside this one and has to reach the seam;
- * nothing else needs it, and an adapter nothing marks carries
- * no trace of an upload.
- */
+/** Marks an adapter that parses multipart bodies. */
 export { declareMultipart } from './core/multipart.ts';
 export type {
   NestEnv,
   NestContext,
   NestHono,
-  /**
-   * The environment `@hono/node-server` attaches, kept under
-   * the name this package published it with.
-   */
+  /** The environment `@hono/node-server` attaches. */
   NodeEnv,
 } from './core/context.ts';
 export type {
   CorsConfig,
   CorsOptions,
-} from './features/cors-middleware.ts';
-export type { ParsedQuery } from './core/query.ts';
-export type { StaticAssetsOptions } from './features/static-assets.ts';
+} from './features/cors/index.ts';
+export type { ParsedQuery } from './core/request/query/index.ts';
+export type { StaticAssetsOptions } from './features/static-assets/index.ts';
 export type {
   EngineConfig,
   ViewData,
   ViewEngine,
   ViewEngineOptions,
   ViewOptions,
-} from './features/views.ts';
-export type { ServerAdapterOptions } from './core/server-adapter.ts';
+} from './features/views/index.ts';
+export type { ServerAdapterOptions } from './core/server/server-adapter.ts';

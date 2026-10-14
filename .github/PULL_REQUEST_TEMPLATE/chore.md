@@ -2,13 +2,13 @@
 
 ## Linked issue (required)
 
-<!-- The issue must carry `status/ready`. Use a closing keyword on its own line; `Refs #N` does not close it. -->
+<!-- The issue must carry `status/ready`; use a closing keyword on its own line (`Refs #N` does not close it). -->
 
 Closes #
 
 ## Summary
 
-<!-- What changed and why, in concise terms. -->
+<!-- What changed and why, concisely. -->
 
 ## Changes
 

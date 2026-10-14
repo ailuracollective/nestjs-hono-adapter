@@ -1,12 +1,6 @@
 # API Reference
 
-This page documents the external interface of the package: the
-classes, options, and types a consumer imports and uses.
-
 ## Entrypoints
-
-The adapter publishes four entrypoints, and each optional
-capability is a package of its own with a single one:
 
 | Package                                  | Entrypoints                                     | Purpose                             |
 | ---------------------------------------- | ----------------------------------------------- | ----------------------------------- |
@@ -15,10 +9,9 @@ capability is a package of its own with a single one:
 | `@ailura/nestjs-platform-hono-ws`        | `.`                                             | WebSocket adapter (`HonoWsAdapter`) |
 | `@ailura/nestjs-platform-hono-socket-io` | `.`                                             | Socket.IO adapter (`HonoIoAdapter`) |
 
-`./ws` was published and moves to its own package; `./multipart`
-and `./socket-io` only ever existed on `main`. The
-[README](../README.md#migrating-from-the-old-subpaths) says what
-to install instead.
+`./ws` moved to its own package; `./multipart` and `./socket-io`
+only ever existed on `main`. Install per the
+[README](../packages/core/README.md#migrating-from-the-old-subpaths).
 
 ## HTTP Adapter
 
@@ -27,8 +20,6 @@ to install instead.
 ```ts
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 ```
-
-The class handed to `NestFactory.create()`:
 
 ```ts
 const app = await NestFactory.create(
@@ -43,9 +34,6 @@ const app = await NestFactory.create(
 import type { NestHonoApplication } from '@ailura/nestjs-hono-adapter';
 ```
 
-The type to hand `NestFactory.create()`, so the application it
-answers is typed to this adapter rather than to any platform:
-
 ```ts
 const app = await NestFactory.create<NestHonoApplication>(
   AppModule,
@@ -56,26 +44,17 @@ app.getHttpAdapter().getHono(); // NestHono
 app.getHttpServer().address(); // Server & http.Server
 ```
 
-The server is named as both the port every transport implements
-and Node's own `http.Server`, so a caller that reached for
-`closeAllConnections()` or listened for `'upgrade'` — both of
-which worked before the transports split — still compiles. Only
-the Node transport answers a real `http.Server`.
+`getHttpServer()` is `Server` (every transport) and Node's
+`http.Server`, so `closeAllConnections()` and `'upgrade'`
+compile; only the Node transport answers a real `http.Server`.
 
-`NestFactory.create()` types what it answers as whatever the
-type argument says, defaulting to `INestApplication`. That
-default describes an application on any platform:
-`getHttpAdapter()` answers the `HttpServer` contract every
-platform shares, and `getHttpServer()` answers `any`. This type
-narrows both to what this adapter gives, and stays assignable to
-`INestApplication`, so a helper that took one keeps taking it.
-
-Not naming it costs nothing for `getHono()`, which this package
-declares on `HttpServer` itself — see
-[Adapter methods](#adapter-methods) — but `getHttpAdapter()`
-still answers the shared contract, and `getHttpServer()` still
-answers `any`. `TestingModule.createNestApplication()` takes the
-same type argument.
+`NestFactory.create()` otherwise defaults to `INestApplication`,
+whose `getHttpAdapter()` is the shared `HttpServer` contract and
+`getHttpServer()` is `any`. This type narrows both and stays
+assignable; not naming it costs nothing for `getHono()`
+(declared on `HttpServer` — see
+[Adapter methods](#adapter-methods)).
+`TestingModule.createNestApplication()` takes the same argument.
 
 ### `ServerAdapterOptions`
 
@@ -90,40 +69,28 @@ same type argument.
 
 ### Transports
 
-The runtime is injected through `transport`, and each one lives
-behind its own subpath so a deployment loads only what it serves
-with:
-
 | Subpath                                   | Export                  | Runtime                                        |
 | ----------------------------------------- | ----------------------- | ---------------------------------------------- |
 | `@ailura/nestjs-hono-adapter/bun-server`  | `bunServer()`           | Bun's own server                               |
 | `@ailura/nestjs-hono-adapter/node-server` | `nodeServer(options?)`  | `@hono/node-server`                            |
 | `@ailura/nestjs-hono-adapter/fetch`       | `fetchServer(options?)` | A fetch host (Workers, Vercel Functions, Deno) |
 
-`bunServer` is the transport the adapter serves through when
-`transport` is left out, so `new ServerAdapter()` serves through
-`Bun.serve`. A deployment on Node names `nodeServer()`, which
-runs on Node and on Bun. It takes one option,
-`overrideGlobalObjects` (default `false`): whether
-`@hono/node-server` may replace the global `Request` and
-`Response` with its lighter classes. It is off by default
-because the replacement is process-wide and not restored; the
-old implicit Node default passed `true`, so a deployment that
-relied on it asks for it by name now, and the adapter carries no
-switch of its own.
+`bunServer` is the default, so `new ServerAdapter()` serves
+through `Bun.serve`. `nodeServer()` runs on Node and Bun and
+takes `overrideGlobalObjects` (default `false`) — whether
+`@hono/node-server` may swap the global `Request` and `Response`
+for its lighter classes; the adapter has no switch of its own.
 
 A transport carries a websocket helper only where the runtime
-has one. `nodeServer` names none, and the Bun transport names
-one only where `hono/bun` loads — on Node it carries none — so
-the `/ws` island falls back to `@hono/node-ws` in both places:
-an application that serves no WebSocket never installs it.
+has one: `nodeServer` none, Bun only where `hono/bun` loads
+(never on Node), so the `/ws` island falls back to
+`@hono/node-ws`; an app serving no WebSocket never installs it.
 
-`fetchServer` takes no port: `close()` does nothing, `listen()`
-rejects naming the fetch host, and the deployment exports the
-handler. Static assets and WebSockets are host-specific, so a
-host that has them passes `serveStatic` and `upgradeWebSocket`;
-asking for one without passing it throws. `fetchHandler(app)`
-wraps the Hono application as the `fetch` a host exports:
+`fetchServer` takes no port: `close()` does nothing and
+`listen()` rejects naming the fetch host. Static assets and
+WebSockets are host-specific: the host passes `serveStatic` and
+`upgradeWebSocket`, and asking for one without it throws.
+`fetchHandler(app)` wraps the Hono app as the exported `fetch`:
 
 ```ts
 const adapter = new ServerAdapter({
@@ -137,9 +104,6 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 
 ### Application methods
 
-These methods are available on the `INestApplication` returned
-by `NestFactory.create()` when using this adapter:
-
 | Method            | Signature                                                                    | Description                                      |
 | ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
 | `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on CORS; no options allows every origin    |
@@ -151,17 +115,12 @@ by `NestFactory.create()` when using this adapter:
 | `enable`          | `(name: string) => this`                                                     | `set(name, true)`                                |
 | `disable`         | `(name: string) => this`                                                     | `set(name, false)`                               |
 
-Express's `app.get(name)` is not among them: it collides with
-the container's own `get()` and with the adapter's GET route
-registrar, so a setting cannot be read back. `engine()` is
-likewise a non-goal, because `setViewEngine()` already names the
-engine explicitly. Both are recorded in
+Express's `app.get(name)` and `engine()` are absent: the first
+collides with the container's `get()` and the GET registrar, the
+second with `setViewEngine()`. Both are in
 [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 ### Adapter methods
-
-These are on the adapter rather than on the application, so they
-are reached through `app.getHttpAdapter()`:
 
 | Method                  | Signature                                              | Description                                      |
 | ----------------------- | ------------------------------------------------------ | ------------------------------------------------ |
@@ -171,14 +130,11 @@ are reached through `app.getHttpAdapter()`:
 | `isRouteOrderSensitive` | `() => boolean`                                        | Returns `false` (Hono scores routes)             |
 | `useBodyParser`         | `(type?: string, rawBody?: boolean, options?) => void` | Reached by `app.useBodyParser()`                 |
 
-`getHono` is declared on Nest's `HttpServer` by this package,
-which is what makes it reachable off an application whose type
-was never named. The declaration is wider than the truth: it
-applies to every `HttpServer` a program can reach, including the
-Express and Fastify ones, which have no such member. A program
-holding more than one platform should name
-[`NestHonoApplication`](#nesthonoapplication), which narrows the
-adapter instead of widening the contract.
+`getHono` is declared on Nest's `HttpServer` by this package, so
+it is reachable off an untyped application, but the declaration
+covers every `HttpServer` (Express and Fastify included, which
+lack it). Name [`NestHonoApplication`](#nesthonoapplication) —
+it narrows the adapter instead of widening the contract.
 
 ## Uploads
 
@@ -198,12 +154,9 @@ import {
 } from '@ailura/nestjs-platform-hono-multipart';
 ```
 
-The upload interceptors parse a `multipart/form-data` body with
-multer's semantics, so `@UploadedFile()` reads `req.file`,
-`@UploadedFiles()` reads `req.files` and the text fields land in
-`req.body`. They are the counterpart of
-`@nestjs/platform-express`'s `FileInterceptor` family and accept
-the same options.
+They parse `multipart/form-data` with multer's semantics —
+`@UploadedFile()`→`req.file`, `@UploadedFiles()`→`req.files`,
+text→`req.body` — like platform-express's family, same options.
 
 | Interceptor             | Stores                                            |
 | ----------------------- | ------------------------------------------------- |
@@ -215,20 +168,16 @@ the same options.
 | `FileStreamInterceptor` | One file in a named field → a live stream         |
 
 `FileStreamInterceptor(fieldName, localOptions?)` is the
-streaming member of the family, the counterpart of
-`@nestjs/platform-fastify/multipart`'s interceptor of the same
-name, and it stores nothing: `@UploadedFile()` reads a
-`MultipartFileStream`, whose `stream` carries the bytes as they
-arrive. Only what the handler reads is taken from the client,
-and whatever it leaves unread is discarded once the handler has
-answered, so a client that is still uploading is never left
-hanging. Its options type omits `dest` and `storage`, because
-nothing is stored, and `limits.fileSize` is enforced on the
-stream rather than on the request.
+streaming counterpart of `@nestjs/platform-fastify/multipart`'s
+interceptor and stores nothing: `@UploadedFile()` reads a
+`MultipartFileStream` whose `stream` carries the bytes as they
+arrive. Only what the handler reads is taken, and the unread is
+discarded once it answers, so a client still uploading is never
+left hanging. Its options omit `dest` and `storage`, and
+`limits.fileSize` is enforced on the stream, not the request.
 
 `MultipartModule.register(options)` (and `registerAsync`)
-provides defaults every interceptor in the importing module
-merges over.
+provides module-wide defaults every interceptor merges over.
 
 ### Upload options
 
@@ -244,25 +193,23 @@ merges over.
 `memoryStorage()` keeps each file in `file.buffer`;
 `diskStorage({ destination, filename })` writes it and sets
 `destination`, `filename` and `path`. Both implement multer's
-`_handleFile` / `_removeFile` contract, so an engine written for
-`@nestjs/platform-express` works here unchanged.
+`_handleFile`/`_removeFile` contract, so a platform-express
+engine works unchanged.
 
-The adapter's own `bodyLimit` is counted as the payload is read,
-so a body over it is answered `413` whatever framing the request
-uses — a chunked one, which declares no `Content-Length`,
-included. A multipart body is the exception, because a parser
-consumes it rather than this module. On a deployment that
-imports `@ailura/nestjs-platform-hono-multipart`, the island's
-`busboy` reads it, so the `limits` an upload route declares are
-the ceiling that applies while it is parsed, and `bodyLimit`
-still refuses a declared length that already exceeds it. A
-deployment that never imports the island leaves the body to
-Hono's own parser, which counts no ceiling at all.
+The adapter's `bodyLimit` is counted as the payload is read, so
+a body over it is answered `413` under any framing, even a
+chunked one with no `Content-Length`. A multipart body is the
+exception: a parser consumes it. Where
+`@ailura/nestjs-platform-hono-multipart` is imported, the
+island's `busboy` reads it, so the route's `limits` are the
+ceiling while it is parsed and `bodyLimit` still refuses a
+declared length already over it; otherwise Hono's own parser
+counts no ceiling.
 
-This island needs `busboy` (an optional peer) and works where
-Node streams do — the Node and Bun transports. On a fetch host,
-the request path keeps parsing `multipart/form-data` into
-`req.body` and `req.files` through Hono's own parser instead.
+The island needs `busboy` (an optional peer) and works where
+Node streams do — Node and Bun; a fetch host instead parses
+`multipart/form-data` into `req.body` and `req.files` through
+Hono's parser.
 
 ## WebSocket Adapter
 
@@ -272,9 +219,7 @@ the request path keeps parsing `multipart/form-data` into
 import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
 ```
 
-Created internally by Nest when a `@WebSocketGateway()` is
-declared. A gateway that asks for its own port or for a
-namespace is refused.
+Created internally by Nest for a `@WebSocketGateway()`.
 
 ### `HonoGatewayOptions`
 
@@ -317,9 +262,6 @@ namespace is refused.
 
 ### `MultipartFileStream`
 
-What `FileStreamInterceptor` hands the handler instead of a
-stored file.
-
 | Property       | Type       | Description                             |
 | -------------- | ---------- | --------------------------------------- |
 | `fieldname`    | `string`   | Field name the file arrived under       |
@@ -329,8 +271,6 @@ stored file.
 | `stream`       | `Readable` | The bytes, live from the request        |
 
 ### `NestRequest`
-
-The request object Nest reads. Key properties:
 
 | Property      | Type                                                         | Description                                                         |
 | ------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
@@ -357,8 +297,6 @@ The request object Nest reads. Key properties:
 ```ts
 type TrustProxy = boolean | number | string[];
 ```
-
-Controls which proxy headers are read:
 
 - `false` — trust no proxy (default)
 - `true` — trust all proxies

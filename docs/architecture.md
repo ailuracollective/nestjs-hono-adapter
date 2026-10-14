@@ -1,8 +1,7 @@
 # Architecture
 
-This is the map a contributor needs before changing a file. The
-README describes what the adapter does; this describes the shape
-it is built in, and which shapes are refused.
+The shape the adapter is built in, and which shapes are refused.
+The README says what it does.
 
 ## The regions of `packages/`
 
@@ -21,42 +20,37 @@ packages/
              @ailura/nestjs-platform-hono-multipart
 ```
 
-The implementation lives in `packages/core/src/`, and the
-repository root is only the private Bun workspace root — no
-published package, no `src/`. The region names below are the
-directories under `packages/core/src/` unless a package is
-named.
+The implementation is `packages/core/src/`; the repository root
+is only the private Bun workspace root — no package, no `src/`,
+no exports. Region names below are directories under
+`packages/core/src/` unless a package is named.
 
 **`core/`** holds the translation and the adapter chain, the
-ports that describe a runtime, and the primitives translation
-needs. It is the only region that knows both Nest's contract and
-Hono's objects — and it names no runtime.
+`Server`/`Transport` ports, and the primitives translation
+needs. It alone knows both Nest's contract and Hono's objects,
+and names no runtime.
 
-**`features/`** holds the capabilities a deployment may or may
-not turn on: CORS, event streams, static assets, views. They are
-separate because each one is optional at runtime, and because
-none of them should be able to reach sideways into another.
+**`features/`** holds the capabilities a deployment may turn on:
+CORS, event streams, static assets, views. Each is optional at
+runtime, and none may reach sideways into another.
 
-**The transports** are the runtime-specific halves,
-`servers/bun.ts`, `servers/node.ts` and `servers/fetch.ts`. Each
-is reached only through its own subpath, and each reaches
-`core/` for the ports it implements. A deployment loads one and
-no other. The fetch transport is the one for a host that serves
-a Web `Request` and expects a Web `Response` — Cloudflare
-Workers, Vercel Functions, Deno — where nothing listens.
+**The transports** are `servers/bun.ts`, `servers/node.ts` and
+`servers/fetch.ts`. Each is reached only through its own subpath
+and reaches `core/` for the ports it implements; a deployment
+loads one. The fetch transport serves a host that hands over a
+Web `Request` and expects a Web `Response` — Cloudflare Workers,
+Vercel Functions, Deno — where nothing listens.
 
-**The WebSocket island** is separate from all of them, and it
-lives in `packages/ws`. It is neutral: it asks the adapter for
-its transport rather than importing a runtime's own WebSocket
-module.
+**The WebSocket island** lives in `packages/ws` and is neutral:
+it asks the adapter for its transport rather than importing a
+runtime's own WebSocket module.
 
-**The upload island** is the second opt-in island, published as
-`@ailura/nestjs-platform-hono-multipart`, and it lives in
-`packages/multipart`. It is the only place that consumes a
-`multipart/form-data` body and the only place that depends on a
-parser (`busboy`, an optional peer of the adapter and a required
-one of the package). Its interceptors parse the body the way
-multer does, so `@UploadedFile()` and `@UploadedFiles()` work;
+**The upload island** lives in `packages/multipart`, published
+as `@ailura/nestjs-platform-hono-multipart`. It alone consumes a
+`multipart/form-data` body and alone depends on a parser
+(`busboy`, an optional peer of the adapter and a required one of
+the package). Its interceptors parse the body the way multer
+does, so `@UploadedFile()` and `@UploadedFiles()` work;
 importing it marks the adapter through `declareMultipart`, the
 one symbol the core publishes on purpose for it, and a marked
 adapter leaves a multipart body alone for an interceptor to
@@ -68,7 +62,8 @@ it.
 Five rules, all enforced by `test/layers.test.ts`:
 
 1. `core/` never reaches `features/`, **except** from
-   `core/hono-lifecycle.ts` and `core/server-adapter.ts`.
+   `core/server/hono-lifecycle.ts` and
+   `core/server/server-adapter.ts`.
 2. `features/` never reaches `features/`.
 3. `features/` never reaches the WebSocket island.
 4. The islands that call the application reach it as the
@@ -79,239 +74,215 @@ Five rules, all enforced by `test/layers.test.ts`:
 5. The socket.io island reaches `core/` and `features/` not at
    all, as a value or as a type.
 
-Rule 1 has exactly two exceptions because exactly two modules
-are the composition root: they are the ones that turn a
-capability into a running adapter. Everything else in `core/` is
-reached only by Nest's contract.
+The rule-1 exceptions are the composition root, the modules that
+turn a capability into a running adapter; everything else in
+`core/` is reached only by Nest's contract.
+`packages/ws/src/adapter.ts` imports `ServerAdapter` with
+`import type`, erased at compile time, so the `/ws` subpath
+never loads the HTTP adapter; as a value import it would cost an
+HTTP-only deployment a WebSocket stack. The upload island
+imports `declareMultipart` as a value from
+`packages/multipart/src/multipart/multipart.interceptor.factory.ts`,
+marking the adapter, and otherwise reaches the core only as
+types. The socket.io island names nothing in `core/` or
+`features/`: Nest hands it the server it already built, so
+`packages/socket-io/src/adapter.ts` needs no port or composition
+root — its runtime graph is `socket.io` and the three modules
+behind its entrypoint, and `test/layers.test.ts` refuses the
+value and type edges that would change that.
 
-Rule 4 is the load-bearing one. `packages/ws/src/adapter.ts`
-does import `ServerAdapter`, and it does so with `import type`.
-That is erased at compile time, so the `/ws` subpath never loads
-the HTTP adapter. The moment that becomes a value import, a
-deployment that only serves HTTP pays for a WebSocket stack.
-
-The upload island follows the same rule with one exception it
-can name:
-`packages/multipart/src/multipart/multipart.interceptor.factory.ts`
-imports `declareMultipart` from the adapter package as a value,
-because marking the adapter is the whole point of the island.
-Its other reaches into the core are types, so a deployment that
-serves no upload loads neither the island nor its parser.
-
-The socket.io island goes one step further, which is why it has
-a rule of its own: it names nothing in `core/` or `features/` at
-all. Nest hands the adapter the server it already built, so
-`packages/socket-io/src/adapter.ts` needs no port and no
-composition root — its runtime graph is `socket.io` and the
-three modules behind its entrypoint, and `test/layers.test.ts`
-refuses both the value edge and the type edge that would change
-that. The island was the first capability to leave the core's
-source tree: it lives in the `packages/socket-io` workspace
-package, published as `@ailura/nestjs-platform-hono-socket-io`.
-
-One more split is a packaging rule rather than a layer one:
-`core/` never imports `servers/fetch.ts`, and imports
-`servers/bun.ts` only from the composition root; a transport
-imports the ports it implements. That one exception is taken
-deliberately and held by `test/entry-points.test.ts`:
-`core/server-adapter.ts` — the composition root the layer rules
-already name — imports `servers/bun.ts`, to hand the adapter the
+Packaging, not layering: `core/` never imports
+`servers/fetch.ts`, and imports `servers/bun.ts` only from
+`core/server/server-adapter.ts`, which hands the adapter the
 transport it serves through when a deployment names none. That
-is what keeps `new ServerAdapter()`, the bootstrap this package
-published with, served; the cost is that `.` resolves `hono/bun`
-in a top-level await, which keeps the module loadable on Node
-and makes the package ESM only, so a `require()` of it throws.
+keeps `new ServerAdapter()` served, and costs the `.` entrypoint
+a top-level `hono/bun` resolution that keeps the module loadable
+on Node and makes the package ESM only, so `require()` throws.
 
-`packages/core/src/core/application.ts` is the one module whose
-entire contents are types: the interface a bootstrap hands to
-`NestFactory.create()`, and the member this package declares on
-Nest's `HttpServer` so `getHono()` is reachable out of
-`getHttpAdapter()`. Every import it declares is `import type`,
-so it costs the bundle nothing and the bundler never reaches it
-— a claim `packages/core/test/types/application-surface.ts`
-holds at compile time rather than leaving to review.
+`packages/core/src/core/server/application.ts` is all types: the
+interface a bootstrap hands `NestFactory.create()`, and the
+member this package declares on Nest's `HttpServer` so
+`getHono()` is reachable out of `getHttpAdapter()`. Every import
+is `import type`, so it costs the bundle nothing;
+`packages/core/test/types/application-surface.ts` holds that at
+compile time.
+
+## How a module names another
+
+A parent-relative import — `../../features/cors/index.ts` from
+`core/server/` — is refused by
+`import/no-relative-parent-imports`, and `.oxlintrc.json`
+carries no exception. Each tree is named by an alias instead:
+
+| Alias               | Names                       |
+| ------------------- | --------------------------- |
+| `#adapter/*`        | `packages/core/src/`        |
+| `#multipart/*`      | `packages/multipart/src/`   |
+| `#ws/*`             | `packages/ws/src/`          |
+| `#socket-io/*`      | `packages/socket-io/src/`   |
+| `#adapter-test/*`   | `packages/core/test/`       |
+| `#multipart-test/*` | `packages/multipart/test/`  |
+| `#test/*`           | `test/`, the shared harness |
+| `#root/*`           | the repository root         |
+
+A sibling travels as `./sibling.ts`: the alias crosses a tree,
+not every import. So a package's tests reach `test/probe.ts` as
+`#test/probe`, and `test/entry-points/` reads the four manifests
+as `#root/packages/<name>/package.json`.
+
+An alias carries no extension — `#adapter/core/context`, not
+`#adapter/core/context.ts` — because the compiler refuses a
+`.ts` on a specifier it cannot rewrite, and
+`rewriteRelativeImportExtensions` rewrites relative ones only.
+The `paths` target resolves it: each package's `tsconfig.json`
+maps the aliases its sources and tests use, `packages/core` and
+`packages/multipart` map their own in `tsconfig.build.json`,
+`test/tsconfig.json` maps every tree because it typechecks them
+all in one project, and both Cloudflare examples map
+`#adapter/`.
+
+A built package carries the alias into `dist/`, so the published
+`imports` map in `packages/core/package.json` and
+`packages/multipart/package.json` resolves it at runtime —
+`#adapter/*` to `./dist/*.js`. A consumer never writes one.
 
 ## Entrypoints and isolation
 
-`@ailura/nestjs-hono-adapter`, the package built from
-`packages/core`, exposes four specifiers: `.`, `./bun-server`,
-`./node-server` and `./fetch`. Each optional capability is its
-own package with a single specifier, `.`:
-`@ailura/nestjs-platform-hono-ws` for the WebSocket adapter,
-`@ailura/nestjs-platform-hono-multipart` for uploads and
-`@ailura/nestjs-platform-hono-socket-io` for Socket.IO. The
-adapter depends on none of the three; `ws` and `multipart` peer
-on the adapter (`>=1.4.1 <2`). The repository root is the
-private Bun workspace root, with no exports of its own.
+`@ailura/nestjs-hono-adapter`, built from `packages/core`,
+exposes four specifiers: `.`, `./bun-server`, `./node-server`
+and `./fetch`. Each optional capability is its own package with
+a single specifier, `.`: `@ailura/nestjs-platform-hono-ws`,
+`@ailura/nestjs-platform-hono-multipart` and
+`@ailura/nestjs-platform-hono-socket-io`. The adapter depends on
+none of the three; `ws` and `multipart` peer on the adapter
+(`>=1.4.1 <2`).
 
-The build is the adapter first (`build:core`), then
-`build:packages`; each capability package compiles its own
-sources into its own `dist/`, so the adapter's source names none
-of the three. The published maps expose nothing else, so no
-consumer can reach an internal module by path — which is what
-makes it safe to move files between regions without it being a
+The build is `build:core` then `build:packages`; each capability
+package compiles its own sources into its own `dist/`, and the
+published maps expose nothing else, so no consumer reaches an
+internal module by path — moving files between regions is not a
 breaking change.
 
-The `./ws`, `./multipart` and `./socket-io` subpaths the adapter
-used to carry are gone. `./ws` was published through 1.4.1 and
-now lives in `@ailura/nestjs-platform-hono-ws`; `./multipart`
-and `./socket-io` only ever existed on `main` and were never
-published. The
-[README](../README.md#migrating-from-the-old-subpaths) records
-what to install instead.
+The `./ws`, `./multipart` and `./socket-io` subpaths are gone.
+`./ws` was published through 1.4.1 and now lives in
+`@ailura/nestjs-platform-hono-ws`; `./multipart` and
+`./socket-io` only existed on `main` and were never published.
+The
+[README](../packages/core/README.md#migrating-from-the-old-subpaths)
+records what to install instead.
 
 `test/entry-points.test.ts` walks the import graph transitively
-from the neutral entrypoints. It fails if `.` reaches
-`@hono/node-ws` or `@nestjs/websockets`, the optional peer
-dependencies: a deployment that serves HTTP must not need either
-installed. It checks the opposite direction too, because the
-default transport's module is reached on purpose: `.` resolves
-`hono/bun` through the Bun transport's dynamic import, which is
-why the guard reads both import shapes.
-`@ailura/nestjs-platform-hono-ws` is the only package that
-reaches the WebSocket peers,
-`@ailura/nestjs-platform-hono-socket-io` the only one that
-reaches `socket.io`, and
-`@ailura/nestjs-platform-hono-multipart` the only one that
-reaches `busboy`. Each guard reads the package that owns the
-tree: `test/layers.test.ts` reads `packages/core/src` as the
-layered source and `packages/ws/src`, `packages/multipart/src`
-and `packages/socket-io/src` as the islands, and
-`test/entry-points.test.ts` starts from the adapter's `index.ts`
-and asks each island for its peers at the package. It reads the
-manifests as well as the source, because the direction it holds
-is about what a deployment installs: the adapter declares none
-of the three capability packages among its dependencies, its
-optional dependencies or its peers, and no capability package
-declares another. A source walk alone cannot see a declaration
-nothing imports yet.
+from the neutral entrypoints and fails if `.` reaches
+`@hono/node-ws` or `@nestjs/websockets`, the optional peers: an
+HTTP deployment must not need either installed. It checks the
+opposite direction too, since `.` resolves `hono/bun` through
+the Bun transport's dynamic import, which is why it reads both
+import shapes. `@ailura/nestjs-platform-hono-ws` is the only
+package reaching the WebSocket peers,
+`@ailura/nestjs-platform-hono-socket-io` the only one reaching
+`socket.io`, `@ailura/nestjs-platform-hono-multipart` the only
+one reaching `busboy`. `test/layers.test.ts` reads
+`packages/core/src` as the layered source and the three
+`packages/*/src` as islands; `test/entry-points.test.ts` starts
+from the adapter's `index.ts` and asks each island for its peers
+at the package. It reads the manifests too, because the
+direction is about what a deployment installs: the adapter
+declares none of the three capability packages among its
+dependencies, optional dependencies or peers, and no capability
+package declares another.
 
-Note the deliberate difference between the two guards.
 `entry-points.test.ts` counts a type-only import as an edge;
-`layers.test.ts` distinguishes them. That is on purpose. The
-entrypoint guard wants to be conservative — if a type import
-ever becomes a value import, it should catch it early. The layer
-guard has to be precise, because rule 4 is exactly about that
-difference.
+`layers.test.ts` distinguishes them — deliberately, since the
+entrypoint guard is conservative and the layer guard must be
+precise for rule 4.
 
 ## The compatibility face
 
 Names that carry the shape the package published before the
-transports split, so a deployment that names `nodeServer()`
-keeps compiling and keeps working as it did:
+transports split:
 
-- `getHttpServer()` is `Server & http.Server`, and the Node
+- `getHttpServer()` is `Server & http.Server`; the Node
   transport hands back Node's own server with `listen` and
-  `close` adapted in place: `closeAllConnections()` and an
-  `'upgrade'` listener are still there.
-- `NestRequest.raw` is `IncomingMessage & Incoming`, and
+  `close` adapted in place, keeping `closeAllConnections()` and
+  an `'upgrade'` listener.
+- `NestRequest.raw` is `IncomingMessage & Incoming`;
   `NestRequest.socket` is `IncomingMessage['socket'] & Socket`.
-  The decode half reads the carrier; a deployment reads the
-  message.
 - `NodeEnv` is exported again, as the `HttpBindings` shape
   `@hono/node-server` attaches, so a handler annotated
   `Hono<NodeEnv>` keeps its `incoming` and `outgoing` reads. The
   security hook Nest registers is handed `context.env.outgoing`
-  where the transport provides it, as it was.
+  where the transport provides it.
 
-`@hono/node-server` was a required peer before the split and is
-one again, and `engines` still names Node: the Node transport is
-what answers an `http.Server`, and a deployment that names it
-runs on Node or on Bun.
+`@hono/node-server` is a required peer again, and `engines`
+still names Node: the Node transport answers an `http.Server`,
+and a deployment that names it runs on Node or Bun.
 
 `ServerAdapterOptions.overrideGlobalObjects` left with the
 implicit default it configured. The Node transport carries the
-option itself and defaults it to `false`, where the old default
-path passed `true`; a deployment that relied on the replacement
-names it as `nodeServer({ overrideGlobalObjects: true })`. The
-replacement is process-wide and not restored, so the suite does
-not depend on it: `test/probe.ts` puts the process's own classes
-back before every request, and
+option and defaults it to `false`, where the old default passed
+`true`; a deployment that relied on the replacement names it
+`nodeServer({ overrideGlobalObjects: true })`. The replacement
+is process-wide and not restored, so `test/probe.ts` puts the
+process's own classes back before every request, and
 `packages/core/test/isolation.test.ts` holds that a case may
 serve the plain `new ServerAdapter()` in process without
 answering for the files beside it.
-`packages/core/test/node-server.test.ts` serves the Node
-transport with the switch off and pins the wiring beside it.
 
 ## The adapter chain
 
 Three modules, each extending the one before:
 
 ```
-RouteAdapter  (core/route-adapter.ts)  extends AbstractHttpAdapter
-  HonoLifecycle (core/hono-lifecycle.ts)  adds the Hono app, the
+RouteAdapter  (core/route/route-adapter.ts)  extends AbstractHttpAdapter
+  HonoLifecycle (core/server/hono-lifecycle.ts)  adds the Hono app, the
                                           middleware and the server
                                           the injected transport builds
-    ServerAdapter (core/server-adapter.ts)  implements the rest of
+    ServerAdapter (core/server/server-adapter.ts)  implements the rest of
                                             the Nest contract
 ```
 
-`core/server.ts` is the `Server` port Nest drives: the `'error'`
-event, `address()`, `listen()` and `close()`. Each transport
-builds one. `core/transport.ts` is the `Transport` port — how a
-server is built, a directory is served and a connection is
-upgraded — and `core/bindings.ts` is what a transport attaches
-to each request: the request carrier Nest's SSE path reads, and,
-where the runtime has one, the native server.
+`core/ports/server.ts` is the `Server` port Nest drives: the
+`'error'` event, `address()`, `listen()` and `close()`. Each
+transport builds one. `core/ports/transport.ts` is the
+`Transport` port — how a server is built, a directory is served,
+a connection is upgraded — and `core/ports/bindings.ts` is what
+a transport attaches to each request: the request carrier Nest's
+SSE path reads, and, where the runtime has one, the native
+server.
 
-`AbstractHttpAdapter` comes from `@nestjs/core`. The other two
-are ours. They are one cohesive unit: splitting them across
-regions would mean a class extending something the layer rule
-forbids reaching.
+`AbstractHttpAdapter` comes from `@nestjs/core`; the other two
+are ours, one cohesive unit, since splitting them would have a
+class extend something the layer rule forbids reaching.
 
 ## Reading and writing
 
-`core/request.ts` turns a Hono request into the object Nest
-reads. `core/response.ts` turns a value Nest returned into a Web
-`Response`. They are two halves of one translation and they
-share nothing but the type `NestContext`.
+`core/request/request.ts` turns a Hono request into the object
+Nest reads; `core/response/response.ts` turns a value Nest
+returned into a Web `Response`. They share only the type
+`NestContext`. `node:stream` is used only by the response half
+(the `StreamableFile`), so the request half does not import it.
+The request half still reads `context.env.incoming` to fill in
+`raw`, `socket` and `ip`, so it depends on the transport
+bindings: the Node path gets the Node `IncomingMessage` and its
+real socket; the Bun path synthesizes the carrier and socket,
+which reports the address Bun gives back.
 
-The split matters for one concrete reason: `node:stream` is used
-only by the half that streams a `StreamableFile`, so the request
-half does not import it at all.
-
-It is worth being precise about what the split does **not** buy.
-`core/request.ts` still reads `context.env.incoming` to fill in
-`raw`, `socket` and `ip`. On the Node transport path, this is
-the Node `IncomingMessage` attached by `@hono/node-server`,
-including its real socket. On the Bun transport path, the
-carrier and socket are synthesized, and the socket reports the
-address Bun gives back. The decode half still depends on the
-transport bindings; removing an import did not remove that
-dependency.
-
-The suite reflects that honestly. `test/probe.ts` passes a
-synthetic carrier so most cases can run in process with no
-socket, and the handful that need a real one — shutdown and the
-WebSocket upgrade — keep it.
-
-Everything that reaches a capability goes through a seam. A
-capability is installed into the bridge as an argument rather
-than imported by it — `handler-bridge.ts` does not know that
-event streams exist. That is the whole point of the seam: the
-request path stays free of the optional features.
-
-One detail of the event stream seam decides how a route is
-answered, so it is worth knowing before you change
-`features/sse.ts` or the bridge that calls it. The stream
-surface — the writable Nest pipes its frames into, and the
-`write`, `setHeader` and `getHeaders` that go with it — is
-installed on the first read of `raw`, not on every request. That
-read is what tells an event stream apart from any other answer,
-and Nest makes it only on its SSE path: an ordinary route never
-builds the writable, never commits a `text/event-stream` answer,
-and keeps Hono's own context API on the object `@Res()` hands
-it. Installing the surface for every request is what answered
-every imperative route as an event stream.
+Every capability reaches the bridge through a seam, installed as
+an argument, not imported — `handler-bridge.ts` does not know
+event streams exist. The event stream surface (the writable Nest
+pipes frames into, with `write`, `setHeader`, `getHeaders`) is
+installed on the first read of `raw`, not on every request: that
+read distinguishes an event stream, and Nest makes it only on
+its SSE path, so an ordinary route keeps Hono's context API on
+the `@Res()` object.
 
 ## Errors
 
-There is one funnel. `server-adapter.ts` registers
+One funnel: `server-adapter.ts` registers
 `createExceptionRunner` on the Hono error handler, and
-everything Nest raises arrives there. Handlers that catch
-locally do it for a reason they can name: the exception runner
-deliberately does not re-read the body, because the failure may
-well be that reading it failed.
+everything Nest raises arrives there. The runner does not
+re-read the body, because the failure may be that reading it
+failed.
 
 ## The runtime surface
 
@@ -319,17 +290,15 @@ The core names no runtime; the builtin surface is what Nest and
 the features need wherever they run. Eight builtins are in use:
 `node:buffer`, `node:events`, `node:fs/promises`, `node:http`,
 `node:https`, `node:path`, `node:stream` and `node:util`. Nest's
-own SSE path is a `node:stream` `Writable`, views read the
-filesystem with `node:fs/promises` and `node:path`, and the Node
+SSE path is a `node:stream` `Writable`; views read the
+filesystem with `node:fs/promises` and `node:path`; the Node
 transport builds an `http.Server` with `node:https` for TLS.
-Static assets are not on that list: `features/static-assets.ts`
-imports no builtin at all and leaves the reading to the
-transport's `serveStatic()`, so the filesystem is reached for
-them by whichever transport serves them.
-`test/node-builtins.test.ts` freezes that set, scanning
-`packages/core/src/`. Adding one is a deliberate edit to both
-the source and the freeze, so the test failing is the signal,
-not an obstacle to route around.
+Static assets are not on the list:
+`features/static-assets/index.ts` imports no builtin and leaves
+reading to the transport's `serveStatic()`.
+`test/node-builtins.test.ts` freezes the set, scanning
+`packages/core/src/`; adding one is a deliberate edit to both
+the source and the freeze.
 
 The upload package is outside that scan and reaches four
 builtins the core does not: `node:crypto`, `node:fs`, `node:os`
@@ -338,271 +307,54 @@ with `node:crypto` and a directory with `node:os`, then names
 the file with `node:path` and reads and writes it with
 `node:fs`, `node:fs/promises` and `node:stream/promises` —
 `node:path` and `node:fs/promises` are already on the core's
-list. Those four left the core's set with the island they belong
-to.
+list.
 
-Type-only imports count toward the frozen set, because a
-type-only import still couples a module's types to the platform.
-The builtins are reached from more than the transports: `core/`
-takes `node:buffer`, `node:events` and `node:stream` as values
-and `node:http` as types, the CORS bridge takes `node:util`, and
-views take the filesystem ones. What only a transport does is
-**build** a server, and that narrower claim does hold:
-`servers/node.ts` is the only module that calls `node:https`,
-and every other `node:http` import in the core's source is a
-type.
+Type-only imports count toward the frozen set. The builtins are
+reached from more than the transports: `core/` takes
+`node:buffer`, `node:events` and `node:stream` as values and
+`node:http` as types, the CORS bridge takes `node:util`, and
+views take the filesystem ones. Only a transport **builds** a
+server: `servers/node.ts` is the only module that calls
+`node:https`, and every other `node:http` import in the core's
+source is a type.
 
 ## The bundle budget
 
 Each package holds its own `.size-limit.json` beside its
 `package.json`: `packages/core` carries the four adapter
-entrypoints, and `packages/ws`, `packages/socket-io` and
-`packages/multipart` carry their single one, each with a path
-relative to the package. `size-limit` measures an entrypoint as
-a consumer would see it: bundled, minified, brotlied, with peers
-external. The root `size` script runs the build and then
-`bun run --filter './packages/*' size`, and `bun run check` runs
-it last; CI runs it again as its own job.
+entrypoints; `packages/ws`, `packages/socket-io` and
+`packages/multipart` their single one, each with a
+package-relative path. `size-limit` measures an entrypoint as a
+consumer sees it: bundled, minified, brotlied, peers external.
+The root `size` script builds then runs
+`bun run --filter './packages/*' size`; `bun run check` runs it
+last, and CI runs it as its own job. The measured values are in
+[bundle-baseline.md](bundle-baseline.md).
 
-The ceilings are ratchets. Growth past one fails, and moving one
-is an explicit edit that has to be justified here. Today:
-`index` has a 12000-byte ceiling and a measurement of 11944,
-twenty bytes of it the published multipart marker, which a
-public export keeps alive; `bun-server` 1024/1003, `node-server`
-560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1550/1543
-and `socket-io` 950/948. The entry names are unchanged; the
-first four measure `packages/core/dist`, and `multipart`, `ws`
-and `socket-io` measure their own packages'
-`packages/<name>/dist`. The core's extraction moved no
-measurement either: every entrypoint sits at the ceiling it had,
-whichever package now emits it.
+The ceilings are ratchets: growth past one fails, and moving one
+is an explicit edit justified here. Current ceiling/measured:
+`index` 12000/11944, `bun-server` 1024/1003, `node-server`
+560/506, `fetch` 500/496, `multipart` 4250/4200, `ws` 1650/1618
+and `socket-io` 950/948. Entry names are unchanged: the first
+four measure `packages/core/dist`, and `multipart`, `ws` and
+`socket-io` their own `packages/<name>/dist`. The upload
+island's streaming seam closes three pieces the reconnaissance
+in [parity.md](parity.md#file-uploads) calls missing.
 
-**`inject()`.** Fastify's in-process request helper costs 1073
-bytes in `index` — 9754 before, 10827 after — against a
-9760-byte ceiling that left 6, so `index` moves to 10880. The
-feature is read on the first call and on Hono's own
-`app.request()`, which is what makes it reach a route without a
-port; it lives in `packages/core/src/core/` rather than in
-`packages/core/src/features/` because it is not optional — the
-member is on every adapter, and a feature it cannot be split
-into two files across would meet the layer's import rule either
-way. See [bundle-baseline.md](bundle-baseline.md) for the
-measurement.
-
-The signature forms the platform adapters accept arrived next.
-`enableCors()` reads a per-request delegate, which means the
-CORS bridge builds the request a delegate is handed;
-`useStaticAssets()` reads Fastify's single options object with
-the root inside it as well as Express's path; and
-`setViewEngine()` reads Fastify's options object as well as
-Express's engine name. The three cost 483 bytes, more than the
-29 the 9300-byte ceiling left, so `index` moves to 9760. That is
-the smallest raise that fits: the forms are 454 bytes past the
-old ceiling. The same change refuses the `create()` options the
-WebSocket adapter cannot serve instead of dropping them, which
-costs 11 bytes in `ws` and needs no raise: it measures 1543
-inside its unchanged 1550-byte ceiling.
-
-Bounding the response hook's wait requires a timer, cleanup, and
-rejection handling that remains active after timeout. With that
-fix, `index` measures 9271 bytes, so its ceiling moves from 9250
-to 9300. Forwarding transport errors through each WebSocket
-client, including safe reporting before binding, brings `ws` to
-1532 bytes, so its ceiling moves from 1520 to 1550.
-
-The instrumentation hooks added a step every request crosses.
-`setOnRequestHook` and `setOnResponseHook` were inherited as
-no-ops, and running them means building the request and response
-pair a hook reads on the way in and again once the chain
-settles. That costs 229 bytes, more than the 50 the 9000-byte
-ceiling left, so `index` moved to 9250. It is the price of the
-feature; a deployment that wants the bytes back can do without
-the response hook, which is the half that runs after the answer
-exists.
-
-The websocket island gained the two pieces of `platform-ws`'s
-surface it was missing: the frame parser a deployment can
-replace (`messageParser` in the constructor, and
-`setMessageParser()`) and `bindErrorHandler()`, which attaches
-the error listeners a path and its sockets need. Together they
-cost 90 bytes, so `ws` moved from 1430 to 1520. The island is
-its own entrypoint, so a deployment that serves no gateway pays
-none of it.
-
-The upload island added the multipart seam to `index`: a
-`WeakSet` beside the adapter and one branch in the request path,
-read per request. That is what raised `index` from 8804 to 8910
-and its ceiling from 8900 to 9000. The island itself is its own
-entrypoint, so its parser and storage are counted against
-`multipart` alone and never against a deployment that serves no
-upload.
-
-The streaming interceptor is the same island's second seam, and
-it stays there. `FileStreamInterceptor` hands a file part over
-as a live `MultipartFileStream` and discards what the handler
-leaves; that costs 553 bytes in `multipart` — 3653 to 4206 —
-past the 3800-byte ceiling that left 147. The ceiling moves to
-4250, which leaves the 44 bytes of headroom `bun-server` runs
-with. The raise is deliberate and belongs to this entrypoint
-alone: the island may become its own package, so a design that
-reads as one beats one that shaves bytes, and no deployment that
-serves no upload pays any of it. Three pieces the reconnaissance
-in [parity.md](parity.md#file-uploads) calls missing are closed
-inside the island. Busboy hands the part over while it is still
-parsing, so the handler reads a live stream and the parts after
-it are read but not parsed; the discard reads the Web body
-rather than cancelling it, because a cancelled body reaches the
-client as an aborted request; and the drain upstream defers to
-the socket `close` runs before the answer goes out here, unless
-the answer is built from the very stream the handler was handed
-— `StreamableFile.getStream()` makes that checkable, and an
-answer that reads the upload drains the body as it is written.
-The interceptor reads `catchError`, `concatMap`, `from` and `of`
-from `rxjs` as values; it is a peer the island's consumers
-already have, so the gate leaves it out and this entrypoint is
-charged nothing for it.
-
-The transport split moved weight between entrypoints rather than
-out of the package. `index` served through the Node transport by
-default at the split, so `node-server`'s server-building half is
-reachable from it again, and its bytes are back in the neutral
-entrypoint: 8424 to 8804, ceiling 8500 to 8900. That raise is
-taken here deliberately, as the price of not breaking
-`new ServerAdapter()`, and it is the number to watch. In
-exchange `node-server` lost its `NodeServer` wrapper — it hands
-back Node's own `http.Server` with `listen` and `close` adapted
-in place — so it fell from 687 to 511 and its ceiling to 560.
-`ws` gained the `@hono/node-ws` fallback the transport no longer
-carries, 1256 to 1368, ceiling 1400.
-
-`socket-io` is the seventh entrypoint, and the first one added
-with a ceiling of its own rather than a raise: 950 bytes,
-measured at 916. When the island moved into `packages/socket-io`
-and the subpath began to be emitted from it, the entrypoint
-stayed at 948 bytes under the same 950 ceiling: where the source
-lives changed, the bytes did not. Nothing in it is charged to
-`index`, because the `socket-io` entry is reached only by a
-deployment that names it, and `socket.io` is an optional peer
-the gate leaves out of the measurement the way it leaves out
-`@hono/node-ws`. The island is three modules — the adapter, the
-refusal that names the transport a deployment must serve through
-instead, and the entrypoint that re-exports both — and the 34
-bytes of headroom left under the ceiling are in the range the
-other entries keep, from `ws`'s 10 to `fetch`'s 62.
-
-The application settings arrived next. `setLocal()`, `set()`,
-`enable()` and `disable()` add the last piece of Express's
-application surface this adapter can carry honestly: a local
-written after the application starts reaches the next render.
-Locals are stored separately from the `defaultContext`
-configured through `setViewEngine()`; each render combines
-defaults, locals, and handler data in that order. Special keys
-such as `__proto__` remain own data properties. The two settings
-that name behaviour — `view engine` and `views` — delegate to
-`setViewEngine()` and `setBaseViewsDir()` while every other name
-is refused with a reason rather than stored. That costs 206
-bytes in `index` — 10856 before, 11062 after — past the
-10880-byte ceiling that left 24, so `index` moves to 11090 and
-keeps 28 bytes of headroom. The refusal reasons are 74 bytes of
-the total, measured by dropping the map; shortening the
-explanatory half of the `trust proxy` reason would save 19 of
-those, and the rest is the shared text and the setting names.
-The methods and the honoured set are the other 132 bytes, so the
-cost does not come down without losing either the reason or the
-refusal.
-
-The helpers live in `core/hono-lifecycle.ts` rather than beside
-`set()` in `core/server-adapter.ts`, because that file is at its
-14-dependency ceiling and its 450-line ceiling, and `views.ts` —
-the natural home for the `view engine` and `views` names — is at
-388 of its 400 lines. The module augmentation that declares the
-surface on `INestApplication` stays in `core/app-settings.ts`
-and reads its parameter types off `ServerAdapter`, which is what
-keeps that file inside the layer map: naming the view and
-static-asset option types directly would draw the `core/` to
-`features/` edge only the two composition roots may take.
-
-Validating directory arrays, preserving locals when defaults are
-configured, and treating `__proto__` as own render data bring
-`index` to 11123 bytes. These corrections exceed its 11090-byte
-ceiling by 33 bytes, so the ceiling moves to 11130. The other
-entrypoints retain their existing ceilings.
-
-Enforcing the body limit while the payload is read rather than
-once it is resident costs 83 bytes in `index` — 11172 before,
-11255 after — past the 11180-byte ceiling that left 8, so
-`index` moves to 11260. It is the price of the streaming
-ceiling: the counting pass is a `TransformStream` and the
-`Response` around it, both platform globals the bundler does not
-charge for, so the bytes are the glue and not the machinery. The
-last 28 of them came later, so that a body earlier Hono
-middleware had already read is checked against the limit from
-its cached bytes rather than read again. The alternative was a
-body no client needs to declare a length for, which is not a
-ceiling at all.
-
-Answering two cookies as two headers costs 42 bytes in `index` —
-11123 before, 11172 after — past the 11130-byte ceiling that
-left 7, so `index` moves to 11180. It is the price of keeping a
-repeated `set-cookie` apart: the record an answer is built from
-converts a sequence value with the WebIDL `ByteString`
-converter, which joins it with a comma, so the one header that
-cannot be folded is handed to the constructor as pairs instead.
-Every other repeated header still folds, and a record with no
-repeated `set-cookie` is still written straight through.
-
-Reading what the payload declares about itself costs 214 bytes
-in `index` — 11255 before, 11469 after — past the 11260-byte
-ceiling that left 5, so `index` moves to 11480. The bytes are
-the `charset` parameter parser, the decoder table for the family
-the platform reads, the two refusals, and the module boundary
-that keeps `body.ts` under its line ceiling now that it also
-counts a streamed body; what they buy is an answer the other
-adapters already give, where a UTF-16LE JSON body decodes rather
-than failing and a charset or content encoding this adapter
-cannot read is refused with the platform's 415 instead of being
-handed to `JSON.parse`.
-
-Creating charset decoders on demand and rejecting unsupported
-`useBodyParser()` names require a small increase in `index`. Its
-ceiling moves from 11480 to 11500 bytes to cover these checks;
-the other entrypoint ceilings stay as declared.
-
-Answering `listen()` with the reason it cannot run costs 69
-bytes in `fetch` — 418 before, 487 after — past its 480-byte
-ceiling, so `fetch` moves to 490. Almost all of it is the
-message: a fetch host hands the adapter its requests, so a
-deployment that waits on `listen()` waits forever, and Nest
-settles that promise only from the callback this transport now
-answers with an `Error`.
-
-Throwing the same refusal when no callback is supplied brings
-`fetch` to 496 bytes, so its ceiling moves from 490 to 500.
-
-Serving through Bun when no transport is named rebuilt the
-neutral entrypoint around the Bun transport. `index` carries a
-transport by default, and the one it carries now is `bun.ts`
-rather than `node.ts`, plus the conditional `hono/bun`
-resolution that keeps the module loadable on Node: 11530 to
-11944, past the 11550-byte ceiling, so `index` moves to 12000.
-`bun-server` grew 981 to 1003 for the same conditional import,
-inside its unchanged 1024-byte ceiling. `node-server` and
-`fetch` did not move, and the three capability packages are
-unchanged.
-
-Two consequences worth knowing before you write code:
+Two consequences before you write code:
 
 - **Extracting a helper costs bytes.** The bundler does not
   inline module-level `function` declarations. Moving code is
   free; pulling it apart is not.
 - **Import order is not free either.** The order of the import
-  statements in `core/server-adapter.ts` and
-  `core/hono-lifecycle.ts` is load-bearing for the measurement.
-  Alphabetising them costs five bytes. Leave them.
+  statements in `core/server/server-adapter.ts` and
+  `core/server/hono-lifecycle.ts` is load-bearing for the
+  measurement. Alphabetising them costs five bytes. Leave them.
 
 If a change genuinely needs more room, say so in the change
 rather than quietly raising the ceiling. The budget is the
-product.
+product. See [bundle-baseline.md](bundle-baseline.md) for the
+measured baseline.
 
 ## Where the guards live
 
@@ -616,60 +368,39 @@ product.
 | `.oxlintrc.json`                                   | rule exceptions, each with a reason |
 
 The root `test/` holds only what guards the monorepo and what
-more than one package shares: the guards above, and the shared
+more than one package shares: the guards above and the shared
 probe and helpers (`test/probe.ts`, `test/bun-adapter.ts`,
-`test/bun-bindings.ts`), which a package's tests reach through a
-relative path like `../../../test/probe.ts`. Each package's
-behaviour tests live in its own `packages/<name>/test/`, and
-each package has its own `test` script.
+`test/bun-bindings.ts`), reached as `#test/probe.ts`,
+`#test/bun-adapter.ts` and so on. Each package's behaviour tests
+live in its own `packages/<name>/test/` with its own `test`
+script.
 
-The `.oxlintrc.json` blocks over `packages/multipart/src/**` are
-the widest ones, and they are taken because the island mirrors
-multer's semantics and `append-field`'s port: it keeps multer's
-`_handleFile` / `_removeFile` names and its `Error | null`
-callbacks, and its request-shaped parser has more parameters and
-statements per function than the house style allows. The
-type-safety rules stay on everywhere else. Relaxing a rule for
-one file rather than for the region is preferred when a
-single-file exception is enough, which is also why
-`FileStreamInterceptor` sits in
-`interceptors/file.interceptor.ts` beside the buffered one
-rather than in a file of its own: file names, not directories,
-are what those blocks name, so a new file would mean a new
-exception rather than a moved one.
+`.oxlintrc.json` takes the widest exceptions over
+`packages/multipart/src/**`, because the island mirrors multer's
+semantics and `append-field`'s port: multer's `_handleFile` /
+`_removeFile` names and `Error | null` callbacks, and a
+request-shaped parser with more parameters and statements per
+function than the house style allows. Type-safety rules stay on
+elsewhere, and a rule is relaxed for one file rather than the
+region — also why `FileStreamInterceptor` sits in
+`interceptors/file.interceptor.ts` beside the buffered one.
 
-Two later exceptions follow the same rule. `test/**` and
-`packages/*/test/**` carry a 700-line ceiling rather than 400,
-because an end-to-end suite holds its fixtures, its gateways and
-its cases in one file and grows as they do; each package's suite
-lives with it, in `packages/core/test/`, `packages/ws/test/` and
-so on. And `packages/ws/src/adapter.ts` carries 450, the value
-the two files above it take: it is the island's composition
-point, where the `AbstractWsAdapter` members it implements meet
-the `platform-ws` surface — the frame parser and the error
-handlers — that a consumer of that adapter reads.
+`test/**` and `packages/*/test/**` carry a 700-line ceiling
+rather than 400, because an end-to-end suite holds its fixtures,
+gateways and cases in one file; `packages/ws/src/adapter.ts`
+carries 450, its composition point where the `AbstractWsAdapter`
+members meet the `platform-ws` surface it implements.
+`packages/core/src/features/cors/index.ts` sits at exactly 400
+lines and stays whole: rule 2 leaves it no seam, since any edge
+between two files of `features/` fails the guard. Its analogues
+are larger — `express-adapter.ts` 710 lines,
+`fastify-adapter.ts` 1,433.
 
-`packages/core/src/features/cors-middleware.ts` sits at exactly
-400 lines and stays whole, which is an exception of a different
-kind: rule 2 leaves it no seam to cut along. `features/` never
-reaches `features/`, and that rule counts any edge between two
-files in the directory, so the halves of one capability cannot
-sit beside each other without failing the guard. The module is
-one capability in any case — the option resolution, the origin
-decision, and the middleware that applies them — and its
-analogues are larger: `express-adapter.ts` is 710 lines and
-`fastify-adapter.ts` 1,433. Splitting it would also have to
-answer to the budget above, which records that moving code is
-free and extracting a helper is not, and where each entrypoint
-sits within a few per cent of its ceiling.
-
-The Bun transport was split along its own seam:
-`servers/bun-runtime.ts` holds what Bun's server and TLS options
-look like — the types, the TLS mapping, and the static-file
-middleware that reads with `Bun.file` — and `servers/bun.ts`
-keeps the Node-shaped server Nest drives, its fetch bindings,
-the `hono/bun` websocket helper and the transport factory, at
-315 lines. What is left stays in one file because those parts
-have to agree on one class: the websocket helper installs on the
+The Bun transport is split along its seam:
+`servers/bun-runtime.ts` holds Bun's server and TLS option
+types, the TLS mapping, and the static-file middleware reading
+`Bun.file`; `servers/bun.ts` keeps the Node-shaped server Nest
+drives, its fetch bindings, the `hono/bun` websocket helper and
+the transport factory, at 315 lines — the helper installs on the
 server the factory builds, and the factory serves through that
-class's own fetch handler.
+class's fetch handler.

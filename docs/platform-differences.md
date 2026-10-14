@@ -3,35 +3,18 @@
 How this adapter answers where Nest's own platform adapters
 disagree, and how it reads Nest's path, query and body dialects.
 
-## Contents
-
-- [Where the platform adapters disagree](#where-the-platform-adapters-disagree)
-- [Routes](#routes)
-- [Query strings](#query-strings)
-- [Request bodies](#request-bodies)
-- [Responses](#responses)
-- [Instrumentation hooks](#instrumentation-hooks)
-- [What this adapter does not implement](#what-this-adapter-does-not-implement)
-
 ## Where the platform adapters disagree
 
-Where `platform-express` and `platform-fastify` answer the same
-situation differently, this adapter answers as
-`platform-fastify` does. That is the closer of the two in every
-case that matters here: the router scores its routes rather than
-matching them in registration order, the response is
-encapsulated behind an object with an escape hatch to the
-socket, a trailing slash is significant, a body limit is a
-megabyte, and there is no `X-Powered-By` or `ETag` on the way
-out.
-
-Two defaults follow the **Express 4** behaviour instead, on
-purpose: `@Query()` and a URL-encoded body are parsed with the
-`qs` grammar, and an empty JSON body reads as `{}`. Express 5
-reads the query flat, as `platform-fastify` does, but bracket
-syntax nests here, where a flat parser keeps `filter[name]` as a
-literal key. A handler that reads those keys may need a change
-when it moves to this adapter.
+Where `platform-express` and `platform-fastify` disagree, this
+adapter answers as `platform-fastify` does: the router scores
+routes rather than matching in registration order, the response
+is encapsulated with an escape hatch to the socket, a trailing
+slash is significant, the body limit is 1 MiB, and there is no
+`X-Powered-By` or `ETag` on the way out. Two defaults follow
+**Express 4** instead: `@Query()` and URL-encoded bodies parse
+with the `qs` grammar, and an empty JSON body reads as `{}`
+(Express 5 reads the query flat; bracket syntax nests here, so
+`filter[name]` is not a literal key).
 
 | Situation                                      | This adapter                                          | Express                                      | Fastify                    |
 | ---------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- | -------------------------- |
@@ -49,7 +32,7 @@ when it moves to this adapter.
 
 ## Routes
 
-Nest's path dialect is translated as the application starts:
+Nest's path dialect is translated at startup:
 
 | Nest              | Hono              |
 | ----------------- | ----------------- |
@@ -59,38 +42,27 @@ Nest's path dialect is translated as the application starts:
 | `/users/:id(\d+)` | `/users/:id{\d+}` |
 | `/files/*rest`    | `/files/*`        |
 
-A path the router cannot read — `/users?`, a stray `}` or `(`,
-or a group that holds more than one parameter — throws as the
-application starts, rather than answering 404 later.
-
-A wildcard is read back under `*`, the key Fastify answers it
-by, and the name a route gave it is not carried over:
-`@Get('files/*rest')` fills `req.params['*']` with
-`reports/2024/q1.csv` for `/files/reports/2024/q1.csv`. Hono
-matches a wildcard without reporting what it stood for, so the
-adapter reads the capture out of the path itself. A wildcard
-whose escape stands for no character cannot be decoded:
-`/files/%FF` is a `400`, the answer Express gives for it.
-
-Middleware mounted for every method — `app.use(fn)` and a
-`MiddlewareConsumer` without a method — answers the path it was
-given as a prefix, the way `router.use()` reads it on both
-platform adapters: `use('/api')` answers `/api` and everything
-under it. Middleware for one named method answers that path
-alone, as a verb route reads it there.
-
-Versioning works over URI, header, media type and the custom
-strategy, including versioned redirects. A media-type version is
-read out of `Accept` wherever it sits: `q` weights before it, or
-an earlier media range, are skipped rather than mistaken for it.
+A path the router cannot read — `/users?`, a stray `}` or `(`, a
+group holding more than one parameter — throws at startup rather
+than answering 404 later. A wildcard is read back under `*`,
+Fastify's key (a route's own name for it is not carried over),
+so `@Get('files/*rest')` fills `req.params['*']`; `/files/%FF`
+cannot be decoded and is a `400`. Middleware mounted for every
+method (`app.use(fn)`, a `MiddlewareConsumer` without a method)
+answers its path as a prefix, the way `use('/api')` answers
+`/api` and everything under it; middleware for one named method
+answers that path alone. Versioning works over URI, header,
+media type and the custom strategy, including versioned
+redirects; a media-type version is read out of `Accept` wherever
+it sits, skipping `q` weights and earlier media ranges.
 
 ## Query strings
 
-`@Query()` receives the shape the platform parsers produce: a
-repeated name becomes a list, `tags[]` appends, `tags[0]`
-indexes and `filter[name]` nests. Values are percent-decoded,
-`+` reads as a space, and `__proto__`, `constructor` and
-`prototype` are dropped rather than written into the tree.
+`@Query()` gets the platform parsers' shape: a repeated name
+becomes a list, `tags[]` appends, `tags[0]` indexes and
+`filter[name]` nests; values are percent-decoded, `+` reads as a
+space, and `__proto__`, `constructor` and `prototype` are
+dropped rather than written into the tree.
 
 ## Request bodies
 
@@ -99,177 +71,125 @@ middleware:
 
 - JSON, including the `+json` suffix types;
 - URL-encoded and text bodies;
-- `multipart/form-data`, through Hono's `parseBody()`; fields
-  land on `NestRequest.body` and files on `NestRequest.files`;
+- `multipart/form-data` through Hono's `parseBody()`: fields
+  land on `NestRequest.body`, files on `NestRequest.files`;
 - every other content type as a `Buffer`.
 
-When `@ailura/nestjs-platform-hono-multipart` is imported, the
-request path leaves a multipart body for one of its interceptors
-to consume instead, as `@nestjs/platform-fastify` does; a
-multipart route without an upload interceptor then reads no
-`body` and no `files`.
-
-A body that does not match its content type is refused with
-Nest's own `BadRequestException`, and one over `bodyLimit` with
-`PayloadTooLargeException`, so both travel through the exception
-layer and its filters.
-
-A textual payload is decoded with the `charset` its
-`content-type` declares: `utf-8`, `utf-16le` and `utf-16be`,
-with or without the dash. A declared charset outside that
-family, or a `Content-Encoding` other than `identity`, is
-refused with `415` — the status `body-parser` answers both with,
-under `charset.unsupported` and `encoding.unsupported`. The
-platform adapters inflate `gzip` and `deflate`; this one reads
-the bytes as sent, so a client that compresses its payload
-reaches them and not this adapter.
+With `@ailura/nestjs-platform-hono-multipart` imported, the
+request path leaves multipart bodies for its interceptors, as
+`@nestjs/platform-fastify` does; a multipart route without one
+reads no `body` and no `files`. A body that does not match its
+content type is refused with `BadRequestException`, and one over
+`bodyLimit` with `PayloadTooLargeException`, so both travel
+through the exception filters. A textual payload decodes with
+its declared `charset` (`content-type`; `utf-8`, `utf-16le`,
+`utf-16be`, with or without the dash); any other charset, or a
+`Content-Encoding` other than `identity`, is refused with `415`
+(`body-parser`'s status, `charset.unsupported`,
+`encoding.unsupported`). The platform adapters inflate `gzip`
+and `deflate`; this one reads the bytes as sent.
 
 `app.useBodyParser('json', false, { limit: '1kb' })` accepts
-`json`, `urlencoded`, `text` and `raw` parser names; any other
-name is refused when the call is made. Parsing is selected by
-the request's content type. The call sets one limit for the
-adapter, so the size applies to every parser and every route,
-and it replaces the `bodyLimit` option. The limit is the one
-option it reads: any other — `inflate`, `verify`, `extended`,
-`strict` — is refused by name when the call is made, rather than
-accepted and dropped. Called without a `limit` it still enables
-body parsing and applies the `rawBody` argument; only the
-existing size limit is unchanged.
-
-With `rawBody: true` — the adapter option, or the same option on
-`NestFactory.create` — `NestRequest.rawBody` holds the bytes
-read, which is what a signed webhook needs. Multipart bodies
-never fill it, because the platform parser consumes the stream.
+`json`, `urlencoded`, `text` and `raw` names (others refused
+when the call is made) and selects parsers by content type; it
+sets one limit for every parser and route, replacing the
+`bodyLimit` option. The limit is the one option it reads —
+`inflate`, `verify`, `extended` and `strict` are refused by name
+when the call is made. Called without a `limit` it still enables
+parsing and applies the `rawBody` argument. With `rawBody: true`
+(the adapter option or on `NestFactory.create`),
+`NestRequest.rawBody` holds the bytes read for signed webhooks;
+multipart bodies never fill it.
 
 ## Responses
 
 A returned value is answered as Nest answers it: an object as
 JSON, a string as text, a number as text. Raw bytes — `Buffer`,
-`Uint8Array`, `ArrayBuffer`, a `ReadableStream` — are answered
-as `application/octet-stream`, the type Fastify labels them
-with, because serialising them as JSON is the one answer that
-loses them. `@Header()`, `@HttpCode()`, `@Redirect()` and
-`StreamableFile` are all honoured, and a declared `Content-Type`
-always wins over the inferred one.
-
-The `res.send()` row above is a different path: a module that
-registers a route on the adapter itself is handed the Hono
-context as an Express-shaped `res`, and that surface reads a
-string the way Express does. See
-[the Swagger section](features.md#what-the-adapter-provides).
-
-`@Res()` works, and so does `@Res({ passthrough: true })`:
-Hono's own response helpers (`json`, `text`, `html`, `body`,
-`redirect`, `notFound`, `newResponse`) are the imperative API
-here, and the adapter makes sure the response a handler builds
-that way is the one that is sent. A `Response` assigned straight
-to `context.res` is sent as well.
-
-`write`, `setHeader`, `getHeaders` and the other Node stream
-members are installed only once an `@Sse()` route opens its
-stream, so a handler that reaches for one on an ordinary route
-fails rather than writing.
+`Uint8Array`, `ArrayBuffer`, `ReadableStream` — are
+`application/octet-stream`, Fastify's type, because JSON would
+lose them. `@Header()`, `@HttpCode()`, `@Redirect()` and
+`StreamableFile` are honoured, and a declared `Content-Type`
+wins over the inferred one. The `res.send()` row above is a
+different path: a module route registered on the adapter itself
+gets the Hono context as an Express-shaped `res`, which reads a
+string the way Express does (see
+[the Swagger section](features.md#what-the-adapter-provides)).
+`@Res()` and `@Res({ passthrough: true })` work, with Hono's
+helpers (`json`, `text`, `html`, `body`, `redirect`, `notFound`,
+`newResponse`) as the imperative API, and a `Response` assigned
+to `context.res` is sent too. `write`, `setHeader`, `getHeaders`
+and the other Node stream members exist only once an `@Sse()`
+route opens its stream.
 
 ## Instrumentation hooks
 
-`setOnRequestHook()` and `setOnResponseHook()` are implemented
-the way the platform adapters implement them, with one
-difference the transports impose. The request hook is a
-`(request, response, done)` function called at the start of a
-request. It continues the chain by calling `done` or resolving a
-returned promise or thenable, whichever happens first. A hook
-that returns no thenable holds the request until it calls
-`done`. A thrown error or rejection reaches the error layer.
-
-The response hook is a `(request, response)` function called
-once the chain has settled. Express runs its own from the
-`finish` event of the Node response, and only the
-`./node-server` transport has that event, so here it runs as
-soon as the answer exists — before it has reached the client,
-and whether the chain answered or failed. The answer is already
-decided by then, so a failure the response hook raises is logged
-rather than answered: letting it escape would replace a good
-answer with the error one. The middleware waits up to one second
-for the hook, so a pending promise cannot hold the response
-indefinitely. Header changes must finish within that window. The
-hook is not cancelled on timeout, and later rejections are still
-logged.
-
-Both are handed the same two objects the security hook Nest
-registers is handed: the request Nest reads, and the Node
-response where the transport carries one — the stand-in that
-writes through the Hono context where it does not.
+`setOnRequestHook()` / `setOnResponseHook()` are implemented,
+with one difference the transports impose. The request hook,
+`(request, response, done)`, runs at the start of a request and
+continues the chain by calling `done` or resolving a returned
+promise or thenable, whichever comes first; a hook returning no
+thenable holds the request until it calls `done`, and a thrown
+error or rejection reaches the error layer. The response hook,
+`(request, response)`, runs once the chain settles. Express uses
+the Node response's `finish` event, which only `./node-server`
+has, so here it runs as soon as the answer exists — before it
+reaches the client, and whether the chain answered or failed; a
+failure it raises is logged rather than answered. The middleware
+waits up to one second — header changes must finish within that
+window; the hook is not cancelled on timeout, and later
+rejections are still logged. Both get the request Nest reads and
+the Node response or the stand-in that writes through the Hono
+context.
 
 ## What this adapter does not implement
 
-Three platform APIs have no counterpart here. They are recorded
-rather than emulated, because each one describes a framework
-this adapter is not: an equivalent would be a different feature,
-not a port, and a silent no-op would be worse than a named gap.
+Three platform APIs have no counterpart here, recorded rather
+than emulated because an equivalent would be a different
+feature, not a port:
 
-- **`useMultipart()`** is Fastify's explicit opt-in for
-  `@fastify/multipart`. There is nothing to turn on here: a body
-  is read on demand through Hono's `parseBody()`, and the upload
+- **`useMultipart()`** — Fastify's `@fastify/multipart` opt-in;
+  a body is read on demand through Hono's `parseBody()`, and the
   interceptors in `@ailura/nestjs-platform-hono-multipart` are
-  the supported path.
+  the path.
 - **Part of the Express settings API** — `engine()` and `get()`.
   `setLocal()`, `set()`, `enable()` and `disable()` are
-  implemented, and documented in
-  [api.md](api.md#application-methods): a setting this adapter
-  honours reaches behaviour, and a name with nothing behind it
-  is refused with a reason rather than stored. `engine()` is a
-  non-goal because it registers a template engine by file
-  extension, which nothing here reads, and `setViewEngine()`
-  already names the engine explicitly. `get()` is a non-goal by
-  collision: Nest's `INestApplicationContext.get()` already
-  answers the DI container with `any[]`, and the adapter already
-  declares `get(target, handler)`, the GET route registrar, so
-  Express's `app.get(setting)` cannot be added without a
-  `TS2430` override error and a `TS4114` implicit-override
-  error.
+  implemented and documented in
+  [api.md](api.md#application-methods). `engine()` registers an
+  engine by file extension, which nothing reads
+  (`setViewEngine()` names it explicitly); `get()` collides with
+  Nest's `INestApplicationContext.get()` (`any[]`) and the
+  `get(target, handler)` GET route registrar, so
+  `app.get(setting)` needs a `TS2430` override error and a
+  `TS4114` implicit-override error.
 - **The Fastify route decorators** — `@RouteSchema()`,
-  `@RouteConfig()` and `@RouteConstraints()`, which write the
-  metadata keys `__fastify_route_schema__`,
-  `__fastify_route_config__` and
-  `__fastify_route_constraints__`. Only `FastifyAdapter` reads
-  those keys, and nothing in the core's source does, so on this
-  adapter the three are no-ops: they neither fail nor change a
-  route. A Hono equivalent would be a new feature, not a port of
-  these.
+  `@RouteConfig()` and `@RouteConstraints()`, which write
+  `__fastify_route_schema__`, `__fastify_route_config__` and
+  `__fastify_route_constraints__`; only `FastifyAdapter` reads
+  them, so here the three are no-ops.
 
-Two more are deliberately absent for a reason that is not
-architectural, and each is documented where it belongs:
-`FileStreamInterceptor` is recorded in
-[parity.md](parity.md#file-uploads), because the streaming path
-needs seams this adapter does not have, and a
-`@ailura/nestjs-platform-hono-socket-io` package is recorded in
-[parity.md](parity.md#nestplatform-socketio--missing-entirely)
-for the same reason on the fetch transport.
+`FileStreamInterceptor` and the
+`@ailura/nestjs-platform-hono-socket-io` package are implemented
+in those capability packages rather than here:
+[file uploads](parity.md#file-uploads),
+[socket.io](parity.md#nestjsplatform-socketio--implemented-in-ailuranestjs-platform-hono-socket-io).
 
 ## What `inject()` does not carry
 
-Fastify's `app.inject()` is implemented here, with four
-differences a suite should read before it moves.
+Four differences from Fastify's `app.inject()`:
 
-- **`raw` and `trailers` are absent, not empty.** The answer is
-  a Web `Response` read through the Fetch API: there is no Node
-  request and response object behind it to hand back, and no
-  header block after the body. Everything else light-my-request
-  reports is there: `statusCode`, `statusMessage`, `headers`,
-  `rawPayload`, `payload`, `body`, `json()`, `stream()` and
-  `cookies`, attributes included.
-- **The builder and the callback form are not implemented.**
-  `inject().get('/path').end()` and `inject(options, cb)` belong
-  to light-my-request's `Chain`; the options object and the
-  `'GET /path'` string are the two entry points here.
-- **The application has to be initialized.** `inject()` answers
-  from the routes Nest has registered, so a suite calls
-  `await app.init()` (or `listen()`) first, as it does for the
-  fetch transport. Fastify's helper starts the instance it is
-  handed; this one has no application to start.
-- **Four options are refused rather than ignored**, because each
-  describes a socket this call never opens: `remoteAddress`,
-  `authority`, `Request` and `payloadAsStream` throw naming
-  themselves instead of answering something wrong. `simulate`,
-  `validate`, `autoStart` and `server` describe how a socket is
-  driven; they are accepted and change nothing.
+- **`raw` and `trailers` are absent, not empty** — the answer is
+  a Web `Response` read through the Fetch API, with no Node
+  objects or trailer block; `statusCode`, `statusMessage`,
+  `headers`, `rawPayload`, `payload`, `body`, `json()`,
+  `stream()` and `cookies` are all there.
+- **No builder or callback form** —
+  `inject().get('/path').end()` and `inject(options, cb)` are
+  light-my-request's `Chain`; the options object and the
+  `'GET /path'` string are the entry points.
+- **The application must be initialized** — `inject()` answers
+  from registered routes, so call `await app.init()` (or
+  `listen()`) first, as with the fetch transport.
+- **Four options are refused** — `remoteAddress`, `authority`,
+  `Request` and `payloadAsStream` throw, each describing a
+  socket this call never opens; `simulate`, `validate`,
+  `autoStart` and `server` are accepted and change nothing.

@@ -1,17 +1,12 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  // Every rule that is off, and every one pinned away from its
-  // default, carries the reason it is: this file is where the
-  // suppression is read, so its reason lives here with it.
   "plugins": [
     "typescript",
     "unicorn",
     "oxc",
     "import",
     "promise",
-    "node",
-    "react",
-    "jsx-a11y"
+    "node"
   ],
   "categories": {
     "correctness": "error",
@@ -27,69 +22,65 @@
     "reportUnusedDisableDirectives": "error",
     "typeAware": true
   },
-  "env": { "builtin": true },
-  "globals": { "Bun": "readonly" },
+  "env": {
+    "builtin": true
+  },
+  "globals": {
+    "Bun": "readonly"
+  },
   "rules": {
-    // Off: the adapter's surface is named exports, and this rule
-    // and the next contradict each other.
     "import/no-named-export": "off",
     "import/prefer-default-export": "off",
-    // Pinned: the shared configuration lets a stylesheet be
-    // imported for its side effect. No file here imports one.
     "import/no-unassigned-import": [
       "error",
-      { "allow": ["**/*.css"] }
+      {
+        "allow": ["**/*.css"]
+      }
     ],
-    // Pinned: the react and jsx-a11y plugins ride along with the
-    // shared configuration. No file here writes JSX, so these two
-    // keep the copied baseline rather than a dialect of it.
-    "react/jsx-filename-extension": [
+    "no-void": [
       "error",
-      { "extensions": ["jsx", "tsx"] }
+      {
+        "allowAsStatement": true
+      }
     ],
-    "react/jsx-max-depth": ["error", { "max": 5 }],
-    // Pinned: `void promise` in statement position is how the
-    // sources discard a result on purpose.
-    "no-void": ["error", { "allowAsStatement": true }],
-    // Pinned: declarations, with arrow functions where one reads
-    // better, which is how the sources are written.
     "func-style": [
       "error",
       "declaration",
-      { "allowArrowFunctions": true }
+      {
+        "allowArrowFunctions": true
+      }
     ],
-    // Pinned: 0 and 1 name themselves, and an array index is one.
     "no-magic-numbers": [
       "error",
-      { "ignore": [0, 1], "ignoreArrayIndexes": true }
+      {
+        "ignore": [0, 1],
+        "ignoreArrayIndexes": true
+      }
     ],
     "one-var": ["error", "never"],
     "capitalized-comments": [
       "error",
       "always",
-      { "ignoreConsecutiveComments": true }
+      {
+        "ignoreConsecutiveComments": true
+      }
     ],
-    // 400 lines is the hard ceiling for a source file. The
-    // overrides below are the three files reviewed and allowed
-    // more, and the test suites' own bound.
-    "max-lines": ["error", { "max": 400 }],
-    // Off: the code spells an absent value `undefined`, which is
-    // what the enabled `unicorn/no-null` asks for instead.
+    "max-lines": [
+      "error",
+      {
+        "max": 400
+      }
+    ],
     "no-undefined": "off",
-    // Pinned: a value import and a type import of one module are
-    // two statements.
+    "no-ternary": "off",
     "no-duplicate-imports": [
       "error",
-      { "allowSeparateTypeImports": true }
+      {
+        "allowSeparateTypeImports": true
+      }
     ],
-    // Off: it asks a function returning a promise to become async,
-    // which changes the keyword and nothing else.
     "promise-function-async": "off",
-    // Off: false positives on types that are already readonly and
-    // on Node's mutable `Dirent`.
     "prefer-readonly-parameter-types": "off",
-    // Off: the sources group imports by layer; this rule sorts by
-    // member name and cannot see the grouping.
     "sort-imports": "off"
   },
   "overrides": [
@@ -100,28 +91,24 @@
         "packages/*/src/**/*.ts",
         "packages/*/test/**/*.ts"
       ],
-      "env": { "builtin": true, "node": true },
-      // A Nest artifact and a case that drives one. The platform
-      // is Node and `await` is the request-handling idiom; Nest's
-      // decorators are capitalized factories by design; and a Nest
-      // module or controller is a member-less class whose
-      // decorator carries the metadata, which is what the pin is
-      // for.
+      "env": {
+        "builtin": true,
+        "node": true
+      },
       "rules": {
         "import/no-nodejs-modules": "off",
         "new-cap": "off",
         "oxc/no-async-await": "off",
         "typescript/no-extraneous-class": [
           "error",
-          { "allowWithDecorator": true }
+          {
+            "allowWithDecorator": true
+          }
         ]
       }
     },
     {
       "files": ["packages/*/src/**/*.ts"],
-      // A capability the framework calls: not every method reads
-      // `this`, and Hono hands an adapter its calls through
-      // callbacks.
       "rules": {
         "class-methods-use-this": "off",
         "promise/prefer-await-to-callbacks": "off"
@@ -129,118 +116,16 @@
     },
     {
       "files": ["test/**/*.ts", "packages/*/test/**/*.ts"],
-      // A case declares the controllers, handlers and modules it
-      // drives, and reaches a helper by relative path: the file is
-      // the fixture, so more than one class in it is the point.
       "rules": {
         "class-methods-use-this": "off",
-        "import/max-dependencies": ["error", { "max": 20 }],
-        "import/no-relative-parent-imports": "off",
+        "import/max-dependencies": [
+          "error",
+          {
+            "max": 20
+          }
+        ],
         "import/no-unassigned-import": "off",
-        "max-classes-per-file": "off"
-      }
-    },
-    {
-      "files": [
-        "packages/core/src/core/response-helpers.ts",
-        "packages/core/src/core/versioned-route.ts"
-      ],
-      // Each cast narrows a value the framework hands over as an
-      // opaque type -- the response carrier, a versioned handler
-      // the router reads as a `Function` -- which no runtime check
-      // can prove.
-      "rules": { "typescript/no-unsafe-type-assertion": "off" }
-    },
-    {
-      "files": ["packages/core/src/core/server-adapter.ts"],
-      "rules": {
-        // The composition root binds every feature, so its import
-        // ceiling is above the default one.
-        "import/max-dependencies": ["error", { "max": 14 }],
-        // Off: the spread this rule asks for is what
-        // `oxc/no-rest-spread-properties` forbids, so the merge
-        // keeps the one form both rules leave open.
-        "prefer-object-spread": "off"
-      }
-    },
-    {
-      "files": ["test/bun-adapter.ts"],
-      // Off: the same conflict as the composition root's, because
-      // the helper merges the same options.
-      "rules": { "prefer-object-spread": "off" }
-    },
-    {
-      "files": ["packages/core/src/core/hono-lifecycle.ts"],
-      "rules": {
-        // The lifecycle bridge mounts CORS itself, so its import
-        // ceiling is above the default one too.
-        "import/max-dependencies": ["error", { "max": 12 }]
-      }
-    },
-    {
-      "files": [
-        "packages/ws/src/client.ts",
-        "packages/ws/src/server.ts",
-        "packages/core/src/core/bindings.ts",
-        "packages/core/src/servers/bun.ts",
-        "packages/core/src/servers/node.ts",
-        "packages/core/src/servers/fetch.ts"
-      ],
-      // Node's `EventEmitter` is the contract Nest and Hono hand
-      // over -- a gateway server, a socket, a carrier -- and an
-      // `EventTarget` is no drop-in for it.
-      "rules": { "unicorn/prefer-event-target": "off" }
-    },
-    {
-      "files": [
-        "packages/core/src/core/hono-lifecycle.ts",
-        "packages/core/src/core/request.ts",
-        "packages/core/src/features/static-assets.ts",
-        "packages/core/src/servers/bun-runtime.ts",
-        "packages/core/src/servers/bun.ts",
-        "packages/core/src/servers/node.ts",
-        "packages/ws/src/adapter.ts"
-      ],
-      // Each cast reads a value the runtime hands over without a
-      // type: the Hono context, the Node socket, the platform's
-      // `Response`. No runtime check can prove one.
-      "rules": { "typescript/no-unsafe-type-assertion": "off" }
-    },
-    {
-      "files": ["packages/ws/src/adapter.ts"],
-      // 450: the WebSocket adapter states one gateway contract and
-      // the two hosts that answer it, which have to agree.
-      "rules": { "max-lines": ["error", { "max": 450 }] }
-    },
-    {
-      "files": ["packages/core/src/core/server-adapter.ts"],
-      // 450: the adapter's composition root, a list of what it
-      // mounts.
-      "rules": { "max-lines": ["error", { "max": 450 }] }
-    },
-    {
-      "files": ["packages/core/src/core/bindings.ts"],
-      // The two carriers that keep Nest's objects and the
-      // platform's in step, together because they are one seam.
-      "rules": { "max-classes-per-file": "off" }
-    },
-    {
-      "files": [
-        "packages/core/src/core/**/*.ts",
-        "packages/core/src/features/**/*.ts",
-        "packages/core/src/servers/**/*.ts",
-        "packages/ws/src/**/*.ts"
-      ],
-      // A module inside a package reaches its neighbours by
-      // relative path; the published specifier would be a
-      // self-import.
-      "rules": { "import/no-relative-parent-imports": "off" }
-    },
-    {
-      "files": ["test/**/*.ts", "packages/*/test/**/*.ts"],
-      // 700: a case file states its fixture and its cases; the
-      // suite is split by behaviour, not by a line bound.
-      "rules": {
+        "max-classes-per-file": "off",
         "max-lines": [
           "error",
           {
@@ -252,11 +137,104 @@
       }
     },
     {
-      "files": ["packages/core/src/core/request.ts"],
-      // Off: Hono types `c.env` as always present but copies
-      // whatever the host passed, so a host calling `fetch()` with
-      // no bindings is the case the guard covers. The condition
-      // the type calls unnecessary is the runtime's.
+      "files": [
+        "packages/core/src/core/response/response-helpers.ts",
+        "packages/core/src/core/route/versioned-route.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/core/server/server-adapter.ts"
+      ],
+      "rules": {
+        "import/max-dependencies": [
+          "error",
+          {
+            "max": 14
+          }
+        ],
+        "max-lines": [
+          "error",
+          {
+            "max": 450
+          }
+        ],
+        "prefer-object-spread": "off"
+      }
+    },
+    {
+      "files": ["test/bun-adapter.ts"],
+      "rules": {
+        "prefer-object-spread": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/core/server/hono-lifecycle.ts"
+      ],
+      "rules": {
+        "import/max-dependencies": [
+          "error",
+          {
+            "max": 12
+          }
+        ],
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/ws/src/client/**/*.ts",
+        "packages/ws/src/server.ts",
+        "packages/core/src/core/ports/bindings.ts",
+        "packages/core/src/servers/bun/**/*.ts",
+        "packages/core/src/servers/node.ts",
+        "packages/core/src/servers/fetch.ts"
+      ],
+      "rules": {
+        "unicorn/prefer-event-target": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/core/request/request.ts",
+        "packages/core/src/features/static-assets/**/*.ts",
+        "packages/core/src/servers/bun-runtime.ts",
+        "packages/core/src/servers/bun/**/*.ts",
+        "packages/core/src/servers/node.ts",
+        "packages/ws/src/adapter.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["packages/ws/src/adapter.ts"],
+      "rules": {
+        "max-lines": [
+          "error",
+          {
+            "max": 450
+          }
+        ],
+        "typescript/no-unsafe-type-assertion": "off",
+        "unicorn/prefer-event-target": "off"
+      }
+    },
+    {
+      "files": ["packages/core/src/core/ports/bindings.ts"],
+      "rules": {
+        "max-classes-per-file": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/core/request/bag-state.ts",
+        "packages/core/src/core/request/request.ts"
+      ],
       "rules": {
         "oxc/no-optional-chaining": "off",
         "typescript/no-unnecessary-condition": "off"
@@ -264,55 +242,41 @@
     },
     {
       "files": ["packages/core/test/config.test.ts"],
-      // The case writes `process.env` and asserts the
-      // configuration the adapter reads back out of it.
-      "rules": { "node/no-process-env": "off" }
+      "rules": {
+        "node/no-process-env": "off"
+      }
     },
     {
       "files": [
         "packages/core/test/config-fixture.ts",
+        "packages/core/test/config-fixture/**/*.ts",
         "packages/core/test/cqrs.test.ts",
         "packages/core/test/event-emitter.test.ts",
         "packages/core/test/jwt.test.ts",
         "packages/core/test/schedule.test.ts",
         "packages/core/test/terminus.test.ts"
       ],
-      // These cases import a Nest class that is both the value the
-      // decorator metadata needs and the type the case names; the
-      // rule would split one import into two.
-      "rules": { "typescript/consistent-type-imports": "off" }
+      "rules": {
+        "typescript/consistent-type-imports": "off"
+      }
     },
     {
       "files": ["packages/core/src/features/sse.ts"],
-      // The holder is the Hono context with the two methods SSE
-      // grafts onto it, read back through that surface.
-      "rules": { "typescript/no-unsafe-type-assertion": "off" }
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
     },
     {
       "files": ["packages/multipart/src/index.ts"],
-      // The island's one entry point re-exports its surface;
-      // grouping those exports would defeat the point of it.
-      "rules": { "import/group-exports": "off" }
-    },
-    {
-      "files": [
-        "packages/multipart/src/interceptors/any-files.interceptor.ts",
-        "packages/multipart/src/interceptors/file-fields.interceptor.ts",
-        "packages/multipart/src/interceptors/file.interceptor.ts",
-        "packages/multipart/src/interceptors/no-files.interceptor.ts"
-      ],
-      // Every interceptor reaches the shared interfaces by
-      // relative path, inside the package.
-      "rules": { "import/no-relative-parent-imports": "off" }
+      "rules": {
+        "import/group-exports": "off"
+      }
     },
     {
       "files": [
         "packages/multipart/src/interceptors/files.interceptor.ts"
       ],
-      // A relative import inside the package, and the spread that
-      // builds multer's option object with one key left out.
       "rules": {
-        "import/no-relative-parent-imports": "off",
         "oxc/no-rest-spread-properties": "off"
       }
     },
@@ -320,16 +284,12 @@
       "files": [
         "packages/multipart/src/multipart/append-field.util.ts"
       ],
-      // A port of `append-field` (MIT), kept close to upstream so
-      // the bracket syntax it implements stays recognisable: the
-      // declarations, the switch and the accumulator are its.
       "rules": {
         "init-declarations": "off",
         "max-params": "off",
         "max-statements": "off",
         "no-continue": "off",
         "no-magic-numbers": "off",
-        "no-ternary": "off",
         "oxc/no-optional-chaining": "off",
         "prefer-named-capture-group": "off",
         "sort-keys": "off",
@@ -346,38 +306,28 @@
       "files": [
         "packages/multipart/src/multipart/multipart.constants.ts"
       ],
-      // The keys are multer's option names in reading order, not
-      // an alphabet.
-      "rules": { "sort-keys": "off" }
+      "rules": {
+        "sort-keys": "off"
+      }
     },
     {
       "files": [
         "packages/multipart/src/multipart/multipart.interceptor.factory.ts"
       ],
-      // The factory builds the interceptor class a decorator asks
-      // for, and reads the options multer may have left out.
       "rules": {
-        "import/no-relative-parent-imports": "off",
         "max-classes-per-file": "off",
         "oxc/no-optional-chaining": "off"
       }
     },
     {
       "files": [
-        "packages/multipart/src/multipart/multipart.parser.ts"
+        "packages/multipart/src/multipart/multipart.parser*.ts"
       ],
-      // A port of multer's middleware: busboy's streams, the node
-      // callbacks multer answers through, and the error set it
-      // raises. The size ceiling is off here and nowhere else, so
-      // the port stays one readable file.
       "rules": {
-        "import/no-relative-parent-imports": "off",
-        "max-lines": "off",
         "max-lines-per-function": "off",
         "max-params": "off",
         "max-statements": "off",
         "no-continue": "off",
-        "no-ternary": "off",
         "no-underscore-dangle": "off",
         "oxc/no-optional-chaining": "off",
         "prefer-object-spread": "off",
@@ -397,47 +347,9 @@
       "files": [
         "packages/multipart/src/multipart/multipart.utils.ts"
       ],
-      // Helpers over multer's option shape: the spreads merge the
-      // module's options with the route's.
       "rules": {
-        "import/no-relative-parent-imports": "off",
         "max-statements": "off",
-        "no-ternary": "off",
         "oxc/no-rest-spread-properties": "off"
-      }
-    },
-    {
-      "files": [
-        "packages/multipart/src/storage/disk.storage.ts"
-      ],
-      // A port of multer's `diskStorage`: `store` and `removeFile`
-      // are the storage-engine contract, written in the node
-      // callback style that contract declares.
-      "rules": {
-        "import/no-relative-parent-imports": "off",
-        "init-declarations": "off",
-        "max-lines-per-function": "off",
-        "max-params": "off",
-        "node/callback-return": "off",
-        "node/no-sync": "off",
-        "prefer-destructuring": "off",
-        "promise/avoid-new": "off",
-        "typescript/explicit-function-return-type": "off",
-        "typescript/no-misused-promises": "off",
-        "typescript/strict-void-return": "off",
-        "unicorn/no-null": "off",
-        "unicorn/no-useless-undefined": "off"
-      }
-    },
-    {
-      "files": [
-        "packages/multipart/src/storage/memory.storage.ts"
-      ],
-      // A port of multer's `memoryStorage`, whose callback spells
-      // "no error" as `null`, as node's do.
-      "rules": {
-        "import/no-relative-parent-imports": "off",
-        "unicorn/no-null": "off"
       }
     }
   ],
@@ -447,8 +359,9 @@
     "**/build/**",
     "**/coverage/**",
     "**/.cache/**",
-    "**/.turbo/**",
     "**/.vite/**",
+    "**/.tmp-*",
+    "**/.tmp-*/**",
     "**/*.tsbuildinfo",
     "bun.lock",
     "examples/**"

@@ -12,20 +12,15 @@ import type {
 } from './interfaces/index.ts';
 
 /** What a half-declared `registerAsync()` is refused with. */
-function missingSource(method: string): TypeError {
-  return new TypeError(
+const missingSource = (method: string): TypeError =>
+  new TypeError(
     `MultipartModule.registerAsync() needs ${method}.`,
   );
-}
 
-/**
- * Provides the default options every upload interceptor in the
- * importing module reads, with the same shape as
- * `@nestjs/platform-express`'s `MulterModule`. A route's own
- * interceptor argument is merged over them.
- */
+/** Provides the default options every upload interceptor reads. */
 @Module({})
 class MultipartModule {
+  /** Builds the module with fixed options. */
   public static register(
     options: MultipartModuleOptions = {},
   ): DynamicModule {
@@ -42,6 +37,7 @@ class MultipartModule {
     };
   }
 
+  /** Builds the module with options resolved from a factory. */
   public static registerAsync(
     options: MultipartModuleAsyncOptions,
   ): DynamicModule {
@@ -56,6 +52,7 @@ class MultipartModule {
     };
   }
 
+  /** Builds the providers `registerAsync()` needs. */
   private static createAsyncProviders(
     options: MultipartModuleAsyncOptions,
   ): Provider[] {
@@ -79,6 +76,7 @@ class MultipartModule {
     ];
   }
 
+  /** Builds the provider that resolves the module's options. */
   private static createAsyncOptionsProvider(
     options: MultipartModuleAsyncOptions,
   ): Provider {

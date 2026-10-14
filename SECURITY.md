@@ -2,18 +2,16 @@
 
 ## Reporting a Vulnerability
 
-We take security vulnerabilities seriously. If you discover a
-security issue in this project, please report it to us privately
-before disclosing it publicly.
+Report vulnerabilities in this project privately before
+disclosing them publicly.
 
 ### How to report
 
 Open a
 [GitHub security advisory](https://github.com/ailuracollective/nestjs-hono-adapter/security/advisories/new)
-or email the maintainers directly at
-security@ailuracollective.com.
+or email the maintainers at security@ailuracollective.com.
 
-Please include:
+Include:
 
 - A description of the vulnerability and its potential impact
 - Steps to reproduce or a proof of concept
@@ -51,8 +49,8 @@ Security issues in this project include:
 | ------- | --------- |
 | 1.x     | Yes       |
 
-Only the latest minor version receives security fixes. Users are
-encouraged to upgrade to the latest release.
+Only the latest minor version receives security fixes. Upgrade
+to the latest release.
 
 ## License
 

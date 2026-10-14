@@ -4,6 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
+      "#multipart/*": ["./src/*.ts", "./src/*"],
       "@ailura/nestjs-hono-adapter": ["../core/dist/index.d.ts"]
     }
   },

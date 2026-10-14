@@ -2,12 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { fileURLToPath } from 'node:url';
 
-/**
- * A separate process keeps the runtime simulation isolated. The
- * path is spelled the way the filesystem does, so a checkout
- * whose directory carries a space or a non-ASCII character
- * still finds the fixture.
- */
+/** The path of the unsupported-charset fixture. */
 const FIXTURE = fileURLToPath(
   new URL('fixtures/unsupported-charset.ts', import.meta.url),
 );

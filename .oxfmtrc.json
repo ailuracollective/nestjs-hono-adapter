@@ -19,6 +19,8 @@
     "**/.cache/**",
     "**/.turbo/**",
     "**/.vite/**",
+    "**/.tmp-*",
+    "**/.tmp-*/**",
     "**/*.tsbuildinfo",
     "pnpm-lock.yaml",
     "CHANGELOG.md",

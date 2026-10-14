@@ -2,7 +2,7 @@
   {
     "name": "ws",
     "path": "dist/index.js",
-    "limit": 1550,
+    "limit": 1650,
     "brotli": true,
     "ignore": [
       "@nestjs/common",

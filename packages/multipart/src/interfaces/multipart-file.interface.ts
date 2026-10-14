@@ -1,11 +1,6 @@
 import type { Readable } from 'node:stream';
 
-/**
- * A stored upload, in the shape multer gives one, so
- * `@UploadedFile()`, `ParseFilePipe` and the built-in file
- * validators work unchanged. Memory storage sets `buffer`; disk
- * storage sets `destination`, `filename` and `path`.
- */
+/** A stored upload in the shape multer gives one. */
 interface UploadedMultipartFile {
   /** Field name the file arrived under. */
   fieldname: string;
@@ -27,41 +22,19 @@ interface UploadedMultipartFile {
   path?: string;
 }
 
-/**
- * What a storage engine and `fileFilter` see before the file is
- * stored: the part's metadata and the stream of its bytes.
- */
+/** What a storage engine and `fileFilter` see before storing. */
 interface IncomingMultipartFile {
   readonly fieldname: string;
   readonly originalname: string;
   readonly encoding: string;
   readonly mimetype: string;
-  /**
-   * The bytes of the part. Meant to be consumed by
-   * `MultipartStorageEngine._handleFile` only.
-   */
+  /** The bytes of the part. */
   readonly stream: Readable;
-  /**
-   * The path disk storage writes to, set before the write so a
-   * failed write can remove it. multer's incoming file carries
-   * it for the same reason.
-   */
+  /** The path disk storage writes to. */
   path?: string;
 }
 
-/**
- * The file `FileStreamInterceptor` hands to the route handler
- * instead of storing it: the part's metadata and the stream of
- * its bytes, live from the request. Nothing reads those bytes
- * until the handler does, and whatever the handler leaves
- * unread is discarded once it has answered, so the client can
- * finish uploading.
- *
- * The size is not known when the handler runs, so the file
- * validators that need the whole file — `MaxFileSizeValidator`
- * and the magic-number check of `FileTypeValidator` — do not
- * apply to it.
- */
+/** The file a streaming interceptor hands to the handler. */
 interface MultipartFileStream {
   /** Field name the file arrived under. */
   fieldname: string;
@@ -71,11 +44,7 @@ interface MultipartFileStream {
   encoding: string;
   /** The media type the part declared. */
   mimetype: string;
-  /**
-   * The bytes of the part, live from the request. Errors with a
-   * `PayloadTooLargeException` once `limits.fileSize` is
-   * passed.
-   */
+  /** The bytes of the part, live from the request. */
   stream: Readable;
 }
 

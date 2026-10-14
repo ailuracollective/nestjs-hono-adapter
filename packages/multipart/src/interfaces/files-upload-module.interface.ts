@@ -7,13 +7,10 @@ import type {
 
 import type { MultipartOptions } from './multipart-options.interface.ts';
 
-/**
- * The options a `MultipartModule` provides to every
- * interceptor.
- */
+/** The options the module provides to every interceptor. */
 type MultipartModuleOptions = MultipartOptions;
 
-/** Builds the module's options, for `registerAsync`. */
+/** Builds the module's options. */
 interface MultipartOptionsFactory {
   createMultipartOptions: () =>
     | Promise<MultipartModuleOptions>

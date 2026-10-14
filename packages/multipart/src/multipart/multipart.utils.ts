@@ -7,30 +7,25 @@ import {
 import type {
   MultipartModuleOptions,
   MultipartOptions,
-} from '../interfaces/index.ts';
+} from '#multipart/interfaces/index';
 import { busboyExceptions } from './multipart.constants.ts';
 import { MultipartError } from './multipart.error.ts';
 
 /** Whether a value is a plain object, which is not an array. */
-function isPlainObject(
+const isPlainObject = (
   value: unknown,
-): value is Record<string, unknown> {
+): value is Record<string, unknown> => {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
   return !Array.isArray(value);
-}
+};
 
-/**
- * Merges the module's options with an interceptor's, with the
- * same rule as the platform adapters: `limits` is merged key by
- * key when both sides name an object, and the local value wins
- * outright in every other case.
- */
-function mergeOptions(
+/** Merges the module's options with an interceptor's. */
+const mergeOptions = (
   moduleOptions: MultipartModuleOptions,
   localOptions: MultipartOptions,
-): MultipartModuleOptions {
+): MultipartModuleOptions => {
   const merged: MultipartModuleOptions = {
     ...moduleOptions,
     ...localOptions,
@@ -45,15 +40,10 @@ function mergeOptions(
     };
   }
   return merged;
-}
+};
 
-/**
- * Maps a parser failure to the HTTP exception multer would
- * produce: an oversized file is a `PayloadTooLargeException`,
- * every other parser error a `BadRequestException`, so a client
- * cannot tell this adapter from the platform one.
- */
-function transformException(error: unknown): unknown {
+/** Maps a parser failure to the HTTP exception multer gives. */
+const transformException = (error: unknown): unknown => {
   if (error === undefined || error instanceof HttpException) {
     return error;
   }
@@ -85,6 +75,6 @@ function transformException(error: unknown): unknown {
     }
   }
   return error;
-}
+};
 
 export { mergeOptions, transformException };

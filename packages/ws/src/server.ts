@@ -1,20 +1,14 @@
 import { EventEmitter } from 'node:events';
 
-import { CLOSE_EVENT } from './client.ts';
-import type { HonoSocket } from './client.ts';
+import { CLOSE_EVENT } from './client/index.ts';
+import type { HonoSocket } from './client/index.ts';
 
 /** The event Nest listens on for every new socket. */
 const CONNECTION_EVENT = 'connection';
 
-/**
- * The sockets of one gateway path. Nest binds a connection
- * handler to the server `create()` returns and then, per
- * socket, its message handlers and its disconnect hook: this
- * emits `connection` with each socket and holds it until the
- * path is closed, so no listener outlives the connection it was
- * bound to.
- */
+/** The sockets of one gateway path. */
 class GatewayServer extends EventEmitter {
+  /** The sockets this path is still serving. */
   private readonly sockets = new Set<HonoSocket>();
 
   /** Tracks a socket and hands it to Nest. */
@@ -42,16 +36,12 @@ const ROOT_PATH = '/';
 interface HonoGatewayOptions {
   /** The path the gateway listens on. */
   readonly path?: string;
-  /**
-   * Whatever else the gateway asked for, which upstream reads
-   * as `server` and `namespace` and this adapter refuses beyond
-   * the path, because it serves the HTTP adapter's own server.
-   */
+  /** Whatever else the gateway asked for. */
   readonly [option: string]: unknown;
 }
 
 /** Gives a gateway path the leading slash a route needs. */
-function normalizePath(path?: string): string {
+const normalizePath = (path?: string): string => {
   if (path === undefined || path === '') {
     return ROOT_PATH;
   }
@@ -59,7 +49,7 @@ function normalizePath(path?: string): string {
     return path;
   }
   return `/${path}`;
-}
+};
 
 export { CONNECTION_EVENT, GatewayServer, normalizePath };
 export type { HonoGatewayOptions };

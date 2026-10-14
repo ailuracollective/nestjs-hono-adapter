@@ -5,8 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
+/** Refuses a request without the example API token. */
 @Injectable()
 export class TokenGuard implements CanActivate {
+  /** Allows the request when `x-api-token` matches. */
   public canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     if (request.headers['x-api-token'] === 'let-me-in') {

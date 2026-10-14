@@ -20,8 +20,6 @@ unless the implementation itself is a requirement.
 
 ## Canonical contract
 
-The issue contract is:
-
 ### Common sections (all types)
 
 | Section             | Required | Purpose                                                                |
@@ -34,8 +32,8 @@ The issue contract is:
 | Constraints         | no       | Only constraints that materially limit valid solutions                 |
 | References          | no       | Links or paths to authoritative context                                |
 
-Optional sections are conditional: an irrelevant section should
-be absent (left empty), not populated with "N/A".
+Optional sections are conditional: an irrelevant one is absent
+(left empty), not populated with "N/A".
 
 ### Type-specific deltas
 

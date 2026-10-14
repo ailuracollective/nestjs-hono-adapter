@@ -5,6 +5,32 @@
     "noEmit": true,
     "types": ["node", "bun"],
     "paths": {
+      "#adapter/*": [
+        "../packages/core/src/*.ts",
+        "../packages/core/src/*"
+      ],
+      "#adapter-test/*": [
+        "../packages/core/test/*.ts",
+        "../packages/core/test/*"
+      ],
+      "#multipart/*": [
+        "../packages/multipart/src/*.ts",
+        "../packages/multipart/src/*"
+      ],
+      "#multipart-test/*": [
+        "../packages/multipart/test/*.ts",
+        "../packages/multipart/test/*"
+      ],
+      "#ws/*": [
+        "../packages/ws/src/*.ts",
+        "../packages/ws/src/*"
+      ],
+      "#socket-io/*": [
+        "../packages/socket-io/src/*.ts",
+        "../packages/socket-io/src/*"
+      ],
+      "#test/*": ["./*.ts", "./*"],
+      "#root/*": ["../*"],
       "@ailura/nestjs-hono-adapter": [
         "../packages/core/src/index.ts"
       ],

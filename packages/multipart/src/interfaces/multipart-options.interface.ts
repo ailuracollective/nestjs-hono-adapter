@@ -3,11 +3,7 @@ import type {
   UploadedMultipartFile,
 } from './multipart-file.interface.ts';
 
-/**
- * Multer's storage engine contract, kept as-is so a storage
- * engine written for `@nestjs/platform-express` can be handed
- * to an interceptor here unchanged.
- */
+/** Multer's storage engine contract. */
 interface MultipartStorageEngine {
   _handleFile: (
     request: unknown,
@@ -24,10 +20,7 @@ interface MultipartStorageEngine {
   ) => void;
 }
 
-/**
- * The same keys and meaning as multer's `MulterLimits`, so a
- * limits object moves between the two adapters unchanged.
- */
+/** The size limits, with multer's keys and meaning. */
 interface MultipartLimits {
   /** Largest field name, in bytes. */
   fieldNameSize?: number;
@@ -45,34 +38,21 @@ interface MultipartLimits {
   headerPairs?: number;
 }
 
-/**
- * The options one interceptor accepts, with the same keys and
- * meaning as `@nestjs/platform-express`'s `MulterOptions`, so
- * an options object moves between the two unchanged.
- */
+/** The options one interceptor accepts. */
 interface MultipartOptions {
   /** Where files are written, when no `storage` is named. */
   dest?: string;
   /** The storage engine, memory by default. */
   storage?: MultipartStorageEngine;
-  /**
-   * The size limits, or a function of the request answering
-   * them.
-   */
+  /** The size limits, or a function of the request. */
   limits?:
     | MultipartLimits
     | ((request: unknown) => MultipartLimits);
-  /**
-   * Keep the whole path a file arrived with, rather than its
-   * basename.
-   */
+  /** Keep the whole path a file arrived with. */
   preservePath?: boolean;
   /** Character set for the part headers, latin1 by default. */
   defParamCharset?: string;
-  /**
-   * Decides what is stored: answer `false` to skip a file, or
-   * an error to fail the request.
-   */
+  /** Decides what is stored. */
   fileFilter?: (
     request: unknown,
     file: IncomingMultipartFile,

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { Type } from '@nestjs/common';
 
-import type { NestContext } from '../src/index.ts';
+import type { NestContext } from '#adapter/index';
 import {
   GlobalMiddlewareModule,
   MethodMiddlewareModule,
@@ -9,29 +9,17 @@ import {
   MIDDLEWARE_MARK,
   PrefixedMiddlewareModule,
 } from './middleware-fixture.ts';
-import type { Probe } from '../../../test/probe.ts';
-import { startProbe } from './support.ts';
-
-/**
- * Middleware mounting, which the router decides rather than the
- * handler. A piece of Nest middleware is mounted through the
- * adapter's middleware factory, and the platform adapters read
- * a path without a method as a prefix: it answers the path and
- * everything under it. Nothing here needs a socket, so every
- * case runs in process.
- */
+import type { Probe } from '#test/probe';
+import { startProbe } from './support/index.ts';
 
 /** What the marker left on an answer, or nothing at all. */
-function markOf(response: Response): string | null {
-  return response.headers.get(MIDDLEWARE_HEADER);
-}
+const markOf = (response: Response): string | null =>
+  response.headers.get(MIDDLEWARE_HEADER);
 
 /** An application on a module, answered in process. */
-function middlewareProbe(
+const middlewareProbe = (
   module: Type<unknown>,
-): Promise<Probe> {
-  return startProbe({ mode: 'in-process', module });
-}
+): Promise<Probe> => startProbe({ mode: 'in-process', module });
 
 /** A JSON body the POST route echoes back. */
 const SENT = { sent: true };
@@ -50,13 +38,6 @@ test('middleware for every route answers every route', async () => {
   }
 });
 
-/**
- * The adapter's own `use()` is the same mount without a
- * `MiddlewareConsumer`: a handler and nothing else answers
- * every path, which is what `router.use()` reads on both
- * platform adapters. Mounted at the root path instead, this
- * would answer `/` alone and leave every other route unmarked.
- */
 test('a handler mounted with use() answers every route', async () => {
   const probe = await startProbe({
     configure: (app): void => {

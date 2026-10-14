@@ -15,6 +15,7 @@ import {
 } from '@ailura/nestjs-hono-adapter/fetch';
 import { AppModule } from './app.module.ts';
 
+/** The adapter the Worker serves through. */
 const adapter = new ServerAdapter({
   transport: fetchServer(),
   trustProxy: false,
@@ -22,6 +23,7 @@ const adapter = new ServerAdapter({
   bodyLimit: 1024,
 });
 
+/** The Nest application. */
 const app = await NestFactory.create<NestHonoApplication>(
   AppModule,
   adapter,
@@ -38,6 +40,7 @@ app.enableVersioning({
   defaultVersion: '1',
 });
 
+/** The OpenAPI document the docs routes serve. */
 const document = SwaggerModule.createDocument(
   app,
   new DocumentBuilder()
@@ -58,6 +61,7 @@ app.use(
 
 await app.init();
 
+/** Serves the Hono application over the Worker fetch handler. */
 export default {
   fetch: fetchHandler(adapter.getHono(), {
     clientAddress: (request) =>

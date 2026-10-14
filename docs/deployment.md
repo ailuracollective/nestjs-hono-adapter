@@ -1,21 +1,12 @@
 # Deployment
 
-How to run the adapter in production: TLS, proxies, shutdown,
-the Hono API, WebSockets and microservices.
-
-## Contents
-
-- [TLS, proxies and shutdown](#tls-proxies-and-shutdown)
-- [Hono underneath](#hono-underneath)
-- [WebSockets](#websockets)
-- [Microservices](#microservices)
-
 ## TLS, proxies and shutdown
 
-Pass TLS options to Nest and the adapter hands them to the
-transport it was given, which serves over `https`: the options
-become `Bun.serve`'s own on the default transport, and
-`@hono/node-server`'s `serverOptions` with `nodeServer()`.
+TLS options passed to Nest reach the transport: `Bun.serve`'s on
+the default transport, `@hono/node-server`'s `serverOptions`
+with `nodeServer()`. `getHttpServer()` returns the server Nest
+drives — Node's `http.Server` on Node, with `listen` and `close`
+adapted in place.
 
 ```ts
 await NestFactory.create(AppModule, new ServerAdapter(), {
@@ -23,43 +14,34 @@ await NestFactory.create(AppModule, new ServerAdapter(), {
 });
 ```
 
-`getHttpServer()` returns the server Nest drives — Node's own
-`http.Server` on the Node transport, with `listen` and `close`
-adapted onto it in place — so an application can read its
-address, attach a listener, or call `closeAllConnections()` as
-it did before the transports split.
+`trustProxy` sets how much of a proxy's word the deployment
+believes; the levels are Fastify's, from proxy-addr, and `ips`
+is the chain as written whenever anything is trusted:
 
-`trustProxy` decides how much of a proxy's word the deployment
-believes, and the levels are the ones Fastify reads from
-proxy-addr:
+- `false` — nothing is read; the peer is the address.
+- `true` — the whole chain is trusted: `ip` is leftmost, and
+  `x-forwarded-proto` and `x-forwarded-host` fill `protocol`,
+  `secure` and `hostname`.
+- a **hop count** — that many from the right; `ip` is the first
+  past them.
+- a **list** — those addresses are trusted; `ip` is the first to
+  their left the list omits, and the socket's address may be
+  named.
 
-- `false` — nothing the chain says is read, and the socket
-  address is the peer.
-- `true` — the whole chain is trusted, so `ip` is the leftmost
-  address and `x-forwarded-proto` and `x-forwarded-host` fill
-  `protocol`, `secure` and `hostname`.
-- a **hop count** — that many addresses from the right are
-  trusted, `ip` being the first address past them.
-- a **list** — those addresses are trusted, `ip` being the first
-  address to the left of them that the list does not name. The
-  socket's own address is one of the addresses a list may name.
-
-`ips` is the chain as written whenever anything is trusted.
-
-`app.close()` stops accepting connections and then closes the
-server. `return503OnClosing: true` answers `503`, with
-`Connection: close`, to the requests that arrive once the
-shutdown has started — from `beforeClose()`, so the destroy and
-before-shutdown hooks run inside that window rather than outside
-it — and `forceCloseConnections: true` destroys the connections
-the server is still holding instead of waiting for them, both
-from the same options object Nest accepts.
+`app.close()` stops accepting connections then closes the
+server. `return503OnClosing: true` answers `503` with
+`Connection: close` once shutdown starts — from `beforeClose()`,
+so the destroy and before-shutdown hooks run in that window —
+and `forceCloseConnections: true` destroys held connections
+instead of waiting. Both come from Nest's options object.
 
 ## Hono underneath
 
 `getHono()` answers the typed `Hono` application, so a project
-that already knows Hono can register its own middleware and
-routes before the application listens:
+that knows Hono can register middleware and routes before the
+application listens; `getInstance()` answers the same
+application through the accessor Nest declares, whose default
+type this package narrows, so neither needs a cast.
 
 ```ts
 const adapter = new ServerAdapter();
@@ -69,16 +51,12 @@ adapter.getHono().use('*', async (context, next) => {
 });
 ```
 
-`getInstance()` answers the same application through the
-accessor Nest itself declares. This package narrows that
-accessor's default type to it, so neither call needs a cast.
-
 ## Fetch hosts
 
-A host that serves a Web `Request` and expects a Web `Response`
-— Cloudflare Workers, Vercel Functions, Deno — does not hand the
-application a port, so the fetch transport takes none. Nest
-still initializes, and the handler is what the host exports:
+A host serving a Web `Request` and expecting a Web `Response` —
+Cloudflare Workers, Vercel Functions, Deno — gives the
+application no port, so the fetch transport takes none; Nest
+still initializes and the host exports the handler:
 
 ```ts
 import {
@@ -93,77 +71,43 @@ await app.init();
 export default { fetch: fetchHandler(adapter.getHono()) };
 ```
 
-`close()` does nothing, and `listen()` rejects naming the fetch
-host: the host owns the request loop, so there is no port to
-open. The request carrier Nest's SSE path reads is synthesized
-from the request's signal. There is no native socket, so `raw`
-is the carrier. By default the carrier has no address, and
-`cf-connecting-ip` is ignored.
+`close()` does nothing and `listen()` rejects, naming the fetch
+host, which owns the request loop. The SSE path's request
+carrier is synthesized from the request signal; with no native
+socket, `raw` is the carrier, with no address by default and
+`cf-connecting-ip` ignored.
+`fetchHandler(app, { clientAddress })` resolves a host-supplied
+trusted address, used as the carrier's address even with
+`trustProxy: false`; read `cf-connecting-ip` only when the host
+guarantees clients cannot forge it. `ip` resolves from that
+header, else from `x-forwarded-for` when `trustProxy` trusts the
+proxy, and is `undefined` only when neither supplies an address
+this configuration accepts. Forwarded headers are read only when
+`trustProxy` is enabled.
 
-Pass `fetchHandler(app, { clientAddress })` to resolve a trusted
-address supplied by the host. The resolver's result is used as
-the carrier's address even with `trustProxy: false`, so only
-read `cf-connecting-ip` when the host guarantees that clients
-cannot forge it:
-
-```ts
-// Only on a host that guarantees cf-connecting-ip.
-export default {
-  fetch: fetchHandler(adapter.getHono(), {
-    clientAddress: (request) =>
-      request.headers.get('cf-connecting-ip') ?? undefined,
-  }),
-};
-```
-
-If `cf-connecting-ip` is absent, `ip` may still resolve from
-`x-forwarded-for` when `trustProxy` trusts the proxy. With the
-resolver above, `ip` is `undefined` only when neither header
-supplies an address accepted by this configuration. Forwarded
-headers are read only when `trustProxy` is enabled.
-
-Static assets and WebSockets are host-specific. A host that has
-them passes them to
-`fetchServer({ serveStatic, upgradeWebSocket })`; asking for a
-capability that was not passed throws rather than answering
-nothing.
-
+Static assets and WebSockets are host-specific: pass them to
+`fetchServer({ serveStatic, upgradeWebSocket })`; asking for one
+not passed throws rather than answering nothing.
 `upgradeWebSocket` wants a factory, because a runtime with a
-server attaches an upgrade listener through one. A fetch host
-has no such server, so `webSocketFromHost` fills in that half
-from the helper the host publishes — no `install` to write, and
-the helper goes in as it comes:
-
-```ts
-import { upgradeWebSocket } from 'hono/cloudflare-workers';
-
-import {
-  fetchServer,
-  webSocketFromHost,
-} from '@ailura/nestjs-hono-adapter/fetch';
-
-const adapter = new ServerAdapter({
-  transport: fetchServer({
-    upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
-  }),
-});
-```
+server attaches an upgrade listener through one; a fetch host
+has none, so `webSocketFromHost` fills that half from the helper
+the host publishes — no `install` to write, the helper going in
+as it comes:
+`fetchServer({ upgradeWebSocket: webSocketFromHost(upgradeWebSocket) })`.
 
 ## WebSockets
 
-Gateways have their own Nest adapter, in
+Gateways have their own Nest adapter,
 `@ailura/nestjs-platform-hono-ws`, so an HTTP-only deployment
-never resolves `@nestjs/websockets`: it is an optional peer, and
-it is not installed for the routes above. The upgrade is served
-by the transport when it carries a websocket helper — `hono/bun`
-with `bunServer()` where Bun is present, whatever host a
-`fetchServer()` was handed — and by `@hono/node-ws` otherwise,
-which includes `nodeServer()` and the default transport on a
-Node runtime. A deployment that installs the ws package resolves
-the optional peer `@hono/node-ws`, because that entrypoint
-eagerly imports it even when the transport provides its own
-WebSocket helper; one that does not install it never resolves
-it.
+never resolves `@nestjs/websockets` — an optional peer, not
+installed for the routes above. The transport serves the upgrade
+when it carries a websocket helper (`hono/bun` with
+`bunServer()` where Bun is present, or whatever host a
+`fetchServer()` was given), else `@hono/node-ws`, which includes
+`nodeServer()` and the default transport on Node. Installing the
+ws package resolves the optional peer `@hono/node-ws`, because
+that entrypoint eagerly imports it even when the transport
+provides its own helper; not installing it never resolves it.
 
 ```ts
 import { HonoWsAdapter } from '@ailura/nestjs-platform-hono-ws';
@@ -174,79 +118,53 @@ app.useWebSocketAdapter(new HonoWsAdapter(adapter));
 await app.listen(3000);
 ```
 
-A gateway is declared the way Nest declares one, and its `path`
-is registered on the same Hono application the routes hang on:
+A gateway is declared as Nest declares one, its `path`
+registered on the same Hono application the routes hang on. A
+client sends `{ event, data, id? }` — or a bare string, read as
+the event name — and receives `{ event, data }`, with `id`
+echoed when asked. A handler returning an observable is
+subscribed per connection and unsubscribed on close, so nothing
+leaks between clients. A client binds on its first frame, not on
+open — invisible where the helper fires an open event
+(`@hono/node-ws`, `hono/bun`), and what makes a fetch host work,
+since Hono runs the event factory _before_ the upgrade, so a
+helper there has no socket for an open event and
+`@hono/cloudflare-workers` omits `onOpen`; one that sends is
+bound before its frame is delivered, and one that never sends is
+not bound and holds nothing the gateway could write to.
 
-```ts
-@WebSocketGateway({ path: '/ws' })
-class EventsGateway {
-  @SubscribeMessage('ping')
-  ping(@MessageBody() data: unknown): unknown {
-    return { event: 'ping', data };
-  }
-}
-```
-
-A client sends `{ event, data, id? }` — or a bare string, which
-reads as the event name — and receives `{ event, data }`, with
-the `id` echoed when it asked for one. A handler that returns an
-observable is subscribed per connection and unsubscribed when
-that connection closes, so nothing leaks between clients.
-
-A deployment whose frames are not JSON reads them its own way:
-
-```ts
-const ws = new HonoWsAdapter(adapter, {
-  messageParser: (raw) => ({ event: String(raw), data: {} }),
-});
-ws.setMessageParser(otherParser); // or later
-```
-
-The parser takes what the socket delivered and answers a
-`{ event, data }`, or nothing, which drops the frame. One that
-throws is reported and the frame is dropped as well; the
-built-in reader reads client-controlled input, so its failures
-stay quiet rather than filling the log.
-`bindErrorHandler(server)` attaches the error listeners
-`platform-ws` attaches — on the path's server and on every
-socket it hands over — and `create()` calls it for every path,
-so a failing socket is logged rather than thrown out of the
-event loop.
-
-What cannot be honoured is refused when the gateway starts
-rather than half served, and every option but `path` is one of
-them. A gateway with its own `port` would need a second HTTP
+Non-JSON frames are read with `messageParser`
+(`new HonoWsAdapter(adapter, { messageParser: (raw) => ({ event, data }) })`,
+or later `setMessageParser(parser)`): it answers a
+`{ event, data }` or nothing to drop the frame; one that throws
+is reported and dropped, and the built-in reader (reading
+client-controlled input) stays quiet rather than filling the
+log. `bindErrorHandler(server)` attaches the listeners
+`platform-ws` attaches — on the path's server and every socket
+it hands over — and `create()` calls it for every path, so a
+failing socket is logged rather than thrown out of the event
+loop. Any option but `path` is refused when the gateway starts
+rather than half served: a `port` would need a second HTTP
 listener, where every gateway is served on the HTTP adapter's
-own server. A `namespace` has no counterpart, because the path
-is the whole address here — upstream refuses one too, and points
-at `@nestjs/platform-socket.io`. A `server` cannot be driven by
-this transport, and the WebSocket server options
+own server; a `namespace` has no counterpart, the path being the
+whole address (upstream refuses one too, pointing at
+`@nestjs/platform-socket.io`); a `server` cannot be driven by
+this transport; and the WebSocket server options
 (`perMessageDeflate`, `maxPayload` and the rest) cannot be
 passed to a server this adapter does not build. Each refusal
 names the option it read. `@ConnectedSocket()` receives the
-socket, with the `send`, `close`, `on`, `once` and `readyState`
-Nest's contract declares — the pair `send` and `readyState` is
+socket with `send`, `close`, `on`, `once` and `readyState` as
+Nest's contract declares — `send` and `readyState` together are
 how Nest tells a native WebSocket client from a Socket.IO one,
-and without both a handler that throws is answered through a
-channel this socket does not have. `@Ack()` is not wired: the
-acknowledgement travels back as the echoed `id`, which is what a
-client without a parser expects.
-
-A client is bound to its gateway on the first frame it sends,
-rather than when the socket opens. That difference is invisible
-where the helper fires an open event — `@hono/node-ws` and
-`hono/bun` both do — and it is what makes a fetch host work:
-Hono runs the event factory _before_ the upgrade, so a helper
-there has no socket to hand an open event and
-`@hono/cloudflare-workers` omits `onOpen` entirely. A client
-that connects and never sends is not bound; it holds nothing the
-gateway could write to, and a client that sends is bound before
-its frame is delivered.
+and without both a throwing handler is answered through a
+channel this socket lacks. `@Ack()` is not wired; the
+acknowledgement travels back as the echoed `id`, what a client
+without a parser expects.
 
 ### Socket.IO
 
-Socket.IO is a protocol of its own rather than a WebSocket, so
-it has an adapter and a package of its own:
+Socket.IO is a protocol of its own rather than a WebSocket, with
+an adapter and package of its own:
 
 ```ts
 import { NestFactory } from '@nestjs/core';
@@ -262,32 +180,30 @@ await app.listen(3000);
 
 `HonoIoAdapter` is the counterpart of
 `@nestjs/platform-socket.io`'s `IoAdapter`, so a gateway keeps
-its namespaces, its rooms, its broadcasts and its
-acknowledgement callbacks. Install `socket.io` beside
-`@nestjs/websockets`: it is an optional peer reached through
-`@ailura/nestjs-platform-hono-socket-io` and nowhere else.
-
-It attaches to a Node `http.Server`, which is what
-`./node-server` answers with on Node and on Bun. The Bun
-transport serves through `Bun.serve`, whose server is not one,
-and a fetch host has no server at all. The adapter refuses both
-when the gateway starts, naming the transport to serve through
-instead, rather than failing inside socket.io. Its `close()`
-closes the listener a standalone gateway opened, and only that
-one: the server an attached gateway shares belongs to the
-transport, which closes it in its own shutdown, so the adapter
-lets the clients go and leaves that listener alone. Port zero
-requests attachment and is refused when no Node server is
-available. An explicit nonzero gateway port opens a separate
-listener, which the adapter owns and closes during shutdown,
-including when the gateway uses a namespace.
+its namespaces, rooms, broadcasts and acknowledgement callbacks.
+Install `socket.io` beside `@nestjs/websockets`: an optional
+peer reached only through
+`@ailura/nestjs-platform-hono-socket-io`. It attaches to a Node
+`http.Server`, which `./node-server` answers with on Node and
+Bun; the Bun transport serves through `Bun.serve`, whose server
+is not one, and a fetch host has no server — the adapter refuses
+both when the gateway starts, naming the transport to serve
+through instead, rather than failing inside socket.io. Its
+`close()` closes the listener a standalone gateway opened and
+only that one: the server an attached gateway shares belongs to
+the transport, which closes it in its own shutdown, so the
+adapter lets the clients go and leaves that listener alone. Port
+zero requests attachment and is refused when no Node server is
+available; an explicit nonzero port opens a separate listener
+the adapter owns and closes during shutdown, even when the
+gateway uses a namespace.
 
 ## Microservices
 
 A microservice transport is Nest's own and never passes through
-the HTTP adapter, so a hybrid application works: the routes are
-served by Hono while the microservice listens on its transport,
-and `app.close()` stops both.
+the HTTP adapter, so a hybrid application works: Hono serves the
+routes while the microservice listens on its transport, and
+`app.close()` stops both.
 
 ```ts
 const app = await NestFactory.create(

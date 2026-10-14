@@ -3,28 +3,28 @@ import { Logger } from '@nestjs/common';
 import type { MiddlewareHandler } from 'hono';
 import { WSContext } from 'hono/ws';
 
-import { ServerAdapter } from '../../../packages/core/src/index.ts';
-import type { NestEnv } from '../../../packages/core/src/index.ts';
+import { ServerAdapter } from '#adapter/index';
+import type { NestEnv } from '#adapter/index';
 import type {
   WebSocketEvents,
   WebSocketSupport,
-} from '../../../packages/core/src/core/transport.ts';
-import { nodeServer } from '../../../packages/core/src/servers/node.ts';
-import { HonoWsAdapter } from '../src/index.ts';
-import type { HonoSocket } from '../src/client.ts';
+} from '#adapter/core/ports/transport';
+import { nodeServer } from '#adapter/servers/node';
+import { HonoWsAdapter } from '#ws/index';
+import type { HonoSocket } from '#ws/client/index';
 
 /** The callbacks and clients captured by a transport probe. */
 interface Connections {
+  /** The events each captured upgrade handed the adapter. */
   events: WebSocketEvents[];
+  /** The clients the adapter bound. */
   clients: HonoSocket[];
+  /** The adapter under test. */
   adapter: HonoWsAdapter;
 }
 
-/**
- * Captures the actual transport callbacks without opening a
- * socket.
- */
-async function connections(): Promise<Connections> {
+/** Captures the transport callbacks without opening a socket. */
+const connections = async (): Promise<Connections> => {
   const events: WebSocketEvents[] = [];
   const clients: HonoSocket[] = [];
   const base = nodeServer();
@@ -50,10 +50,10 @@ async function connections(): Promise<Connections> {
   await http.getHono().request('/');
   await http.getHono().request('/');
   return { adapter, clients, events };
-}
+};
 
 /** Binds each connection using the transport's open callback. */
-function openConnections(probe: Connections): void {
+const openConnections = (probe: Connections): void => {
   const socket = new WSContext({
     close: (): void => undefined,
     readyState: 1,
@@ -65,21 +65,21 @@ function openConnections(probe: Connections): void {
     }
     events.onOpen({}, socket);
   }
-}
+};
 
 /** Observes the connection-local error channel. */
-function collectErrors(client: HonoSocket): unknown[] {
+const collectErrors = (client: HonoSocket): unknown[] => {
   const seen: unknown[] = [];
   client.on('error', (error: unknown) => {
     seen.push(error);
   });
   return seen;
-}
+};
 
 /** Requires the callback the adapter must hand its transport. */
-function errorCallback(
+const errorCallback = (
   events: WebSocketEvents | undefined,
-): (error: unknown) => void {
+): ((error: unknown) => void) => {
   if (events === undefined) {
     throw new Error('Missing connection');
   }
@@ -87,16 +87,13 @@ function errorCallback(
     throw new Error('Missing error callback');
   }
   return events.onError;
-}
+};
 
-/**
- * Errors before binding must not fabricate a gateway
- * connection.
- */
-function exerciseErrors(
+/** Sends errors before and after a connection is bound. */
+const exerciseErrors = (
   probe: Connections,
   failure: Error,
-): void {
+): void => {
   const onError = errorCallback(probe.events[0]);
   onError(failure);
   expect(probe.clients).toHaveLength(0);
@@ -104,7 +101,7 @@ function exerciseErrors(
   const seen = probe.clients.map(collectErrors);
   onError(failure);
   expect(seen).toStrictEqual([[failure], []]);
-}
+};
 
 test('transport errors reach only their client and are safe before binding', async () => {
   const probe = await connections();

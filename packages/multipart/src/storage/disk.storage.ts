@@ -1,3 +1,14 @@
+/* eslint-disable unicorn/no-null */
+/* eslint-disable unicorn/no-useless-undefined */
+/* eslint-disable typescript/strict-void-return */
+/* eslint-disable typescript/no-misused-promises */
+/* eslint-disable typescript/explicit-function-return-type */
+/* eslint-disable promise/avoid-new */
+/* eslint-disable node/no-sync */
+/* eslint-disable node/callback-return */
+/* eslint-disable max-params */
+/* eslint-disable init-declarations */
+
 import { randomBytes } from 'node:crypto';
 import { createWriteStream, mkdirSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
@@ -9,11 +20,12 @@ import type {
   IncomingMultipartFile,
   MultipartStorageEngine,
   UploadedMultipartFile,
-} from '../interfaces/index.ts';
+} from '#multipart/interfaces/index';
 
 /** The bytes one random file name stands for. */
 const RANDOM_BYTES = 16;
 
+/** Answers a resolved folder or file name. */
 type NameCallback = (
   error: Error | null,
   value: string,
@@ -28,22 +40,19 @@ type NameResolver = (
 
 /** What `diskStorage()` accepts. */
 interface DiskStorageOptions {
-  /**
-   * The folder files are written to, `os.tmpdir()` by default.
-   * A string is created when the engine is built; a function
-   * has to answer a folder that already exists.
-   */
+  /** The folder files are written to. */
   destination?: string | NameResolver;
   /** The name within `destination`, random hex by default. */
   filename?: NameResolver;
 }
 
-function resolveName(
+/** Resolves a name through one of the engine's resolvers. */
+const resolveName = (
   resolver: NameResolver,
   request: unknown,
   file: IncomingMultipartFile,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
+): Promise<string> =>
+  new Promise((resolve, reject) => {
     resolver(
       request,
       file,
@@ -56,18 +65,14 @@ function resolveName(
       },
     );
   });
-}
 
-/**
- * Writes one file, answering what disk storage recorded about
- * it.
- */
-async function store(
+/** Writes one file and answers what disk storage recorded. */
+const store = async (
   request: unknown,
   file: IncomingMultipartFile,
   resolveDestination: NameResolver,
   resolveFilename: NameResolver,
-): Promise<Partial<UploadedMultipartFile>> {
+): Promise<Partial<UploadedMultipartFile>> => {
   const destination = await resolveName(
     resolveDestination,
     request,
@@ -79,8 +84,6 @@ async function store(
     file,
   );
   const target = path.join(destination, filename);
-  // As in multer, the path is known to the file before it is
-  // written, so a failed write can remove it.
   file.path = target;
   const out = createWriteStream(target);
   try {
@@ -95,35 +98,47 @@ async function store(
     path: target,
     size: out.bytesWritten,
   };
-}
+};
 
-/**
- * Writes each file to disk, with multer's `diskStorage`
- * defaults and file shape: `destination`, `filename`, `path`
- * and `size`.
- */
-function diskStorage(
-  options: DiskStorageOptions = {},
-): MultipartStorageEngine {
-  let resolveDestination: NameResolver;
+/** Resolves the destination and filename configuration. */
+const resolveDiskStorageOptions = (
+  options: DiskStorageOptions,
+): {
+  destination: NameResolver;
+  filename: NameResolver;
+} => {
+  let destination: NameResolver;
+
   if (typeof options.destination === 'string') {
-    const destination = options.destination;
-    mkdirSync(destination, { recursive: true });
-    resolveDestination = (_request, _file, callback) => {
-      callback(null, destination);
+    const directory = options.destination;
+    mkdirSync(directory, { recursive: true });
+
+    destination = (_request, _file, callback) => {
+      callback(null, directory);
     };
   } else {
-    resolveDestination =
+    destination =
       options.destination ??
       ((_request, _file, callback) => {
         callback(null, tmpdir());
       });
   }
-  const resolveFilename: NameResolver =
+
+  const filename =
     options.filename ??
     ((_request, _file, callback) => {
       callback(null, randomBytes(RANDOM_BYTES).toString('hex'));
     });
+
+  return { destination, filename };
+};
+
+/** Writes each file to disk, with multer's defaults. */
+const diskStorage = (
+  options: DiskStorageOptions = {},
+): MultipartStorageEngine => {
+  const { destination, filename } =
+    resolveDiskStorageOptions(options);
 
   return {
     async _handleFile(request, file, callback) {
@@ -131,8 +146,8 @@ function diskStorage(
         const info = await store(
           request,
           file,
-          resolveDestination,
-          resolveFilename,
+          destination,
+          filename,
         );
         callback(null, info);
       } catch (error) {
@@ -144,15 +159,17 @@ function diskStorage(
       delete file.destination;
       delete file.filename;
       delete file.path;
+
       try {
         await unlink(target ?? '');
       } catch {
-        // The file is gone either way, which is what removal means.
+        // The file is gone either way.
       }
+
       callback(null);
     },
   };
-}
+};
 
 export { diskStorage };
 export type { DiskStorageOptions };

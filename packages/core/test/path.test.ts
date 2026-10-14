@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { HttpStatus } from '@nestjs/common';
 
-import { toHonoPath } from '../src/core/path.ts';
-import { request } from '../../../test/probe.ts';
-import { startProbe } from './support.ts';
+import { toHonoPath } from '#adapter/core/request/path';
+import { request } from '#test/probe';
+import { startProbe } from './support/index.ts';
 
 test('a plain path is left alone', () => {
   expect(toHonoPath('/users')).toBe('/users');
@@ -39,12 +39,6 @@ test('a path the router cannot read is refused', () => {
   expect(() => toHonoPath('/users(:id')).toThrow(TypeError);
 });
 
-/**
- * The translation above answers the wildcard with `*`, so the
- * capture has to be readable from the request under the key the
- * router reads it by — the same one Fastify uses — and a route
- * declared `*rest` reaches the rest of its path.
- */
 test('a wildcard is captured under the key the router reads it by', async () => {
   const probe = await startProbe({ mode: 'in-process' });
   try {

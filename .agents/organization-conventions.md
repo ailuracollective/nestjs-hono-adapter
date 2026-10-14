@@ -1,16 +1,13 @@
 # Organization conventions
 
-Mandatory for every repository in `ailuracollective`. Each
-repository keeps a copy at
-`.agents/organization-conventions.md`, and its `AGENTS.md` links
-here instead of restating any of it.
+Mandatory for every repository in `ailuracollective`. Each keeps
+a copy at `.agents/organization-conventions.md`; its `AGENTS.md`
+links here instead of restating it.
 
 These are the rules shared across repositories. A repository's
-own language, layout, build and test commands are not here; they
-belong in its `AGENTS.md`. A repository that departs from a rule
-below records the departure in its `AGENTS.md`, with the reason
-it was taken. An exception nobody wrote down is not an
-exception.
+own language, layout, build and test commands belong in its
+`AGENTS.md`, as does every departure from a rule below, with its
+reason. An exception nobody wrote down is not an exception.
 
 ## The standard is copied by hand
 
@@ -27,17 +24,17 @@ Copy this file to `.agents/organization-conventions.md`, and
 `templates/AGENTS.md` from the origin to the repository root as
 `AGENTS.md`.
 
-There is no sync mechanism. Editing the origin changes nothing
-elsewhere, and copies drift by default. A change to a shared
-artifact is finished only when it has been mirrored into every
-adopting repository by hand.
+There is no sync mechanism: editing the origin changes nothing
+elsewhere, and copies drift by default. A shared-artifact change
+is finished only when mirrored into every adopting repository by
+hand.
 
 ## Issues
 
 Issues follow `.github/ISSUE_STANDARD.md` — its types and title
-convention, its core sections, and its writing principles — and
-are opened through the templates in `.github/ISSUE_TEMPLATE/`.
-The standard's `config.yml` disables blank issues.
+convention, core sections, and writing principles — and are
+opened through the templates in `.github/ISSUE_TEMPLATE/`. The
+standard's `config.yml` disables blank issues.
 
 - One type per issue, matching the template's `title:` prefix.
 - Every template applies `status/needs-review` itself, so an
@@ -55,18 +52,17 @@ The standard's `config.yml` disables blank issues.
   `breaking-change`, which is a commit marker and not a branch
   type.
 - The body follows the template for the title's type. Common
-  headings are: `## Linked issue`, `## Summary`, `## Changes`,
+  headings: `## Linked issue`, `## Summary`, `## Changes`,
   `## Verification`, `## Risk / compatibility` (optional),
   `## Migration` (optional).
 - Link the issue with a closing keyword (`Closes #N`); the issue
   must carry `status/ready`.
 - Apply exactly one `type/*` label. The title type and the label
   differ: several title types share a label.
-- `## Verification` asks for evidence, not commands. Do not name
+- `## Verification` asks for evidence, not commands: do not name
   commands CI already runs.
 - Update documentation where public behavior or configuration
-  changed.
-- All CI checks pass.
+  changed; all CI checks pass.
 
 ## Labels
 
@@ -78,9 +74,7 @@ no remote.
   `github_actions`, and `release/`.
 - `type/` is frozen at five members. A repository-specific
   concern uses an existing `type/*` label plus an `extensions`
-  entry in its customization record; it does not add a `type/*`
-  label.
-- Never name a label the manifest does not declare.
+  entry in its customization record; it does not add one.
 
 ## Commits
 

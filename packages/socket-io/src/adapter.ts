@@ -21,122 +21,27 @@ import type {
 
 import { assertAttachable } from './refusal.ts';
 
-/** The event socket.io fires when a client goes away. */
-const DISCONNECT_EVENT = 'disconnect';
+import {
+  ATTACHED_PORT,
+  DISCONNECT_EVENT,
+  deliver,
+  isAnswered,
+  isCallable,
+  rootOf,
+  splitFrame,
+} from './frames.ts';
+import type {
+  Ack,
+  Answer,
+  IoOptions,
+  Payload,
+} from './frames.ts';
 
-/**
- * The port that means "attach to the server already listening".
- * Nest asks for the server this way whatever port the
- * application was started on. An explicit nonzero gateway port
- * opens a listener of its own.
- */
-const ATTACHED_PORT = 0;
-
-/** Where the acknowledgement of a frame sits in its array. */
-const LAST = -1;
-
-/** The length of the array a frame is unwrapped from. */
-const UNWRAPPED = 1;
-
-/** The options `create()` reads a namespace and a server out of. */
-interface IoOptions extends ServerOptions {
-  readonly namespace?: string;
-  readonly server?: Server;
-}
-
-/** An acknowledgement a client sent along with its frame. */
-type Ack = (...args: unknown[]) => void;
-
-/**
- * A reply a handler asked to send on an event, rather than
- * answer.
- */
-interface Emitted {
-  readonly event: string;
-  readonly data?: unknown;
-}
-
-/** The data of a frame, and the acknowledgement it carried. */
-interface Payload {
-  readonly ack?: Ack;
-  readonly data?: unknown;
-}
-
-/** One reply, with what the handler said to do with it. */
-interface Answer {
-  readonly ack: Ack | undefined;
-  readonly manual: boolean;
-  readonly response: unknown;
-}
-
-/** Says whether a value can be called. */
-function isCallable(value: unknown): value is Ack {
-  return typeof value === 'function';
-}
-
-/** Says whether a reply names an event to be sent on. */
-function isEmitted(reply: unknown): reply is Emitted {
-  if (typeof reply !== 'object' || reply === null) {
-    return false;
-  }
-  if (!('event' in reply)) {
-    return false;
-  }
-  return typeof reply.event === 'string';
-}
-
-/** Says whether a handler answered anything at all. */
-function isAnswered(reply: unknown): boolean {
-  return reply !== null && reply !== undefined;
-}
-
-/** Splits an array frame into its data and its acknowledgement. */
-function splitFrame(frame: unknown[]): Payload {
-  const last: unknown = frame.at(LAST);
-  if (!isCallable(last)) {
-    return { data: frame };
-  }
-  const data = frame.slice(0, LAST);
-  if (data.length === UNWRAPPED) {
-    return { ack: last, data: data[0] };
-  }
-  return { ack: last, data };
-}
-
-/** The server a namespace belongs to, or the server itself. */
-function rootOf(server: Server | Namespace): Server {
-  if (server instanceof Server) {
-    return server;
-  }
-  return server.server;
-}
-
-/**
- * Runs a Nest gateway on socket.io.
- *
- * The counterpart of `@nestjs/platform-socket.io`'s
- * `IoAdapter`, and reached through `./socket-io`. A consumer
- * that built its application on that adapter keeps its
- * gateways, its namespaces, its rooms, its broadcasts and its
- * acknowledgement callbacks: this adapter only binds the
- * handlers Nest declares to the events socket.io carries, and
- * socket.io owns the protocol.
- *
- * It attaches to the Node `http.Server` the transport already
- * listens on, so it works on `./node-server` — which runs on
- * Node and on Bun — and it refuses, by name, on the transports
- * that answer with no such server: see `assertAttachable`.
- *
- * @publicApi
- */
 class HonoIoAdapter extends AbstractWsAdapter {
+  /** Reports failures from the socket.io layer. */
   protected readonly logger = new Logger(HonoIoAdapter.name);
 
-  /**
-   * The disconnect of every client, shared and taken once, so a
-   * gateway that binds several events to one socket does not
-   * attach a listener per event.
-   */
+  /** The shared disconnect of every client. */
   private readonly disconnects = new WeakMap<
     Socket,
     Observable<unknown>
@@ -159,9 +64,6 @@ class HonoIoAdapter extends AbstractWsAdapter {
     ) {
       return options.server.of(options.namespace);
     }
-    // The socket.io server reads the keys it knows and leaves
-    // the rest alone, so the two Nest adds travel with the
-    // options rather than being copied out of them.
     if (options.namespace !== undefined) {
       return this.createIOServer(port, options).of(
         options.namespace,
@@ -170,10 +72,7 @@ class HonoIoAdapter extends AbstractWsAdapter {
     return this.createIOServer(port, options);
   }
 
-  /**
-   * Attaches socket.io to the server this adapter serves
-   * through, or opens one on an explicit nonzero gateway port.
-   */
+  /** Attaches socket.io to the server this adapter serves. */
   public createIOServer(
     port: number,
     options?: ServerOptions,
@@ -198,11 +97,7 @@ class HonoIoAdapter extends AbstractWsAdapter {
     }
   }
 
-  /**
-   * Splits a frame into its data and the acknowledgement a
-   * client may have appended to it, as socket.io sends both in
-   * one array.
-   */
+  /** Splits a frame into its data and its acknowledgement. */
   public mapPayload(payload: unknown): Payload {
     if (Array.isArray(payload)) {
       return splitFrame(payload);
@@ -223,24 +118,7 @@ class HonoIoAdapter extends AbstractWsAdapter {
     });
   }
 
-  /**
-   * Closes socket.io, and closes the server with it only when
-   * this adapter opened that server. A standalone gateway's
-   * listener is ours, which is what `ownedServers` records; the
-   * server an attached gateway shares belongs to the transport,
-   * so the adapter lets the clients go and leaves that listener
-   * to be closed where it was opened.
-   *
-   * The sockets are closed here, the way `./ws` closes the ones
-   * on its paths, rather than by awaiting socket.io's own
-   * `close()`, which ends by closing whatever server it is
-   * attached to.
-   *
-   * Nest hands this the namespace a namespaced gateway was
-   * bound to as well as the server itself, and only the server
-   * owns the engine, so a namespace reaches it through its
-   * root.
-   */
+  /** Closes socket.io and the listener this adapter opened. */
   public override close(
     server: Server | Namespace,
   ): Promise<void> {
@@ -267,21 +145,11 @@ class HonoIoAdapter extends AbstractWsAdapter {
         takeUntil(this.disconnectOf(socket)),
       )
       .subscribe((answer: Answer): void => {
-        this.deliver(socket, answer);
+        deliver(socket, answer, this.logger);
       });
   }
 
-  /**
-   * Answers one frame, once the handler's own stream has
-   * produced a reply.
-   *
-   * The handler runs inside `defer`, so a synchronous throw
-   * becomes an error notification, and `catchError` stops that
-   * from tearing down the event's stream — which would silence
-   * the event for the client for good. A handler whose error
-   * filter rethrows is an application bug, so the failure is
-   * logged rather than dropped.
-   */
+  /** Answers one frame from the handler's own stream. */
   private answer(
     handler: WsMessageHandler,
     payload: unknown,
@@ -304,37 +172,7 @@ class HonoIoAdapter extends AbstractWsAdapter {
     );
   }
 
-  /**
-   * Sends a reply to the client: on the event it named, or as
-   * the answer to the frame.
-   *
-   * Socket.io walks a payload recursively to encode it, so a
-   * reply echoing a client-controlled value nested deeply
-   * enough overflows the stack. A throw here would escape the
-   * subscriber, which RxJS rethrows asynchronously, killing the
-   * process.
-   */
-  private deliver(socket: Socket, answer: Answer): void {
-    try {
-      if (isEmitted(answer.response)) {
-        socket.emit(
-          answer.response.event,
-          answer.response.data,
-        );
-        return;
-      }
-      if (!answer.manual && answer.ack !== undefined) {
-        answer.ack(answer.response);
-      }
-    } catch (error: unknown) {
-      this.logger.error(error);
-    }
-  }
-
-  /**
-   * The disconnect of a client, shared by the events bound to
-   * it.
-   */
+  /** The disconnect of a client, shared by its events. */
   private disconnectOf(socket: Socket): Observable<unknown> {
     let shared = this.disconnects.get(socket);
     if (shared === undefined) {
@@ -349,4 +187,4 @@ class HonoIoAdapter extends AbstractWsAdapter {
 }
 
 export { HonoIoAdapter };
-export type { IoOptions };
+export type { IoOptions } from './frames.ts';

@@ -1,12 +1,4 @@
-/*
- * A port of `append-field` (MIT, Copyright (c) 2015 Linus
- * Unnebäck), the helper multer uses to build `req.body` from text
- * fields: `a[b]` nests, `a[0]` indexes, `a[]` appends, and a
- * repeated plain key becomes an array. Ported rather than
- * depended on, so the island adds one dependency and no more.
- * https://github.com/LinusU/node-append-field
- */
-
+/** One step of a bracket-notation field name. */
 interface PathStep {
   type: 'object' | 'array';
   key: string | number;
@@ -15,17 +7,15 @@ interface PathStep {
   nextType?: 'object' | 'array';
 }
 
-/**
- * Field names that would reach the prototype chain are refused,
- * which multer does not do; a form is untrusted input.
- */
+/** Field names that would reach the prototype chain. */
 const FORBIDDEN_KEYS = new Set([
   '__proto__',
   'constructor',
   'prototype',
 ]);
 
-function parsePath(key: string): PathStep[] {
+/** Splits a bracket-notation field name into steps. */
+const parsePath = (key: string): PathStep[] => {
   const failure = (): PathStep[] => [
     { type: 'object', key, last: true },
   ];
@@ -71,9 +61,10 @@ function parsePath(key: string): PathStep[] {
   }
   tail.last = true;
   return steps;
-}
+};
 
-function valueType(value: unknown): string {
+/** Names the kind of value a step holds. */
+const valueType = (value: unknown): string => {
   if (value === undefined) {
     return 'undefined';
   }
@@ -84,14 +75,15 @@ function valueType(value: unknown): string {
     return 'object';
   }
   return 'scalar';
-}
+};
 
-function setLastValue(
+/** Writes the value at the last step. */
+const setLastValue = (
   context: Record<string, unknown>,
   step: PathStep,
   current: unknown,
   value: unknown,
-): Record<string, unknown> {
+): Record<string, unknown> => {
   switch (valueType(current)) {
     case 'undefined':
       context[step.key] =
@@ -112,14 +104,15 @@ function setLastValue(
       break;
   }
   return context;
-}
+};
 
-function setValue(
+/** Writes the value at a step, creating containers. */
+const setValue = (
   context: Record<string, unknown>,
   step: PathStep,
   current: unknown,
   value: unknown,
-): Record<string, unknown> {
+): Record<string, unknown> => {
   if (step.last === true) {
     return setLastValue(context, step, current, value);
   }
@@ -149,19 +142,14 @@ function setValue(
       context[step.key] = object;
       return object;
   }
-}
+};
 
-/**
- * Adds one text field to `store` with multer's bracket
- * notation, and answers whether it was accepted: a name that
- * would pollute a prototype is refused and leaves `store`
- * untouched.
- */
-function appendField(
+/** Adds one text field to `store` in bracket notation. */
+const appendField = (
   store: Record<string, unknown>,
   key: string,
   value: unknown,
-): boolean {
+): boolean => {
   const steps = parsePath(key);
   if (
     steps.some((step) => FORBIDDEN_KEYS.has(String(step.key)))
@@ -174,6 +162,6 @@ function appendField(
     store,
   );
   return true;
-}
+};
 
 export { appendField };

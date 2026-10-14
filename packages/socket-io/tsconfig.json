@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "../..",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "#adapter/*": ["../core/src/*.ts", "../core/src/*"],
+      "#socket-io/*": ["./src/*.ts", "./src/*"],
+      "@ailura/nestjs-hono-adapter": ["../core/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

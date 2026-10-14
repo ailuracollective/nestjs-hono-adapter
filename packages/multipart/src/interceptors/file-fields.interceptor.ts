@@ -3,28 +3,17 @@ import type { NestInterceptor, Type } from '@nestjs/common';
 import type {
   MultipartField,
   MultipartOptions,
-} from '../interfaces/index.ts';
-import { createMultipartInterceptor } from '../multipart/multipart.interceptor.factory.ts';
+} from '#multipart/interfaces/index';
+import { createMultipartInterceptor } from '#multipart/multipart/multipart.interceptor.factory';
 
-/**
- * Accepts files in each of `uploadFields` and exposes them
- * grouped by field name in `req.files` (`@UploadedFiles()`).
- * The counterpart of `@nestjs/platform-express`'s
- * `FileFieldsInterceptor`.
- *
- * @param uploadFields Accepted fields, each with an optional
- *   `maxCount`
- * @param localOptions Options merged over the `MultipartModule`
- *   defaults
- */
-function FileFieldsInterceptor(
+/** Accepts files in the named fields, grouped by field name. */
+const FileFieldsInterceptor = (
   uploadFields: MultipartField[],
   localOptions?: MultipartOptions,
-): Type<NestInterceptor> {
-  return createMultipartInterceptor(
+): Type<NestInterceptor> =>
+  createMultipartInterceptor(
     { fields: uploadFields, strategy: 'OBJECT' },
     localOptions,
   );
-}
 
 export { FileFieldsInterceptor };
