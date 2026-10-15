@@ -20,6 +20,8 @@ const SERVED = HttpStatus.OK;
 interface ExpressResponse {
   send: (body: unknown) => void;
   type: (value: string) => void;
+  status: (code: number) => ExpressResponse;
+  json: (body: unknown) => void;
 }
 
 const hasSurface = (value: unknown): value is ExpressResponse => {

@@ -7,6 +7,7 @@ import type { NestHandler, NestRequest } from '#adapter/core/request/request';
 import type { NestContext } from '#adapter/core/context';
 import {
   createExceptionRunner,
+  createMiddlewareHandler,
   createRouteHandler,
   mapFrameworkError,
   runNestHandler,
@@ -173,13 +174,8 @@ class ServerAdapter extends HonoLifecycle {
     this.mapException = mapFrameworkError;
   }
 
-  /**
-   * Lets the compatibility bridges finish installing. Nest awaits `init()` before it runs
-   * `onModuleInit`, which is the window a bridge that patches a third-party prototype has to land
-   * in: `@nestjs/serve-static` would otherwise boot against its own Express loader. A bridge with
-   * nothing to resolve installs synchronously in the constructor, so this is an already-settled
-   * await for a deployment that runs none of them.
-   */
+  // Lets the compatibility bridges finish installing inside Nest's `init()` window, the one a
+  // prototype-patching bridge needs; a bridge with nothing to resolve installs in the constructor.
   public override async init(): Promise<void> {
     await settleBridges();
   }
@@ -206,7 +202,7 @@ class ServerAdapter extends HonoLifecycle {
   protected override mount(path: string, handler: NestHandler): void {
     this.hono.use(
       toHonoPath(path),
-      createRouteHandler(handler, this.bridgeOptions, this.interceptor),
+      createMiddlewareHandler(handler, this.bridgeOptions, this.interceptor),
     );
   }
 

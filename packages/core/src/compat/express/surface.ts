@@ -31,6 +31,55 @@ function send(this: NestContext, body: unknown): NestContext {
   return this;
 }
 
+const STATUS = Symbol('honoStatus');
+
+type StatusSetter = (this: NestContext, code: number) => void;
+
+interface ResponseSurface {
+  [STATUS]?: StatusSetter;
+  status: (code: number) => NestContext;
+  set: (field: string | Record<string, string>, value?: string) => NestContext;
+  append: (field: string, value: string) => NestContext;
+}
+
+function status(this: NestContext, code: number): NestContext {
+  const honoStatus = (this as NestContext & { [STATUS]?: StatusSetter })[STATUS];
+  if (honoStatus !== undefined) honoStatus.call(this, code);
+  return this;
+}
+
+function set(
+  this: NestContext,
+  field: string | Record<string, string>,
+  value?: string,
+): NestContext {
+  if (typeof field === 'string') {
+    if (value !== undefined) this.header(field, value);
+    return this;
+  }
+  for (const [name, header] of Object.entries(field)) {
+    this.header(name, header);
+  }
+  return this;
+}
+
+function append(this: NestContext, field: string, value: string): NestContext {
+  this.header(field, value, { append: true });
+  return this;
+}
+
 const surface = { send, type };
 
-export { OK_STATUS, surface, writer };
+const fitResponse = (context: NestContext): void => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fitted surface layers the Express response dialect onto the Hono context.
+  const target = context as unknown as ResponseSurface;
+  if (target[STATUS] === undefined) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Hono types `status` with the StatusCode union; the fitted surface widens it to any number, matching Express.
+    target[STATUS] = context.status as unknown as StatusSetter;
+    target.status = status;
+  }
+  target.set = set;
+  target.append = append;
+};
+
+export { OK_STATUS, fitResponse, surface, writer };

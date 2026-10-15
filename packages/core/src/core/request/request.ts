@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import type { IncomingMessage } from 'node:http';
 
 import type { NestContext } from '#adapter/core/context';
@@ -14,6 +16,27 @@ import type { NestRequest } from './types.ts';
 
 const REQUEST = Symbol('nestRequest');
 
+// Express middleware that streams the body itself (`busboy` behind `graphql-upload`/`multer`)
+// reads the request as a Node stream. The body the transport carries is the standard
+// `Request.body`, so the stream is built from it — the same `Readable.fromWeb` the multipart
+// package uses — and works on every transport that has one, Node and Bun alike.
+const bodyStreamOf = (context: NestContext): Readable => {
+  const { body } = context.req.raw;
+  if (body === null) return Readable.from([]);
+  return Readable.fromWeb(body);
+};
+
+const mediaTypeOf = (contentType: string): string =>
+  (contentType.split(';', 1)[0] ?? '').trim().toLowerCase();
+
+const matchesMediaType = (actual: string, wanted: string): boolean => {
+  const candidate = wanted.trim().toLowerCase();
+  if (candidate === '*/*') return true;
+  if (candidate.endsWith('/*')) return actual.startsWith(candidate.replace('*', ''));
+  if (candidate.startsWith('+')) return actual.endsWith(candidate);
+  return actual === candidate;
+};
+
 type RequestHolder = Record<symbol, RequestBag | undefined>;
 
 class RequestBag implements NestRequest {
@@ -28,6 +51,8 @@ class RequestBag implements NestRequest {
   public session: unknown;
 
   private readonly state: BagState;
+
+  private source: Readable | undefined;
 
   public constructor(context: NestContext, options: RequestOptions) {
     this.state = {
@@ -57,6 +82,32 @@ class RequestBag implements NestRequest {
     const { state } = this;
     state.headers ??= state.context.req.header();
     return state.headers;
+  }
+
+  public is(type: string | readonly string[]): string | false {
+    const contentType = this.headers['content-type'];
+    if (contentType === undefined || contentType === '') return false;
+    const actual = mediaTypeOf(contentType);
+    const wanted = typeof type === 'string' ? [type] : type;
+    for (const candidate of wanted) {
+      if (matchesMediaType(actual, candidate)) return candidate;
+    }
+    return false;
+  }
+
+  public get(name: string): string | undefined {
+    const wanted = name.toLowerCase();
+    const { headers } = this;
+    const exact = headers[wanted];
+    if (exact !== undefined) return exact;
+    for (const [key, value] of Object.entries(headers)) {
+      if (key.toLowerCase() === wanted) return value;
+    }
+    return undefined;
+  }
+
+  public header(name: string): string | undefined {
+    return this.get(name);
   }
 
   public get hostname(): string {
@@ -135,6 +186,62 @@ class RequestBag implements NestRequest {
 
   public get raw(): (IncomingMessage & Incoming) | undefined {
     return incomingOf(this.state) as (IncomingMessage & Incoming) | undefined;
+  }
+
+  // The adapter drains the carrier before an Express body-parser runs; `body-parser` asks
+  // `on-finished`, which reads these flags, so mirroring the real state lets it stand down.
+  public get complete(): boolean {
+    return this.raw?.complete ?? true;
+  }
+
+  public get readable(): boolean {
+    return this.raw?.readable ?? false;
+  }
+
+  // The Express request surface a body-streaming middleware reaches for. `graphql-upload` pipes the
+  // request into `busboy`; on the adapter that is a `Readable` over the standard `Request.body`.
+  // A body a middleware consumed this way is read back from `NestRequest.body` by the route.
+  public get stream(): Readable {
+    this.source ??= bodyStreamOf(this.state.context);
+    return this.source;
+  }
+
+  // `graphql-upload` only treats the request's `close` as a disconnect when the body stream has not
+  // ended; without this it read `undefined` and aborted every upload as "request disconnected".
+  public get readableEnded(): boolean {
+    return this.source?.readableEnded ?? false;
+  }
+
+  public pipe(
+    destination: NodeJS.WritableStream,
+    options?: { end?: boolean },
+  ): NodeJS.WritableStream {
+    return this.stream.pipe(destination, options);
+  }
+
+  public unpipe(destination?: NodeJS.WritableStream): this {
+    this.stream.unpipe(destination);
+    return this;
+  }
+
+  public resume(): this {
+    this.stream.resume();
+    return this;
+  }
+
+  public pause(): this {
+    this.stream.pause();
+    return this;
+  }
+
+  public on(event: string, listener: (...args: unknown[]) => void): this {
+    this.stream.on(event, listener);
+    return this;
+  }
+
+  public once(event: string, listener: (...args: unknown[]) => void): this {
+    this.stream.once(event, listener);
+    return this;
   }
 
   public get secure(): boolean {

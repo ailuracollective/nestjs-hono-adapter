@@ -20,11 +20,16 @@ interface NestRequest {
   hosts: Record<string, string>;
   socket: (IncomingMessage['socket'] & Socket) | undefined;
   raw: (IncomingMessage & Incoming) | undefined;
+  complete: boolean;
+  readable: boolean;
   body: unknown;
   rawBody: Buffer | undefined;
   session: unknown;
   files: Record<string, unknown> | readonly unknown[] | undefined;
   file: unknown;
+  is: (type: string | readonly string[]) => string | false;
+  get: (name: string) => string | undefined;
+  header: (name: string) => string | undefined;
 }
 
 type NextHandler = () => unknown;
