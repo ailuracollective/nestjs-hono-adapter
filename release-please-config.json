@@ -5,7 +5,11 @@
   "label": "release/pending",
   "release-label": "release/tagged",
   "packages": {
-    "packages/core": {},
+    "packages/core": {
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
+    },
     "packages/socket-io": {
       "component": "socket-io",
       "include-component-in-tag": true,
@@ -19,17 +23,26 @@
     "packages/multipart": {
       "component": "multipart",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
     },
     "packages/graphql": {
       "component": "graphql",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
     },
     "packages/serve-static": {
       "component": "serve-static",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
     }
   }
 }

@@ -77,7 +77,7 @@ A built package carries the alias into `dist/`, so the published `imports` map i
 
 ## Entrypoints and isolation
 
-`@ailura/nestjs-hono-adapter`, built from `packages/core`, exposes four specifiers: `.`, `./bun-server`, `./node-server` and `./fetch`. The optional capability is its own package with a single specifier, `.`: `@ailura/nestjs-platform-hono-multipart`, and so is each bridge package: `@ailura/nestjs-platform-hono-graphql`, `@ailura/nestjs-platform-hono-serve-static`, `@ailura/nestjs-platform-hono-socket-io` and `@ailura/nestjs-platform-hono-ws`. The adapter depends on none of the five; every one of them peers on it (`>=1.4.1 <2`).
+`@ailura/nestjs-hono-adapter`, built from `packages/core`, exposes four specifiers: `.`, `./bun-server`, `./node-server` and `./fetch`. The optional capability is its own package with a single specifier, `.`: `@ailura/nestjs-platform-hono-multipart`, and so is each bridge package: `@ailura/nestjs-platform-hono-graphql`, `@ailura/nestjs-platform-hono-serve-static`, `@ailura/nestjs-platform-hono-socket-io` and `@ailura/nestjs-platform-hono-ws`. The adapter depends on none of the five; every one of them peers on it (`>=1.4.1 <2`, and the three that require it name the beta lines as well while the [pre-release channel](development.md#pre-release-channel) is open, because a prerelease version satisfies no plain range).
 
 The build is `build:core` then `build:packages`; each capability package compiles its own sources into its own `dist/`, and the published maps expose nothing else, so no consumer reaches an internal module by path — moving files between regions is not a breaking change.
 
