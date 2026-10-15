@@ -26,6 +26,12 @@ test('a named wildcard becomes an anonymous one', () => {
   expect(toHonoPath('/files/*rest/meta')).toBe('/files/*/meta');
 });
 
+test('an optional wildcard group becomes the wildcard Hono already reads', () => {
+  expect(toHonoPath('/admin/queues{/*wildcard}')).toBe('/admin/queues/*');
+  expect(toHonoPath('/admin/queues{/*wildcard}/*')).toBe('/admin/queues/*');
+  expect(toHonoPath('/queues{/*}')).toBe('/queues/*');
+});
+
 test('a path the router cannot read is refused', () => {
   expect(() => toHonoPath('/users{name}')).toThrow(TypeError);
   expect(() => toHonoPath('/users{/:id/:tab}')).toThrow(TypeError);

@@ -1,6 +1,7 @@
 const PARAMETER = /^[A-Za-z0-9_]+/u;
 
 const OPTIONAL_SEGMENT = /^:(?<name>[A-Za-z0-9_]+)(?:\((?<constraint>[^()]*)\))?\??$/u;
+const OPTIONAL_WILDCARD = /^\*(?<name>[A-Za-z0-9_]*)$/u;
 
 const REFUSED = new Set(['}', '(', ')']);
 
@@ -10,7 +11,7 @@ const unsupported = (path: string): TypeError =>
   new TypeError(
     `The route path "${path}" is not one the Hono adapter ` +
       'can translate. Write it the way Hono reads it: ' +
-      '`:name`, `:name?`, `:name{regex}`, `{/:name}` or `*`.',
+      '`:name`, `:name?`, `:name{regex}`, `{/:name}`, `{/*name}` or `*`.',
   );
 
 const withoutLeadingSlash = (content: string): string => {
@@ -20,8 +21,13 @@ const withoutLeadingSlash = (content: string): string => {
   return content;
 };
 
+const isOptionalWildcard = (content: string): boolean =>
+  OPTIONAL_WILDCARD.test(withoutLeadingSlash(content));
+
 const translateGroup = (content: string, path: string): string => {
-  const match = OPTIONAL_SEGMENT.exec(withoutLeadingSlash(content));
+  const body = withoutLeadingSlash(content);
+  if (OPTIONAL_WILDCARD.test(body)) return '/*';
+  const match = OPTIONAL_SEGMENT.exec(body);
   if (match === null) throw unsupported(path);
   const { constraint, name } = match.groups ?? {
     constraint: undefined,
@@ -81,8 +87,20 @@ class PathTranslator {
     const end = this.path.indexOf('}', this.index);
     if (end === MISSING) throw unsupported(this.path);
     const content = this.path.slice(this.index + 1, end);
+    const optionalWildcard = isOptionalWildcard(content);
     this.emit(translateGroup(content, this.path));
     this.index = end + 1;
+    if (optionalWildcard) this.skipWildcard();
+  }
+
+  private skipWildcard(): void {
+    if (this.path.startsWith('/*', this.index)) {
+      this.index += 2;
+      const match = PARAMETER.exec(this.path.slice(this.index));
+      if (match !== null) this.index += match[0].length;
+      return;
+    }
+    if (this.path.charAt(this.index) === '*') this.index += 1;
   }
 
   private readParameter(): void {
