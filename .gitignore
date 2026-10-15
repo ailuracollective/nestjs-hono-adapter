@@ -11,3 +11,6 @@ odd/
 .wrangler/
 .idea/
 .vscode/
+.vercel
+.env*
+.tmp-*
