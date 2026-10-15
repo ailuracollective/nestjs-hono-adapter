@@ -1,4 +1,5 @@
 import type { NestContext } from '#adapter/core/context';
+import { mediaType } from '#adapter/core/request/body/guards';
 import { readBody } from '#adapter/core/request/body/index';
 import type { ParsedBody } from '#adapter/core/request/body/index';
 import { toNestRequest } from '#adapter/core/request/request';
@@ -19,7 +20,7 @@ const requestOptions = (options: BridgeOptions): RequestOptions => ({
 });
 
 const declaresMultipart = (context: NestContext): boolean =>
-  (context.req.header('content-type') ?? '').toLowerCase().startsWith('multipart/form-data');
+  mediaType(context).startsWith('multipart/form-data');
 
 // A middleware may read the body itself (`graphql-upload` reads a multipart request as a stream).
 // A body it already placed on the request is what the route reads, and a multipart mount is left
@@ -44,7 +45,7 @@ const prepareRequest = async (
   middleware = false,
 ): Promise<NestRequest> => {
   const request = toNestRequest(context, requestOptions(options));
-  installSurface(context);
+  installSurface(context, options.writer());
   finalizeOnResponse(context);
   if (!options.bodyParsingEnabled()) {
     return request;

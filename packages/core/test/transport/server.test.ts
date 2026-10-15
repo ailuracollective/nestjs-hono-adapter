@@ -15,11 +15,13 @@ test('a plain server is the Bun server this adapter drives', async () => {
   }
 });
 
-test('httpsOptions are mapped onto Bun TLS options', () => {
+test('httpsOptions are mapped onto the fields Bun reads', () => {
   expect(toBunTls({ cert: 'the cert', key: 'the key' })).toStrictEqual({
     cert: 'the cert',
     key: 'the key',
   });
+  // `pfx` is a Nest option Bun has no counterpart for, so it must not reach the server.
+  expect(toBunTls({ cert: 'the cert', pfx: 'the pfx' })).toStrictEqual({ cert: 'the cert' });
 });
 
 test('security headers are only sent when asked for', async () => {

@@ -1,7 +1,5 @@
 import type { NestRequest } from '#adapter/core/request/request';
 
-import { readHeader } from './match.ts';
-
 const parametersOf = (mediaRange: string): string[] => {
   const [, ...parameters] = mediaRange.split(';');
   return parameters.map((parameter) => parameter.trim());
@@ -18,7 +16,7 @@ const versionInRange = (mediaRange: string, name: string): string | undefined =>
 };
 
 const readMediaTypeVersion = (request: NestRequest, key: string): string | undefined => {
-  const accept = readHeader(request, 'accept');
+  const accept = request.get('accept');
   if (accept === undefined) return undefined;
   const name = (key.split('=')[0] ?? key).replace(TRAILING_PLUS, '');
   for (const mediaRange of accept.split(',')) {

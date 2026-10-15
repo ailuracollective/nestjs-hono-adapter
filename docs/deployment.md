@@ -10,6 +10,8 @@ await NestFactory.create(AppModule, new ServerAdapter(), {
 });
 ```
 
+Only the fields Bun reads are forwarded — `key`, `cert`, `ca`, `passphrase`, `ciphers`, `secureOptions`, `requestCert` and `rejectUnauthorized`. Bun has no `pfx`, so a configuration that carries one has to be broken into `key` and `cert` before it reaches the transport.
+
 `trustProxy` sets how much of a proxy's word the deployment believes; the levels are Fastify's, from proxy-addr, and `ips` is the chain as written whenever anything is trusted:
 
 - `false` — nothing is read; the peer is the address.

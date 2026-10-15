@@ -3,7 +3,7 @@ import type { VersioningOptions } from '@nestjs/common';
 
 import type { NestHandler } from '#adapter/core/request/request';
 
-import { isNeutral, matchesVersion, readHeader } from './match.ts';
+import { isNeutral, matchesVersion } from './match.ts';
 import type { VersionValue } from './match.ts';
 import { readMediaTypeVersion } from './media-type.ts';
 
@@ -39,7 +39,7 @@ const createMediaTypeFilter =
 const createHeaderFilter =
   (handler: NestHandler, version: VersionValue, name: string): NestHandler =>
   (request, response, next) => {
-    const supplied = readHeader(request, name.toLowerCase());
+    const supplied = request.get(name);
     if (supplied === undefined) {
       if (isNeutral(version)) {
         return handler(request, response, next);

@@ -1,22 +1,22 @@
-import type { NestContext } from '#adapter/core/context';
+import type { NestHandler } from '#adapter/core/request/request';
 
-import { forwardFrom } from '#adapter/core/route/handler-bridge/forwarded';
-import { continueChain } from './middleware-shape.ts';
-import type { ExpressErrorMiddleware } from './middleware-shape.ts';
-import { expressRequest, expressResponse } from './request.ts';
+// oxlint-disable-next-line eslint/max-params -- the four parameters are the Express signature this bridge exists to recognise.
+type ExpressErrorMiddleware = (err: unknown, req: unknown, res: unknown, next: unknown) => unknown;
 
-const wrapExpressMiddleware =
-  (handler: ExpressErrorMiddleware) =>
-  async (context: NestContext, next: () => Promise<void>): Promise<void> => {
-    // An Express middleware may hand next() to something it never awaits (nestjs-i18n does), so the bridge has to hold the continuation open itself.
-    const forwarded = forwardFrom(next);
-    await handler(
-      undefined,
-      expressRequest(context),
-      expressResponse(context),
-      continueChain(forwarded.next),
-    );
-    await forwarded.settled();
-  };
+const ERROR_ARITY = 4;
 
-export { wrapExpressMiddleware };
+const isErrorMiddleware = (value: unknown): value is ExpressErrorMiddleware =>
+  typeof value === 'function' && value.length === ERROR_ARITY;
+
+// A four-parameter handler is Express's error middleware, not Hono's `(context, next)`. Nest's own
+// middleware path wraps a module middleware down to three declared parameters before the adapter
+// sees it, so the shape only survives `app.use(...)`; recognised where Nest mounts it, the handler
+// gets the same request and fitted response view as any other middleware, plus the `err` argument.
+const expressErrorMiddleware = (handler: NestHandler): NestHandler | undefined => {
+  if (!isErrorMiddleware(handler)) {
+    return undefined;
+  }
+  return (request, response, next) => handler(undefined, request, response, next);
+};
+
+export { expressErrorMiddleware };

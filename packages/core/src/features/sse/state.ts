@@ -28,7 +28,5 @@ interface SseState {
 
 type SseHolder = Record<symbol, SseState | undefined>;
 
-const installedOn = new WeakSet<object>();
-
-export { RAW_STATE, installedOn, noStream, startWaiter };
+export { RAW_STATE, noStream, startWaiter };
 export type { SseHolder, SseState, StartWaiter };

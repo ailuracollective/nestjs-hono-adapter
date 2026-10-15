@@ -61,12 +61,5 @@ const incomingOf = (state: BagState): Incoming | undefined => {
   return incoming;
 };
 
-const required = (state: BagState): Incoming => {
-  const incoming = incomingOf(state);
-  if (incoming === undefined)
-    throw new TypeError('the request arrived without a carrier, so this field has nothing to read');
-  return incoming;
-};
-
-export { forwardedOf, incomingOf, required, urlPartsOf };
+export { forwardedOf, incomingOf, urlPartsOf };
 export type { BagState, UrlParts };

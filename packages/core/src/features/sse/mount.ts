@@ -3,17 +3,15 @@
 import type { NestContext } from '#adapter/core/context';
 import { SseResponse } from '#adapter/core/response/sse-stream/index';
 
-import { RAW_STATE, installedOn, startWaiter } from './state.ts';
+import { RAW_STATE, startWaiter } from './state.ts';
 import type { SseHolder } from './state.ts';
 import { installSurface, watchDisconnect } from './surface.ts';
 
 const installRawGetter = (context: NestContext): void => {
-  const prototype = Object.getPrototypeOf(context) as unknown as object;
-  if (installedOn.has(prototype)) {
+  if (Object.hasOwn(context, 'raw')) {
     return;
   }
-  installedOn.add(prototype);
-  Object.defineProperty(prototype, 'raw', {
+  Object.defineProperty(context, 'raw', {
     configurable: true,
     get(this: NestContext): SseResponse {
       const holder = this as unknown as SseHolder;

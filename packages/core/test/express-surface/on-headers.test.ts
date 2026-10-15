@@ -14,8 +14,11 @@ interface ExpressResponse {
 
 // `cookie-session` writes its cookie from an `on-headers` listener patching `writeHead`, so the
 // bridge must call the patched `writeHead` once the chain settles and must not expose `set`.
+const seen: { carriesSet?: boolean } = {};
+
 class CookieMiddleware implements NestMiddleware {
   public use(_request: unknown, response: ExpressResponse, next: () => void): void {
+    seen.carriesSet = 'set' in response;
     const head = response.writeHead === undefined ? undefined : response.writeHead.bind(response);
     response.writeHead = (status?: number, ...rest: unknown[]): unknown => {
       if (response.setHeader !== undefined) response.setHeader('set-cookie', ['probe=1; path=/']);
@@ -47,6 +50,8 @@ test('a middleware that writes a cookie from writeHead reaches the response', as
     const response = await request(probe, '/echo');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.headers.get('set-cookie')).toContain('probe=1');
+    // `cookies` reads a present `res.set` as a real ServerResponse, so the view hides it.
+    expect(seen.carriesSet).toBe(false);
   } finally {
     await probe.close();
   }

@@ -22,13 +22,15 @@ interface Listenable {
 }
 
 const adaptListen = (native: HttpServer): void => {
-  const listen = native.listen.bind(native);
   const server = native as unknown as Listenable;
   server.listen = (port, hostnameOrCallback, callback): void => {
     const args: unknown[] = [port];
     if (hostnameOrCallback !== undefined) args.push(hostnameOrCallback);
     if (callback !== undefined) args.push(callback);
-    Reflect.apply(listen, undefined, args);
+    // Looked up per call: a serverless host replaces http.Server.prototype.listen to capture the
+    // server and puts the real one back before the listen that binds, which a bound copy misses.
+    const inherited = Object.getPrototypeOf(native) as Listenable;
+    Reflect.apply(inherited.listen, native, args);
   };
 };
 

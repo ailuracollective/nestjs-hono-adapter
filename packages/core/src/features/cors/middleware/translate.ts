@@ -12,24 +12,21 @@ import { middlewareOrigin, staticOrigin } from '#adapter/features/cors/origins';
 import type { AllowedOrigins, CorsOptions } from '#adapter/features/cors/types';
 import type { MiddlewareHandler } from 'hono';
 
+// Hono's cors answers a preflight with 204; a deployment may name another status.
+const withPreflightStatus =
+  (middleware: MiddlewareHandler<NestEnv>, status: number): MiddlewareHandler<NestEnv> =>
+  async (context, next) => {
+    const answer = await middleware(context, next);
+    if (answer === undefined) return answer;
+    return new Response(undefined, { headers: answer.headers, status });
+  };
+
 const corsMiddleware = (
   options: CorsOptions,
   resolved?: AllowedOrigins,
 ): MiddlewareHandler<NestEnv> => {
   const named = resolved ?? staticOrigin(options.origin);
-  if (
-    options.preflightContinue !== true &&
-    options.optionsSuccessStatus !== undefined &&
-    options.optionsSuccessStatus !== PREFLIGHT_STATUS
-  ) {
-    throw new TypeError(
-      'The Hono adapter answers CORS preflight requests with ' +
-        `${PREFLIGHT_STATUS}, so optionsSuccessStatus cannot ` +
-        'name another status.',
-    );
-  }
-
-  return cors({
+  const middleware = cors({
     allowHeaders: headerList(options.allowedHeaders, NO_HEADERS),
     allowMethods: headerList(options.methods, ALLOWED_METHODS),
     credentials: options.credentials ?? false,
@@ -37,6 +34,9 @@ const corsMiddleware = (
     maxAge: options.maxAge ?? MAX_AGE_SECONDS,
     origin: middlewareOrigin(named),
   });
+  const status = options.optionsSuccessStatus;
+  if (status === undefined || status === PREFLIGHT_STATUS) return middleware;
+  return withPreflightStatus(middleware, status);
 };
 
 export { corsMiddleware };

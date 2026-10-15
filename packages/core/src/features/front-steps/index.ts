@@ -123,7 +123,12 @@ const refuse = async (
   cors: MiddlewareHandler<NestEnv>,
 ): Promise<Response> => {
   await cors(context, NOOP_NEXT);
-  context.res = closingAnswer();
+  // The refusal replaces the response, so the headers an earlier step set ride along here.
+  const answer = closingAnswer();
+  for (const [name, value] of context.res.headers) {
+    answer.headers.append(name, value);
+  }
+  context.res = answer;
   return context.res;
 };
 

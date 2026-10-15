@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 
-import { request } from '#test/probe';
-import { PAGE, SERVED } from './fixture.ts';
-import { withSurface } from './support.ts';
+import { request, startProbe } from '#test/probe';
+import { PAGE, SERVED, PageModule } from './fixture.ts';
+import { surfaceOf, withSurface } from './support.ts';
 
 describe('what res.send() answers', () => {
   it('a string sent as a document as HTML', async () => {
@@ -46,4 +46,23 @@ describe('what res.send() answers', () => {
       },
     );
   });
+});
+
+it('res.send() carries the entity tag the deployment asked for', async () => {
+  const probe = await startProbe({
+    configure: (app) => {
+      app.set('etag', 'strong');
+      app.use('/reference', (_request: unknown, response: unknown) => {
+        surfaceOf(response).send(PAGE);
+      });
+    },
+    mode: 'in-process',
+    module: PageModule,
+  });
+  try {
+    const result = await request(probe, '/reference');
+    expect(result.headers.get('etag') ?? '').toMatch(/^"[0-9a-f]+-[0-9a-f]+"$/u);
+  } finally {
+    await probe.close();
+  }
 });

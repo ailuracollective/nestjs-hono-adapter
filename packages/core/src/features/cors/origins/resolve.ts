@@ -23,10 +23,12 @@ const resolveOrigin = (
   return Promise.resolve(origin ?? '*');
 };
 
+// Hono compares a string or a list of them itself; only boolean, RegExp and mixed lists need a matcher.
 const middlewareOrigin = (
   named: AllowedOrigins | undefined,
-): '*' | ((origin: string) => string | undefined) => {
-  if (named === '*') return '*';
+): string | string[] | ((origin: string) => string | undefined) => {
+  if (typeof named === 'string') return named;
+  if (Array.isArray(named) && named.every((rule) => typeof rule === 'string')) return named;
   return allowedOrigin(named);
 };
 
