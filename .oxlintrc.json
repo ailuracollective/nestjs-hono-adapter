@@ -360,6 +360,6 @@
     "**/.tmp-*/**",
     "**/*.tsbuildinfo",
     "bun.lock",
-    "examples/**"
+    "packages/examples/**"
   ]
 }

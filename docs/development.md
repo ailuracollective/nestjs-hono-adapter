@@ -20,7 +20,7 @@ Every part of the adapter is a workspace package: `core` is the adapter, publish
 
 ### The lockfile format the build image reads
 
-`bun.lock` is written in the format the oldest toolchain in the path understands. The Cloudflare build image that builds `examples/cloudflare` ships Bun 1.2.15, which refuses a `lockfileVersion: 2` lockfile — `bun install --frozen-lockfile` stops at `Unknown lockfile version` — and Bun 1.4.2 writes version 2 on a plain `bun install`, so a locally rewritten lockfile breaks that build without a line of source changing.
+`bun.lock` is written in the format the oldest toolchain in the path understands. The Cloudflare build image that builds `packages/examples/cloudflare` ships Bun 1.2.15, which refuses a `lockfileVersion: 2` lockfile — `bun install --frozen-lockfile` stops at `Unknown lockfile version` — and Bun 1.4.2 writes version 2 on a plain `bun install`, so a locally rewritten lockfile breaks that build without a line of source changing.
 
 - Regenerate with the image's Bun: 1.2.x writes version 1, which every later Bun reads, so only the header and format change.
 - Or set `BUN_VERSION` in the Cloudflare project to the version this repository develops against and keep the version 2 file.

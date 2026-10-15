@@ -1,8 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "examples/cloudflare/*",
-    "packages/*"
+    "packages/*",
+    "packages/examples/cloudflare/*"
   ],
   "type": "module",
   "scripts": {

@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "$schema": "../../../../node_modules/wrangler/config-schema.json",
   "name": "ailura-nestjs-hono-node",
   "main": "./src/worker.ts",
   "compatibility_date": "2026-08-04",
@@ -12,8 +12,8 @@
     "import.meta.url": "\"file:///worker.js\""
   },
   "alias": {
-    "@ailura/nestjs-hono-adapter": "../../../packages/core/src/index.ts",
-    "@ailura/nestjs-hono-adapter/node-server": "../../../packages/core/src/servers/node.ts",
+    "@ailura/nestjs-hono-adapter": "../../../../packages/core/src/index.ts",
+    "@ailura/nestjs-hono-adapter/node-server": "../../../../packages/core/src/servers/node.ts",
     "@fastify/static": "./src/stub-optional-peers.ts",
     "@nestjs/microservices": "./src/stub-optional-peers.ts",
     "@nestjs/microservices/microservices-module.js": "./src/stub-optional-peers.ts",

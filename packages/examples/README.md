@@ -2,8 +2,8 @@
 
 | Folder                    | Transport | Worker entry    |
 | ------------------------- | --------- | --------------- |
-| `examples/cloudflare/fetch` | fetch    | `src/worker.ts` |
-| `examples/cloudflare/node`  | node     | `src/worker.ts` |
+| `packages/examples/cloudflare/fetch` | fetch    | `src/worker.ts` |
+| `packages/examples/cloudflare/node`  | node     | `src/worker.ts` |
 
 Both carry `enableVersioning({ type: URI, defaultVersion: '1' })`,
 so every route sits under `/v1` unless it says otherwise:
@@ -43,7 +43,7 @@ that request binding.
 
 ```sh
 bun install
-bun run --cwd examples/cloudflare/fetch dev
+bun run --cwd packages/examples/cloudflare/fetch dev
 ```
 
 Swap `fetch` for `node` for the other one.
@@ -55,7 +55,7 @@ the scripts:
 
 | Setting                      | Value           |
 | ---------------------------- | --------------- |
-| Root directory               | `examples/cloudflare/fetch` |
+| Root directory               | `packages/examples/cloudflare/fetch` |
 | Build command                | `bun install --frozen-lockfile` |
 | Deploy command               | `bun run deploy` |
 | Non-production branch deploy | `bun run preview` |
@@ -73,7 +73,7 @@ variable skips that check, the workaround in
 From the repository root instead, name the config:
 
 ```sh
-bunx wrangler deploy --config examples/cloudflare/fetch/wrangler.jsonc
+bunx wrangler deploy --config packages/examples/cloudflare/fetch/wrangler.jsonc
 ```
 
 ## The transport import
