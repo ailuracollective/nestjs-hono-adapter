@@ -212,12 +212,6 @@
       }
     },
     {
-      "files": ["packages/core/test/config.test.ts"],
-      "rules": {
-        "node/no-process-env": "off"
-      }
-    },
-    {
       "files": [
         "packages/compatibility/test/config-fixture.ts",
         "packages/compatibility/test/config-fixture/**/*.ts"
