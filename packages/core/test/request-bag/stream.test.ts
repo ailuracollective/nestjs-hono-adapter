@@ -12,10 +12,10 @@ import { startProbe } from '#adapter-test/support/index';
 class StreamMiddleware implements NestMiddleware {
   public use(source: NestRequest, _response: unknown, next: () => void): void {
     const chunks: Buffer[] = [];
-    source.stream.on('data', (chunk: Buffer) => {
+    source.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
     });
-    source.stream.on('end', () => {
+    source.on('end', () => {
       source.body = Buffer.concat(chunks).toString();
       next();
     });

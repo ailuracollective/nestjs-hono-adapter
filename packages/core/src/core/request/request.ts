@@ -13,7 +13,7 @@ import type { RequestOptions } from './forwarded.ts';
 import { paramsOf } from './params.ts';
 import { parseQuery } from './query/index.ts';
 import type { ParsedQuery } from './query/index.ts';
-import type { NestRequest } from './types.ts';
+import type { NestRequest, StreamListener } from './types.ts';
 
 const REQUEST = Symbol('nestRequest');
 
@@ -219,7 +219,10 @@ class RequestBag implements NestRequest {
     return this.source?.readableEnded ?? false;
   }
 
-  public pipe(destination: Writable, options?: { end?: boolean }): Writable {
+  public pipe<Destination extends Writable>(
+    destination: Destination,
+    options?: { end?: boolean },
+  ): Destination {
     return this.stream.pipe(destination, options);
   }
 
@@ -238,12 +241,12 @@ class RequestBag implements NestRequest {
     return this;
   }
 
-  public on(event: string, listener: (...args: unknown[]) => void): this {
+  public on(event: string, listener: StreamListener): this {
     this.stream.on(event, listener);
     return this;
   }
 
-  public once(event: string, listener: (...args: unknown[]) => void): this {
+  public once(event: string, listener: StreamListener): this {
     this.stream.once(event, listener);
     return this;
   }

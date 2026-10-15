@@ -5,6 +5,8 @@ import type { NestContext } from '#adapter/core/context';
 import type { Incoming, Socket } from '#adapter/core/ports/bindings';
 import type { ParsedQuery } from './query/index.ts';
 
+type StreamListener = Parameters<Readable['on']>[1];
+
 interface NestRequest {
   method: string;
   url: string;
@@ -33,16 +35,19 @@ interface NestRequest {
   header: (name: string) => string | undefined;
   stream: Readable;
   readableEnded: boolean;
-  pipe: (destination: Writable, options?: { end?: boolean }) => Writable;
+  pipe: <Destination extends Writable>(
+    destination: Destination,
+    options?: { end?: boolean },
+  ) => Destination;
   unpipe: (destination?: Writable) => NestRequest;
   resume: () => NestRequest;
   pause: () => NestRequest;
-  on: (event: string, listener: (...args: unknown[]) => void) => NestRequest;
-  once: (event: string, listener: (...args: unknown[]) => void) => NestRequest;
+  on: (event: string, listener: StreamListener) => NestRequest;
+  once: (event: string, listener: StreamListener) => NestRequest;
 }
 
 type NextHandler = () => unknown;
 
 type NestHandler = (request: NestRequest, response: NestContext, next: NextHandler) => unknown;
 
-export type { NestHandler, NestRequest, NextHandler };
+export type { NestHandler, NestRequest, NextHandler, StreamListener };
