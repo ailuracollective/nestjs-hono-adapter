@@ -118,7 +118,7 @@ test('an install that starts another application is drained too', async () => {
   let started = false;
   registerBridge({
     install: async () => {
-     if (started) return;
+      if (started) return;
       started = true;
       registerBridge({
         install: async () => {
