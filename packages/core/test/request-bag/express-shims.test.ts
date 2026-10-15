@@ -15,6 +15,7 @@ test('req.is() reports the declared content type', async () => {
     expect(response.body).toStrictEqual({
       isBareJson: 'json',
       isBareMultipart: false,
+      isBareUrlencoded: false,
       isJson: 'application/json',
       isMultipart: false,
     });
@@ -33,6 +34,18 @@ test('req.is() matches a multipart declaration', async () => {
       isBareMultipart: 'multipart',
       isMultipart: 'multipart/form-data',
     });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('req.is() accepts the urlencoded shorthand', async () => {
+  const probe = await startProbe();
+  try {
+    const response = await request(probe, '/express', {
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    expect(response.body).toMatchObject({ isBareUrlencoded: 'urlencoded' });
   } finally {
     await probe.close();
   }

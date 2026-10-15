@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import type { Writable } from 'node:stream';
 
 import type { IncomingMessage } from 'node:http';
 
@@ -218,14 +219,11 @@ class RequestBag implements NestRequest {
     return this.source?.readableEnded ?? false;
   }
 
-  public pipe(
-    destination: NodeJS.WritableStream,
-    options?: { end?: boolean },
-  ): NodeJS.WritableStream {
+  public pipe(destination: Writable, options?: { end?: boolean }): Writable {
     return this.stream.pipe(destination, options);
   }
 
-  public unpipe(destination?: NodeJS.WritableStream): this {
+  public unpipe(destination?: Writable): this {
     this.stream.unpipe(destination);
     return this;
   }

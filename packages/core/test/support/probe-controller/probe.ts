@@ -60,6 +60,7 @@ class ProbeController {
       authorization: source.get('authorization'),
       isBareJson: source.is('json'),
       isBareMultipart: source.is('multipart'),
+      isBareUrlencoded: source.is('urlencoded'),
       isJson: source.is('application/json'),
       isMultipart: source.is('multipart/form-data'),
     };

@@ -1,4 +1,5 @@
 import type { IncomingMessage } from 'node:http';
+import type { Readable, Writable } from 'node:stream';
 
 import type { NestContext } from '#adapter/core/context';
 import type { Incoming, Socket } from '#adapter/core/ports/bindings';
@@ -30,6 +31,14 @@ interface NestRequest {
   is: (type: string | readonly string[]) => string | false;
   get: (name: string) => string | undefined;
   header: (name: string) => string | undefined;
+  stream: Readable;
+  readableEnded: boolean;
+  pipe: (destination: Writable, options?: { end?: boolean }) => Writable;
+  unpipe: (destination?: Writable) => NestRequest;
+  resume: () => NestRequest;
+  pause: () => NestRequest;
+  on: (event: string, listener: (...args: unknown[]) => void) => NestRequest;
+  once: (event: string, listener: (...args: unknown[]) => void) => NestRequest;
 }
 
 type NextHandler = () => unknown;
