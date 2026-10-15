@@ -101,6 +101,18 @@ Nest records a status against every `@Res()` response _before_ the handler runs,
 
 The one case this cannot separate is a handler that calls `res.status(200)` on a route declared with `@HttpCode()`: there the declared status wins. Hono keeps the status it was handed in a private field the adapter cannot read, so the shim lets Hono build the answer and reads the status back off the result rather than tracking `res.status()` itself — which is also why this costs nothing per request.
 
+#### The Node header members and the cookies
+
+`surface-extras.ts` fits the rest of the dialect a `@Res()` object is reached through:
+
+- `res.header(...)` is **Express's alias of `res.set`**, so it takes a record as well as a name and a value; Hono's own `header` — which the adapter calls with its `append` option — sits underneath.
+- `setHeader` follows Node: a string replaces what was there, and an **array is the whole set** — an empty one removes the header, and only its entries are appended. `cookies` reads the array back and sets it again, which is exactly what that replacement gives it. `getHeader` answers `set-cookie` as a **list**, through `Headers.getSetCookie()`, because `Headers.get` joins the cookies with commas and no client can split them back; every other header is a string, and `undefined` when there is none.
+- `removeHeader` takes the header off the live header store — the one Hono builds its answer from.
+- `cookie(name, value, options)` writes `Set-Cookie` in **Express's attribute order** (`Max-Age`, `Domain`, `Path` — defaulting to `/`, as the `cookie` package does —, `Expires`, `HttpOnly`, `Secure`, `SameSite`) for a name that must be an HTTP token (alphanumerics and ``!#$%&'*+-.^_`|~``); anything else is the `TypeError` `cookie` raises. `clearCookie` writes the same set with an `Expires` in the past.
+- A **`signed` cookie is written unsigned**: signing needs an HMAC and `compat/` carries no Node builtins. A deployment that verifies signatures signs the value before calling `res.cookie`.
+
+The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` rather than in `surface.ts` only because a `compat/` file may not exceed a hundred lines; `fitResponse()` fits all of them, and the middleware `res` reads its headers through the same helper.
+
 ### `serve-static`
 
 Shipped as `@ailura/nestjs-platform-hono-serve-static`, which peers on `@nestjs/serve-static`. That module builds an Express router and mounts it on the adapter's HTTP server, reading files through `express.static` and `res.sendFile`. On Hono that cannot work, so the bridge swaps its loader for one that:
@@ -239,6 +251,10 @@ The measured bundles are in [bundle-baseline.md](bundle-baseline.md).
 `serve-static/` used to fake it: a three-member object standing in for the response, and a real `node:fs/promises` `stat`. That is the half of the hook that only works on Node, and it is why the region now refuses the hook instead of honouring it on one runtime and ignoring it on the others.
 
 The GraphQL bridge adds **no** drain plugin either. `@as-integrations/express5` registers one over `getHttpServer()`, which is right there because the Express adapter does not close the server itself. This one does, and a runtime whose `close()` does not call back on a server that was never listening turns a graceful drain into a shutdown that never ends.
+
+## `trust proxy`: what is honoured, and what is not
+
+`app.set('trust proxy', …)` is honoured at runtime, the way an Express application sets it: `true`, `false`, a hop count, an IP, or a list of IPs. Express also accepts the **named ranges** (`loopback`, `linklocal`, `uniquelocal`) and CIDR forms such as `10.0.0.0/8`; this adapter compares the addresses literally, so those never match. A policy that matches nothing trusts nothing, which is fail-safe: `req.ip` and `req.ips` fall back to the peer address, so a client cannot choose its own address by sending `X-Forwarded-For`. Honouring the named forms means parsing IPv4 and IPv6 subnets, and the region takes no dependency that could do it — a wrong parser here is worse than a policy that trusts nothing, and refusing the value outright would stop the applications that set it.
 
 ## Where the other platform names still appear
 

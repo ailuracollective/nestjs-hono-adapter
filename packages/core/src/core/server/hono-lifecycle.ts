@@ -9,6 +9,7 @@ import type { NestEnv, NestHono } from '#adapter/core/context';
 import type { Server } from '#adapter/core/ports/server';
 import type { Transport } from '#adapter/core/ports/transport';
 import type { TrustProxy } from '#adapter/core/request/request';
+
 import { corsBridge } from '#adapter/features/cors/index';
 import type { CorsConfig } from '#adapter/features/cors/index';
 import { guardStep, instrumentationStep } from '#adapter/features/front-steps/index';
@@ -36,11 +37,19 @@ const HONOURED = new Set(['view engine', 'views']);
 
 const REFUSED: Readonly<Record<string, string>> = {
   env: 'it has no behaviour in this adapter',
-  etag: 'it has no behaviour in this adapter',
   'query parser': 'it has no behaviour in this adapter',
-  'trust proxy':
-    'the transport reads it when the adapter is constructed, so it is set through the adapter options',
   'x-powered-by': 'it has no behaviour in this adapter',
+};
+
+const toTrustProxy = (value: unknown): TrustProxy => {
+  if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string')
+    return value;
+  if (Array.isArray(value) && value.every((entry: unknown) => typeof entry === 'string'))
+    return value;
+
+  throw new TypeError(
+    'set("trust proxy") takes a boolean, a number, a string, or an array of strings.',
+  );
 };
 
 const refuse = (name: string, why?: string): never => {
@@ -69,9 +78,10 @@ abstract class HonoLifecycle extends RouteAdapter {
   protected readonly hono: NestHono;
   protected readonly interceptor = mountSse;
   protected readonly transport: Transport;
-  protected readonly trustProxy: TrustProxy;
+  protected trustProxy: TrustProxy;
   protected bodyLimit: number;
   protected bodyParsingEnabled = false;
+
   protected rawBodyEnabled: boolean;
   protected corsOptions: CorsConfig | undefined;
   private onRequestHook: OnRequestHook | undefined;
@@ -106,13 +116,16 @@ abstract class HonoLifecycle extends RouteAdapter {
   }
 
   private installGuards(hono: NestHono): void {
-    const cors = corsBridge(() => this.corsOptions, this.trustProxy);
+    const cors = corsBridge(
+      () => this.corsOptions,
+      () => this.trustProxy,
+    );
     hono.use(
       '*',
       instrumentationStep({
         onRequest: () => this.onRequestHook,
         onResponse: () => this.onResponseHook,
-        trustProxy: this.trustProxy,
+        trustProxy: () => this.trustProxy,
       }),
       guardStep({
         closing: () => this.return503OnClosing && this.closing,
@@ -205,5 +218,5 @@ interface HonoLifecycle {
   getInstance: <TInstance = NestHono>() => TInstance;
 }
 
-export { HonoLifecycle, settingValue };
+export { HonoLifecycle, settingValue, toTrustProxy };
 export type { TransportOptions };

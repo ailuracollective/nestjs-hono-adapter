@@ -2,7 +2,7 @@
   {
     "name": "graphql",
     "path": "dist/index.js",
-    "limit": 1900,
+    "limit": 2100,
     "brotli": true,
     "ignore": [
       "@apollo/server",

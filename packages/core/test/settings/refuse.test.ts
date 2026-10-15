@@ -10,15 +10,27 @@ test('view engine refuses arrays and non-string values', () => {
   expect(() => adapter.set('view engine', true)).toThrow('it takes a string');
 });
 
-test('set refuses a setting the transport owns, by name', () => {
+// `trust proxy` and `etag` are read per request, so an application may set them at bootstrap the way
+// Express apps do — unlike the settings the adapter has no behaviour for.
+test('trust proxy and etag are honoured, and checked', () => {
   const adapter = bunAdapter();
 
   expect(() => {
-    adapter.set('trust proxy', true);
-  }).toThrow('trust proxy');
+    adapter.set('trust proxy', ['loopback', '10.0.0.0/8']);
+  }).not.toThrow();
   expect(() => {
-    adapter.set('trust proxy', true);
-  }).toThrow('adapter options');
+    adapter.enable('trust proxy');
+  }).not.toThrow();
+  expect(() => {
+    adapter.set('etag', 'strong');
+  }).not.toThrow();
+
+  expect(() => {
+    adapter.set('trust proxy', {});
+  }).toThrow('set("trust proxy")');
+  expect(() => {
+    adapter.set('etag', 'sometimes');
+  }).toThrow('set("etag")');
 });
 
 test('set refuses a setting with no behaviour behind it', () => {
@@ -27,17 +39,11 @@ test('set refuses a setting with no behaviour behind it', () => {
   expect(() => {
     adapter.set('env', 'production');
   }).toThrow('env');
-  expect(() => {
-    adapter.set('etag', true);
-  }).toThrow('etag');
 });
 
 test('enable and disable go through the same refusal', () => {
   const adapter = bunAdapter();
 
-  expect(() => {
-    adapter.enable('trust proxy');
-  }).toThrow('trust proxy');
   expect(() => {
     adapter.disable('x-powered-by');
   }).toThrow('x-powered-by');

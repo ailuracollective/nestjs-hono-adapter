@@ -7,15 +7,17 @@ import type { NestHandler, NestRequest } from '#adapter/core/request/request';
 import type { NestContext } from '#adapter/core/context';
 import {
   createExceptionRunner,
+  createMiddlewareHandler,
   createRouteHandler,
   mapFrameworkError,
   runNestHandler,
 } from '#adapter/core/route/handler-bridge';
 import type { BridgeOptions, NestExceptionHandler } from '#adapter/core/route/handler-bridge';
-import { HonoLifecycle, settingValue } from './hono-lifecycle.ts';
+import { HonoLifecycle, settingValue, toTrustProxy } from './hono-lifecycle.ts';
 import type { TransportOptions } from './hono-lifecycle.ts';
 import type { TransportChoiceOptions } from './server-options.ts';
 import { toHonoPath } from '#adapter/core/request/path';
+
 import { ResponseWriter } from '#adapter/core/response/response-writer';
 import { ALL_METHOD } from '#adapter/core/route/route-adapter';
 import { parsesMultipart, rememberAdapter } from '#adapter/core/multipart';
@@ -32,6 +34,17 @@ interface ServerAdapterOptions extends TransportChoiceOptions {
 const withTransport = (options: ServerAdapterOptions): TransportOptions => {
   const transport = options.transport ?? bunServer();
   return Object.assign({}, options, { transport });
+};
+
+const TRAILING_WILDCARD = /\/\*$/u;
+
+// Express hands a middleware mounted at a sub-path a request whose `url` starts after the mount and
+// puts the mount on `baseUrl`. Only a literal prefix can be named that way, so a parameterised
+// mount is left alone rather than guessed at.
+const mountBase = (path: string): string | undefined => {
+  const base = path.replace(TRAILING_WILDCARD, '').replace(/\/+$/u, '');
+  if (base === '' || base.includes(':') || base.includes('*')) return undefined;
+  return base;
 };
 
 // oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
@@ -90,6 +103,12 @@ class ServerAdapter extends HonoLifecycle {
 
   public override setViewEngine(engine: EngineConfig): this {
     this.views.useEngine(engine);
+    return this;
+  }
+
+  // `app.engine('hbs', hbs.__express)` — the Express selector, kept by extension.
+  public engine(extension: string, engine: unknown): this {
+    this.views.useEngineFor(extension, engine);
     return this;
   }
 
@@ -173,13 +192,8 @@ class ServerAdapter extends HonoLifecycle {
     this.mapException = mapFrameworkError;
   }
 
-  /**
-   * Lets the compatibility bridges finish installing. Nest awaits `init()` before it runs
-   * `onModuleInit`, which is the window a bridge that patches a third-party prototype has to land
-   * in: `@nestjs/serve-static` would otherwise boot against its own Express loader. A bridge with
-   * nothing to resolve installs synchronously in the constructor, so this is an already-settled
-   * await for a deployment that runs none of them.
-   */
+  // Lets the compatibility bridges finish installing inside Nest's `init()` window, the one a
+  // prototype-patching bridge needs; a bridge with nothing to resolve installs in the constructor.
   public override async init(): Promise<void> {
     await settleBridges();
   }
@@ -206,7 +220,11 @@ class ServerAdapter extends HonoLifecycle {
   protected override mount(path: string, handler: NestHandler): void {
     this.hono.use(
       toHonoPath(path),
-      createRouteHandler(handler, this.bridgeOptions, this.interceptor),
+      createMiddlewareHandler(
+        { base: mountBase(path), handler },
+        this.bridgeOptions,
+        this.interceptor,
+      ),
     );
   }
 
@@ -238,6 +256,16 @@ class ServerAdapter extends HonoLifecycle {
   }
 
   public set(name: string, value: unknown): this {
+    // `trust proxy` and `etag` are read per request, so an application may set them at bootstrap the
+    // way Express apps do rather than through the adapter options.
+    if (name === 'trust proxy') {
+      this.trustProxy = toTrustProxy(value);
+      return this;
+    }
+    if (name === 'etag') {
+      this.writer.useEtag(value);
+      return this;
+    }
     const setting = settingValue(name, value);
     if (name === 'view engine' && typeof setting === 'string') return this.setViewEngine(setting);
     return this.setBaseViewsDir(setting);

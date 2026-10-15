@@ -72,8 +72,9 @@ const addressOf = (
   if (trustProxy === false || forwardedFor.length === 0) return socket;
   if (trustProxy === true) return forwardedFor[0];
   if (typeof trustProxy === 'number') {
-    const index = Math.max(0, forwardedFor.length - trustProxy);
-    return forwardedFor[index] ?? socket;
+    // More hops than entries leaves nothing trusted, so the peer is the client.
+    if (trustProxy > forwardedFor.length) return socket;
+    return forwardedFor[forwardedFor.length - trustProxy] ?? socket;
   }
   return firstUntrusted(chainOf(forwardedFor, socket), trustedOf(trustProxy)) ?? forwardedFor[0];
 };

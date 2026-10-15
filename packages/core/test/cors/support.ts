@@ -18,7 +18,10 @@ const bridged = (options: CorsConfig): Hono<NestEnv> => {
 
   hono.use(
     '*',
-    corsBridge(() => options, false),
+    corsBridge(
+      () => options,
+      () => false,
+    ),
   );
   hono.onError((_error, context) => context.text('failed', SERVER_ERROR));
   hono.get('/', (context) => context.text('ok'));

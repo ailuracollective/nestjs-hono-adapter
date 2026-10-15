@@ -8,6 +8,7 @@ import { readBody } from './apollo-body.ts';
 import type { ContextFactory } from './apollo-context-read.ts';
 import { createResolverContext } from './apollo-context.ts';
 import { requestHeaders } from './apollo-write.ts';
+import type { RequestHeaders } from './apollo-write.ts';
 
 interface ApolloServer {
   readonly executeHTTPGraphQLRequest: (request: ApolloRequest) => Promise<ApolloAnswer>;
@@ -18,7 +19,7 @@ interface ApolloRequest {
   readonly context: () => Promise<unknown>;
   readonly httpGraphQLRequest: {
     readonly body: unknown;
-    readonly headers: Headers;
+    readonly headers: RequestHeaders;
     readonly method: string;
     readonly search: string;
   };

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
@@ -46,4 +46,27 @@ const readFrom = async (
   }
 };
 
-export { fileNameFor, readFrom, toExtension };
+// An Express engine reads the file itself, so it is handed the path rather than the source.
+const locate = async (
+  fileName: string,
+  directories: readonly string[],
+  position: number,
+): Promise<string> => {
+  const directory = directories[position];
+  if (directory === undefined) {
+    throw new NotFoundException(`No view named ${fileName} was found.`);
+  }
+
+  const candidate = path.join(directory, fileName);
+  try {
+    await stat(candidate);
+    return candidate;
+  } catch (error) {
+    if (!isMissing(error)) {
+      throw error;
+    }
+    return locate(fileName, directories, position + 1);
+  }
+};
+
+export { fileNameFor, locate, readFrom, toExtension };

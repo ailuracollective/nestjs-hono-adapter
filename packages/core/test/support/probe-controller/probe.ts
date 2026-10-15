@@ -54,6 +54,23 @@ class ProbeController {
     };
   }
 
+  @Get('express')
+  public express(@Req() source: NestRequest): unknown {
+    return {
+      authorization: source.get('authorization'),
+      isBareJson: source.is('json'),
+      isBareMultipart: source.is('multipart'),
+      isBareUrlencoded: source.is('urlencoded'),
+      isJson: source.is('application/json'),
+      isMultipart: source.is('multipart/form-data'),
+    };
+  }
+
+  @Post('carrier')
+  public carrier(@Req() source: NestRequest): unknown {
+    return { complete: source.complete, readable: source.readable };
+  }
+
   @Get('files/*rest')
   public files(@Req() source: NestRequest): unknown {
     return { params: source.params };

@@ -1,5 +1,6 @@
 export {
   createExceptionRunner,
+  createMiddlewareHandler,
   createRouteHandler,
   mapFrameworkError,
   runNestHandler,

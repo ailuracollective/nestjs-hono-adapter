@@ -1,4 +1,5 @@
 import { toDirectories } from '#adapter/core/request/directories';
+import { rendererOf } from './engine-value.ts';
 import { applyConfig, extensionFor } from './renderer/config.ts';
 import { directoriesOf, engineOf } from './renderer/data.ts';
 import { renderView } from './renderer/render.ts';
@@ -13,6 +14,7 @@ class ViewRenderer {
     directories: [],
     engine: undefined,
     engineName: undefined,
+    engines: new Map(),
     extension: '',
   };
 
@@ -42,6 +44,18 @@ class ViewRenderer {
 
   public useDirectories(directory: string | readonly string[]): void {
     this.state.directories = toDirectories(directory);
+  }
+
+  // `app.engine(extension, engine)` — the Express selector, kept by extension so `render()` can pick
+  // it for the template it resolved.
+  public useEngineFor(extension: string, engine: unknown): void {
+    const renderer = rendererOf(engine, 'file');
+    if (renderer === undefined) {
+      throw new TypeError(
+        'engine() takes a template engine: (source, data) or (filePath, options, callback).',
+      );
+    }
+    this.state.engines.set(extensionFor(extension), renderer);
   }
 
   public useOptions(options: ViewEngineOptions): void {

@@ -132,6 +132,29 @@ test('a malformed operation is answered, not thrown', async () => {
   }
 });
 
+// Nest's Express adapter parses a URL-encoded body before Apollo sees it; the bridge builds the
+// same object here, or the operation arrives empty ("POST body missing").
+test('a URL-encoded operation is parsed, not answered as an empty body', async () => {
+  const probe = await startProbe({
+    mode: 'in-process',
+    module: graphQlModule(),
+  });
+  try {
+    const response = await request(probe, PATH, {
+      body: new URLSearchParams({ query: '{ echo }' }).toString(),
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-apollo-operation-name': 'Echo',
+      },
+      method: 'POST',
+    });
+    expect(response.status).toBe(OK);
+    expect(response.body).toStrictEqual({ data: { echo: 'POST' } });
+  } finally {
+    await probe.close();
+  }
+});
+
 test('a GET carries no body and is answered', async () => {
   const probe = await startProbe({
     mode: 'in-process',
