@@ -25,7 +25,7 @@
   {
     "name": "bun-server",
     "path": "dist/servers/bun.js",
-    "limit": 1125,
+    "limit": 1175,
     "brotli": true,
     "ignore": [
       "hono",

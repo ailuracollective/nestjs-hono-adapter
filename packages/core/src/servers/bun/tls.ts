@@ -22,9 +22,15 @@ const toBunTls = (certificate: HttpsOptions): Record<string, unknown> => {
   return tls;
 };
 
-const tlsOf = (certificate: HttpsOptions | undefined): Record<string, unknown> | undefined => {
+// Bun serves plain HTTP for a `tls` object it cannot use, so a certificate without key material is
+// refused here rather than answered in the clear. `pfx` is the case that matters: Bun reads none.
+const tlsOf = (certificate?: HttpsOptions): Record<string, unknown> | undefined => {
   if (certificate === undefined) return undefined;
-  return toBunTls(certificate);
+  const tls = toBunTls(certificate);
+  if (tls.key === undefined || tls.cert === undefined) {
+    throw new TypeError('httpsOptions must carry a key and a cert');
+  }
+  return tls;
 };
 
 export { toBunTls, tlsOf };

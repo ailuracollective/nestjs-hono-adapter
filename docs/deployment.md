@@ -10,7 +10,7 @@ await NestFactory.create(AppModule, new ServerAdapter(), {
 });
 ```
 
-Only the fields Bun reads are forwarded — `key`, `cert`, `ca`, `passphrase`, `ciphers`, `secureOptions`, `requestCert` and `rejectUnauthorized`. Bun has no `pfx`, so a configuration that carries one has to be broken into `key` and `cert` before it reaches the transport.
+Only the fields Bun reads are forwarded — `key`, `cert`, `ca`, `passphrase`, `ciphers`, `secureOptions`, `requestCert` and `rejectUnauthorized`. Bun has no `pfx`, and it serves plain HTTP for a `tls` object it cannot use, so a certificate that leaves neither `key` nor `cert` behind is refused at startup instead of being answered in the clear. The Node transport hands the same object to `node:https`, which reads `pfx` itself.
 
 `trustProxy` sets how much of a proxy's word the deployment believes; the levels are Fastify's, from proxy-addr, and `ips` is the chain as written whenever anything is trusted:
 

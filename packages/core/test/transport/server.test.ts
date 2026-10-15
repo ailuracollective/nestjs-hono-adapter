@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 
 import { BunServer, toBunTls } from '#adapter/servers/bun';
+import { tlsOf } from '#adapter/servers/bun-runtime';
 import { request } from '#test/probe';
 
 import { NOSNIFF } from './helpers.ts';
@@ -22,6 +23,16 @@ test('httpsOptions are mapped onto the fields Bun reads', () => {
   });
   // `pfx` is a Nest option Bun has no counterpart for, so it must not reach the server.
   expect(toBunTls({ cert: 'the cert', pfx: 'the pfx' })).toStrictEqual({ cert: 'the cert' });
+});
+
+test('a certificate Bun cannot use is refused, not served in the clear', () => {
+  expect(tlsOf()).toBeUndefined();
+  expect(tlsOf({ cert: 'the cert', key: 'the key' })).toStrictEqual({
+    cert: 'the cert',
+    key: 'the key',
+  });
+  expect(() => tlsOf({ pfx: 'the pfx' })).toThrow(/key and a cert/u);
+  expect(() => tlsOf({})).toThrow(/key and a cert/u);
 });
 
 test('security headers are only sent when asked for', async () => {
