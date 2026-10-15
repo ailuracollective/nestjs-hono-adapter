@@ -9,7 +9,14 @@ import { nodeAdapter } from '#adapter-test/node-server/fixture';
 interface NodeResponse {
   header: (fields: Record<string, string>) => unknown;
   on: (event: string, listener: () => void) => unknown;
+  req?: unknown;
 }
+
+interface LinkableRequest {
+  res?: unknown;
+}
+
+let linked: { readonly held?: unknown; readonly same: boolean } = { same: false };
 
 // `compression` listens on the response before it decides to compress, and an exception filter sets
 // its headers as an object through `res.header` — Express's alias of `res.set`.
@@ -43,6 +50,35 @@ test('a middleware may listen on the response and set headers as an object', asy
     const response = await request(probe, '/members');
     expect(response.status).toBe(HttpStatus.OK);
     expect(response.headers.get('x-from-middleware')).toBe('yes');
+  } finally {
+    await probe.close();
+  }
+});
+
+// Express links the pair when a nested router dispatches (`res.req = req`); Hono exposes `req` as a
+// get-only accessor, so the write is kept beside that state rather than fought.
+class LinkMiddleware implements NestMiddleware {
+  public use(source: LinkableRequest, response: NodeResponse, next: () => void): void {
+    response.req = source;
+    source.res = response;
+    linked = { held: response.req, same: response.req === source };
+    next();
+  }
+}
+
+@Module({ controllers: [MembersController] })
+class LinkModule implements NestModule {
+  public configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(LinkMiddleware).forRoutes('*');
+  }
+}
+
+test('a middleware that links res.req is honoured, not refused', async () => {
+  const probe = await startAdapter(nodeAdapter(), { module: LinkModule });
+  try {
+    const response = await request(probe, '/members');
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(linked.same).toBe(true);
   } finally {
     await probe.close();
   }
