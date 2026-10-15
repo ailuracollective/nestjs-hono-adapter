@@ -3,6 +3,7 @@ import type { Next } from 'hono';
 
 import type { NestContext } from '#adapter/core/context';
 import type { NestRequest, NextHandler, TrustProxy } from '#adapter/core/request/request';
+import type { ResponseWriter } from '#adapter/core/response/response-writer';
 
 const NOOP_NEXT: NextHandler = () => Promise.resolve();
 
@@ -33,6 +34,7 @@ interface BridgeOptions {
   readonly pendingStatus: (context: NestContext) => number | undefined;
   readonly rawBody: () => boolean;
   readonly trustProxy: () => TrustProxy;
+  readonly writer: () => ResponseWriter;
 }
 
 export { NOOP_NEXT, describe, logger };

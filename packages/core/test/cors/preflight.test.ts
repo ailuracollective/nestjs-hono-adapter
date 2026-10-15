@@ -51,6 +51,19 @@ test('a preflight for a foreign origin carries nothing', async () => {
   expect(namedOrigin(response)).toBe(false);
 });
 
+test('a preflight answers the status the deployment names', async () => {
+  const response = await bridged({ optionsSuccessStatus: OK }).request('/', {
+    headers: {
+      'access-control-request-method': 'POST',
+      origin: FOREIGN,
+    },
+    method: 'OPTIONS',
+  });
+
+  expect(response.status).toBe(OK);
+  expect(response.headers.get('access-control-allow-origin')).toBe('*');
+});
+
 test('a preflight asked to continue reaches the router', async () => {
   const response = await bridged({
     origin: [ALLOWED],
@@ -66,6 +79,20 @@ test('a preflight asked to continue reaches the router', async () => {
   expect(response.status).toBe(OK);
   expect(await response.text()).toBe('reached');
   expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
+});
+
+test('a preflight for a deployment that disables CORS reaches the router', async () => {
+  const response = await bridged({ origin: false }).request('/', {
+    headers: {
+      'access-control-request-method': 'POST',
+      origin: FOREIGN,
+    },
+    method: 'OPTIONS',
+  });
+
+  expect(response.status).toBe(OK);
+  expect(await response.text()).toBe('reached');
+  expect(namedOrigin(response)).toBe(false);
 });
 
 test('a preflight names every method the deployment answers', async () => {

@@ -17,7 +17,10 @@ const proxyHandler = (
     if (overrides.has(property)) return overrides.get(property);
     if (Object.hasOwn(readers, property)) return readers[property];
     const value = Reflect.get(target, property);
-    return isCallable(value) ? value.bind(context) : value;
+    if (!isCallable(value)) return value;
+    // Hono keeps its members as instance fields already bound to the context; only a prototype
+    // method needs binding, or `this` would be the proxy and lose the private fields.
+    return Object.hasOwn(target, property) ? value : value.bind(context);
   },
   has(target, property): boolean {
     if (typeof property !== 'string') return Reflect.has(target, property);

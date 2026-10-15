@@ -9,7 +9,8 @@ const mountsFor = (options: StaticAssetsOptions): readonly string[] => {
   const { prefix } = options;
   if (prefix === undefined || prefix === '') return ['/*'];
 
-  return [prefix, `${prefix}/*`];
+  // Hono's '/prefix/*' also matches '/prefix', so a bare mount only runs the handler twice.
+  return [`${prefix}/*`];
 };
 
 const staticOptions = (directory: string, options: StaticAssetsOptions): StaticOptions => {

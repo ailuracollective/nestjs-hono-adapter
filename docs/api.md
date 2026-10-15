@@ -152,7 +152,7 @@ They parse `multipart/form-data` with multer's semantics — `@UploadedFile()`�
 
 `memoryStorage()` keeps each file in `file.buffer`; `diskStorage({ destination, filename })` writes it and sets `destination`, `filename` and `path`. Both implement multer's `_handleFile`/`_removeFile` contract, so a platform-express engine works unchanged.
 
-The adapter's `bodyLimit` is counted as the payload is read, so a body over it is answered `413` under any framing, even a chunked one with no `Content-Length`. A multipart body is the exception: a parser consumes it. Where `@ailura/nestjs-platform-hono-multipart` is imported, the island's `busboy` reads it, so the route's `limits` are the ceiling while it is parsed and `bodyLimit` still refuses a declared length already over it; otherwise Hono's own parser counts no ceiling.
+The adapter's `bodyLimit` is answered `413` under any framing: a declared `Content-Length` already over it is refused before the body is read, and a chunked body with none is counted chunk by chunk as it is read. A body that declares a length under the limit but carries more is read first and measured after, so it is refused too. A multipart body is the exception: a parser consumes it. Where `@ailura/nestjs-platform-hono-multipart` is imported, the island's `busboy` reads it, so the route's `limits` are the ceiling while it is parsed and `bodyLimit` still refuses a declared length already over it; otherwise Hono's own parser counts no ceiling.
 
 The island needs `busboy` (an optional peer) and works where Node streams do — Node and Bun; a fetch host instead parses `multipart/form-data` into `req.body` and `req.files` through Hono's parser.
 
@@ -182,8 +182,8 @@ Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for S
 | `exposedHeaders` | `string \| readonly string[]` | — | Headers a browser may read |
 | `maxAge` | `number` | `86400` | Seconds a browser may reuse a preflight answer |
 | `methods` | `string \| readonly string[]` | all | Methods a browser may call |
-| `optionsSuccessStatus` | `number` | — | Status for a preflight (must be `204` or omitted) |
-| `origin` | `boolean \| string \| RegExp \| readonly (string \| RegExp)[] \| OriginCallback` | — | Allowed origins |
+| `optionsSuccessStatus` | `number` | `204` | Status the preflight answer carries |
+| `origin` | `boolean \| string \| RegExp \| readonly (string \| RegExp)[] \| OriginCallback` | — | Allowed origins; `false` turns CORS off |
 | `preflightContinue` | `boolean` | `false` | Forward the preflight to the route instead of answering it |
 
 ### `ViewOptions`
@@ -248,12 +248,11 @@ type TrustProxy = boolean | number | string[];
 
 ## Error behaviour
 
-| Situation                            | Behaviour                                                 |
-| ------------------------------------ | --------------------------------------------------------- |
-| Gateway asks for its own port        | `TypeError` at startup                                    |
-| Gateway asks for a namespace         | `TypeError` at startup                                    |
-| A named engine that cannot be loaded | `TypeError` at request time                               |
-| `render` without an engine or name   | `TypeError` at request time                               |
-| `optionsSuccessStatus` ≠ `204`       | `TypeError` at startup (unless `preflightContinue: true`) |
-| `etag: false` on static assets       | `TypeError` at startup                                    |
-| `setHeaders` on static assets        | `TypeError` at startup                                    |
+| Situation                            | Behaviour                   |
+| ------------------------------------ | --------------------------- |
+| Gateway asks for its own port        | `TypeError` at startup      |
+| Gateway asks for a namespace         | `TypeError` at startup      |
+| A named engine that cannot be loaded | `TypeError` at request time |
+| `render` without an engine or name   | `TypeError` at request time |
+| `etag: false` on static assets       | `TypeError` at startup      |
+| `setHeaders` on static assets        | `TypeError` at startup      |

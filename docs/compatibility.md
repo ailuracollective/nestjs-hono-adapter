@@ -40,7 +40,7 @@ interface Bridge {
 }
 ```
 
-A bridge is a named install. It runs once per Hono application, which is what lets an install patch a prototype: the second adapter in a process finds the application already fitted and does nothing.
+A bridge is a named install. It runs once per Hono application, so an install that patches something shared patches it once: the second adapter in a process finds the application already fitted and does nothing.
 
 `BridgeTarget` is the Hono application, its transport, and a lazy `server()` for the HTTP server underneath — the last one only so a bridge can recognise which application a call belongs to. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
 
@@ -79,15 +79,15 @@ One ships with the adapter and four ship with a package the adapter looks for. A
 
 Two shims, both aimed at Nest's own Express-shaped code.
 
-`app.use(async (err, req, res, next) => …)` is wrapped so Hono calls it with the four arguments it declares. `nestjs-i18n` mounts exactly that shape; Hono would otherwise call such a handler as `(context, next)`, and its own `next` would be undefined. A handler with fewer than four declared parameters is Hono's own middleware and is passed straight through.
+`app.use(async (err, req, res, next) => …)` is recognised by its four declared parameters where Nest mounts it, and called with `err` filled in and the request and fitted response view every other middleware gets. `nestjs-i18n` mounts exactly that shape; Hono would otherwise call such a handler as `(context, next)`, and its own `next` would be undefined. A handler with fewer than four declared parameters is Hono's own middleware and is passed straight through. Nest's own middleware path wraps a module middleware down to three declared parameters before the adapter sees it, so only `app.use(...)` carries the shape.
 
-`res.send()`, `res.json()` and `res.type()` are fitted onto Hono's context prototype, for a handler holding `@Res()` and answering the way its author wrote. A string body is labelled `text/html`, as Express labels it, unless the handler declared a content type itself.
+`res.send()`, `res.json()` and `res.type()` are fitted onto the request's Hono context, for a handler holding `@Res()` and answering the way its author wrote. A string body is labelled `text/html`, as Express labels it, unless the handler declared a content type itself.
 
 #### Why a step never returns `next()`
 
 Hono's `Next` is declared `() => Promise<void>`, but `compose()` ends with `return context` and `dispatch()` then writes whatever a middleware returned onto `context.res` while the context is unfinalized. `next()` therefore resolves to the **context**, and a step that returned it left the answer as the context itself: every later `context.res.headers` read threw, and the request failed as a `500`. Both front steps answer through `passed()`, which keeps a continuation's value only when it is a `Response`.
 
-A Nest middleware may also call `next()` **without awaiting it** — `nestjs-i18n`'s does, and Nest's contract allows it. It hands the continuation to something it never waits for — its own wrapper runs `middleware.use(req, res, noop)` and answers with a bare `next(err)` — so the route runs on its own and Hono finishes the chain with the context unfinalized. `forwardFrom()` remembers the continuation and both bridges — the route bridge and the Express error bridge — await it before handing the chain back.
+A Nest middleware may also call `next()` **without awaiting it** — `nestjs-i18n`'s does, and Nest's contract allows it. It hands the continuation to something it never waits for — its own wrapper runs `middleware.use(req, res, noop)` and answers with a bare `next(err)` — so the route runs on its own and Hono finishes the chain with the context unfinalized. `forwardFrom()` remembers the continuation and the middleware bridge awaits it before handing the chain back.
 
 #### Which status the answer carries
 
@@ -107,6 +107,7 @@ The one case this cannot separate is a handler that calls `res.status(200)` on a
 
 - `res.header(...)` is **Express's alias of `res.set`**, so it takes a record as well as a name and a value; Hono's own `header` — which the adapter calls with its `append` option — sits underneath.
 - `setHeader` follows Node: a string replaces what was there, and an **array is the whole set** — an empty one removes the header, and only its entries are appended. `cookies` reads the array back and sets it again, which is exactly what that replacement gives it. `getHeader` answers `set-cookie` as a **list**, through `Headers.getSetCookie()`, because `Headers.get` joins the cookies with commas and no client can split them back; every other header is a string, and `undefined` when there is none.
+- `res.set(...)` takes the name Hono uses for its context variable store, so a fitted context answers `c.set(key, value)` with Express semantics: the call writes a header instead of a variable (the value is stringified). `c.get` is untouched. The collision is inherent to handing the context out as the Express response, and it is why a Hono middleware that records a variable must run before the route, not after it.
 - `removeHeader` takes the header off the live header store — the one Hono builds its answer from.
 - `cookie(name, value, options)` writes `Set-Cookie` in **Express's attribute order** (`Max-Age`, `Domain`, `Path` — defaulting to `/`, as the `cookie` package does —, `Expires`, `HttpOnly`, `Secure`, `SameSite`) for a name that must be an HTTP token (alphanumerics and ``!#$%&'*+-.^_`|~``); anything else is the `TypeError` `cookie` raises. `clearCookie` writes the same set with an `Expires` in the past.
 - A **`signed` cookie is written unsigned**: signing needs an HMAC and `compat/` carries no Node builtins. A deployment that verifies signatures signs the value before calling `res.cookie`.
@@ -238,9 +239,9 @@ Nothing per request.
 
 - The registry installs per Hono application, at construction. A deployment that builds one adapter pays it once.
 - Discovery runs once per process: the specifiers are resolved and imported the first time an application starts, and every later start reads what that found. Registering runs each time and is idempotent, so a registry emptied by a test is filled again by the next application.
-- The `express` surface fit is keyed on Hono's context prototype. The request path calls `installSurface(context)`, and after the first request that call is one `Reflect.getPrototypeOf` and one `WeakSet` hit — strictly cheaper than the `'send' in prototype` guard it replaced, which walked the prototype chain. `res.send()` builds through Hono's own writer, the one the Nest path already uses, so the shim adds no second encoding step.
+- The `express` surface fit is keyed on the request's Hono context, which Hono builds per request. The request path calls `installSurface(context, writer)`, and a second call for the same request — a middleware chain fits once, not once per hop — is one `WeakSet` hit. `res.send()` builds through the adapter's own writer, so `set('etag', …)` reaches it and the shim adds no second encoding step.
 - Each bridge package resolves its peers once, from `init()`, not from module evaluation.
-- No bridge installs a middleware on the Hono chain. The bridges either patch a prototype once or hand the transport a handler; none adds a hop to a request.
+- No bridge installs a middleware on the Hono chain. A bridge patches a prototype once or hands the transport a handler; none adds a hop to a request. The Express error middleware is recognised where Nest mounts it, so that bridge installs nothing.
 
 The measured bundles are in [bundle-baseline.md](bundle-baseline.md).
 

@@ -2,7 +2,7 @@
 
 import type { NestContext } from '#adapter/core/context';
 import { assertIdentity } from '#adapter/core/request/body-encoding';
-import { BODYLESS_METHODS, assertWithinLength, mediaType } from './guards.ts';
+import { BODYLESS_METHODS, assertWithinLength, declaresBody, mediaType } from './guards.ts';
 import { emptyBody, readMultipart, readPayload } from './readers.ts';
 import type { BodyOptions, ParsedBody } from './types.ts';
 
@@ -11,7 +11,8 @@ const PARSED = Symbol('parsedBody');
 type BodyHolder = Record<symbol, Promise<ParsedBody> | undefined>;
 
 const read = (context: NestContext, options: BodyOptions): Promise<ParsedBody> => {
-  if (BODYLESS_METHODS.has(context.req.method)) {
+  // A GET or HEAD body is real where a transport serves one; otherwise the pair stays bodyless.
+  if (BODYLESS_METHODS.has(context.req.method) && !declaresBody(context)) {
     return Promise.resolve(emptyBody());
   }
   const type = mediaType(context);

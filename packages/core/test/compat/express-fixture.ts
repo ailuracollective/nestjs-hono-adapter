@@ -4,7 +4,7 @@ import { Controller, Get, HttpCode, HttpStatus, Module, Res } from '@nestjs/comm
 
 /**
  * The members a handler written the Express way calls on the object `@Res()` hands it. This is what
- * the `express` bridge fits onto Hono's context prototype.
+ * the `express` bridge fits onto the request's Hono context.
  */
 interface ExpressResponse {
   json: (body: unknown) => void;

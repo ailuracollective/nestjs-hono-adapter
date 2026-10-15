@@ -15,7 +15,7 @@ const declaresLength = (context: NestContext): boolean => {
 
 const readBytes = async (context: NestContext, limit: number | undefined): Promise<Uint8Array> => {
   if (context.req.raw.bodyUsed || declaresLength(context)) {
-    const bytes = new Uint8Array(await context.req.arrayBuffer());
+    const bytes = await context.req.bytes();
     assertWithinSize(bytes.byteLength, limit);
     return bytes;
   }

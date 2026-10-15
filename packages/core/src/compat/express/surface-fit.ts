@@ -1,16 +1,14 @@
 import type { NestContext } from '#adapter/core/context';
+import type { ResponseWriter } from '#adapter/core/response/response-writer';
 
-import { fitResponse, surface } from './surface.ts';
+import { fitResponse } from './surface.ts';
 
 const fitted = new WeakSet<object>();
 
-const installSurface = (context: NestContext): void => {
-  const prototype: object | null = Reflect.getPrototypeOf(context);
-  if (prototype !== null && !fitted.has(prototype)) {
-    fitted.add(prototype);
-    Object.assign(prototype, surface);
-  }
-  fitResponse(context);
+const installSurface = (context: NestContext, writer: ResponseWriter): void => {
+  if (fitted.has(context)) return;
+  fitted.add(context);
+  fitResponse(context, writer);
 };
 
 export { installSurface };

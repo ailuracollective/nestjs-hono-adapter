@@ -1,4 +1,5 @@
-import type { RequestMethod, VersioningOptions } from '@nestjs/common';
+import { RequestMethod } from '@nestjs/common';
+import type { VersioningOptions } from '@nestjs/common';
 import { AbstractHttpAdapter } from '@nestjs/core';
 
 import type { Server } from '#adapter/core/ports/server';
@@ -13,12 +14,15 @@ import type { InjectRunner } from '#adapter/core/inject/types';
 import {
   ALL_METHOD,
   EVERY_PATH,
-  METHOD_BY_REQUEST_METHOD,
   isHandler,
   resolveRoute,
   toMiddlewarePath,
 } from './route-helpers.ts';
 import type { RouteTarget } from './route-helpers.ts';
+
+// Nest asks a middleware factory for every method with `-1`, which `RequestMethod` has no member
+// for, so the reverse lookup stays a plain record and that value falls back to ALL.
+const REQUEST_METHODS: Record<number, string | undefined> = RequestMethod;
 
 abstract class RouteAdapter extends AbstractHttpAdapter<Server, NestRequest, NestContext> {
   public inject: InjectRunner = (options) => createInject(this.getInstance<NestHono>())(options);
@@ -111,7 +115,7 @@ abstract class RouteAdapter extends AbstractHttpAdapter<Server, NestRequest, Nes
   public override createMiddlewareFactory(
     requestMethod: RequestMethod,
   ): (path: string, callback: unknown) => void {
-    const method = METHOD_BY_REQUEST_METHOD[requestMethod] ?? ALL_METHOD;
+    const method = REQUEST_METHODS[requestMethod] ?? ALL_METHOD;
     return (path, callback) => {
       if (!isHandler(callback)) {
         throw new TypeError('Nest middleware must be registered as a function.');

@@ -1,3 +1,4 @@
+/* oxlint-disable import/max-dependencies -- the bag reads the media type through the same helper the body gate uses. */
 import { Readable } from 'node:stream';
 import type { Writable } from 'node:stream';
 
@@ -5,6 +6,7 @@ import type { IncomingMessage } from 'node:http';
 
 import type { NestContext } from '#adapter/core/context';
 import type { Incoming, Socket } from '#adapter/core/ports/bindings';
+import { mediaTypeOf } from '#adapter/core/request/body/guards';
 import { tuneableSocket } from '#adapter/core/server/socket';
 import { forwardedOf, incomingOf, urlPartsOf } from './bag-state.ts';
 import type { BagState } from './bag-state.ts';
@@ -26,9 +28,6 @@ const bodyStreamOf = (context: NestContext): Readable => {
   if (body === null || body.locked) return Readable.from([]);
   return Readable.fromWeb(body);
 };
-
-const mediaTypeOf = (contentType: string): string =>
-  (contentType.split(';', 1)[0] ?? '').trim().toLowerCase();
 
 const matchesMediaType = (actual: string, wanted: string): boolean => {
   const candidate = wanted.trim().toLowerCase();
@@ -108,14 +107,8 @@ class RequestBag implements NestRequest {
   }
 
   public get(name: string): string | undefined {
-    const wanted = name.toLowerCase();
-    const { headers } = this;
-    const exact = headers[wanted];
-    if (exact !== undefined) return exact;
-    for (const [key, value] of Object.entries(headers)) {
-      if (key.toLowerCase() === wanted) return value;
-    }
-    return undefined;
+    // Hono builds the cached record from `Headers`, which lowercases every name already.
+    return this.headers[name.toLowerCase()];
   }
 
   public header(name: string): string | undefined {

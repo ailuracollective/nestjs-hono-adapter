@@ -1,4 +1,4 @@
-import { settleBridges } from '#adapter/compat/index';
+import { expressErrorMiddleware, settleBridges } from '#adapter/compat/index';
 import type { CorsConfig } from '#adapter/features/cors/index';
 import { toByteLimit } from '#adapter/core/request/body/index';
 import type { BodyParserOptions, SecurityHook } from '#adapter/core/request/body/index';
@@ -221,7 +221,7 @@ class ServerAdapter extends HonoLifecycle {
     this.hono.use(
       toHonoPath(path),
       createMiddlewareHandler(
-        { base: mountBase(path), handler },
+        { base: mountBase(path), handler: expressErrorMiddleware(handler) ?? handler },
         this.bridgeOptions,
         this.interceptor,
       ),
@@ -236,6 +236,7 @@ class ServerAdapter extends HonoLifecycle {
       pendingStatus: (context) => this.writer.statusOf(context),
       rawBody: () => this.rawBodyEnabled,
       trustProxy: () => this.trustProxy,
+      writer: () => this.writer,
     };
   }
 

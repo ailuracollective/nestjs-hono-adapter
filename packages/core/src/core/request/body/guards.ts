@@ -6,10 +6,18 @@ const BODYLESS_METHODS = new Set(['GET', 'HEAD']);
 
 const JSON_TYPE = /^application\/(?:.+\+)?json$/u;
 
-const mediaType = (context: NestContext): string => {
-  const header = context.req.header('content-type') ?? '';
-  return (header.split(';')[0] ?? '').trim().toLowerCase();
-};
+const mediaTypeOf = (contentType: string): string =>
+  (contentType.split(';', 1)[0] ?? '').trim().toLowerCase();
+
+const mediaType = (context: NestContext): string =>
+  mediaTypeOf(context.req.header('content-type') ?? '');
+
+// A Web body or the framing headers Express reads; either alone misses a transport it serves.
+const declaresBody = (context: NestContext): boolean =>
+  context.req.raw.body !== null ||
+  context.req.raw.bodyUsed ||
+  context.req.header('transfer-encoding') !== undefined ||
+  context.req.header('content-length') !== undefined;
 
 const assertWithinLength = (context: NestContext, limit: number | undefined): void => {
   if (limit === undefined) return;
@@ -41,4 +49,13 @@ const bounded = (
   );
 };
 
-export { BODYLESS_METHODS, JSON_TYPE, assertWithinLength, assertWithinSize, bounded, mediaType };
+export {
+  BODYLESS_METHODS,
+  JSON_TYPE,
+  assertWithinLength,
+  assertWithinSize,
+  bounded,
+  declaresBody,
+  mediaType,
+  mediaTypeOf,
+};

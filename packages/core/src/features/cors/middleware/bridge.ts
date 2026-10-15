@@ -36,6 +36,8 @@ const corsBridge =
 
     const options = await resolveOptions(config, context, trustProxy());
     const allowed = await resolveOrigin(options.origin, context.req.header('origin'));
+    // The official cors package installs nothing for a falsy origin, and neither does this one.
+    if (allowed === undefined || allowed === false || allowed === '') return next();
     const middleware = corsMiddleware(options, allowed);
     if (isContinuedPreflight(options, context)) {
       await forwardPreflight(context, middleware);

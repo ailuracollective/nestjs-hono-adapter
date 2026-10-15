@@ -1,7 +1,4 @@
-import { HttpStatus } from '@nestjs/common';
-
 import type { NestContext } from '#adapter/core/context';
-import { isBinaryBody } from '#adapter/core/response/builders/content';
 import { ResponseWriter } from '#adapter/core/response/response-writer';
 import { fitExtras } from './surface-extras.ts';
 
@@ -9,33 +6,19 @@ const writer = new ResponseWriter();
 
 const HTML_CONTENT_TYPE = 'text/html; charset=UTF-8';
 
-const OK_STATUS: number = HttpStatus.OK;
-
 function type(this: NestContext, value: string): NestContext {
   this.header('content-type', value);
   return this;
 }
 
-const htmlLabel = (context: NestContext): Record<string, string> =>
-  context.res.headers.has('content-type') ? {} : { 'content-type': HTML_CONTENT_TYPE };
-
-const throughHono = (context: NestContext, body: unknown): Response =>
-  typeof body === 'string'
-    ? context.newResponse(body, undefined, htmlLabel(context))
-    : context.json(body);
-
-function send(this: NestContext, body: unknown): NestContext {
-  const declared = writer.statusOf(this);
-  if (isBinaryBody(body)) {
-    writer.reply(this, body);
-    return this;
+// Express labels a string body it was not told a type for as HTML; the Nest path labels it text/plain.
+const send = (context: NestContext, owned: ResponseWriter, body: unknown): NestContext => {
+  if (typeof body === 'string' && !context.res.headers.has('content-type')) {
+    context.header('content-type', HTML_CONTENT_TYPE);
   }
-  const answered = throughHono(this, body);
-  if (declared === undefined || declared === OK_STATUS || answered.status !== OK_STATUS)
-    return this;
-  writer.reply(this, body, declared);
-  return this;
-}
+  owned.reply(context, body, owned.statusOf(context));
+  return context;
+};
 
 const STATUS = Symbol('honoStatus');
 
@@ -44,6 +27,8 @@ type StatusSetter = (this: NestContext, code: number) => void;
 interface ResponseSurface {
   [STATUS]?: StatusSetter;
   status: (code: number) => NestContext;
+  send: (body: unknown) => NestContext;
+  type: (value: string) => NestContext;
   set: (field: string | Record<string, string>, value?: string) => NestContext;
   append: (field: string, value: string) => NestContext;
 }
@@ -51,6 +36,8 @@ interface ResponseSurface {
 function status(this: NestContext, code: number): NestContext {
   const honoStatus = (this as NestContext & { [STATUS]?: StatusSetter })[STATUS];
   if (honoStatus !== undefined) honoStatus.call(this, code);
+  // Hono keeps the status in a private field `res` does not report, and `send` reads it here.
+  writer.status(this, code);
   return this;
 }
 
@@ -74,19 +61,19 @@ function append(this: NestContext, field: string, value: string): NestContext {
   return this;
 }
 
-const surface = { send, type };
-
-const fitResponse = (context: NestContext): void => {
+// Fitted on the request's own context, once per request (see `surface-fit.ts`), so no Hono
+// prototype is written to and two applications in one process cannot see each other's members.
+const fitResponse = (context: NestContext, owned: ResponseWriter): void => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fitted surface layers the Express response dialect onto the Hono context.
   const target = context as unknown as ResponseSurface;
-  if (target[STATUS] === undefined) {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Hono types `status` with the StatusCode union; the fitted surface widens it to any number, matching Express.
-    target[STATUS] = context.status as unknown as StatusSetter;
-    target.status = status;
-  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Hono types `status` with the StatusCode union; the fitted surface widens it to any number, matching Express.
+  target[STATUS] = context.status as unknown as StatusSetter;
+  target.status = status;
+  target.send = (body: unknown): NestContext => send(context, owned, body);
+  target.type = type;
   target.set = set;
   target.append = append;
   fitExtras(context);
 };
 
-export { OK_STATUS, fitResponse, surface, writer };
+export { fitResponse, writer };
