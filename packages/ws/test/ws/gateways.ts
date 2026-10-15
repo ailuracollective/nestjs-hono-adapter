@@ -1,4 +1,6 @@
 import { Injectable, Module } from '@nestjs/common';
+
+import type { GatewayClient } from '@ailura/nestjs-platform-hono-ws';
 import {
   ConnectedSocket,
   MessageBody,
@@ -42,10 +44,7 @@ class PingGateway {
   }
 
   @SubscribeMessage(SOCKET)
-  public socket(@ConnectedSocket() socket: unknown): Frame {
-    if (!isRecord(socket)) {
-      throw new TypeError('the socket was not an object');
-    }
+  public socket(@ConnectedSocket() socket: GatewayClient): Frame {
     return {
       data: {
         close: typeof socket.close,

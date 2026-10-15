@@ -37,7 +37,7 @@ class EventsGateway {
 }
 ```
 
-The wire protocol is `platform-ws`'s: the frame goes through `messageParser` (JSON by default, replaceable with the constructor option or `setMessageParser()`), the handler's return value is serialized back to the client, and a falsy return sends nothing. `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()` and `close()` are `platform-ws`'s own, so a throwing handler, a parser failure and a shutdown are answered the way Nest answers them. `@ConnectedSocket()` gets a socket with `send`, `close`, `terminate`, `readyState` and `on` / `off` / `once` / `emit`.
+The wire protocol is `platform-ws`'s: the frame goes through `messageParser` (JSON by default, replaceable with the constructor option or `setMessageParser()`), the handler's return value is serialized back to the client, and a falsy return sends nothing. `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()` and `close()` are `platform-ws`'s own, so a throwing handler, a parser failure and a shutdown are answered the way Nest answers them. `@ConnectedSocket()` gets a socket with `send`, `close`, `terminate`, `readyState` and `on` / `off` / `once` / `emit`; this package exports it as the type `GatewayClient`, so a gateway types the parameter it receives.
 
 The upgrade is served by the transport when it carries a websocket helper — `bunServer()`, or the helper a `fetchServer()` host was handed — and by the stock `ws.Server` on the transport's own HTTP server otherwise, which includes `nodeServer()` and the default transport on Node.
 

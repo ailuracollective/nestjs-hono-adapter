@@ -162,7 +162,10 @@ Shipped as `@ailura/nestjs-platform-hono-ws`, a **compatibility bridge**: instal
 
 ```ts
 import { bridge } from '@ailura/nestjs-platform-hono-ws';
+import type { GatewayClient } from '@ailura/nestjs-platform-hono-ws';
 ```
+
+The socket `@ConnectedSocket()` receives is exported as the type `GatewayClient`, so a gateway types its parameter with it.
 
 Its `install(target)` patches `WsAdapter.prototype.create` once per process: for the adapter a gateway was created for, the gateway's `path` is registered on that adapter's Hono application instead of a `ws.Server` being built. Every other member — `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()`, `close()`, `dispose()`, `messageParser` — is the stock class's. Only `path` is honoured; a non-zero `port`, a `namespace`, a `server` and the WebSocket server options are refused by name. See [WebSockets](deployment.md#websockets).
 
