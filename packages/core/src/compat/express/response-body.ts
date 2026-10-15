@@ -45,6 +45,11 @@ interface ListenRequest {
   readonly method: LifecycleMethod;
 }
 
+/**
+ * A middleware treats the response as a Node stream — `compression` listens on it before it decides
+ * to compress, `graphql-upload` waits on `close` to notice a mid-upload disconnect — so the
+ * listeners land on the transport's own response when it carries one.
+ */
 const listen = (lifecycle: Emitter, request: ListenRequest): unknown => {
   const { event, listener, method } = request;
   if (method === 'on') return lifecycle.on(event, listener);
@@ -54,11 +59,6 @@ const listen = (lifecycle: Emitter, request: ListenRequest): unknown => {
   return lifecycle.removeListener(event, listener);
 };
 
-/**
- * A middleware treats the response as a Node stream — `compression` listens on it before it decides
- * to compress, `graphql-upload` waits on `close` to notice a mid-upload disconnect — so the
- * listeners land on the transport's own response when it carries one.
- */
 const attach = (context: NestContext, request: ListenRequest): unknown => {
   const lifecycle = context.env.outgoing ?? context.env.incoming;
   if (lifecycle === undefined) return undefined;

@@ -3,8 +3,6 @@ import type { NestContext } from '#adapter/core/context';
 import { clearedOptions, writeCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
 
-const COOKIE_HEADER = 'set-cookie';
-
 // Node answers `set-cookie` as a list and every other header as a string; `Headers.get` joins the
 // cookies with commas, and no client can split them back.
 const headerValue = (
@@ -12,7 +10,7 @@ const headerValue = (
   name: string,
 ): string | readonly string[] | undefined => {
   const { headers } = context.res;
-  if (name.toLowerCase() !== COOKIE_HEADER) return headers.get(name) ?? undefined;
+  if (name.toLowerCase() !== 'set-cookie') return headers.get(name) ?? undefined;
 
   const cookies = headers.getSetCookie();
   return cookies.length === 0 ? undefined : cookies;

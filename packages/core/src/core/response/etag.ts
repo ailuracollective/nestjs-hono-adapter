@@ -4,32 +4,27 @@ import { createHash } from 'node:crypto';
 // names pick a mode.
 type EtagMode = 'strong' | 'weak';
 
-// The empty body has a fixed tag in the `etag` package Express uses, and clients see it.
-const EMPTY_TAG = '0-2jmj7l5rSw0yVb/vlWAYkK/YBwk';
+const LEADING_WEAK = /^W\//u;
 
-// Express's etag package keeps the first 27 base64 characters of the sha1 digest.
+// The `etag` package Express uses keeps the first 27 base64 characters of the sha1 digest, with the
+// body length in hex in front of it.
 const DIGEST_LENGTH = 27;
 
 const HEX_RADIX = 16;
 
-const LEADING_WEAK = /^W\//u;
-
-const isBinary = (value: unknown): value is Uint8Array | ArrayBuffer =>
-  value instanceof Uint8Array || value instanceof ArrayBuffer;
-
-const isStream = (value: unknown): boolean =>
-  value instanceof ReadableStream ||
-  (typeof value === 'object' &&
-    value !== null &&
-    typeof Reflect.get(value, 'getStream') === 'function');
+const encoder = new TextEncoder();
 
 const bytesOf = (body: unknown): Uint8Array | undefined => {
-  if (body === undefined || body === null || isStream(body)) return undefined;
-  if (isBinary(body)) return body instanceof Uint8Array ? body : new Uint8Array(body);
-  if (typeof body === 'string') return new TextEncoder().encode(body);
+  // A stream has no tag, exactly as in Express, and neither has an absent body.
+  if (body === undefined || body === null || body instanceof ReadableStream) return undefined;
+  if (body instanceof Uint8Array) return body;
+  if (body instanceof ArrayBuffer) return new Uint8Array(body);
+  if (typeof body === 'object' && typeof Reflect.get(body, 'getStream') === 'function')
+    return undefined;
+  if (typeof body === 'string') return encoder.encode(body);
   if (typeof body === 'number' || typeof body === 'boolean' || typeof body === 'bigint')
-    return new TextEncoder().encode(String(body));
-  return new TextEncoder().encode(JSON.stringify(body));
+    return encoder.encode(String(body));
+  return encoder.encode(JSON.stringify(body));
 };
 
 const toEtagMode = (value: unknown): EtagMode | false => {
@@ -39,35 +34,26 @@ const toEtagMode = (value: unknown): EtagMode | false => {
   throw new TypeError('set("etag") takes false, "weak" or "strong".');
 };
 
-const tagFor = (bytes: Uint8Array): string => {
-  if (bytes.byteLength === 0) return EMPTY_TAG;
-  const digest = createHash('sha1').update(bytes).digest('base64').slice(0, DIGEST_LENGTH);
-  return `${bytes.byteLength.toString(HEX_RADIX)}-${digest}`;
-};
-
 /**
  * The tag Express would answer with: the length in hex, a dash, and a truncated sha1 of the body
- * (the `etag` package's entity tag), quoted — and prefixed `W/` when the setting asks for a weak
- * one. A streamed body has no tag, exactly as in Express.
+ * (the `etag` package's entity tag), quoted — prefixed `W/` when the setting asks for a weak one.
  */
 const etagFor = (body: unknown, mode: EtagMode): string | undefined => {
   const bytes = bytesOf(body);
   if (bytes === undefined) return undefined;
-  const tag = `"${tagFor(bytes)}"`;
+  const digest = createHash('sha1').update(bytes).digest('base64').slice(0, DIGEST_LENGTH);
+  const tag = `"${bytes.byteLength.toString(HEX_RADIX)}-${digest}"`;
   if (mode === 'weak') return `W/${tag}`;
   return tag;
 };
-
-const unquoted = (value: string): string =>
-  value.startsWith('W/') ? value.replace(LEADING_WEAK, '') : value;
 
 // Express compares with `fresh`, which ignores the weakness of either side.
 const isFresh = (ifNoneMatch: string | undefined, tag: string): boolean => {
   if (ifNoneMatch === undefined) return false;
   if (ifNoneMatch === '*') return true;
-  const wanted = unquoted(tag);
-  return ifNoneMatch.split(',').some((entry) => unquoted(entry.trim()) === wanted);
+  const wanted = tag.replace(LEADING_WEAK, '');
+  return ifNoneMatch.split(',').some((entry) => entry.trim().replace(LEADING_WEAK, '') === wanted);
 };
 
-export { EMPTY_TAG, etagFor, isFresh, toEtagMode };
+export { etagFor, isFresh, toEtagMode };
 export type { EtagMode };
