@@ -115,8 +115,11 @@ test('an install that resolves is settled before Nest boots', async () => {
 test('an install that starts another application is drained too', async () => {
   resetBridges();
   let installed = false;
+  let started = false;
   registerBridge({
     install: async () => {
+     if (started) return;
+      started = true;
       registerBridge({
         install: async () => {
           await Promise.resolve();
