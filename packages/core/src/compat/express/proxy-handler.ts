@@ -27,6 +27,7 @@ const proxyHandler = (
     return property !== HIDDEN && Reflect.has(target, property);
   },
   set(target, property, value): boolean {
+    if (typeof property !== 'string') return Reflect.set(target, property, value);
     if (property === 'writeHead') {
       overrides.set(property, value);
       return true;
@@ -35,7 +36,9 @@ const proxyHandler = (
       writer.status(context, value);
       return true;
     }
-    return Reflect.set(target, property, value);
+    if (Reflect.set(target, property, value)) return true;
+    overrides.set(property, value);
+    return true;
   },
 });
 
