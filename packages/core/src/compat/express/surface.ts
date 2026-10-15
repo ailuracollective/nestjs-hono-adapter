@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import type { NestContext } from '#adapter/core/context';
 import { ResponseWriter } from '#adapter/core/response/response-writer';
+import { fitExtras } from './surface-extras.ts';
 
 const writer = new ResponseWriter();
 
@@ -80,6 +81,7 @@ const fitResponse = (context: NestContext): void => {
   }
   target.set = set;
   target.append = append;
+  fitExtras(context);
 };
 
 export { OK_STATUS, fitResponse, surface, writer };
