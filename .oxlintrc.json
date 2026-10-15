@@ -219,13 +219,8 @@
     },
     {
       "files": [
-        "packages/core/test/config-fixture.ts",
-        "packages/core/test/config-fixture/**/*.ts",
-        "packages/core/test/cqrs.test.ts",
-        "packages/core/test/event-emitter.test.ts",
-        "packages/core/test/jwt.test.ts",
-        "packages/core/test/schedule.test.ts",
-        "packages/core/test/terminus.test.ts"
+        "packages/compatibility/test/config-fixture.ts",
+        "packages/compatibility/test/config-fixture/**/*.ts"
       ],
       "rules": {
         "typescript/consistent-type-imports": "off"
@@ -344,6 +339,12 @@
     },
     {
       "files": ["packages/core/src/compat/express/middleware-fit.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["packages/compatibility/test/support.ts"],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
