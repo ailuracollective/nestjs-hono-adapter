@@ -34,6 +34,12 @@ const matchesMediaType = (actual: string, wanted: string): boolean => {
   if (candidate === '*/*') return true;
   if (candidate.endsWith('/*')) return actual.startsWith(candidate.replace('*', ''));
   if (candidate.startsWith('+')) return actual.endsWith(candidate);
+  if (candidate === 'multipart') return actual.startsWith('multipart/');
+  if (candidate === 'urlencoded') return actual === 'application/x-www-form-urlencoded';
+  if (!candidate.includes('/')) {
+    const subtype = actual.slice(actual.indexOf('/') + 1);
+    return subtype === candidate || subtype.endsWith(`+${candidate}`);
+  }
   return actual === candidate;
 };
 

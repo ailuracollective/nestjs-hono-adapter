@@ -58,7 +58,7 @@ const readBody = (context: NestContext): Promise<unknown> => {
   // multipart request into a GraphQL one — and that is what Apollo is given.
   const carried = toNestRequest(context, { trustProxy: false }).body;
   if (carried !== undefined) return Promise.resolve(carried);
-  return bodyOfType(context, context.req.header('content-type') ?? '');
+  return bodyOfType(context, (context.req.header('content-type') ?? '').toLowerCase());
 };
 
 export { readBody };

@@ -13,6 +13,8 @@ test('req.is() reports the declared content type', async () => {
       headers: { 'content-type': 'application/json; charset=utf-8' },
     });
     expect(response.body).toStrictEqual({
+      isBareJson: 'json',
+      isBareMultipart: false,
       isJson: 'application/json',
       isMultipart: false,
     });
@@ -27,7 +29,10 @@ test('req.is() matches a multipart declaration', async () => {
     const response = await request(probe, '/express', {
       headers: { 'content-type': 'multipart/form-data; boundary=----x' },
     });
-    expect(response.body).toMatchObject({ isMultipart: 'multipart/form-data' });
+    expect(response.body).toMatchObject({
+      isBareMultipart: 'multipart',
+      isMultipart: 'multipart/form-data',
+    });
   } finally {
     await probe.close();
   }
