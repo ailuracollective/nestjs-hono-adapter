@@ -4,6 +4,7 @@
   "include-component-in-tag": false,
   "label": "release/pending",
   "release-label": "release/tagged",
+  "initial-version": "0.1.0-beta",
   "packages": {
     "packages/core": {
       "prerelease": true,
@@ -13,12 +14,18 @@
     "packages/socket-io": {
       "component": "socket-io",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
     },
     "packages/ws": {
       "component": "ws",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "beta",
+      "versioning": "prerelease"
     },
     "packages/multipart": {
       "component": "multipart",
