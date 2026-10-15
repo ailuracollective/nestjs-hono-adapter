@@ -241,7 +241,7 @@ Nothing per request.
 - Discovery runs once per process: the specifiers are resolved and imported the first time an application starts, and every later start reads what that found. Registering runs each time and is idempotent, so a registry emptied by a test is filled again by the next application.
 - The `express` surface fit is keyed on the request's Hono context, which Hono builds per request. The request path calls `installSurface(context, writer)`, and a second call for the same request — a middleware chain fits once, not once per hop — is one `WeakSet` hit. `res.send()` builds through the adapter's own writer, so `set('etag', …)` reaches it and the shim adds no second encoding step.
 - Each bridge package resolves its peers once, from `init()`, not from module evaluation.
-- No bridge installs a middleware on the Hono chain. A bridge patches a prototype once or hands the transport a handler; none adds a hop to a request. The Express error middleware is recognised where Nest mounts it, so that bridge installs nothing.
+- No bridge installs a middleware on the Hono chain. A bridge patches a prototype once or hands the transport a handler; none adds a hop to a request. The Express error middleware is recognised where Nest mounts it, so that bridge installs nothing; a four-argument handler mounted with `app.use(...)` is then answered on every request with `err` undefined, because Nest's middleware path has no `next(err)` and wraps a module middleware down to three declared parameters before the adapter sees it.
 
 The measured bundles are in [bundle-baseline.md](bundle-baseline.md).
 
