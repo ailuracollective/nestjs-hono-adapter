@@ -29,7 +29,7 @@ A socket.io gateway is served by the Bun transport's own server where it can bin
 
 ### Migrating to 2.x
 
-Four things break a deployment that tracked `@ailura/nestjs-hono-adapter@1.4.1`: `./ws` moved, the default transport is no longer the Node one, `HonoWsAdapter` is gone, and security headers are off by default.
+Five things break a deployment that tracked `@ailura/nestjs-hono-adapter@1.4.1`: `./ws` moved, the default transport is no longer the Node one, `HonoWsAdapter` is gone, security headers are off by default, and the package is ESM only.
 
 `./ws` and the `HonoWsAdapter` it exported are gone. WebSockets are served by the stock [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) `WsAdapter`, fitted to Hono by `@ailura/nestjs-platform-hono-ws`; install that package, which the compatibility region discovers, so a deployment writes no import of it and names the stock class instead — and installs `@nestjs/platform-ws` in place of `@hono/node-ws`.
 

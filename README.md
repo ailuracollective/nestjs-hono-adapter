@@ -38,7 +38,7 @@ Leaving `transport` out serves through Bun's own server. Read [the adapter's REA
 
 ## Migrating to 2.x
 
-Version 2 changes what a zero-configuration bootstrap serves through, moves `./ws` into a package of its own, and turns security headers off by default. A deployment on 1.x upgrades in four steps.
+Version 2 changes what a zero-configuration bootstrap serves through, moves `./ws` into a package of its own, turns security headers off by default, and stops a `require()` of the package from working. A deployment on 1.x upgrades in five steps.
 
 **Name the transport on Node.** `new ServerAdapter()` served through `@hono/node-server` in 1.x and now serves through `bunServer()`, Bun's own server. A deployment on Node asks for the one it wants:
 
@@ -62,7 +62,9 @@ Only a gateway's `path` is honoured; the wire protocol is `platform-ws`'s own.
 
 **Set `secureHeaders: true` if you relied on the default.** Security headers were on by default in 1.x and are off by default in 2.x.
 
-The `.` entrypoint is also **ESM only** now: it resolves `hono/bun` in a top-level await, so `require()` throws where Node 22 could previously `require()` the package. The optional capabilities are packages of their own; `./multipart` and `./socket-io` only ever existed on `main` and were never released, so a 1.x deployment has nothing to migrate there. [The adapter's README](packages/core/README.md#migrating-to-2x) carries the full detail.
+**`import` the package instead of `require()`ing it.** The `.` entrypoint is **ESM only** now: it resolves `hono/bun` in a top-level await, so `require()` throws where Node 22 could previously `require()` the package, and `import` works on Node and Bun.
+
+The optional capabilities are packages of their own; `./multipart` and `./socket-io` only ever existed on `main` and were never released, so a 1.x deployment has nothing to migrate there. [The adapter's README](packages/core/README.md#migrating-to-2x) carries the full detail.
 
 ## Documentation
 
