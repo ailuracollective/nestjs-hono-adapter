@@ -4,6 +4,8 @@ What this adapter does about the code Nest users write against Express and Fasti
 
 [architecture.md](architecture.md) says where the region sits in the tree; this page says what is in it and why it is shaped the way it is.
 
+Which third-party Nest packages the adapter has been proved against — and where each one is proved — is the matrix in [packages/compatibility/README.md](../packages/compatibility/README.md).
+
 ## The region
 
 `packages/core/src/compat/` is a region of the adapter, a peer of `core/`, `features/` and `servers/`. It holds every shim whose only reason to exist is that the code it serves was written for another Nest platform.

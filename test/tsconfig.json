@@ -18,6 +18,7 @@
       "#test/*": ["./*.ts", "./*"],
       "#root/*": ["../*"],
       "#benchmarks/*": ["../packages/benchmarks/src/*.ts", "../packages/benchmarks/src/*"],
+      "#compat-test/*": ["../packages/compatibility/test/*.ts", "../packages/compatibility/test/*"],
       "@ailura/nestjs-hono-adapter": ["../packages/core/src/index.ts"],
       "@ailura/nestjs-hono-adapter/bun-server": ["../packages/core/src/servers/bun.ts"],
       "@ailura/nestjs-hono-adapter/node-server": ["../packages/core/src/servers/node.ts"],
