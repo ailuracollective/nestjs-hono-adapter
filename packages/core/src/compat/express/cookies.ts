@@ -19,7 +19,6 @@ interface CookieSpec {
 
 const MILLISECONDS_PER_SECOND = 1000;
 
-/** The HTTP token characters a cookie name may use. */
 const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/u;
 
 const sameSiteAttribute = (value: CookieOptions['sameSite']): string | undefined => {
@@ -28,7 +27,6 @@ const sameSiteAttribute = (value: CookieOptions['sameSite']): string | undefined
   return `SameSite=${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 };
 
-/** Express's `res.cookie` attribute order, and the `cookie` package's default `Path=/`. */
 const attributesOf = (options: CookieOptions): string[] =>
   [
     options.maxAge === undefined
@@ -48,8 +46,7 @@ const valueOf = (value: unknown): string =>
 const writeCookie = (context: NestContext, spec: CookieSpec): void => {
   if (!TOKEN.test(spec.name)) throw new TypeError('argument name is invalid');
   const options = spec.options ?? {};
-  // A `signed` cookie is written unsigned: signing needs an HMAC, and `compat/` carries no Node
-  // builtins. A deployment that requires signed cookies signs before calling `res.cookie`.
+  // Written unsigned; see `docs/compatibility.md` for why.
   const parts = [
     `${spec.name}=${encodeURIComponent(valueOf(spec.value))}`,
     ...attributesOf(options),

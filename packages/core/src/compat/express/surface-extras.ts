@@ -5,6 +5,34 @@ import type { CookieOptions } from './cookies.ts';
 
 const COOKIE_HEADER = 'set-cookie';
 
+// Node answers `set-cookie` as a list and every other header as a string; `Headers.get` joins the
+// cookies with commas, and no client can split them back.
+const headerValue = (
+  context: NestContext,
+  name: string,
+): string | readonly string[] | undefined => {
+  const { headers } = context.res;
+  if (name.toLowerCase() !== COOKIE_HEADER) return headers.get(name) ?? undefined;
+
+  const cookies = headers.getSetCookie();
+  return cookies.length === 0 ? undefined : cookies;
+};
+
+// Node's `setHeader`: a string replaces what was there, an array is the whole set (an empty one
+// removes the header) and only its entries are appended. `docs/compatibility.md` has the rest.
+const setHeaderValue = (
+  context: NestContext,
+  name: string,
+  value: string | readonly string[],
+): void => {
+  if (typeof value === 'string') {
+    context.header(name, value);
+    return;
+  }
+  context.res.headers.delete(name);
+  for (const entry of value) context.header(name, entry, { append: true });
+};
+
 // The Express response members beyond `send`/`type`/`set` (see `docs/compatibility.md`).
 const fitExtras = (context: NestContext): void => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fitted surface layers the Express response dialect onto the Hono context.
@@ -25,14 +53,7 @@ const fitExtras = (context: NestContext): void => {
     return context;
   };
   target.setHeader = (name: string, value: string | readonly string[]): NestContext => {
-    if (typeof value === 'string') {
-      context.header(name, value);
-      return context;
-    }
-    // Node replaces what was there: an array replaces the values (an empty one removes the header),
-    // and only the entries of the new array are appended.
-    context.res.headers.delete(name);
-    for (const entry of value) context.header(name, entry, { append: true });
+    setHeaderValue(context, name, value);
     return context;
   };
   target.getHeader = (name: string): string | readonly string[] | undefined =>
@@ -51,17 +72,4 @@ const fitExtras = (context: NestContext): void => {
   };
 };
 
-// Node answers `set-cookie` as a list and every other header as a string; `Headers.get` joins the
-// cookies with commas, and no client can split them back.
-const headerValue = (
-  context: NestContext,
-  name: string,
-): string | readonly string[] | undefined => {
-  const { headers } = context.res;
-  if (name.toLowerCase() !== COOKIE_HEADER) return headers.get(name) ?? undefined;
-
-  const cookies = headers.getSetCookie();
-  return cookies.length === 0 ? undefined : cookies;
-};
-
-export { fitExtras, headerValue };
+export { fitExtras, headerValue, setHeaderValue };

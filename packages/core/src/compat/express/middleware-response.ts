@@ -1,5 +1,6 @@
 import type { NestContext } from '#adapter/core/context';
 import { attach, bytesOf, writeBody } from './response-body.ts';
+import { headerValue, setHeaderValue } from './surface-extras.ts';
 import { isCallable, proxyHandler } from './proxy-handler.ts';
 import { writer } from './surface.ts';
 
@@ -24,7 +25,7 @@ const headerReaders = (
       if (body !== undefined) chunks.push(bytesOf(body));
       writeBody(context, chunks);
     },
-    getHeader: (name: string): string | undefined => context.res.headers.get(name) ?? undefined,
+    getHeader: (name: string): string | readonly string[] | undefined => headerValue(context, name),
     hasHeader: (name: string): boolean => context.res.headers.has(name),
     get headersSent(): boolean {
       return context.finalized;
@@ -41,13 +42,9 @@ const headerReaders = (
     },
     removeListener: (event: string, listener: () => void): unknown =>
       attach(context, { event, listener, method: 'removeListener' }),
-    // `cookies.set` hands `Set-Cookie` over as an array of cookies; other callers pass a string.
+    // `cookies` hands `Set-Cookie` over as the array it read back, which Node's `setHeader` replaces.
     setHeader: (name: string, value: string | readonly string[]): void => {
-      if (typeof value === 'string') {
-        context.header(name, value);
-        return;
-      }
-      for (const entry of value) context.header(name, entry, { append: true });
+      setHeaderValue(context, name, value);
     },
     get statusCode(): number {
       return writer.statusOf(context) ?? context.res.status;

@@ -211,6 +211,11 @@ class RequestBag implements NestRequest {
   }
 
   public get readable(): boolean {
+    if (this.source !== undefined) return this.source.readable;
+
+    const { body } = this.state.context.req.raw;
+    if (body !== null && !body.locked) return true;
+
     return this.raw?.readable ?? false;
   }
 
