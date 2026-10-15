@@ -32,6 +32,30 @@ interface EngineHost {
   engine: (extension: string, engine: unknown) => void;
 }
 
+// A two-argument callable is a source engine wherever it is named: promisifying it would wait for a
+// callback it never calls.
+const sourceEngine = (source: string, data: ViewData): string =>
+  source.replace('{{name}}', String(data.name));
+
+test('a two-argument engine given to engine() renders from the source', async () => {
+  const probe = await startProbe({
+    adapter: { views: { directory: FIXTURES } },
+    configure: (app) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `app.engine()` is Express-platform API; the adapter answers it.
+      (app as unknown as EngineHost).engine(ENGINE, sourceEngine);
+      app.setViewEngine(ENGINE);
+    },
+    mode: 'in-process',
+  });
+  try {
+    const response = await request(probe, '/view');
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.text).toBe('hello Nest\n');
+  } finally {
+    await probe.close();
+  }
+});
+
 test('a view renders with the engine registered by extension', async () => {
   const probe = await startProbe({
     adapter: { views: { directory: FIXTURES } },

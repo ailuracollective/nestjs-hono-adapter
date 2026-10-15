@@ -108,3 +108,15 @@ test('an application may set the trust while bootstrapping', async () => {
     await probe.close();
   }
 });
+
+test('a hop count longer than the chain leaves the peer as the client', async () => {
+  const probe = await startProbe({ adapter: { trustProxy: 3 } });
+  try {
+    const response = await request(probe, '/request', {
+      headers: forwarded(),
+    });
+    expect(response.body).toMatchObject({ ip: '127.0.0.1' });
+  } finally {
+    await probe.close();
+  }
+});

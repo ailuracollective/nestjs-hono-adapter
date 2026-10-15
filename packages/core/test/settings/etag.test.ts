@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { expect, test } from 'bun:test';
 
 import { HttpStatus } from '@nestjs/common';
@@ -7,18 +6,9 @@ import { request } from '#test/probe';
 
 import { startProbe } from '#adapter-test/support/index';
 
-const DIGEST_LENGTH = 27;
+const SHAPE = /^(?<weak>W\/)?"[0-9a-f]+-[0-9a-f]+"$/u;
 
-const HEX_RADIX = 16;
-
-// The tag Express's `etag` package builds: the length in hex, a dash, and a truncated sha1.
-const tagOf = (body: string): string => {
-  const digest = createHash('sha1').update(body).digest('base64').slice(0, DIGEST_LENGTH);
-  const length = new TextEncoder().encode(body).byteLength.toString(HEX_RADIX);
-  return `"${length}-${digest}"`;
-};
-
-test('a read carries the entity tag of its body, and a client that has it gets 304', async () => {
+test('a read carries an opaque entity tag, the same one for the same body', async () => {
   const probe = await startProbe({
     configure: (app) => {
       app.set('etag', 'strong');
@@ -28,10 +18,25 @@ test('a read carries the entity tag of its body, and a client that has it gets 3
     const first = await request(probe, '/ping');
     expect(first.status).toBe(HttpStatus.OK);
     const tag = first.headers.get('etag');
-    expect(tag).toBe(tagOf(first.text));
+    expect(tag ?? '').toMatch(SHAPE);
 
+    const again = await request(probe, '/ping');
+    expect(again.headers.get('etag')).toBe(tag);
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a client that already holds the tag is answered 304', async () => {
+  const probe = await startProbe({
+    configure: (app) => {
+      app.set('etag', 'strong');
+    },
+  });
+  try {
+    const first = await request(probe, '/ping');
     const cached = await request(probe, '/ping', {
-      headers: { 'if-none-match': tag ?? '' },
+      headers: { 'if-none-match': first.headers.get('etag') ?? '' },
     });
     expect(cached.status).toBe(HttpStatus.NOT_MODIFIED);
     expect(cached.text).toBe('');
@@ -49,7 +54,7 @@ test('a weak setting prefixes the tag', async () => {
   try {
     const response = await request(probe, '/ping');
     const tag = response.headers.get('etag');
-    expect(tag === null ? '' : tag.startsWith('W/"')).toBe(true);
+    expect((tag ?? '').startsWith('W/"')).toBe(true);
   } finally {
     await probe.close();
   }

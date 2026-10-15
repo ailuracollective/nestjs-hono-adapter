@@ -1,18 +1,24 @@
-import { createHash } from 'node:crypto';
-
 // Express's `etag` setting: `false` turns it off, `true` means weak (Express's default) and the two
 // names pick a mode.
 type EtagMode = 'strong' | 'weak';
 
 const LEADING_WEAK = /^W\//u;
 
-// The `etag` package Express uses keeps the first 27 base64 characters of the sha1 digest, with the
-// body length in hex in front of it.
-const DIGEST_LENGTH = 27;
+const encoder = new TextEncoder();
+
+// The frozen builtin set carries no hash and an entity tag is opaque, so the adapter mixes the
+// body's bytes itself: a multiplicative 32-bit hash, which needs no bitwise operator.
+const HASH_PRIME = 16_777_619;
 
 const HEX_RADIX = 16;
 
-const encoder = new TextEncoder();
+const digestOf = (bytes: Uint8Array): string => {
+  let hash = 0;
+  for (const byte of bytes) {
+    hash = Math.imul(hash, HASH_PRIME) + byte;
+  }
+  return Math.abs(hash).toString(HEX_RADIX);
+};
 
 const bytesOf = (body: unknown): Uint8Array | undefined => {
   // A stream has no tag, exactly as in Express, and neither has an absent body.
@@ -35,14 +41,13 @@ const toEtagMode = (value: unknown): EtagMode | false => {
 };
 
 /**
- * The tag Express would answer with: the length in hex, a dash, and a truncated sha1 of the body
- * (the `etag` package's entity tag), quoted — prefixed `W/` when the setting asks for a weak one.
+ * The tag Express's shape would answer with: the body length in hex, a dash, and the digest of the
+ * body, quoted — prefixed `W/` when the setting asks for a weak one.
  */
 const etagFor = (body: unknown, mode: EtagMode): string | undefined => {
   const bytes = bytesOf(body);
   if (bytes === undefined) return undefined;
-  const digest = createHash('sha1').update(bytes).digest('base64').slice(0, DIGEST_LENGTH);
-  const tag = `"${bytes.byteLength.toString(HEX_RADIX)}-${digest}"`;
+  const tag = `"${bytes.byteLength.toString(HEX_RADIX)}-${digestOf(bytes)}"`;
   if (mode === 'weak') return `W/${tag}`;
   return tag;
 };

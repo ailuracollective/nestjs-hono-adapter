@@ -15,6 +15,7 @@ const headerReaders = (
   writeHead: (status?: number) => NestContext,
 ): Record<string, unknown> => {
   const chunks: Uint8Array[] = [];
+  let ended = false;
   return {
     addListener: (event: string, listener: () => void): unknown =>
       attach(context, { event, listener, method: 'addListener' }),
@@ -22,6 +23,8 @@ const headerReaders = (
       context.header(name, value, { append: true });
     },
     end: (body?: unknown): void => {
+      if (ended) return;
+      ended = true;
       if (body !== undefined) chunks.push(bytesOf(body));
       writeBody(context, chunks);
     },
@@ -42,7 +45,6 @@ const headerReaders = (
     },
     removeListener: (event: string, listener: () => void): unknown =>
       attach(context, { event, listener, method: 'removeListener' }),
-    // `cookies` hands `Set-Cookie` over as the array it read back, which Node's `setHeader` replaces.
     setHeader: (name: string, value: string | readonly string[]): void => {
       setHeaderValue(context, name, value);
     },
@@ -50,6 +52,7 @@ const headerReaders = (
       return writer.statusOf(context) ?? context.res.status;
     },
     write: (chunk: unknown): boolean => {
+      if (ended) return false;
       chunks.push(bytesOf(chunk));
       return true;
     },

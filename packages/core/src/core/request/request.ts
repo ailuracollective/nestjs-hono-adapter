@@ -302,6 +302,10 @@ class RequestBag implements NestRequest {
   private relative(full: string): string {
     const { mount } = this.state;
     if (mount === undefined || mount === '') return full;
+    // Only a real mount prefix is stripped, and only at a segment boundary.
+    if (full !== mount && !full.startsWith(`${mount}/`) && !full.startsWith(`${mount}?`))
+      return full;
+
     const rest = full.slice(mount.length);
     if (rest === '') return '/';
     return rest.startsWith('/') ? rest : `/${rest}`;

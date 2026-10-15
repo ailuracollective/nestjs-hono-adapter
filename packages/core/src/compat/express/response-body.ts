@@ -46,9 +46,8 @@ interface ListenRequest {
 }
 
 /**
- * A middleware treats the response as a Node stream — `compression` listens on it before it decides
- * to compress, `graphql-upload` waits on `close` to notice a mid-upload disconnect — so the
- * listeners land on the transport's own response when it carries one.
+ * A middleware treats the response as a Node stream — `compression` listens on it, `graphql-upload`
+ * waits on `close` — so the listeners land on the transport's own response.
  */
 const listen = (lifecycle: Emitter, request: ListenRequest): unknown => {
   const { event, listener, method } = request;

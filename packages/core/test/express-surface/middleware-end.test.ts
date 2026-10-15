@@ -50,3 +50,33 @@ test('a middleware that answers with write/end settles the response', async () =
     await probe.close();
   }
 });
+
+// Node ignores a write after `end` and errors on a second `end`; the proxy must not settle the
+// response a second time either.
+class TwiceMiddleware implements NestMiddleware {
+  public use(_request: unknown, response: RawResponse, _next: () => void): void {
+    response.setHeader('content-type', 'text/plain');
+    response.write('first');
+    response.end(' body');
+    response.write(' ignored');
+    response.end(' ignored');
+  }
+}
+
+@Module({ controllers: [EchoController] })
+class TwiceModule implements NestModule {
+  public configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(TwiceMiddleware).forRoutes('*');
+  }
+}
+
+test('a second end, and a write after it, are ignored', async () => {
+  const probe = await startAdapter(nodeAdapter(), { module: TwiceModule });
+  try {
+    const response = await request(probe, '/echo');
+    expect(response.status).toBe(HttpStatus.OK);
+    expect(response.text).toBe('first body');
+  } finally {
+    await probe.close();
+  }
+});

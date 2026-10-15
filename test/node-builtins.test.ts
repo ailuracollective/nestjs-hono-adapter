@@ -21,7 +21,6 @@ const BRIDGE_ROOTS = [
 
 const FROZEN_NODE_BUILTINS = [
   'node:buffer',
-  'node:crypto',
   'node:events',
   'node:fs/promises',
   'node:http',

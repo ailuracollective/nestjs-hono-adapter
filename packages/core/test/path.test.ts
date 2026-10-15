@@ -39,6 +39,10 @@ test('an inline alternation becomes a segment regex parameter', () => {
   expect(toHonoPath('/(a|b)/x')).toBe('/:group1{(a|b)}/x');
 });
 
+test('a generated name does not shadow a parameter the route carries', () => {
+  expect(toHonoPath('/x/:group1/(a|b)')).toBe('/x/:group1/:group2{(a|b)}');
+});
+
 test('a path the router cannot read is refused', () => {
   expect(() => toHonoPath('/users{name}')).toThrow(TypeError);
   expect(() => toHonoPath('/users{/:id/:tab}')).toThrow(TypeError);

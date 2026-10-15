@@ -152,7 +152,10 @@ class PathTranslator {
 
   private groupName(): string {
     this.groups += 1;
-    return `group${this.groups}`;
+    const name = `group${this.groups}`;
+    // Hono keys parameters by name, so a generated one must not shadow one the route carries.
+    if (this.path.includes(`:${name}`)) return this.groupName();
+    return name;
   }
 
   private readGroup(): void {

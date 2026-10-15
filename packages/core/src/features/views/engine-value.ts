@@ -2,6 +2,9 @@ import { isRecord } from '#adapter/core/request/query/index';
 
 import type { ExpressViewEngine, Renderer, ViewEngine } from './types.ts';
 
+// Express tells the two selectors apart by arity: `(filePath, options, callback)`.
+const EXPRESS_ARITY = 3;
+
 type Callable = (...args: never[]) => unknown;
 
 const isCallable = (value: unknown): value is Callable => typeof value === 'function';
@@ -31,7 +34,12 @@ const sourceRenderer = (value: Callable): Renderer => ({
  * Express itself looks for — is the Express engine.
  */
 const rendererOf = (value: unknown, kind: 'file' | 'source'): Renderer | undefined => {
-  if (isCallable(value)) return kind === 'file' ? fileRenderer(value) : sourceRenderer(value);
+  if (isCallable(value)) {
+    // A two-argument callable given to `app.engine()` is a source engine: promisifying it would wait
+    // for a callback it never calls.
+    if (kind === 'file' && value.length >= EXPRESS_ARITY) return fileRenderer(value);
+    return sourceRenderer(value);
+  }
 
   const express = carried(value, '__express');
   if (express !== undefined) return fileRenderer(express);
