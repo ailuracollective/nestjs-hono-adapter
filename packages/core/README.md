@@ -27,19 +27,24 @@ WebSockets are not a capability but a **compatibility bridge**: `@ailura/nestjs-
 
 A socket.io gateway is served by the Bun transport's own server where it can bind an engine, and by the Node transport's `http.Server` otherwise; the fetch transport has neither and is refused by name.
 
-### Migrating from the old subpaths
+### Migrating to 2.x
 
-Two things break a deployment that tracked `@ailura/nestjs-hono-adapter@1.4.1`: `./ws` moved, and the default transport is no longer the Node one.
+Four things break a deployment that tracked `@ailura/nestjs-hono-adapter@1.4.1`: `./ws` moved, the default transport is no longer the Node one, `HonoWsAdapter` is gone, and security headers are off by default.
 
-`./ws` moves to its own package; the new package is the whole import path, so drop the trailing subpath:
+`./ws` and the `HonoWsAdapter` it exported are gone. WebSockets are served by the stock [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) `WsAdapter`, fitted to Hono by `@ailura/nestjs-platform-hono-ws`; install that package, which the compatibility region discovers, so a deployment writes no import of it and names the stock class instead — and installs `@nestjs/platform-ws` in place of `@hono/node-ws`.
 
-| Old import                       | Install and import                |
-| -------------------------------- | --------------------------------- |
-| `@ailura/nestjs-hono-adapter/ws` | `@ailura/nestjs-platform-hono-ws` |
+| Old                              | New                                                |
+| -------------------------------- | -------------------------------------------------- |
+| `@ailura/nestjs-hono-adapter/ws` | `@ailura/nestjs-platform-hono-ws`, installed alone |
+| `new HonoWsAdapter(app)`         | `new WsAdapter(app)` from `@nestjs/platform-ws`    |
+
+Only a gateway's `path` is honoured; the wire protocol is `platform-ws`'s own.
 
 The zero-configuration bootstrap now serves through `bunServer()` where it served through `@hono/node-server`; a deployment on Node names the transport explicitly ([Use](#use)).
 
 `ServerAdapterOptions.overrideGlobalObjects` left with the implicit Node default. `nodeServer()` keeps it and defaults it to `true`, the fastest path and the behavior the implicit Node transport had; the replacement of the global `Request` and `Response` is process-wide and not restored, so a deployment that wants the globals left alone asks by name: `nodeServer({ overrideGlobalObjects: false })`.
+
+`secureHeaders` defaulted to `true` and now defaults to `false`; a deployment that relied on the default sets `secureHeaders: true`.
 
 The Bun transport resolves `hono/bun` in a top-level await so the root entrypoint still imports on Node, which makes the package ESM only: `require()` throws, `import` works on Node and Bun.
 
