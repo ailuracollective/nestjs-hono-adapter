@@ -1,31 +1,18 @@
-import type { ViewData, ViewEngine } from '#adapter/features/views/types';
+import { rendererOf } from '#adapter/features/views/engine-value';
 
-type Callable = (source: string, data: ViewData) => unknown;
-
-const isCallable = (value: unknown): value is Callable => typeof value === 'function';
+import type { Renderer } from '#adapter/features/views/types';
 
 const defaultOf = (loaded: unknown): unknown =>
   typeof loaded === 'object' && loaded !== null ? Reflect.get(loaded, 'default') : undefined;
 
-const callableOf = (holder: unknown, name: string): Callable | undefined => {
-  if (typeof holder !== 'object' || holder === null) return undefined;
-  const held: unknown = Reflect.get(holder, name);
-  return isCallable(held) ? held : undefined;
-};
-
-const asHtml = async (value: unknown): Promise<string> => String(await value);
-
 /**
  * Adapts a loaded module to the renderer's contract: the module, or its default, is a `(source,
- * data)` function or carries a `render`.
+ * data)` function, an Express engine `(filePath, options, callback)`, or carries one as `render`.
  */
-const adaptEngine = (loaded: unknown): ViewEngine | undefined => {
+const adaptEngine = (loaded: unknown): Renderer | undefined => {
   for (const candidate of [loaded, defaultOf(loaded)]) {
-    if (isCallable(candidate)) {
-      return (source, data) => asHtml(candidate(source, data));
-    }
-    const render = callableOf(candidate, 'render');
-    if (render !== undefined) return (source, data) => asHtml(render.call(candidate, source, data));
+    const renderer = rendererOf(candidate, 'source');
+    if (renderer !== undefined) return renderer;
   }
   return undefined;
 };
@@ -41,12 +28,13 @@ const loadModule = async (name: string): Promise<unknown> => {
   }
 };
 
-const resolveEngine = async (name: string): Promise<ViewEngine> => {
+const resolveEngine = async (name: string): Promise<Renderer> => {
   const engine = adaptEngine(await loadModule(name));
   if (engine === undefined) {
     throw new TypeError(
-      `The view engine "${name}" answers no render the adapter can ` +
-        'call; pass `views.engine` instead.',
+      `The view engine "${name}" answers no render the adapter can call: ` +
+        'write it as (source, data) or as an Express engine ' +
+        '(filePath, options, callback), or pass views.engine.',
     );
   }
   return engine;

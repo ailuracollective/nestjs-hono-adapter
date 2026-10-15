@@ -32,6 +32,13 @@ test('an optional wildcard group becomes the wildcard Hono already reads', () =>
   expect(toHonoPath('/queues{/*}')).toBe('/queues/*');
 });
 
+test('an inline alternation becomes a segment regex parameter', () => {
+  expect(toHonoPath('/feeds/all.(json|rss|atom)')).toBe(
+    String.raw`/feeds/:group1{all\.(json|rss|atom)}`,
+  );
+  expect(toHonoPath('/(a|b)/x')).toBe('/:group1{(a|b)}/x');
+});
+
 test('a path the router cannot read is refused', () => {
   expect(() => toHonoPath('/users{name}')).toThrow(TypeError);
   expect(() => toHonoPath('/users{/:id/:tab}')).toThrow(TypeError);

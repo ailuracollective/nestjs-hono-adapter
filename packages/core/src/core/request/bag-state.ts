@@ -22,6 +22,7 @@ interface BagState {
   incoming: Incoming | undefined;
   ip: string | undefined;
   method: string | undefined;
+  mount: string | undefined;
   params: Record<string, string> | undefined;
   paramsAt: number | undefined;
   protocol: string | undefined;

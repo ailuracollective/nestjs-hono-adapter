@@ -71,11 +71,38 @@ const createRouteHandler = (
   interceptor: StreamInterceptor,
 ): HonoRouteHandler => routeRunner({ handler, interceptor, middleware: false, options });
 
+// Express hands a middleware mounted at a sub-path a request whose `url`/`path` start after the
+// mount, and puts the mount on `baseUrl`; the mount is restored when the middleware calls `next`.
+const withMount =
+  (handler: NestHandler, base: string | undefined): NestHandler =>
+  (request, response, next) => {
+    if (base === undefined) return handler(request, response, next);
+    request.mountAt(base);
+    const mountedNext = (): unknown => {
+      request.mountAt();
+      return next();
+    };
+    return Promise.resolve(handler(request, response, mountedNext)).finally(() => {
+      request.mountAt();
+    });
+  };
+
+interface MiddlewareSpec {
+  readonly base?: string | undefined;
+  readonly handler: NestHandler;
+}
+
 const createMiddlewareHandler = (
-  handler: NestHandler,
+  spec: MiddlewareSpec,
   options: BridgeOptions,
   interceptor: StreamInterceptor,
-): HonoRouteHandler => routeRunner({ handler, interceptor, middleware: true, options });
+): HonoRouteHandler =>
+  routeRunner({
+    handler: withMount(spec.handler, spec.base),
+    interceptor,
+    middleware: true,
+    options,
+  });
 
 const runNestHandler = async (
   handler: NestHandler,

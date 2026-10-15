@@ -23,7 +23,7 @@ const REQUEST = Symbol('nestRequest');
 // package uses — and works on every transport that has one, Node and Bun alike.
 const bodyStreamOf = (context: NestContext): Readable => {
   const { body } = context.req.raw;
-  if (body === null) return Readable.from([]);
+  if (body === null || body.locked) return Readable.from([]);
   return Readable.fromWeb(body);
 };
 
@@ -47,6 +47,8 @@ const matchesMediaType = (actual: string, wanted: string): boolean => {
 type RequestHolder = Record<symbol, RequestBag | undefined>;
 
 class RequestBag implements NestRequest {
+  public _body: boolean;
+
   public body: unknown;
 
   public file: unknown;
@@ -71,6 +73,7 @@ class RequestBag implements NestRequest {
       incoming: undefined,
       ip: undefined,
       method: undefined,
+      mount: undefined,
       options,
       params: undefined,
       paramsAt: undefined,
@@ -79,6 +82,8 @@ class RequestBag implements NestRequest {
       url: undefined,
     };
     this.body = undefined;
+    // oxlint-disable-next-line eslint/no-underscore-dangle -- `body-parser` reads this exact name.
+    this._body = false;
     this.file = undefined;
     this.files = undefined;
     this.rawBody = undefined;
@@ -162,6 +167,10 @@ class RequestBag implements NestRequest {
     return parts.route;
   }
 
+  public get baseUrl(): string {
+    return this.state.mount ?? '';
+  }
+
   public get params(): Record<string, string> {
     const { state } = this;
     const at = state.context.req.routeIndex;
@@ -173,7 +182,7 @@ class RequestBag implements NestRequest {
   }
 
   public get path(): string {
-    return urlPartsOf(this.state).pathname;
+    return this.relative(urlPartsOf(this.state).pathname);
   }
 
   public get protocol(): string {
@@ -251,6 +260,22 @@ class RequestBag implements NestRequest {
     return this;
   }
 
+  public addListener(event: string, listener: StreamListener): this {
+    this.stream.addListener(event, listener);
+    return this;
+  }
+
+  // `raw-body` (behind `body-parser`) removes the listeners it added when it finishes reading.
+  public off(event: string, listener: StreamListener): this {
+    this.stream.off(event, listener);
+    return this;
+  }
+
+  public removeListener(event: string, listener: StreamListener): this {
+    this.stream.removeListener(event, listener);
+    return this;
+  }
+
   public get secure(): boolean {
     return this.protocol === 'https';
   }
@@ -262,7 +287,19 @@ class RequestBag implements NestRequest {
   }
 
   public get url(): string {
-    return this.originalUrl;
+    return this.relative(this.originalUrl);
+  }
+
+  public mountAt(prefix?: string): void {
+    this.state.mount = prefix;
+  }
+
+  private relative(full: string): string {
+    const { mount } = this.state;
+    if (mount === undefined || mount === '') return full;
+    const rest = full.slice(mount.length);
+    if (rest === '') return '/';
+    return rest.startsWith('/') ? rest : `/${rest}`;
   }
 }
 

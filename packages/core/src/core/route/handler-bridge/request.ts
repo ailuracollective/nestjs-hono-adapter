@@ -28,6 +28,10 @@ const carriesBody = (context: NestContext, request: NestRequest, middleware: boo
   request.body !== undefined || (middleware && declaresMultipart(context));
 
 const assignParsed = (request: NestRequest, parsed: ParsedBody): NestRequest => {
+  // `body-parser` reads `_body` and stands down, so the body the adapter parsed is the one the
+  // route sees rather than one a body parser reads a second time.
+  // oxlint-disable-next-line eslint/no-underscore-dangle -- `body-parser` reads this exact name.
+  request._body = true;
   request.body = parsed.body;
   request.files = parsed.files;
   request.rawBody = parsed.rawBody;

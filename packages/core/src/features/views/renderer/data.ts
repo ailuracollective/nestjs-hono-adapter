@@ -1,14 +1,16 @@
 import { toDirectories } from '#adapter/core/request/directories';
 import { isRecord } from '#adapter/core/request/query/index';
+import { rendererOf } from '#adapter/features/views/engine-value';
 
-import type { ViewData, ViewEngine, ViewOptions } from '#adapter/features/views/types';
+import type { Renderer, ViewData, ViewOptions } from '#adapter/features/views/types';
 
 interface ViewState {
   context: ViewData;
   defaults: ViewData;
   directories: readonly string[];
-  engine: ViewEngine | undefined;
+  engine: Renderer | undefined;
   engineName: string | undefined;
+  engines: Map<string, Renderer>;
   extension: string;
 }
 
@@ -20,10 +22,10 @@ const asData = (options: unknown): ViewData => {
   return {};
 };
 
-const engineOf = (views: ViewOptions | undefined): ViewEngine | undefined => {
+const engineOf = (views: ViewOptions | undefined): Renderer | undefined => {
   if (views === undefined) return undefined;
 
-  return views.engine;
+  return rendererOf(views.engine, 'source');
 };
 
 const directoriesOf = (views: ViewOptions | undefined): readonly string[] => {

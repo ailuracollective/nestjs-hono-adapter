@@ -11,6 +11,7 @@ interface NestRequest {
   method: string;
   url: string;
   originalUrl: string;
+  baseUrl: string;
   path: string;
   hostname: string;
   protocol: string;
@@ -26,6 +27,7 @@ interface NestRequest {
   complete: boolean;
   readable: boolean;
   body: unknown;
+  _body: boolean;
   rawBody: Buffer | undefined;
   session: unknown;
   files: Record<string, unknown> | readonly unknown[] | undefined;
@@ -33,6 +35,7 @@ interface NestRequest {
   is: (type: string | readonly string[]) => string | false;
   get: (name: string) => string | undefined;
   header: (name: string) => string | undefined;
+  mountAt: (prefix?: string) => void;
   stream: Readable;
   readableEnded: boolean;
   pipe: <Destination extends Writable>(
@@ -44,6 +47,9 @@ interface NestRequest {
   pause: () => NestRequest;
   on: (event: string, listener: StreamListener) => NestRequest;
   once: (event: string, listener: StreamListener) => NestRequest;
+  addListener: (event: string, listener: StreamListener) => NestRequest;
+  off: (event: string, listener: StreamListener) => NestRequest;
+  removeListener: (event: string, listener: StreamListener) => NestRequest;
 }
 
 type NextHandler = () => unknown;

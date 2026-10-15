@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 
 import type { NestContext } from '#adapter/core/context';
+import { isBinaryBody } from '#adapter/core/response/builders/content';
 import { ResponseWriter } from '#adapter/core/response/response-writer';
 import { fitExtras } from './surface-extras.ts';
 
@@ -25,6 +26,10 @@ const throughHono = (context: NestContext, body: unknown): Response =>
 
 function send(this: NestContext, body: unknown): NestContext {
   const declared = writer.statusOf(this);
+  if (isBinaryBody(body)) {
+    writer.reply(this, body);
+    return this;
+  }
   const answered = throughHono(this, body);
   if (declared === undefined || declared === OK_STATUS || answered.status !== OK_STATUS)
     return this;

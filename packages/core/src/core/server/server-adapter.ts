@@ -35,6 +35,17 @@ const withTransport = (options: ServerAdapterOptions): TransportOptions => {
   return Object.assign({}, options, { transport });
 };
 
+const TRAILING_WILDCARD = /\/\*$/u;
+
+// Express hands a middleware mounted at a sub-path a request whose `url` starts after the mount and
+// puts the mount on `baseUrl`. Only a literal prefix can be named that way, so a parameterised
+// mount is left alone rather than guessed at.
+const mountBase = (path: string): string | undefined => {
+  const base = path.replace(TRAILING_WILDCARD, '').replace(/\/+$/u, '');
+  if (base === '' || base.includes(':') || base.includes('*')) return undefined;
+  return base;
+};
+
 // oxlint-disable-next-line eslint/no-redeclare, typescript/no-unsafe-declaration-merging -- the interface below is the merged half of this class, on purpose.
 class ServerAdapter extends HonoLifecycle {
   private readonly writer = new ResponseWriter();
@@ -91,6 +102,12 @@ class ServerAdapter extends HonoLifecycle {
 
   public override setViewEngine(engine: EngineConfig): this {
     this.views.useEngine(engine);
+    return this;
+  }
+
+  // `app.engine('hbs', hbs.__express)` — the Express selector, kept by extension.
+  public engine(extension: string, engine: unknown): this {
+    this.views.useEngineFor(extension, engine);
     return this;
   }
 
@@ -202,7 +219,11 @@ class ServerAdapter extends HonoLifecycle {
   protected override mount(path: string, handler: NestHandler): void {
     this.hono.use(
       toHonoPath(path),
-      createMiddlewareHandler(handler, this.bridgeOptions, this.interceptor),
+      createMiddlewareHandler(
+        { base: mountBase(path), handler },
+        this.bridgeOptions,
+        this.interceptor,
+      ),
     );
   }
 
