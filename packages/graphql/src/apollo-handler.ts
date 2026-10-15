@@ -1,3 +1,5 @@
+import type { Next } from 'hono';
+
 import type { NestContext } from '@ailura/nestjs-hono-adapter';
 
 import { writeAnswer } from './apollo-answer.ts';
@@ -30,8 +32,15 @@ const createApolloHandler =
   (
     server: ApolloServer,
     context: ContextFactory | undefined,
-  ): ((honoContext: NestContext) => Promise<Response>) =>
-  async (honoContext): Promise<Response> => {
+  ): ((honoContext: NestContext, next: Next) => Promise<Response | undefined>) =>
+  async (honoContext, next): Promise<Response | undefined> => {
+    const upgrade = honoContext.req.header('upgrade') ?? '';
+    // An upgrade belongs to the subscriptions route, which sits after this one in the chain.
+    if (upgrade.toLowerCase() === 'websocket') {
+      // oxlint-disable-next-line node/callback-return -- next() answers with the upgrade, not a value.
+      await next();
+      return undefined;
+    }
     const { req } = honoContext;
     const body = await readBody(honoContext);
     const answer = await server.executeHTTPGraphQLRequest({

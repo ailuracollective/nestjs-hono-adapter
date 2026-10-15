@@ -3,9 +3,7 @@ import type { Bridge } from '@ailura/nestjs-hono-adapter';
 import { patchApolloDriver } from './apollo-patch.ts';
 
 const bridge: Bridge = {
-  install: async () => {
-    await patchApolloDriver();
-  },
+  install: (target) => patchApolloDriver(target),
   name: 'graphql/apollo',
 };
 

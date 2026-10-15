@@ -283,6 +283,12 @@
       }
     },
     {
+      "files": ["packages/graphql/src/apollo-subscription-route.ts"],
+      "rules": {
+        "oxc/no-rest-spread-properties": "off"
+      }
+    },
+    {
       "files": ["packages/multipart/src/multipart/multipart.parser*.ts"],
       "rules": {
         "max-lines-per-function": "off",

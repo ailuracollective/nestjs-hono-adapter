@@ -1,6 +1,7 @@
-import type { NestHono } from '@ailura/nestjs-hono-adapter';
+import type { BridgeTarget, NestHono } from '@ailura/nestjs-hono-adapter';
 
 import { registerApolloOnHono } from './apollo-register.ts';
+import { patchSubscriptions } from './apollo-subscriptions.ts';
 import { apolloPeer } from './peer-load.ts';
 import { adapterOf, isOnHono } from './peer-read.ts';
 import type { ApolloDriverConfig, ApolloDriverShape, ApolloRegisterServer } from './peer-shapes.ts';
@@ -35,7 +36,8 @@ const fitDriver = (prototype: ApolloDriverShape, original: ApolloRegisterServer)
   prototype.registerServer = registerServer;
 };
 
-const patchApolloDriver = async (): Promise<void> => {
+const patchApolloDriver = async (target: BridgeTarget): Promise<void> => {
+  await patchSubscriptions(target);
   const peer = await apolloPeer();
   const driver = peer === undefined ? undefined : peer.ApolloDriver;
   if (driver === undefined) return;

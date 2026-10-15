@@ -37,7 +37,7 @@ Peers on `@nestjs/apollo`, `@nestjs/graphql`, `@apollo/server` and `graphql`; it
 
 Queries and mutations, code-first and schema-first, the GraphiQL landing page, `OPTIONS`, and a `context` factory called exactly as `@as-integrations/express5` calls it — with the adapter's own request object under `req`.
 
-Subscriptions answer on the **Node** transport. `ApolloDriver.start()` opens a `GqlSubscriptionService` that attaches a `ws` server to the HTTP server's `upgrade` event, and the Node transport is a real `node:http` server, so the upgrade arrives and `graphql-ws` answers. `Bun.serve` is not a `node:http` server and the fetch transport serves no socket, so neither carries it yet — that is the WebSocket island's work. `@nestjs/mercurius` is not covered either.
+Subscriptions answer wherever the transport carries a websocket helper — `bunServer()`, or the helper a `fetchServer()` host was handed. `ApolloDriver.start()` opens a `GqlSubscriptionService`; where the helper is the socket's own, the bridge replaces that service's `initialize()` and mounts the upgrade on the Hono application at the subscriptions path, feeding `graphql-ws` from the helper. Where there is no helper — `nodeServer()`, and the default transport on Node — the stock service attaches its `ws` server to the HTTP server's `upgrade` event and answers as it always did. `graphql-ws` is an optional peer, resolved only where subscriptions are served. `@nestjs/mercurius` is not covered either.
 
 ## See also
 
