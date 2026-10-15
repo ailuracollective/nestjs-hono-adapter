@@ -59,5 +59,17 @@ jobs:
             echo "::error::'$DIR/dist' is missing or empty; the build step produced no output."
             exit 1
           fi
+      # A release-please pre-release is the beta channel: it stays off `latest`
+      # and lands on `next`, so a stable consumer is never moved onto a beta.
+      - name: Resolve the dist-tag
+        id: dist
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish to npm
-        run: npm publish "${{ steps.package.outputs.dir }}" --provenance
+        run: npm publish "${{ steps.package.outputs.dir }}" --provenance --tag "${{ steps.dist.outputs.tag }}"
