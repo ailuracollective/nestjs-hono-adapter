@@ -8,7 +8,7 @@
 
 # Cite the invariant a change would break, with evidence.
 tone_instructions: >-
-  Be precise and evidence based. Cite the repository invariant or rule a change would break, a dependency rule, the frozen `node:` builtin set, a bundle ceiling, the compatibility region's caps, and prefer a concrete counter-example over praise or speculation. A green linter is not verification.
+  Be precise and evidence based. Cite the invariant a change would break: a dependency rule, the frozen `node:` builtin set, a bundle ceiling or the compatibility region's caps. Prefer a counter-example to praise; a green linter is not verification.
 
 reviews:
   # No diagrams on a library repository.

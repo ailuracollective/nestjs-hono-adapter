@@ -9,7 +9,7 @@
 | `@ailura/nestjs-platform-hono-ws` | `.` | Nest's `@nestjs/platform-ws` `WsAdapter` on Hono (bridge) |
 | `@ailura/nestjs-platform-hono-socket-io` | `.` | Nest's `@nestjs/platform-socket.io` `IoAdapter` on Hono (bridge) |
 
-`./ws` moved to its own package; `./multipart` and `./socket-io` only ever existed on `main`. Install per the [README](../packages/core/README.md#migrating-from-the-old-subpaths).
+`./ws` moved to its own package; `./multipart` and `./socket-io` only ever existed on `main`. Install per the [README](../packages/core/README.md#migrating-to-2x).
 
 ## HTTP Adapter
 
