@@ -1,5 +1,5 @@
-// oxlint-disable promise/prefer-await-to-callbacks, node/callback-return -- an Express view engine is defined by the callback it answers through.
-import { readFile } from 'node:fs/promises';
+// oxlint-disable promise/prefer-await-to-callbacks -- an Express view engine is defined by the callback it answers through.
+import { readFile } from 'node:fs';
 import { expect, test } from 'bun:test';
 
 import { HttpStatus } from '@nestjs/common';
@@ -13,18 +13,19 @@ import type { ViewData } from '#adapter/index';
 let received: ViewData = {};
 
 // The Express selector: the engine reads the file it is handed and answers through the callback.
-const expressEngine = async (
+const expressEngine = (
   filePath: string,
   data: ViewData,
   callback: (error: unknown, html?: string) => void,
-): Promise<void> => {
+): void => {
   received = data;
-  try {
-    const source = await readFile(filePath, 'utf8');
+  readFile(filePath, 'utf8', (error, source) => {
+    if (error) {
+      callback(error);
+      return;
+    }
     callback(undefined, source.replace('{{name}}', String(data.name)));
-  } catch (error) {
-    callback(error);
-  }
+  });
 };
 
 interface EngineHost {

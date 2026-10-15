@@ -13,10 +13,11 @@ import {
   runNestHandler,
 } from '#adapter/core/route/handler-bridge';
 import type { BridgeOptions, NestExceptionHandler } from '#adapter/core/route/handler-bridge';
-import { HonoLifecycle, settingValue } from './hono-lifecycle.ts';
+import { HonoLifecycle, settingValue, toTrustProxy } from './hono-lifecycle.ts';
 import type { TransportOptions } from './hono-lifecycle.ts';
 import type { TransportChoiceOptions } from './server-options.ts';
 import { toHonoPath } from '#adapter/core/request/path';
+
 import { ResponseWriter } from '#adapter/core/response/response-writer';
 import { ALL_METHOD } from '#adapter/core/route/route-adapter';
 import { parsesMultipart, rememberAdapter } from '#adapter/core/multipart';
@@ -255,6 +256,16 @@ class ServerAdapter extends HonoLifecycle {
   }
 
   public set(name: string, value: unknown): this {
+    // `trust proxy` and `etag` are read per request, so an application may set them at bootstrap the
+    // way Express apps do rather than through the adapter options.
+    if (name === 'trust proxy') {
+      this.trustProxy = toTrustProxy(value);
+      return this;
+    }
+    if (name === 'etag') {
+      this.writer.useEtag(value);
+      return this;
+    }
     const setting = settingValue(name, value);
     if (name === 'view engine' && typeof setting === 'string') return this.setViewEngine(setting);
     return this.setBaseViewsDir(setting);

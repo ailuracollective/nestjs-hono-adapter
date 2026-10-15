@@ -26,12 +26,15 @@ const forwardPreflight = async (
 };
 
 const corsBridge =
-  (handler: () => CorsConfig | undefined, trustProxy: TrustProxy): MiddlewareHandler<NestEnv> =>
+  (
+    handler: () => CorsConfig | undefined,
+    trustProxy: () => TrustProxy,
+  ): MiddlewareHandler<NestEnv> =>
   async (context, next) => {
     const config = handler();
     if (config === undefined) return next();
 
-    const options = await resolveOptions(config, context, trustProxy);
+    const options = await resolveOptions(config, context, trustProxy());
     const allowed = await resolveOrigin(options.origin, context.req.header('origin'));
     const middleware = corsMiddleware(options, allowed);
     if (isContinuedPreflight(options, context)) {

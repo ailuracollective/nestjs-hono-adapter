@@ -86,3 +86,25 @@ test('a trust list is walked from the right, the socket included', async () => {
     await chain.close();
   }
 });
+
+// `app.set('trust proxy', …)` is what an Express app does at bootstrap, so the adapter honours it
+// there rather than only through its own options.
+test('an application may set the trust while bootstrapping', async () => {
+  const probe = await startProbe({
+    configure: (app) => {
+      app.set('trust proxy', ['127.0.0.1', '10.0.0.1']);
+    },
+  });
+  try {
+    const response = await request(probe, '/request', {
+      headers: forwarded(),
+    });
+    expect(response.body).toMatchObject({
+      ip: '203.0.113.7',
+      protocol: 'https',
+      secure: true,
+    });
+  } finally {
+    await probe.close();
+  }
+});

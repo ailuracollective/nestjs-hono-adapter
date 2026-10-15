@@ -1,5 +1,5 @@
 import type { NestContext } from '#adapter/core/context';
-import { bytesOf, writeBody } from './response-body.ts';
+import { attach, bytesOf, writeBody } from './response-body.ts';
 import { isCallable, proxyHandler } from './proxy-handler.ts';
 import { writer } from './surface.ts';
 
@@ -15,6 +15,8 @@ const headerReaders = (
 ): Record<string, unknown> => {
   const chunks: Uint8Array[] = [];
   return {
+    addListener: (event: string, listener: () => void): unknown =>
+      attach(context, { event, listener, method: 'addListener' }),
     appendHeader: (name: string, value: string): void => {
       context.header(name, value, { append: true });
     },
@@ -28,15 +30,17 @@ const headerReaders = (
       return context.finalized;
     },
     locals,
-    // `graphql-upload` waits on the response's `close` to notice a mid-upload disconnect.
-    once: (event: string, listener: () => void): unknown => {
-      const lifecycle = context.env.outgoing ?? context.env.incoming;
-      if (lifecycle === undefined) return undefined;
-      return lifecycle.once(event, listener);
-    },
+    off: (event: string, listener: () => void): unknown =>
+      attach(context, { event, listener, method: 'off' }),
+    on: (event: string, listener: () => void): unknown =>
+      attach(context, { event, listener, method: 'on' }),
+    once: (event: string, listener: () => void): unknown =>
+      attach(context, { event, listener, method: 'once' }),
     removeHeader: (name: string): void => {
       context.res.headers.delete(name);
     },
+    removeListener: (event: string, listener: () => void): unknown =>
+      attach(context, { event, listener, method: 'removeListener' }),
     // `cookies.set` hands `Set-Cookie` over as an array of cookies; other callers pass a string.
     setHeader: (name: string, value: string | readonly string[]): void => {
       if (typeof value === 'string') {

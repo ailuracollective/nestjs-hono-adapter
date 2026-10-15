@@ -26,7 +26,7 @@ interface HookArgs {
 interface InstrumentationState {
   readonly onRequest: () => OnRequestHook | undefined;
   readonly onResponse: () => OnResponseHook | undefined;
-  readonly trustProxy: TrustProxy;
+  readonly trustProxy: () => TrustProxy;
 }
 
 interface GuardState {
@@ -149,7 +149,7 @@ const instrumentationStep =
       await next();
       return;
     }
-    const args = hookArgsOf(context, state.trustProxy);
+    const args = hookArgsOf(context, state.trustProxy());
     try {
       const onRequest = state.onRequest();
       if (onRequest !== undefined) await holdRequest(onRequest, args);

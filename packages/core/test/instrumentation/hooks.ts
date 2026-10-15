@@ -18,7 +18,7 @@ const probeApp = (hooks: ProbeHooks, order: string[] = []): Hono<NestEnv> => {
     instrumentationStep({
       onRequest: () => hooks.onRequest,
       onResponse: () => hooks.onResponse,
-      trustProxy: false,
+      trustProxy: () => false,
     }),
   );
   app.get('/ping', (context) => {
