@@ -6,7 +6,9 @@
   "release-label": "release/tagged",
   "initial-version": "0.1.0-beta",
   "packages": {
-    "packages/core": {},
+    "packages/core": {
+      "bump-minor-pre-major": true
+    },
     "packages/socket-io": {
       "component": "socket-io",
       "include-component-in-tag": true,
