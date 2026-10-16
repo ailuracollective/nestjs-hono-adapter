@@ -1,0 +1,6 @@
+# The Docker examples build from the repository root, so this applies to them.
+.git
+**/node_modules
+**/dist
+**/.wrangler
+**/.vercel
