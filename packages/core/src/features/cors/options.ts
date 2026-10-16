@@ -7,7 +7,7 @@ import type { CorsAnswer, CorsConfig, CorsOptions, CorsOptionsDelegate } from '.
 
 const ALLOWED_METHODS = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'];
 
-const MAX_AGE_SECONDS = 86_400;
+const MAX_AGE_SECONDS = 86400;
 
 const PREFLIGHT_STATUS = 204;
 
