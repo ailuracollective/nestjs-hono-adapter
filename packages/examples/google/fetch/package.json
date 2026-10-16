@@ -5,7 +5,7 @@
   "main": "dist/index.mjs",
   "scripts": {
     "bundle": "bun build src/index.ts --target=node --outfile=dist/index.mjs --external @fastify/static --external amqp-connection-manager --external mqtt --external kafkajs --external @nats-io/transport-node && cp deploy.package.json dist/package.json",
-    "deploy": "bun run --cwd ../../../.. build:core && bun run bundle && gcloud functions deploy ailura-nestjs-hono-google-fetch --gen2 --runtime=nodejs22 --region=us-central1 --source=dist --entry-point=handler --trigger-http --allow-unauthenticated",
+    "deploy": "bun run --cwd ../../../.. build:core && bun run bundle && gcloud functions deploy ailura-nestjs-hono-google-fetch --gen2 --runtime=nodejs22 --region=us-central1 --source=dist --entry-point=handler --trigger-http --no-allow-unauthenticated",
     "dev": "bun run --cwd ../../../.. build:core && bun run bundle && bunx @google-cloud/functions-framework --target=handler --port=8080"
   },
   "dependencies": {

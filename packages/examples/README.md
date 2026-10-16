@@ -104,6 +104,13 @@ From the repository root instead, name the config:
 bunx wrangler deploy --config packages/examples/cloudflare/fetch/wrangler.jsonc
 ```
 
+A Worker answers on `workers.dev` for anyone who finds the name —
+production and version previews alike. Only the account closes it, with
+Cloudflare Access: Zero Trust → **Enable Access**, then an application
+for the `*.workers.dev` hostname carrying an allow policy for your own
+address. `wrangler dev` is the private way to test without it: nothing
+leaves localhost.
+
 ### The transport import
 
 A project imports a published subpath:
@@ -224,6 +231,14 @@ bunx vercel link --project <project>
 bunx vercel deploy --prod
 ```
 
+Every example project sets Vercel Authentication for **all** deployments
+(`ssoProtection`), so an anonymous request is answered with a redirect
+to the Vercel login and only a team member reads the page. A terminal
+check goes through the CLI, which attaches the bypass: `bunx vercel curl
+https://<deployment>/v1/health`. A deploy the Git integration creates is
+protected the same way: the setting lives on the project, not in
+`vercel.json`.
+
 ### The Git flow
 
 Every folder carries the same `vercel.json`, so a Git-connected
@@ -343,7 +358,7 @@ upload list from `.gitignore` and dropping the git-ignored `dist/`.
 | ----------- | ---------------------------------------------------------- |
 | Runtime     | `nodejs22`, the Node line this repository develops against  |
 | Entry point | `handler`, the export `src/index.ts` carries                 |
-| Trigger     | HTTP, `--gen2`, unauthenticated                              |
+| Trigger     | HTTP, `--gen2`, authenticated                                |
 | Source      | `dist/`: the bundle and its `package.json`                    |
 
 ```sh
@@ -356,11 +371,24 @@ port 8080, which is what Cloud Functions runs itself; the export and the
 `--entry-point` are the same name and move together. The deployed URL
 answers the routes above under `/v1`.
 
-On a fresh project `--allow-unauthenticated` alone can leave the gen2
-function private: its underlying Cloud Run service is what refuses the
-call, so `gcloud run services add-iam-policy-binding <name> --region
-<region> --member=allUsers --role=roles/run.invoker` — or `gcloud
-functions add-invoker-policy-binding` — is what opens it.
+Both services deploy private — `--no-allow-unauthenticated`, and no
+`allUsers` binding — because a public endpoint bills whoever finds the
+URL. An anonymous call gets `403`; name yourself:
+
+```sh
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  https://<region>-<project>.cloudfunctions.net/<name>/v1/health
+```
+
+The token is the CLI's own identity and lasts about an hour. A browser
+has nowhere to put that header; `gcloud run services proxy <name>
+--region <region>` serves the same service on localhost with your
+credentials attached. Opening a
+service on purpose means granting the invoker role to `allUsers`:
+`gcloud run services add-iam-policy-binding <name> --region <region>
+--member=allUsers --role=roles/run.invoker`, or `gcloud functions
+add-invoker-policy-binding`. The gen2 function is private only when its
+underlying Cloud Run service is, so the role is granted there.
 
 ## Google Cloud Run
 
@@ -389,7 +417,7 @@ bundle, and nothing else from the repository.
 | ------- | --------------------------------------------------------------- |
 | Runtime | Node, `node:22-slim`, the line this repository develops against |
 | Port    | `$PORT`, 8080 by default and the port Cloud Run injects         |
-| Trigger | HTTP, unauthenticated (`--allow-unauthenticated`)               |
+| Trigger | HTTP, authenticated (`--no-allow-unauthenticated`)              |
 
 Cloud Run takes the port from the container, and the container takes it
 from `$PORT`. `gcloud run deploy --source` builds the image in the
@@ -401,7 +429,7 @@ be, is what gets uploaded:
 ```sh
 cp packages/examples/google/node/Dockerfile Dockerfile
 gcloud run deploy ailura-nestjs-hono-google-node \
-  --source . --region us-central1 --allow-unauthenticated
+  --source . --region us-central1 --no-allow-unauthenticated
 rm Dockerfile
 ```
 

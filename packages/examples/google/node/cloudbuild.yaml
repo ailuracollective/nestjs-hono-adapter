@@ -22,6 +22,7 @@ steps:
       - push
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
 
+  # No --allow-unauthenticated: a public service bills whoever finds the URL.
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
@@ -29,10 +30,7 @@ steps:
       - >
         gcloud run deploy ailura-nestjs-hono-google-node
         --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
-        --project=$PROJECT_ID --region=${_REGION} --allow-unauthenticated --quiet
-        && gcloud run services add-iam-policy-binding ailura-nestjs-hono-google-node
-        --project=$PROJECT_ID --region=${_REGION}
-        --member=allUsers --role=roles/run.invoker --quiet
+        --project=$PROJECT_ID --region=${_REGION} --no-allow-unauthenticated --quiet
 
 # Cloud Logging alone, so gcloud prints nothing: gcloud builds log <id> --region=<region>
 options:
