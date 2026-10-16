@@ -96,6 +96,14 @@ Both examples set `trustProxy: false`; the fetch one reads `info.remoteAddr`
 from `Deno.serve`, and the node one reads the socket address through the
 Node compatibility layer.
 
+For Deno Deploy, the examples import `npm:@ailura/nestjs-hono-adapter`
+so that the platform uses the published package instead of the local
+workspace path. Deployment from GitHub is automated by
+`.github/workflows/deno-fetch-deploy.yml` and
+`.github/workflows/deno-node-deploy.yml`, which also create or update the
+Deno apps `nestjs-hono-fetch` and `nestjs-hono-node` on every push to
+`main`.
+
 The adapter arrives through the hoisted workspace, so a clean checkout needs
 `bun run build:core` first, the way the Vercel folders need it.
 
