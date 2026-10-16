@@ -27,5 +27,6 @@ steps:
         --project=$PROJECT_ID --region=${_REGION}
         --member=allUsers --role=roles/run.invoker --quiet
 
+# Cloud Logging alone, so gcloud prints nothing: gcloud builds log <id> --region=<region>
 options:
   logging: CLOUD_LOGGING_ONLY
