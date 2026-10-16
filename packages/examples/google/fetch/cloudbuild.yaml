@@ -14,7 +14,6 @@ steps:
 
   # The upload is dist/, which carries the bundle and a manifest without
   # dependencies: the Node buildpack runs npm install and cannot read workspace:*.
-  # No --allow-unauthenticated: a public function bills whoever finds the URL.
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
@@ -23,7 +22,10 @@ steps:
         gcloud functions deploy ailura-nestjs-hono-google-fetch --gen2 --runtime=nodejs22
         --project=$PROJECT_ID --region=${_REGION}
         --source=packages/examples/google/fetch/dist --entry-point=handler
-        --trigger-http --no-allow-unauthenticated --quiet
+        --trigger-http --allow-unauthenticated --quiet
+        && gcloud run services add-iam-policy-binding ailura-nestjs-hono-google-fetch
+        --project=$PROJECT_ID --region=${_REGION}
+        --member=allUsers --role=roles/run.invoker --quiet
 
 # Cloud Logging alone, so gcloud prints nothing: gcloud builds log <id> --region=<region>
 options:
