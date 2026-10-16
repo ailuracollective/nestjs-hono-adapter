@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bunx vercel dev",
     "vercel-build": "bun run --cwd ../../../.. build:core && bun run bundle",
+    "vercel:ignore-build": "bun run ../../../../scripts/vercel-ignore-build.ts",
     "bundle": "bun build src/standalone.ts --target=bun --external @fastify/static --external amqp-connection-manager --external mqtt --external kafkajs --external @nats-io/transport-node --outfile=dist/standalone.mjs"
   },
   "dependencies": {

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "bunx vercel dev",
-    "vercel-build": "bun run --cwd ../../../.. build:core"
+    "vercel-build": "bun run --cwd ../../../.. build:core",
+    "vercel:ignore-build": "bun run ../../../../scripts/vercel-ignore-build.ts"
   },
   "dependencies": {
     "@ailura/nestjs-hono-adapter": "workspace:*",

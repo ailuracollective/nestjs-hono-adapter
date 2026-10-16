@@ -336,6 +336,36 @@
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
+    },
+    {
+      "files": ["scripts/**/*.ts"],
+      "env": {
+        "builtin": true,
+        "node": true
+      },
+      "rules": {
+        "import/no-nodejs-modules": "off",
+        "node/no-sync": "off",
+        "node/no-process-env": "off",
+        "max-statements": "off",
+        "typescript/method-signature-style": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unnecessary-condition": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "max-lines-per-function": "off",
+        "no-unnecessary-condition": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/no-unsafe-argument": "off",
+        "no-console": "off",
+        "sort-keys": "off",
+        "require-unicode-regexp": "off",
+        "init-declarations": "off",
+        "no-continue": "off",
+        "no-magic-numbers": "off"
+      }
     }
   ],
   "ignorePatterns": [

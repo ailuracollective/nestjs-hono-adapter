@@ -239,6 +239,32 @@ and all three set the same `framework`, `installCommand` and
 | `buildCommand`   | `bun run vercel-build`          |
 | `bunVersion`     | `1.4.x`, `bun` alone             |
 
+Each project selects its own build through an `ignoreCommand` (a setting
+Vercel reads from `vercel.json` as well as from the dashboard), so no
+commit can deploy an example whose inputs did not change:
+
+```json
+"ignoreCommand": "bun run vercel:ignore-build -- . ../../../core/src ../../../core/package.json ../../../core/tsconfig.build.json ../../../../package.json ../../../../bun.lock ../../../../tsconfig.json ../../../../bunfig.toml"
+
+The command calls the repository script `scripts/vercel-ignore-build.ts`.
+It takes the paths to check as parameters (plus optional `--base` and
+`--head` overrides), returns exit code `0` only when none of them
+changed, and builds on any Git error. The script is registered as
+`vercel:ignore-build` in both the root and each Vercel example's
+`package.json`, so Vercel can invoke it as above while local checks
+can run `bun run vercel:ignore-build -- <paths...>`.
+```
+
+The paths are relative to the project Root Directory. A changed file must
+match one of them for the build to run: the project's own directory, the
+adapter's source and the files its build reads, plus the root manifest,
+lockfile, shared TypeScript settings and Bun install settings. Anything
+else — another example, another workspace package, documentation, tests or
+benchmarks — leaves the command at exit code 0 and Vercel skips that
+deployment. Git errors and missing history make the command exit non-zero,
+so an uncertain check builds rather than silently skips. With this in
+place the native Skip deployment toggle above stays Disabled.
+
 `vercel.json` takes precedence over the dashboard, so importing the
 repository once per folder — Root Directory `packages/examples/vercel/<name>`
 — is the whole setup: Vercel then builds a preview for every pull
@@ -247,9 +273,12 @@ project settings decide whether that works: **Include source files
 outside of the Root Directory in the Build Step** is on by default and
 the build needs it (`packages/core`, the root `bun.lock` and the
 hoisted `node_modules` all live outside the Root Directory), while
-**Skip deployment** in the Root Directory section must stay off,
-because a change to `packages/core` affects all three examples and
-Vercel cannot tell.
+native **Skip deployment** in the Root Directory section must stay
+Disabled, because the `ignoreCommand` in each `vercel.json` decides
+whether to build. A change to `packages/core/src` or to a shared
+build/deployment input then affects all three examples, but
+documentation, tests, benchmarks and unrelated workspace packages do
+not.
 
 ### The listen call
 
