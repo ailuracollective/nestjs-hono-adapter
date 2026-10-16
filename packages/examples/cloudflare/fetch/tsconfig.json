@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": [
+      "@cloudflare/workers-types"
+    ],
+    "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "paths": {
+      "#adapter/*": ["../../../../packages/core/src/*.ts", "../../../../packages/core/src/*"],
+      "@ailura/nestjs-hono-adapter": ["../../../../packages/core/src/index.ts"],
+      "@ailura/nestjs-hono-adapter/fetch": ["../../../../packages/core/src/servers/fetch.ts"]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

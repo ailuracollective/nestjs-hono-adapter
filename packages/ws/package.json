@@ -1,0 +1,63 @@
+{
+  "name": "@ailura/nestjs-platform-hono-ws",
+  "version": "0.2.0",
+  "description": "The WebSocket bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/platform-ws WsAdapter serving on Hono.",
+  "keywords": [
+    "adapter",
+    "hono",
+    "nestjs",
+    "platform-ws",
+    "websockets"
+  ],
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
+  "bugs": {
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
+  },
+  "license": "MIT",
+  "author": "Ailura Code",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
+    "size": "size-limit",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
+    "@nestjs/platform-ws": ">=11 <13",
+    "hono": "^4.13.8"
+  },
+  "peerDependenciesMeta": {
+    "@ailura/nestjs-hono-adapter": {
+      "optional": true
+    },
+    "@nestjs/platform-ws": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

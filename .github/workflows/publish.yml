@@ -28,13 +28,48 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      # release-please cuts one independent release per package, so nothing
+      # here or in release-please-config.json enforces the one order that
+      # matters: core before multipart, which peers on it (ws and
+      # socket-io take it as an optional peer).
+      - name: Resolve the released package
+        id: package
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          case "$TAG" in
+            socket-io-v*) echo "dir=./packages/socket-io" >> "$GITHUB_OUTPUT" ;;
+            ws-v*) echo "dir=./packages/ws" >> "$GITHUB_OUTPUT" ;;
+            multipart-v*) echo "dir=./packages/multipart" >> "$GITHUB_OUTPUT" ;;
+            graphql-v*) echo "dir=./packages/graphql" >> "$GITHUB_OUTPUT" ;;
+            serve-static-v*) echo "dir=./packages/serve-static" >> "$GITHUB_OUTPUT" ;;
+            v*) echo "dir=./packages/core" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::no package is configured for tag '$TAG'"
+              exit 1
+              ;;
+          esac
       - run: bun install --frozen-lockfile
       - run: bun run build
       - name: Guard build output
+        env:
+          DIR: ${{ steps.package.outputs.dir }}
         run: |
-          if [ -z "$(ls -A dist 2>/dev/null)" ]; then
-            echo "::error::'dist' is missing or empty; the build step produced no output."
+          if [ -z "$(ls -A "$DIR/dist" 2>/dev/null)" ]; then
+            echo "::error::'$DIR/dist' is missing or empty; the build step produced no output."
             exit 1
           fi
+      # A release-please pre-release is the beta channel: it stays off `latest`
+      # and lands on `next`, so a stable consumer is never moved onto a beta.
+      - name: Resolve the dist-tag
+        id: dist
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish to npm
-        run: npm publish --provenance
+        run: npm publish "${{ steps.package.outputs.dir }}" --provenance --tag "${{ steps.dist.outputs.tag }}"

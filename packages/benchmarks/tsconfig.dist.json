@@ -1,0 +1,14 @@
+/**
+ * Empty on purpose, and copied to `dist/tsconfig.json` by the
+ * `build` script.
+ *
+ * Bun resolves module specifiers with the nearest `tsconfig.json`.
+ * With this empty file beside the compiled output, the
+ * `#benchmarks/*` aliases in `dist/` resolve through
+ * `package.json#imports` to `dist/` itself, instead of being
+ * remapped by the `paths` in the package `tsconfig.json` back to
+ * `src/`. That remap would make Bun load TypeScript sources while
+ * `node` loads the compiled output, so the two runtimes would not
+ * run the same code.
+ */
+{}

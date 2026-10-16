@@ -1,35 +1,23 @@
-# @ailura/nestjs-hono-adapter
+# NestJS Hono adapter
 
-<!-- Badges: calidad, seguridad y confianza -->
+An HTTP adapter that runs a NestJS application on [Hono](https://hono.dev), with no Express or Fastify underneath, plus its optional capabilities, each in a package of its own. The adapter is runtime-neutral: a **transport** serves it through Bun's own server by default, `@hono/node-server`, or a fetch host's Web `Request`/`Response`.
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
-[![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter)
-[![bundle size](https://img.shields.io/badge/bundle%20size-≤10kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/.size-limit.json)
-[![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
-An HTTP adapter that runs a NestJS application on
-[Hono](https://hono.dev), with no Express or Fastify underneath.
-The core is runtime-neutral; a **transport** decides how it is
-served. The default is `@hono/node-server`, which runs on Node
-and on Bun alike and is what this package has always served
-through; `bunServer()` opts into Bun's own server instead.
+## Packages
 
-**Problem**: Nest has no official Hono adapter. The two
-published alternatives target Nest 11 and answer incorrectly —
-one returns a success status to a handler that threw, the other
-writes every response twice.
+| Package | Entrypoints | What it is |
+| --- | --- | --- |
+| [`@ailura/nestjs-hono-adapter`](packages/core/README.md) | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
+| [`@ailura/nestjs-platform-hono-ws`](packages/ws/README.md) | `.` | `@nestjs/platform-ws` on Hono |
+| [`@ailura/nestjs-platform-hono-socket-io`](packages/socket-io/README.md) | `.` | Socket.IO gateways (bridge) |
+| [`@ailura/nestjs-platform-hono-multipart`](packages/multipart/README.md) | `.` | Upload interceptors (multer-style) |
+| [`@ailura/nestjs-platform-hono-graphql`](packages/graphql/README.md) | `.` | GraphQL for `@nestjs/apollo` |
+| [`@ailura/nestjs-platform-hono-serve-static`](packages/serve-static/README.md) | `.` | `@nestjs/serve-static` on Hono |
 
-**Solution**: This package implements the Nest 11/12
-`AbstractHttpAdapter` contract directly on Hono. Routes are
-registered on a Hono application, and Hono's Web `Request` and
-`Response` are translated to and from the objects Nest reads and
-writes.
+The adapter does the work; each capability package is optional and imports alone, and each bridge package is installed alone. The adapter's README is the detailed one.
 
-**Get started**: [Install](#install) ·
-[Report a bug](https://github.com/ailuracollective/nestjs-hono-adapter/issues)
-·
-[Contribute](https://github.com/ailuracollective/nestjs-hono-adapter/pulls)
+`ws`, `socket-io`, `graphql` and `serve-static` are **compatibility bridges**, and they behave differently from the capabilities above: you write no import for them. Installing the package is what installs the bridge, because the adapter's compatibility region resolves it out of your own tree. So `GraphQLModule.forRoot({ driver: ApolloDriver })` keeps naming the stock [`@nestjs/apollo`](https://www.npmjs.com/package/@nestjs/apollo) driver, `ServeStaticModule.forRoot()` keeps naming the stock `@nestjs/serve-static`, a `@WebSocketGateway()` keeps being served by the stock [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) `WsAdapter`, and a Socket.IO gateway by the stock [`@nestjs/platform-socket.io`](https://www.npmjs.com/package/@nestjs/platform-socket.io) `IoAdapter`; none of them knows this repository exists. See [docs/compatibility.md](docs/compatibility.md).
 
 ## Install
 
@@ -37,174 +25,88 @@ writes.
 bun add @ailura/nestjs-hono-adapter hono
 ```
 
-```sh
-npm install @ailura/nestjs-hono-adapter hono
-```
-
-```sh
-pnpm add @ailura/nestjs-hono-adapter hono
-```
-
-`@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server`
-are peer dependencies, so the application decides their
-versions. `@hono/node-server` is what the adapter serves through
-when no transport is named, so it is required. A deployment that
-serves WebSockets also installs `@hono/node-ws` and
-`@nestjs/websockets`: those two are the optional peers, reached
-through `./ws` and nowhere else.
-
-## Use
-
-Pick the transport for the runtime, then inject it:
-
 ```ts
 import { NestFactory } from '@nestjs/core';
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { bunServer } from '@ailura/nestjs-hono-adapter/bun-server';
 
-import { AppModule } from './app.module.ts';
-
-const app = await NestFactory.create(
-  AppModule,
-  new ServerAdapter({
-    bodyLimit: 2 * 1024 * 1024,
-    transport: bunServer(),
-    trustProxy: true,
-  }),
-);
-app.enableCors({
-  credentials: true,
-  origin: ['https://app.example.com'],
-});
+const app = await NestFactory.create(AppModule, new ServerAdapter({ transport: bunServer() }));
 await app.listen(3000);
 ```
 
-Leaving `transport` out serves through `@hono/node-server` on
-Node and on Bun — the runtime every deployment was served by
-before the transports split — with `overrideGlobalObjects` on,
-as it always was:
+Leaving `transport` out serves through Bun's own server. Read [the adapter's README](packages/core/README.md) for the transports, options and migration.
 
-```ts
-new ServerAdapter();
-```
+## Migrating to 2.x
 
-The same transport, named, is where that option lives too; the
-`ServerAdapterOptions.overrideGlobalObjects` spelling is kept,
-and is read only when no transport is named:
+Version 2 changes what a zero-configuration bootstrap serves through, moves `./ws` into a package of its own, turns security headers off by default, and stops a `require()` of the package from working. A deployment on 1.x upgrades in five steps.
+
+**Name the transport on Node.** `new ServerAdapter()` served through `@hono/node-server` in 1.x and now serves through `bunServer()`, Bun's own server. A deployment on Node asks for the one it wants:
 
 ```ts
 import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
 
-new ServerAdapter({
-  transport: nodeServer({ overrideGlobalObjects: true }),
-});
+new ServerAdapter({ transport: nodeServer() });
 ```
 
-On a host that serves a Web `Request`, such as Cloudflare
-Workers, Vercel Functions or Deno, the fetch transport takes no
-port and the deployment exports the handler:
+**Move `overrideGlobalObjects` to the transport.** `ServerAdapterOptions.overrideGlobalObjects` is gone; `nodeServer()` carries it and still defaults to `true`. `new ServerAdapter({ overrideGlobalObjects: false })` becomes `new ServerAdapter({ transport: nodeServer({ overrideGlobalObjects: false }) })`.
+
+**Replace `HonoWsAdapter` with Nest's own `WsAdapter`.** `@ailura/nestjs-hono-adapter/ws` no longer exists. WebSockets are served by the stock [`@nestjs/platform-ws`](https://www.npmjs.com/package/@nestjs/platform-ws) adapter, fitted to Hono by `@ailura/nestjs-platform-hono-ws`: install that package — the adapter's compatibility region discovers it, so your code imports nothing of it — install `@nestjs/platform-ws` in place of `@hono/node-ws`, and name the stock class:
 
 ```ts
-import {
-  fetchHandler,
-  fetchServer,
-} from '@ailura/nestjs-hono-adapter/fetch';
+import { WsAdapter } from '@nestjs/platform-ws';
 
-const adapter = new ServerAdapter({ transport: fetchServer() });
-const app = await NestFactory.create(AppModule, adapter);
-await app.init();
-
-export default { fetch: fetchHandler(adapter.getHono()) };
+app.useWebSocketAdapter(new WsAdapter(app));
 ```
 
-The fetch handler has no client address by default and ignores
-`cf-connecting-ip`. Pass `fetchHandler(app, { clientAddress })`
-with a resolver for a trusted address supplied by the host; read
-a header there only if the host guarantees clients cannot forge
-it. `x-forwarded-for` can still supply `ip` when `trustProxy`
-trusts the proxy. See
-[fetch hosts](docs/deployment.md#fetch-hosts) for the header
-opt-in and fallback behavior.
+Only a gateway's `path` is honoured; the wire protocol is `platform-ws`'s own.
 
-`getType()` answers `hono`, which is the value ecosystem
-packages branch on.
+**Set `secureHeaders: true` if you relied on the default.** Security headers were on by default in 1.x and are off by default in 2.x.
 
-## Options
+**`import` the package instead of `require()`ing it.** The `.` entrypoint is **ESM only** now: it resolves `hono/bun` in a top-level await, so `require()` throws where Node 22 could previously `require()` the package, and `import` works on Node and Bun.
 
-| Option          | Type                            | Default | Effect                                                                           |
-| --------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------- |
-| `bodyLimit`     | `number`                        | `1 MiB` | Largest request body, in bytes; `0` removes the limit                            |
-| `rawBody`       | `boolean`                       | `false` | Keep the bytes that were read in `NestRequest.rawBody`                           |
-| `secureHeaders` | `boolean \| object`             | `true`  | Install `hono/secure-headers`, with its defaults or with the given options       |
-| `transport`     | `Transport`                     | —       | The runtime: `bunServer()`, `nodeServer()` or `fetchServer()`                    |
-| `trustProxy`    | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for` and `x-forwarded-host`               |
-| `views`         | `object`                        | —       | The engine a `@Render()` handler renders with, and where templates are read from |
+The optional capabilities are packages of their own; `./multipart` and `./socket-io` only ever existed on `main` and were never released, so a 1.x deployment has nothing to migrate there. [The adapter's README](packages/core/README.md#migrating-to-2x) carries the full detail.
 
 ## Documentation
 
-| Topic                                                        | What it covers                                                                                             |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Topic | What it covers |
+| --- | --- |
 | [docs/platform-differences.md](docs/platform-differences.md) | Where Express and Fastify disagree, and how this adapter answers; routes, query strings, bodies, responses |
-| [docs/features.md](docs/features.md)                         | Server-sent events, views, static assets, CORS, request-level security                                     |
-| [docs/deployment.md](docs/deployment.md)                     | TLS, proxies, shutdown, the Hono API, WebSockets, microservices                                            |
-| [docs/development.md](docs/development.md)                   | Requirements, build and test commands, release process                                                     |
-| [docs/api.md](docs/api.md)                                   | API reference: classes, options, and types                                                                 |
-| [docs/architecture.md](docs/architecture.md)                 | The layer map, import rules, bundle ceilings, and Node boundary                                            |
-| [docs/bundle-baseline.md](docs/bundle-baseline.md)           | Verified bundle and package measurements, and what the evidence supports                                   |
-| [examples/](examples/)                                       | Cloudflare Workers, Vercel, Cloud Run, and container examples — one application behind a transport         |
-
-## Requirements
-
-- Bun 1.2+ (toolchain), or Node 22.12+.
-- `@hono/node-server`, which both serve through by default;
-  `bunServer()` replaces it with Bun's own server.
-- Nest 11 or 12.
-- Hono 4.
+| [docs/compatibility.md](docs/compatibility.md) | The bridges that let Nest's own Express, `@nestjs/serve-static` and Apollo code run here |
+| [docs/parity.md](docs/parity.md) | What of Nest's four platform packages is implemented here, and what is still missing |
+| [docs/features.md](docs/features.md) | Server-sent events, views, static assets, CORS, request-level security |
+| [docs/deployment.md](docs/deployment.md) | TLS, proxies, shutdown, the Hono API, WebSockets, microservices |
+| [docs/development.md](docs/development.md) | Requirements, build and test commands, release process |
+| [docs/api.md](docs/api.md) | API reference: classes, options, and types |
+| [docs/architecture.md](docs/architecture.md) | The layer map, import rules, bundle ceilings, and Node boundary |
+| [docs/bundle-baseline.md](docs/bundle-baseline.md) | Verified bundle and package measurements, and what the evidence supports |
+| [docs/benchmarks.md](docs/benchmarks.md) | Adapter comparison against Express and Fastify, generated by the private benchmark suite |
+| [packages/examples/](packages/examples/) | Cloudflare Workers examples — one application per transport that runs on a Worker |
+| [packages/compatibility/](packages/compatibility/README.md) | The private suite that proves the adapter serves an app built with the third-party Nest packages, and the full package matrix |
 
 ## Development
+
+Requires Bun 1.2+ (or Node 22.12+), Nest 11 or 12, and Hono 4. From a fresh clone:
 
 ```sh
 bun install --frozen-lockfile
 bun run check
 ```
 
-`bun run check` is exactly what CI runs: lint, format,
-typecheck, test, build and the bundle size gate.
+`bun run check` is exactly what CI runs: lint, format, typecheck, test, build and the bundle size gate.
 
 ## Contributing
 
-Contributions are welcome via
-[pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls).
+Contributions are welcome via [pull requests](https://github.com/ailuracollective/nestjs-hono-adapter/pulls); open an [issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues) for bugs or feature requests, including the Nest and Hono versions, a minimal reproduction, and the expected versus actual behaviour. A contribution must:
 
-### Contribution requirements
-
-- Follow the
-  [Conventional Commits](https://www.conventionalcommits.org/)
-  specification (enforced by the contribution policy).
-- Code must pass the project's
-  [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and
-  [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html)
-  configuration — the enforced coding standard.
-- Run `bun run check` before opening a PR — it must pass lint,
-  format, typecheck, test, build, and the bundle size gate.
-- Read [docs/architecture.md](docs/architecture.md) before
-  editing `src/`: it documents the layer map, import rules, and
-  bundle ceilings.
-- Tests must cover new behaviour; the suite runs against both
-  Nest 11 and 12 on Bun.
-
-## Reporting issues
-
-Open an
-[issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues)
-for bugs or feature requests. Include the Nest and Hono
-versions, a minimal reproduction, and the behaviour you expected
-versus what happened.
+- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (enforced by the contribution policy).
+- Pass the project's [oxlint](https://oxc.rs/docs/guide/usage/linter.html) and [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) configuration — the enforced coding standard.
+- Pass `bun run check` before the PR is opened: lint, format, typecheck, test, build, and the bundle size gate.
+- Cover new behaviour with tests; the suite runs against both Nest 11 and 12 on Bun.
+- Read [docs/architecture.md](docs/architecture.md) before editing the adapter: the layer map, import rules, and bundle ceilings.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for the vulnerability reporting
-process.
+See [SECURITY.md](SECURITY.md) for the vulnerability reporting process.
 
 ## License
 

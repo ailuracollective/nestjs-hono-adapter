@@ -20,5 +20,6 @@
 # An explicit empty mapping: a comments-only file parses to None, like a truncated one.
 
 # No deviations: this repository releases with release-please, the standard's own
-# release tool, so the `released` extension and the dropped `release/*` labels it
-# carried while it used semantic-release are gone and the core manifest applies as-is.
+# release tool, so the `released` extension is gone and the core manifest applies as-is.
+# The `release/pending` and `release/tagged` labels stay: `release-please-config.json`
+# names them as its `label` and `release-label`.

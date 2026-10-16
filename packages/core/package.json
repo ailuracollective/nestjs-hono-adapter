@@ -1,0 +1,78 @@
+{
+  "name": "@ailura/nestjs-hono-adapter",
+  "version": "2.0.1",
+  "description": "A NestJS HTTP adapter that runs an application on Hono.",
+  "keywords": [
+    "adapter",
+    "bun",
+    "hono",
+    "http",
+    "nestjs",
+    "node"
+  ],
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
+  "bugs": {
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
+  },
+  "license": "MIT",
+  "author": "Ailura Code",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "imports": {
+    "#adapter/*": "./dist/*.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bun-server": {
+      "types": "./dist/servers/bun.d.ts",
+      "default": "./dist/servers/bun.js"
+    },
+    "./node-server": {
+      "types": "./dist/servers/node.d.ts",
+      "default": "./dist/servers/node.js"
+    },
+    "./fetch": {
+      "types": "./dist/servers/fetch.d.ts",
+      "default": "./dist/servers/fetch.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
+    "size": "size-limit",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@nestjs/common": ">=11 <13",
+    "@nestjs/core": ">=11 <13",
+    "hono": "^4.13.8",
+    "rxjs": "^7.8.2"
+  },
+  "peerDependenciesMeta": {
+    "@hono/node-server": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

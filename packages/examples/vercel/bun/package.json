@@ -1,0 +1,23 @@
+{
+  "name": "@ailura/nestjs-hono-adapter-example-vercel-bun",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bunx vercel dev",
+    "vercel-build": "bun run --cwd ../../../.. build:core && bun run bundle",
+    "bundle": "bun build src/standalone.ts --target=bun --external @fastify/static --external amqp-connection-manager --external mqtt --external kafkajs --external @nats-io/transport-node --outfile=dist/standalone.mjs"
+  },
+  "dependencies": {
+    "@ailura/nestjs-hono-adapter": "workspace:*",
+    "@nestjs/common": "^12.0.3",
+    "@nestjs/core": "^12.0.3",
+    "@nestjs/swagger": "12.0.2",
+    "@scalar/nestjs-api-reference": "1.2.28",
+    "hono": "^4.13.8",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2"
+  }
+}

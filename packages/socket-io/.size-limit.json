@@ -1,0 +1,14 @@
+[
+  {
+    "name": "socket-io",
+    "path": "dist/index.js",
+    "limit": 900,
+    "brotli": true,
+    "ignore": [
+      "@ailura/nestjs-hono-adapter",
+      "@nestjs/platform-socket.io",
+      "@socket.io/bun-engine",
+      "socket.io"
+    ]
+  }
+]

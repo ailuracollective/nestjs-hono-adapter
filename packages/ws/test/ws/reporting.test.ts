@@ -1,0 +1,66 @@
+import { expect, test } from 'bun:test';
+
+import { BaseWsExceptionFilter } from '@nestjs/websockets';
+
+import { FAIL, GATEWAY_PATH } from './gateways.ts';
+import {
+  ANY_PORT,
+  QUIET_MS,
+  nextMessage,
+  open,
+  quiet,
+  socketUrl,
+  startGateways,
+} from './support.ts';
+
+const OTHER_PORT = 3000;
+
+const nestAnswersExceptions = (): boolean => {
+  const candidate: unknown = Reflect.get(BaseWsExceptionFilter.prototype, 'isNativeWebSocket');
+  return typeof candidate === 'function';
+};
+
+const NOTHING = Symbol('nothing');
+
+const sendOrNothing = async (socket: WebSocket, event: string): Promise<unknown> => {
+  socket.send(JSON.stringify({ event }));
+  const outcome = await Promise.race([nextMessage(socket), quiet(QUIET_MS).then(() => NOTHING)]);
+  if (outcome === NOTHING) return NOTHING;
+  return outcome;
+};
+
+test('a handler that throws is answered the way Nest answers it', async () => {
+  const probe = await startGateways();
+  const socket = await open(socketUrl(probe, GATEWAY_PATH));
+  try {
+    const answer = await sendOrNothing(socket, FAIL);
+    if (nestAnswersExceptions()) {
+      expect(answer).toMatchObject({ event: 'exception' });
+      return;
+    }
+    expect(answer).toBe(NOTHING);
+  } finally {
+    socket.close();
+    await probe.close();
+  }
+});
+
+test('a gateway option the adapter cannot serve is refused', async () => {
+  const probe = await startGateways();
+  try {
+    expect(() => {
+      probe.ws.create(ANY_PORT, { namespace: '/chat' });
+    }).toThrow(TypeError);
+    expect(() => {
+      probe.ws.create(ANY_PORT, { perMessageDeflate: true });
+    }).toThrow(TypeError);
+    expect(() => {
+      probe.ws.create(ANY_PORT, { server: {} });
+    }).toThrow(TypeError);
+    expect(() => {
+      probe.ws.create(OTHER_PORT);
+    }).toThrow(TypeError);
+  } finally {
+    await probe.close();
+  }
+});

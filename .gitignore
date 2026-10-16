@@ -7,3 +7,10 @@ coverage/
 .atl/
 odd/
 .codegraph/
+.gh-cache/
+.wrangler/
+.idea/
+.vscode/
+.vercel
+.env*
+.tmp-*

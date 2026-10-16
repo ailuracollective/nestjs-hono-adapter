@@ -1,14 +1,15 @@
 # API Reference
 
-This page documents the external interface of the package: the
-classes, options, and types a consumer imports and uses.
-
 ## Entrypoints
 
-| Entrypoint                       | Purpose                             |
-| -------------------------------- | ----------------------------------- |
-| `@ailura/nestjs-hono-adapter`    | HTTP adapter (`ServerAdapter`)      |
-| `@ailura/nestjs-hono-adapter/ws` | WebSocket adapter (`HonoWsAdapter`) |
+| Package | Entrypoints | Purpose |
+| --- | --- | --- |
+| `@ailura/nestjs-hono-adapter` | `.`, `./bun-server`, `./node-server`, `./fetch` | The HTTP adapter and its transports |
+| `@ailura/nestjs-platform-hono-multipart` | `.` | Upload interceptors (multer-style) |
+| `@ailura/nestjs-platform-hono-ws` | `.` | Nest's `@nestjs/platform-ws` `WsAdapter` on Hono (bridge) |
+| `@ailura/nestjs-platform-hono-socket-io` | `.` | Nest's `@nestjs/platform-socket.io` `IoAdapter` on Hono (bridge) |
+
+`./ws` moved to its own package; `./multipart` and `./socket-io` only ever existed on `main`. Install per the [README](../packages/core/README.md#migrating-to-2x).
 
 ## HTTP Adapter
 
@@ -18,13 +19,8 @@ classes, options, and types a consumer imports and uses.
 import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 ```
 
-The class handed to `NestFactory.create()`:
-
 ```ts
-const app = await NestFactory.create(
-  AppModule,
-  new ServerAdapter(options),
-);
+const app = await NestFactory.create(AppModule, new ServerAdapter(options));
 ```
 
 ### `NestHonoApplication`
@@ -33,87 +29,41 @@ const app = await NestFactory.create(
 import type { NestHonoApplication } from '@ailura/nestjs-hono-adapter';
 ```
 
-The type to hand `NestFactory.create()`, so the application it
-answers is typed to this adapter rather than to any platform:
-
 ```ts
-const app = await NestFactory.create<NestHonoApplication>(
-  AppModule,
-  new ServerAdapter(),
-);
+const app = await NestFactory.create<NestHonoApplication>(AppModule, new ServerAdapter());
 
 app.getHttpAdapter().getHono(); // NestHono
 app.getHttpServer().address(); // Server & http.Server
 ```
 
-The server is named as both the port every transport implements
-and Node's own `http.Server`, so a caller that reached for
-`closeAllConnections()` or listened for `'upgrade'` — both of
-which worked before the transports split — still compiles. Only
-the default (Node) transport answers a real `http.Server`.
+`getHttpServer()` is `Server` (every transport) and Node's `http.Server`, so `closeAllConnections()` and `'upgrade'` compile; only the Node transport answers a real `http.Server`.
 
-`NestFactory.create()` types what it answers as whatever the
-type argument says, defaulting to `INestApplication`. That
-default describes an application on any platform:
-`getHttpAdapter()` answers the `HttpServer` contract every
-platform shares, and `getHttpServer()` answers `any`. This type
-narrows both to what this adapter gives, and stays assignable to
-`INestApplication`, so a helper that took one keeps taking it.
-
-Not naming it costs nothing for `getHono()`, which this package
-declares on `HttpServer` itself — see
-[Adapter methods](#adapter-methods) — but `getHttpAdapter()`
-still answers the shared contract, and `getHttpServer()` still
-answers `any`. `TestingModule.createNestApplication()` takes the
-same type argument.
+`NestFactory.create()` otherwise defaults to `INestApplication`, whose `getHttpAdapter()` is the shared `HttpServer` contract and `getHttpServer()` is `any`. This type narrows both and stays assignable; not naming it costs nothing for `getHono()` (declared on `HttpServer` — see [Adapter methods](#adapter-methods)). `TestingModule.createNestApplication()` takes the same argument.
 
 ### `ServerAdapterOptions`
 
-| Option                  | Type                            | Default        | Description                                                                      |
-| ----------------------- | ------------------------------- | -------------- | -------------------------------------------------------------------------------- |
-| `bodyLimit`             | `number`                        | `1 MiB`        | Largest request body in bytes; `0` removes the limit                             |
-| `rawBody`               | `boolean`                       | `false`        | Keep the bytes that were read in `NestRequest.rawBody`                           |
-| `secureHeaders`         | `boolean \| object`             | `true`         | Install `hono/secure-headers` with defaults or with the given options            |
-| `overrideGlobalObjects` | `boolean`                       | `true`         | Read only when `transport` is left out; `nodeServer()` takes its own             |
-| `transport`             | `Transport`                     | `nodeServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()`   |
-| `trustProxy`            | `boolean \| number \| string[]` | `false`        | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host`                  |
-| `views`                 | `ViewOptions`                   | —              | The engine a `@Render()` handler renders with, and where templates are read from |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bodyLimit` | `number` | `1 MiB` | Largest request body in bytes; `0` removes the limit |
+| `rawBody` | `boolean` | `false` | Keep the bytes that were read in `NestRequest.rawBody` |
+| `secureHeaders` | `boolean \| object` | `false` | Install `hono/secure-headers` with defaults or with the given options; off by default |
+| `transport` | `Transport` | `bunServer()` | The runtime to serve through: `bunServer()`, `nodeServer()` or `fetchServer()` |
+| `trustProxy` | `boolean \| number \| string[]` | `false` | Read `x-forwarded-proto`, `x-forwarded-for`, `x-forwarded-host` |
+| `views` | `ViewOptions` | — | The engine a `@Render()` handler renders with, and where templates are read from |
 
 ### Transports
 
-The runtime is injected through `transport`, and each one lives
-behind its own subpath so a deployment loads only what it serves
-with:
+| Subpath | Export | Runtime |
+| --- | --- | --- |
+| `@ailura/nestjs-hono-adapter/bun-server` | `bunServer()` | Bun's own server |
+| `@ailura/nestjs-hono-adapter/node-server` | `nodeServer(options?)` | `@hono/node-server` |
+| `@ailura/nestjs-hono-adapter/fetch` | `fetchServer(options?)` | A fetch host (Workers, Vercel Functions, Deno) |
 
-| Subpath                                   | Export                  | Runtime                                        |
-| ----------------------------------------- | ----------------------- | ---------------------------------------------- |
-| `@ailura/nestjs-hono-adapter/bun-server`  | `bunServer()`           | Bun's own server                               |
-| `@ailura/nestjs-hono-adapter/node-server` | `nodeServer(options?)`  | `@hono/node-server`                            |
-| `@ailura/nestjs-hono-adapter/fetch`       | `fetchServer(options?)` | A fetch host (Workers, Vercel Functions, Deno) |
+`bunServer` is the default, so `new ServerAdapter()` serves through `Bun.serve`. `nodeServer()` runs on Node and Bun and takes two options. `autoCleanupIncoming` (default `true`) makes `@hono/node-server` drain and destroy the socket of a request whose body was never read; turn it off only for trusted clients, such as behind a reverse proxy that always reads the body through. `overrideGlobalObjects` (default `true`) is whether `@hono/node-server` may swap the global `Request` and `Response` for its lighter classes — the fastest path; the swap is process-wide and not restored, so set it `false` to leave the globals alone.
 
-`nodeServer` is the transport the adapter serves through when
-`transport` is left out, so `new ServerAdapter()` keeps working
-wherever `@hono/node-server` does — on Node and on Bun. It takes
-one option, `overrideGlobalObjects` (default `false`): whether
-`@hono/node-server` may replace the global `Request` and
-`Response` with its lighter classes. It is off by default
-because the replacement is process-wide and not restored; the
-transport the adapter picks itself passes `true`, which is the
-behaviour every deployment had before the transports split, and
-which `ServerAdapterOptions.overrideGlobalObjects` still
-reaches.
+A transport carries a websocket helper only where the runtime has one: `nodeServer` none, Bun only where `hono/bun` loads (never on Node). A gateway on a transport without one is served by `@nestjs/platform-ws`'s own `ws.Server` on the transport's HTTP server; an app serving no WebSocket never builds one.
 
-A transport carries a websocket helper only where the runtime
-has one. `nodeServer` names none, so the `/ws` island falls back
-to `@hono/node-ws`: an application that serves no WebSocket
-never installs it.
-
-`fetchServer` takes no port: `listen()` and `close()` do
-nothing, and the deployment exports the handler. Static assets
-and WebSockets are host-specific, so a host that has them passes
-`serveStatic` and `upgradeWebSocket`; asking for one without
-passing it throws. `fetchHandler(app)` wraps the Hono
-application as the `fetch` a host exports:
+`fetchServer` takes no port: `close()` does nothing and `listen()` rejects naming the fetch host. Static assets and WebSockets are host-specific: the host passes `serveStatic` and `upgradeWebSocket`, and asking for one without it throws. `fetchHandler(app)` wraps the Hono app as the exported `fetch`:
 
 ```ts
 const adapter = new ServerAdapter({
@@ -127,118 +77,169 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 
 ### Application methods
 
-These methods are available on the `INestApplication` returned
-by `NestFactory.create()` when using this adapter:
-
-| Method            | Signature                                                                    | Description                                      |
-| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| `enableCors`      | `(options?: CorsOptions) => void`                                            | Turns on the CORS middleware                     |
+| Method | Signature | Description |
+| --- | --- | --- |
+| `enableCors` | `(options?: CorsOptions) => void` | Turns on CORS; no options allows every origin |
 | `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix |
-| `setBaseViewsDir` | `(directory: string \| readonly string[]) => this`                           | Names the directories a view is read from        |
-| `setViewEngine`   | `(engine: string) => this`                                                   | Names the engine by the extension it renders     |
+| `setBaseViewsDir` | `(directory: string \| readonly string[]) => this` | Names the directories a view is read from |
+| `setViewEngine` | `(engine: string) => this` | Names the engine by the extension it renders, loading it on first render |
+| `setLocal` | `(key: string, value: unknown) => this` | Adds one value to every template render |
+| `set` | `(name: string, value: unknown) => this` | Honours the settings that name behaviour |
+| `enable` | `(name: string) => this` | `set(name, true)` |
+| `disable` | `(name: string) => this` | `set(name, false)` |
+
+Express's `app.get(name)` and `engine()` are absent: the first collides with the container's `get()` and the GET registrar, the second with `setViewEngine()`. Both are in [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
+
+These are reached on the application — `app.useStaticAssets(...)`, `app.setViewEngine(...)` — the way `NestExpressApplication` is read: `NestHonoApplication` and every `INestApplication` carry them, and the adapter answers behind them. The adapter carries the same names.
 
 ### Adapter methods
 
-These are on the adapter rather than on the application, so they
-are reached through `app.getHttpAdapter()`:
+| Method | Signature | Description |
+| --- | --- | --- |
+| `getHono` | `() => NestHono` | The underlying Hono application |
+| `getInstance` | `<TInstance = NestHono>() => TInstance` | The same application, typed rather than as `any` |
+| `getType` | `() => 'hono'` | The identifier ecosystem packages branch on |
+| `isRouteOrderSensitive` | `() => boolean` | Returns `false` (Hono scores routes) |
+| `useBodyParser` | `(type?: string, rawBody?: boolean, options?) => void` | Reached by `app.useBodyParser()` |
 
-| Method                  | Signature                                              | Description                                      |
-| ----------------------- | ------------------------------------------------------ | ------------------------------------------------ |
-| `getHono`               | `() => NestHono`                                       | The underlying Hono application                  |
-| `getInstance`           | `<TInstance = NestHono>() => TInstance`                | The same application, typed rather than as `any` |
-| `getType`               | `() => 'hono'`                                         | The identifier ecosystem packages branch on      |
-| `isRouteOrderSensitive` | `() => boolean`                                        | Returns `false` (Hono scores routes)             |
-| `useBodyParser`         | `(type?: string, rawBody?: boolean, options?) => void` | Reached by `app.useBodyParser()`                 |
+`getHono` is declared on Nest's `HttpServer` by this package, so it is reachable off an untyped application, but the declaration covers every `HttpServer` (Express and Fastify included, which lack it). Name [`NestHonoApplication`](#nesthonoapplication) — it narrows the adapter instead of widening the contract.
 
-`getHono` is declared on Nest's `HttpServer` by this package,
-which is what makes it reachable off an application whose type
-was never named. The declaration is wider than the truth: it
-applies to every `HttpServer` a program can reach, including the
-Express and Fastify ones, which have no such member. A program
-holding more than one platform should name
-[`NestHonoApplication`](#nesthonoapplication), which narrows the
-adapter instead of widening the contract.
+`getType()` answers `'hono'`, not `'express'` or `'fastify'`, since the adapter wraps neither. Among the packages the suite runs, only `@nestjs/swagger` reads it, and it takes the `useStaticAssets()` branch, which this adapter serves.
+
+## Uploads
+
+### Interceptors
+
+```ts
+import {
+  FileInterceptor,
+  FileStreamInterceptor,
+  FilesInterceptor,
+  FileFieldsInterceptor,
+  AnyFilesInterceptor,
+  NoFilesInterceptor,
+  MultipartModule,
+  diskStorage,
+  memoryStorage,
+} from '@ailura/nestjs-platform-hono-multipart';
+```
+
+They parse `multipart/form-data` with multer's semantics — `@UploadedFile()`→`req.file`, `@UploadedFiles()`→`req.files`, text→`req.body` — like platform-express's family, same options.
+
+| Interceptor             | Stores                                            |
+| ----------------------- | ------------------------------------------------- |
+| `FileInterceptor`       | One file in a named field → `req.file`            |
+| `FilesInterceptor`      | Up to `maxCount` files in a named field → array   |
+| `FileFieldsInterceptor` | Files in each of several fields → grouped by name |
+| `AnyFilesInterceptor`   | Every file, any field → array                     |
+| `NoFilesInterceptor`    | Text fields only; a file is a `400`               |
+| `FileStreamInterceptor` | One file in a named field → a live stream         |
+
+`FileStreamInterceptor(fieldName, localOptions?)` is the streaming counterpart of `@nestjs/platform-fastify/multipart`'s interceptor and stores nothing: `@UploadedFile()` reads a `MultipartFileStream` whose `stream` carries the bytes as they arrive. Only what the handler reads is taken, and the unread is discarded once it answers, so a client still uploading is never left hanging. Its options omit `dest` and `storage`, and `limits.fileSize` is enforced on the stream, not the request.
+
+`MultipartModule.register(options)` (and `registerAsync`) provides module-wide defaults every interceptor merges over.
+
+### Upload options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `dest` | `string` | — | Folder for disk storage when no `storage` |
+| `storage` | `MultipartStorageEngine` | memory | The engine that stores each file |
+| `limits` | `MultipartLimits \| ((req) => MultipartLimits)` | — | Size and count ceilings, as multer's |
+| `preservePath` | `boolean` | `false` | Keep the whole path a file arrived with |
+| `defParamCharset` | `string` | `latin1` | Charset for part header values |
+| `fileFilter` | `(req, file, cb) => void` | — | Accept or refuse each file |
+
+`memoryStorage()` keeps each file in `file.buffer`; `diskStorage({ destination, filename })` writes it and sets `destination`, `filename` and `path`. Both implement multer's `_handleFile`/`_removeFile` contract, so a platform-express engine works unchanged.
+
+The adapter's `bodyLimit` is answered `413` under any framing: a declared `Content-Length` already over it is refused before the body is read, and a chunked body with none is counted chunk by chunk as it is read. A body that declares a length under the limit but carries more is read first and measured after, so it is refused too. A multipart body is the exception: a parser consumes it. Where `@ailura/nestjs-platform-hono-multipart` is imported, the island's `busboy` reads it, so the route's `limits` are the ceiling while it is parsed and `bodyLimit` still refuses a declared length already over it; otherwise Hono's own parser counts no ceiling.
+
+The island needs `busboy` (an optional peer) and works where Node streams do — Node and Bun; a fetch host instead parses `multipart/form-data` into `req.body` and `req.files` through Hono's parser.
 
 ## WebSocket Adapter
 
-### `HonoWsAdapter`
+Shipped as `@ailura/nestjs-platform-hono-ws`, a **compatibility bridge**: installing the package is what installs it, and an application names Nest's own `@nestjs/platform-ws` `WsAdapter` — `app.useWebSocketAdapter(new WsAdapter(app))`. The package exports the bridge the region reads:
 
 ```ts
-import { HonoWsAdapter } from '@ailura/nestjs-hono-adapter/ws';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
+import type { GatewayClient } from '@ailura/nestjs-platform-hono-ws';
 ```
 
-Created internally by Nest when a `@WebSocketGateway()` is
-declared. A gateway that asks for its own port or for a
-namespace is refused.
+The socket `@ConnectedSocket()` receives is exported as the type `GatewayClient`, so a gateway types its parameter with it.
 
-### `HonoGatewayOptions`
+Its `install(target)` patches `WsAdapter.prototype.create` once per process: for the adapter a gateway was created for, the gateway's `path` is registered on that adapter's Hono application instead of a `ws.Server` being built. Every other member — `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()`, `close()`, `dispose()`, `messageParser` — is the stock class's. Only `path` is honoured; a non-zero `port`, a `namespace`, a `server` and the WebSocket server options are refused by name. See [WebSockets](deployment.md#websockets).
 
-| Option      | Type     | Default | Description                     |
-| ----------- | -------- | ------- | ------------------------------- |
-| `path`      | `string` | `'/'`   | The path the gateway listens on |
-| `namespace` | `string` | —       | Not supported (throws)          |
+Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for Socket.IO: an application names Nest's own `@nestjs/platform-socket.io` `IoAdapter` — `app.useWebSocketAdapter(new IoAdapter(app))` — and the bridge replaces its `createIOServer()`, so a gateway binds to the transport's own server instead of one built from it. Every other member is the stock class's, and the wire protocol, namespaces, rooms, broadcasts and acknowledgement callbacks stay `platform-socket.io`'s own. See [Socket.IO](deployment.md#socketio).
 
 ## Types
 
 ### `CorsOptions`
 
-| Option                 | Type                                                                             | Default | Description                                                |
-| ---------------------- | -------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------- |
-| `allowedHeaders`       | `string \| readonly string[]`                                                    | —       | Headers a browser may send                                 |
-| `credentials`          | `boolean`                                                                        | `false` | Allow credentials                                          |
-| `exposedHeaders`       | `string \| readonly string[]`                                                    | —       | Headers a browser may read                                 |
-| `maxAge`               | `number`                                                                         | `86400` | Seconds a browser may reuse a preflight answer             |
-| `methods`              | `string \| readonly string[]`                                                    | all     | Methods a browser may call                                 |
-| `optionsSuccessStatus` | `number`                                                                         | —       | Status for a preflight (must be `204` or omitted)          |
-| `origin`               | `boolean \| string \| RegExp \| readonly (string \| RegExp)[] \| OriginCallback` | —       | Allowed origins                                            |
-| `preflightContinue`    | `boolean`                                                                        | `false` | Forward the preflight to the route instead of answering it |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `allowedHeaders` | `string \| readonly string[]` | — | Headers a browser may send |
+| `credentials` | `boolean` | `false` | Allow credentials |
+| `exposedHeaders` | `string \| readonly string[]` | — | Headers a browser may read |
+| `maxAge` | `number` | `86400` | Seconds a browser may reuse a preflight answer |
+| `methods` | `string \| readonly string[]` | all | Methods a browser may call |
+| `optionsSuccessStatus` | `number` | `204` | Status the preflight answer carries |
+| `origin` | `boolean \| string \| RegExp \| readonly (string \| RegExp)[] \| OriginCallback` | — | Allowed origins; `false` turns CORS off |
+| `preflightContinue` | `boolean` | `false` | Forward the preflight to the route instead of answering it |
 
 ### `ViewOptions`
 
-| Option      | Type                          | Default | Description                                   |
-| ----------- | ----------------------------- | ------- | --------------------------------------------- |
-| `engine`    | `ViewEngine`                  | —       | The function that renders a template's source |
-| `directory` | `string \| readonly string[]` | `cwd`   | Where templates are read from                 |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `engine` | `ViewEngine` | — | The function that renders a template's source |
+| `directory` | `string \| readonly string[]` | `cwd` | Where templates are read from |
 
 ### `StaticAssetsOptions`
 
-| Option      | Type               | Default      | Description                                          |
-| ----------- | ------------------ | ------------ | ---------------------------------------------------- |
-| `prefix`    | `string`           | —            | The prefix the assets hang under                     |
-| `index`     | `string`           | `index.html` | The index file a directory request is answered with  |
-| `maxAge`    | `number \| string` | —            | Cache lifetime (number in ms, or string like `'1d'`) |
-| `immutable` | `boolean`          | `false`      | Mark the cache as immutable (requires `maxAge`)      |
-| `redirect`  | `boolean`          | `true`       | Redirect directory requests to the index             |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `prefix` | `string` | — | The prefix the assets hang under |
+| `index` | `string` | `index.html` | The index file a directory request is answered with |
+| `maxAge` | `number \| string` | — | Cache lifetime (number in ms, or string like `'1d'`) |
+| `immutable` | `boolean` | `false` | Mark the cache as immutable (requires `maxAge`) |
+| `redirect` | `boolean` | `true` | Redirect directory requests to the index |
+
+### `MultipartFileStream`
+
+| Property       | Type       | Description                             |
+| -------------- | ---------- | --------------------------------------- |
+| `fieldname`    | `string`   | Field name the file arrived under       |
+| `originalname` | `string`   | Name of the file on the client, as sent |
+| `encoding`     | `string`   | Transfer encoding the part declared     |
+| `mimetype`     | `string`   | Media type the part declared            |
+| `stream`       | `Readable` | The bytes, live from the request        |
 
 ### `NestRequest`
 
-The request object Nest reads. Key properties:
-
-| Property      | Type                     | Description                                     |
-| ------------- | ------------------------ | ----------------------------------------------- |
-| `method`      | `string`                 | HTTP method                                     |
-| `url`         | `string`                 | The full URL                                    |
-| `originalUrl` | `string`                 | Path plus query string                          |
-| `path`        | `string`                 | The pathname                                    |
-| `hostname`    | `string`                 | The hostname                                    |
-| `protocol`    | `string`                 | `'http'` or `'https'`                           |
-| `secure`      | `boolean`                | Whether the connection is TLS                   |
-| `ip`          | `string \| undefined`    | The client IP                                   |
-| `ips`         | `string[]`               | Forwarded IPs                                   |
-| `headers`     | `Record<string, string>` | Request headers                                 |
-| `query`       | `ParsedQuery`            | Parsed query string                             |
-| `params`      | `Record<string, string>` | Route parameters                                |
-| `body`        | `unknown`                | Parsed request body                             |
-| `rawBody`     | `Buffer \| undefined`    | Raw body bytes (when `rawBody: true`)           |
-| `socket`      | `Socket`                 | The request's socket, as the runtime reports it |
+| Property | Type | Description |
+| --- | --- | --- |
+| `method` | `string` | HTTP method |
+| `url` | `string` | The full URL |
+| `originalUrl` | `string` | Path plus query string |
+| `path` | `string` | The pathname |
+| `hostname` | `string` | The hostname |
+| `protocol` | `string` | `'http'` or `'https'` |
+| `secure` | `boolean` | Whether the connection is TLS |
+| `ip` | `string \| undefined` | The client IP |
+| `ips` | `string[]` | Forwarded IPs |
+| `headers` | `Record<string, string>` | Request headers |
+| `query` | `ParsedQuery` | Parsed query string |
+| `params` | `Record<string, string>` | Route parameters |
+| `body` | `unknown` | Parsed request body |
+| `rawBody` | `Buffer \| undefined` | Raw body bytes (when `rawBody: true`) |
+| `file` | `unknown` | The upload an interceptor stored, or the live stream it handed over |
+| `files` | `Record<string, unknown> \| readonly unknown[] \| undefined` | The uploads an interceptor stored |
+| `socket` | `Socket` | The request's socket, as the runtime reports it |
 
 ### `TrustProxy`
 
 ```ts
 type TrustProxy = boolean | number | string[];
 ```
-
-Controls which proxy headers are read:
 
 - `false` — trust no proxy (default)
 - `true` — trust all proxies
@@ -247,12 +248,11 @@ Controls which proxy headers are read:
 
 ## Error behaviour
 
-| Situation                              | Behaviour                                                 |
-| -------------------------------------- | --------------------------------------------------------- |
-| Gateway asks for its own port          | `TypeError` at startup                                    |
-| Gateway asks for a namespace           | `TypeError` at startup                                    |
-| `setViewEngine` without `views.engine` | `TypeError` at startup                                    |
-| `render` without a configured engine   | `TypeError` at request time                               |
-| `optionsSuccessStatus` ≠ `204`         | `TypeError` at startup (unless `preflightContinue: true`) |
-| `etag: false` on static assets         | `TypeError` at startup                                    |
-| `setHeaders` on static assets          | `TypeError` at startup                                    |
+| Situation                            | Behaviour                   |
+| ------------------------------------ | --------------------------- |
+| Gateway asks for its own port        | `TypeError` at startup      |
+| Gateway asks for a namespace         | `TypeError` at startup      |
+| A named engine that cannot be loaded | `TypeError` at request time |
+| `render` without an engine or name   | `TypeError` at request time |
+| `etag: false` on static assets       | `TypeError` at startup      |
+| `setHeaders` on static assets        | `TypeError` at startup      |

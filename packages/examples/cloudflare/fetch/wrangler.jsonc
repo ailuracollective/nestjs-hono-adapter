@@ -1,0 +1,32 @@
+{
+  "$schema": "../../../../node_modules/wrangler/config-schema.json",
+  "name": "ailura-nestjs-hono-fetch",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-08-04",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "enable_request_signal"
+  ],
+  "define": {
+    "import.meta.url": "\"file:///worker.js\""
+  },
+  "alias": {
+    "@ailura/nestjs-hono-adapter": "../../../../packages/core/src/index.ts",
+    "@ailura/nestjs-hono-adapter/fetch": "../../../../packages/core/src/servers/fetch.ts",
+    "@fastify/static": "./src/stub-optional-peers.ts",
+    "@nestjs/microservices": "./src/stub-optional-peers.ts",
+    "@nestjs/microservices/microservices-module.js": "./src/stub-optional-peers.ts",
+    "@nestjs/websockets/socket-module.js": "./src/stub-optional-peers.ts",
+    "@nestjs/platform-express": "./src/stub-optional-peers.ts",
+    "@nestjs/platform-socket.io": "./src/stub-optional-peers.ts",
+    "@nats-io/transport-node": "./src/stub-optional-peers.ts",
+    "amqp-connection-manager": "./src/stub-optional-peers.ts",
+    "class-transformer": "./src/stub-optional-peers.ts",
+    "class-validator": "./src/stub-optional-peers.ts",
+    "ioredis": "./src/stub-optional-peers.ts",
+    "kafkajs": "./src/stub-optional-peers.ts",
+    "mqtt": "./src/stub-optional-peers.ts",
+    "node:module": "./src/stub-node-module.ts"
+  },
+  "previews": {}
+}

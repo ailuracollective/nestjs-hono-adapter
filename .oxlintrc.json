@@ -1,15 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "unicorn",
-    "oxc",
-    "import",
-    "promise",
-    "node",
-    "react",
-    "jsx-a11y"
-  ],
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node"],
   "categories": {
     "correctness": "error",
     "suspicious": "error",
@@ -39,19 +30,6 @@
         "allow": ["**/*.css"]
       }
     ],
-    "react/jsx-filename-extension": [
-      "error",
-      {
-        "extensions": ["jsx", "tsx"]
-      }
-    ],
-    "react/react-in-jsx-scope": "off",
-    "react/jsx-max-depth": [
-      "error",
-      {
-        "max": 5
-      }
-    ],
     "no-void": [
       "error",
       {
@@ -73,6 +51,7 @@
       }
     ],
     "one-var": ["error", "never"],
+    "curly": "off",
     "capitalized-comments": [
       "error",
       "always",
@@ -87,6 +66,7 @@
       }
     ],
     "no-undefined": "off",
+    "no-ternary": "off",
     "no-duplicate-imports": [
       "error",
       {
@@ -99,7 +79,7 @@
   },
   "overrides": [
     {
-      "files": ["src/**/*.ts", "test/**/*.ts"],
+      "files": ["src/**/*.ts", "test/**/*.ts", "packages/*/src/**/*.ts", "packages/*/test/**/*.ts"],
       "env": {
         "builtin": true,
         "node": true
@@ -117,14 +97,14 @@
       }
     },
     {
-      "files": ["src/**/*.ts"],
+      "files": ["packages/*/src/**/*.ts"],
       "rules": {
         "class-methods-use-this": "off",
         "promise/prefer-await-to-callbacks": "off"
       }
     },
     {
-      "files": ["test/**/*.ts"],
+      "files": ["test/**/*.ts", "packages/*/test/**/*.ts"],
       "rules": {
         "class-methods-use-this": "off",
         "import/max-dependencies": [
@@ -133,91 +113,43 @@
             "max": 20
           }
         ],
-        "import/no-relative-parent-imports": "off",
         "import/no-unassigned-import": "off",
-        "max-classes-per-file": "off"
-      }
-    },
-    {
-      "files": [
-        "src/core/response-helpers.ts",
-        "src/core/versioned-route.ts"
-      ],
-      "rules": {
-        "typescript/no-unsafe-type-assertion": "off"
-      }
-    },
-    {
-      "files": ["src/core/server-adapter.ts"],
-      "rules": {
-        "import/max-dependencies": [
+        "max-classes-per-file": "off",
+        "max-lines": [
           "error",
           {
-            "max": 13
-          }
-        ],
-        "prefer-object-spread": "off"
-      }
-    },
-    {
-      "files": [
-        "src/ws/client.ts",
-        "src/ws/server.ts",
-        "src/core/bindings.ts",
-        "src/servers/bun.ts",
-        "src/servers/node.ts",
-        "src/servers/fetch.ts"
-      ],
-      "rules": {
-        "unicorn/prefer-event-target": "off"
-      }
-    },
-    {
-      "files": [
-        "src/core/hono-lifecycle.ts",
-        "src/core/request.ts",
-        "src/features/static-assets.ts",
-        "src/servers/bun.ts",
-        "src/servers/node.ts",
-        "src/ws/adapter.ts"
-      ],
-      "rules": {
-        "typescript/no-unsafe-type-assertion": "off"
-      }
-    },
-    {
-      "files": [
-        "src/servers/bun.ts",
-        "src/servers/node.ts",
-        "src/ws/adapter.ts"
-      ],
-      "rules": {
-        "import/max-dependencies": [
-          "error",
-          {
-            "max": 12
+            "max": 700,
+            "skipBlankLines": false,
+            "skipComments": false
           }
         ]
       }
     },
     {
       "files": [
-        "src/core/server-adapter.ts",
-        "src/servers/bun.ts"
+        "packages/core/src/core/response/response-helpers.ts",
+        "packages/core/src/core/route/versioned-route.ts"
       ],
       "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["packages/core/src/core/server/server-adapter.ts"],
+      "rules": {
+        "import/max-dependencies": [
+          "error",
+          {
+            "max": 15
+          }
+        ],
         "max-lines": [
           "error",
           {
             "max": 450
           }
-        ]
-      }
-    },
-    {
-      "files": ["src/servers/node.ts"],
-      "rules": {
-        "typescript/unbound-method": "off"
+        ],
+        "prefer-object-spread": "off"
       }
     },
     {
@@ -227,29 +159,172 @@
       }
     },
     {
-      "files": ["src/core/bindings.ts"],
+      "files": ["packages/core/src/core/server/hono-lifecycle.ts"],
+      "rules": {
+        "import/max-dependencies": [
+          "error",
+          {
+            "max": 13
+          }
+        ],
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/core/ports/bindings.ts",
+        "packages/core/src/servers/bun/**/*.ts",
+        "packages/core/src/servers/node.ts",
+        "packages/core/src/servers/fetch.ts"
+      ],
+      "rules": {
+        "unicorn/prefer-event-target": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/core/request/request.ts",
+        "packages/core/src/features/static-assets/**/*.ts",
+        "packages/core/src/servers/bun-runtime.ts",
+        "packages/core/src/servers/bun/**/*.ts",
+        "packages/core/src/servers/node.ts",
+        "packages/socket-io/src/patch.ts",
+        "packages/ws/src/patch.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["packages/core/src/core/ports/bindings.ts"],
       "rules": {
         "max-classes-per-file": "off"
       }
     },
     {
       "files": [
-        "src/core/**/*.ts",
-        "src/features/**/*.ts",
-        "src/servers/**/*.ts",
-        "src/ws/**/*.ts"
+        "packages/core/src/core/request/bag-state.ts",
+        "packages/core/src/core/request/request.ts"
       ],
       "rules": {
-        "import/no-relative-parent-imports": "off"
+        "oxc/no-optional-chaining": "off",
+        "typescript/no-unnecessary-condition": "off"
       }
     },
     {
-      "files": ["test/**/*.ts"],
+      "files": [
+        "packages/compatibility/test/config-fixture.ts",
+        "packages/compatibility/test/config-fixture/**/*.ts"
+      ],
+      "rules": {
+        "typescript/consistent-type-imports": "off"
+      }
+    },
+    {
+      "files": ["packages/core/src/features/sse.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/index.ts"],
+      "rules": {
+        "import/group-exports": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/interceptors/files.interceptor.ts"],
+      "rules": {
+        "oxc/no-rest-spread-properties": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/multipart/append-field.util.ts"],
+      "rules": {
+        "init-declarations": "off",
+        "max-params": "off",
+        "max-statements": "off",
+        "no-continue": "off",
+        "no-magic-numbers": "off",
+        "oxc/no-optional-chaining": "off",
+        "prefer-named-capture-group": "off",
+        "sort-keys": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "unicorn/no-array-for-each": "off",
+        "unicorn/no-array-reduce": "off",
+        "unicorn/prefer-number-coercion": "off",
+        "unicorn/switch-case-braces": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/multipart/multipart.constants.ts"],
+      "rules": {
+        "sort-keys": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/multipart/multipart.interceptor.factory.ts"],
+      "rules": {
+        "max-classes-per-file": "off",
+        "oxc/no-optional-chaining": "off"
+      }
+    },
+    {
+      "files": ["packages/graphql/src/apollo-subscription-route.ts"],
+      "rules": {
+        "oxc/no-rest-spread-properties": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/multipart/multipart.parser*.ts"],
+      "rules": {
+        "max-lines-per-function": "off",
+        "max-params": "off",
+        "max-statements": "off",
+        "no-continue": "off",
+        "no-underscore-dangle": "off",
+        "oxc/no-optional-chaining": "off",
+        "prefer-object-spread": "off",
+        "promise/always-return": "off",
+        "promise/avoid-new": "off",
+        "promise/prefer-await-to-then": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/prefer-promise-reject-errors": "off",
+        "unicorn/no-useless-switch-case": "off",
+        "unicorn/no-useless-undefined": "off",
+        "unicorn/switch-case-braces": "off"
+      }
+    },
+    {
+      "files": ["packages/multipart/src/multipart/multipart.utils.ts"],
+      "rules": {
+        "max-statements": "off",
+        "oxc/no-rest-spread-properties": "off"
+      }
+    },
+    {
+      "files": ["packages/socket-io/src/engine.ts"],
+      "rules": {
+        "oxc/no-optional-chaining": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/core/src/compat/**/*.ts",
+        "packages/graphql/src/**/*.ts",
+        "packages/serve-static/src/**/*.ts",
+        "packages/socket-io/src/**/*.ts",
+        "packages/ws/src/**/*.ts"
+      ],
       "rules": {
         "max-lines": [
           "error",
           {
-            "max": 600,
+            "max": 100,
             "skipBlankLines": false,
             "skipComments": false
           }
@@ -257,44 +332,7 @@
       }
     },
     {
-      "files": ["src/core/request.ts"],
-      "rules": {
-        "oxc/no-optional-chaining": "off",
-        "typescript/no-unnecessary-condition": "off"
-      }
-    },
-    {
-      "files": ["test/config.test.ts"],
-      "rules": {
-        "node/no-process-env": "off"
-      }
-    },
-    {
-      "files": [
-        "test/config-fixture.ts",
-        "test/cqrs.test.ts",
-        "test/event-emitter.test.ts",
-        "test/jwt.test.ts",
-        "test/schedule.test.ts",
-        "test/terminus.test.ts"
-      ],
-      "rules": {
-        "typescript/consistent-type-imports": "off"
-      }
-    },
-    {
-      "files": ["src/core/hono-lifecycle.ts"],
-      "rules": {
-        "import/max-dependencies": [
-          "error",
-          {
-            "max": 12
-          }
-        ]
-      }
-    },
-    {
-      "files": ["src/features/sse.ts"],
+      "files": ["packages/compatibility/test/support.ts"],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
@@ -306,10 +344,11 @@
     "**/build/**",
     "**/coverage/**",
     "**/.cache/**",
-    "**/.turbo/**",
     "**/.vite/**",
+    "**/.tmp-*",
+    "**/.tmp-*/**",
     "**/*.tsbuildinfo",
     "bun.lock",
-    "examples/**"
+    "packages/examples/**"
   ]
 }

@@ -1,0 +1,9 @@
+[
+  {
+    "name": "ws",
+    "path": "dist/index.js",
+    "limit": 1150,
+    "brotli": true,
+    "ignore": ["@ailura/nestjs-hono-adapter", "@nestjs/platform-ws", "hono"]
+  }
+]

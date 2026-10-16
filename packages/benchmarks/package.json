@@ -1,0 +1,33 @@
+{
+  "name": "@ailura/nestjs-hono-adapter-benchmarks",
+  "private": true,
+  "description": "Compare the NestJS Hono adapter (Bun and Node transports) with the official Express and Fastify platform adapters.",
+  "type": "module",
+  "imports": {
+    "#benchmarks/*": "./dist/*.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && cp tsconfig.dist.json dist/tsconfig.json",
+    "bench": "bun run build && bun dist/harness/run.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ailura/nestjs-hono-adapter": "workspace:*",
+    "@hono/node-server": "2.1.4",
+    "@nestjs/common": ">=11 <13",
+    "@nestjs/core": ">=11 <13",
+    "@nestjs/platform-express": ">=11 <13",
+    "@nestjs/platform-fastify": ">=11 <13",
+    "commander": "15.0.0",
+    "execa": "10.1.1",
+    "hono": "4.13.13",
+    "pidusage": "4.1.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.3",
+    "@types/pidusage": "^2.0.5",
+    "typescript": "^7.0.2"
+  }
+}

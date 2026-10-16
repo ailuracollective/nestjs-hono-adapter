@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "printWidth": 64,
+  "printWidth": 100,
   "tabWidth": 2,
   "useTabs": false,
   "semi": true,
@@ -8,7 +8,7 @@
   "trailingComma": "all",
   "endOfLine": "lf",
   "insertFinalNewline": true,
-  "proseWrap": "always",
+  "proseWrap": "never",
   "jsdoc": true,
   "sortPackageJson": true,
   "ignorePatterns": [
@@ -19,9 +19,12 @@
     "**/.cache/**",
     "**/.turbo/**",
     "**/.vite/**",
+    "**/.tmp-*",
+    "**/.tmp-*/**",
     "**/*.tsbuildinfo",
     "pnpm-lock.yaml",
     "CHANGELOG.md",
-    "examples/**"
+    "docs/benchmarks.md",
+    "packages/examples/**"
   ]
 }

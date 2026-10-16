@@ -1,0 +1,68 @@
+{
+  "name": "@ailura/nestjs-platform-hono-socket-io",
+  "version": "0.2.0",
+  "description": "The Socket.IO bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/platform-socket.io IoAdapter serving on Hono.",
+  "keywords": [
+    "adapter",
+    "hono",
+    "nestjs",
+    "platform-socket.io",
+    "socket.io",
+    "websockets"
+  ],
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
+  "bugs": {
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
+  },
+  "license": "MIT",
+  "author": "Ailura Code",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
+    "size": "size-limit",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@ailura/nestjs-hono-adapter": ">=1.4.1 <2",
+    "@nestjs/platform-socket.io": ">=11 <13",
+    "@socket.io/bun-engine": "^0.1.2",
+    "socket.io": "^4.8.1"
+  },
+  "peerDependenciesMeta": {
+    "@ailura/nestjs-hono-adapter": {
+      "optional": true
+    },
+    "@nestjs/platform-socket.io": {
+      "optional": true
+    },
+    "@socket.io/bun-engine": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

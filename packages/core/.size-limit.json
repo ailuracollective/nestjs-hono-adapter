@@ -1,0 +1,89 @@
+[
+  {
+    "name": "index",
+    "path": "dist/index.js",
+    "limit": 16200,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "@hono/node-server",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:http",
+      "node:https",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "bun-server",
+    "path": "dist/servers/bun.js",
+    "limit": 1175,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "node-server",
+    "path": "dist/servers/node.js",
+    "limit": 560,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@hono/node-server",
+      "@hono/node-ws",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:http",
+      "node:https",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  },
+  {
+    "name": "fetch",
+    "path": "dist/servers/fetch.js",
+    "limit": 500,
+    "brotli": true,
+    "ignore": [
+      "hono",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/websockets",
+      "@nestjs/microservices",
+      "rxjs",
+      "node:buffer",
+      "node:events",
+      "node:fs",
+      "node:path",
+      "node:stream",
+      "node:util"
+    ]
+  }
+]

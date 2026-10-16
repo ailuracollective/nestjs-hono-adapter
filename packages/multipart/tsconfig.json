@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "noEmit": true,
+    "paths": {
+      "#adapter/*": ["../core/src/*.ts", "../core/src/*"],
+      "#test/*": ["../../test/*.ts", "../../test/*"],
+      "#multipart/*": ["./src/*.ts", "./src/*"],
+      "#multipart-test/*": ["./test/*.ts", "./test/*"],
+      "@ailura/nestjs-hono-adapter": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

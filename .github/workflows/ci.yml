@@ -5,19 +5,25 @@ name: CI
     branches: [main]
     paths:
       - '.github/workflows/**'
-      - 'src/**'
+      - 'packages/**'
       - 'test/**'
+      - 'docs/**'
+      - 'README.md'
       - 'tsconfig.json'
-      - '.size-limit.json'
+      - '.oxfmtrc.json'
+      - '.oxlintrc.json'
       - 'package.json'
       - 'bun.lock'
   pull_request:
     paths:
       - '.github/workflows/**'
-      - 'src/**'
+      - 'packages/**'
       - 'test/**'
+      - 'docs/**'
+      - 'README.md'
       - 'tsconfig.json'
-      - '.size-limit.json'
+      - '.oxfmtrc.json'
+      - '.oxlintrc.json'
       - 'package.json'
       - 'bun.lock'
 
@@ -30,9 +36,7 @@ concurrency:
 
 jobs:
   check:
-    if:
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -43,10 +47,33 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
 
+  lockfile:
+    # `bun.lock` is JSON with comments, so the version is parsed rather than
+    # matched line by line. The file is pinned to the format the Cloudflare
+    # build image reads; the `bun.lock` path filter above is what makes this
+    # job run exactly when the lockfile changes. See docs/development.md.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Check the lockfile format
+        run: |
+          bun --eval '
+            const text = await Bun.file("bun.lock").text();
+            const version = Bun.JSONC.parse(text).lockfileVersion;
+            if (version !== 1) {
+              console.error(`bun.lock is lockfileVersion ${version}; the repository pins version 1. See docs/development.md#the-lockfile-format-the-build-image-reads.`);
+              process.exit(1);
+            }
+            console.log("bun.lock is lockfileVersion 1.");
+          '
+
   size:
-    if:
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -58,26 +85,50 @@ jobs:
       - run: bun run size
 
   compat:
-    # Every Nest package moves together: a mixed install is what a WebSocket or
-    # microservice case would fail on, not the adapter. The suite runs on Bun.
-    if:
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.draft == false
+    # Every Nest package moves together: a mixed install is what a WebSocket,
+    # microservice or bridge case would fail on, not the adapter. A bridge
+    # package's peers move with the matrix too, and their majors are not the
+    # core's — `@nestjs/graphql`/`@nestjs/apollo` are core + 2 and
+    # `@nestjs/serve-static` is 5 for the 11 line and 12 for the 12 line.
+    #
+    # Of the third-party packages the suite exercises, only `@nestjs/cqrs` and
+    # `@nestjs/swagger` need moving: their installed majors peer on `^12` and
+    # nothing else. The rest — `cache-manager`, `config`, `event-emitter`,
+    # `jwt`, `passport`, `schedule`, `terminus`, `throttler` — already peer
+    # `^11 || ^12`, so the lockfile's version is the right one on both lines.
+    #
+    # `packages/compatibility` holds the third-party packages the adapter runs
+    # alongside — the ones it had never met and the behaviour suites moved out
+    # of the core. Most peer `^11 || ^12`, so they stay put. Three do not:
+    # `@nestjs/devtools-integration`, `@nestjs/authentication` and
+    # `@nestjs/authorization` peer `^12` alone, so the 11 line removes them from
+    # that package and its suite skips them — a Nest major they never claimed is
+    # not an adapter failure. The suite runs on Bun.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       matrix:
-        nest: ['11', '12']
+        include:
+          - nest: '11'
+            nestGraphql: '13'
+            nestServeStatic: '5'
+            nestThirdParty: '@nestjs/cqrs@11 @nestjs/swagger@11'
+          - nest: '12'
+            nestGraphql: '14'
+            nestServeStatic: '12'
+            nestThirdParty: '@nestjs/cqrs@12 @nestjs/swagger@12'
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run:
-          bun add --exact @nestjs/common@${{ matrix.nest }}.x
-          @nestjs/core@${{ matrix.nest }}.x
-          @nestjs/websockets@${{ matrix.nest }}.x
-          @nestjs/microservices@${{ matrix.nest }}.x
-          @nestjs/testing@${{ matrix.nest }}.x
-      - run: bun run typecheck && bun test && bun run build
+      - if: matrix.nest == '11'
+        working-directory: packages/compatibility
+        run: bun remove @nestjs/devtools-integration @nestjs/authentication @nestjs/authorization
+      - run: bun add --exact @nestjs/common@${{ matrix.nest }}.x @nestjs/core@${{ matrix.nest }}.x @nestjs/websockets@${{ matrix.nest }}.x @nestjs/platform-ws@${{ matrix.nest }}.x @nestjs/platform-socket.io@${{ matrix.nest }}.x @nestjs/graphql@${{ matrix.nestGraphql }} @nestjs/apollo@${{ matrix.nestGraphql }} @nestjs/serve-static@${{ matrix.nestServeStatic }}
+      - working-directory: packages/compatibility
+        run: bun add --exact @nestjs/common@${{ matrix.nest }}.x @nestjs/core@${{ matrix.nest }}.x @nestjs/websockets@${{ matrix.nest }}.x @nestjs/microservices@${{ matrix.nest }}.x @nestjs/testing@${{ matrix.nest }}.x ${{ matrix.nestThirdParty }}
+      - run: rm -rf node_modules packages/*/node_modules packages/examples/cloudflare/*/node_modules && bun install
+      - run: bun run typecheck && bun run build && bun test
