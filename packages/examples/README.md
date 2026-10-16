@@ -525,3 +525,51 @@ The same build runs by hand, with no trigger and no connection:
 gcloud builds submit --config=packages/examples/google/fetch/cloudbuild.yaml .
 gcloud builds submit --config=packages/examples/google/node/cloudbuild.yaml .
 ```
+
+
+### Skip unaffected builds
+
+Each Google Cloud trigger filters by path so a change to one example does not
+deploy the other. Configure the triggers with platform-side path filters (or a
+repository-managed check when a diff is available):
+
+Cloud Functions trigger (`ailura-google-fetch`):
+
+```sh
+gcloud builds triggers create github --name=ailura-google-fetch \
+  --branch-pattern='^main$' --region us-central1 \
+  --build-config=packages/examples/google/fetch/cloudbuild.yaml \
+  --included-files='packages/examples/google/fetch/**,packages/core/src/**,packages/core/package.json,packages/core/tsconfig.json,packages/core/tsconfig.build.json,package.json,bun.lock,tsconfig.json,bunfig.toml' \
+  --ignored-files='packages/core/test/**,packages/core/docs/**,packages/core/**/*.md' \
+  --repository=projects/<project>/locations/us-central1/connections/github/repositories/nestjs-hono-adapter
+```
+
+Cloud Run trigger (`ailura-google-node`):
+
+```sh
+gcloud builds triggers create github --name=ailura-google-node \
+  --branch-pattern='^main$' --region us-central1 \
+  --build-config=packages/examples/google/node/cloudbuild.yaml \
+  --included-files='packages/examples/google/node/**,packages/core/src/**,packages/core/package.json,packages/core/tsconfig.json,packages/core/tsconfig.build.json,package.json,bun.lock,tsconfig.json,bunfig.toml' \
+  --ignored-files='packages/core/test/**,packages/core/docs/**,packages/core/**/*.md' \
+  --repository=projects/<project>/locations/us-central1/connections/github/repositories/nestjs-hono-adapter
+```
+
+Path ownership:
+
+- `packages/examples/google/fetch/**` affects the Cloud Functions deployment only.
+- `packages/examples/google/node/**` affects the Cloud Run deployment only.
+- `packages/core/src/**`, `packages/core/package.json`, and the core TypeScript
+  build configuration affect both deployments because both consume the adapter.
+- Other files under `packages/core/` (tests, documentation, benchmarks, and
+  other non-runtime material) do not affect either deployment.
+- Root `package.json`, `bun.lock`, `tsconfig.json`, and `bunfig.toml`
+  affect both deployments.
+- Changes to other workspace packages, documentation, tests, benchmarks, or
+  unrelated examples do not affect either deployment.
+
+A repository-managed changed-files check is available as
+`bun run google:ignore-build` (see `scripts/google-ignore-build.ts`) for cases
+where trigger path filters cannot distinguish relevant changes inside a shared
+file. It fails safe: missing Git history or an unclassified path allows the
+potentially affected deployment instead of skipping it.

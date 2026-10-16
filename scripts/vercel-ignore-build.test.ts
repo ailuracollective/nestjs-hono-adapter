@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 
 import { expect, test } from 'bun:test';
 
-import { checkPaths } from './vercel-ignore-build.ts';
+import { checkPaths } from './ignore-build.ts';
 
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' });

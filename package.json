@@ -22,7 +22,7 @@
     "size": "bun run build && bun run --filter './packages/*' size",
     "test": "bun run build && bun test",
     "typecheck": "bun run build:core && tsc -p test/tsconfig.json",
-    "vercel:ignore-build": "bun run scripts/vercel-ignore-build.ts"
+    "ignore-build": "bun run scripts/ignore-build.ts"
   },
   "devDependencies": {
     "@apollo/server": "5",
