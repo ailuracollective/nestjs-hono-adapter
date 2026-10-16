@@ -1,6 +1,6 @@
 # Examples
 
-Five independent projects, one per transport a host can run:
+Seven independent projects, one per transport and host:
 
 | Folder                               | Transport | Entry          | Host                                     |
 | ------------------------------------ | --------- | -------------- | ---------------------------------------- |
@@ -9,13 +9,15 @@ Five independent projects, one per transport a host can run:
 | `packages/examples/vercel/fetch`     | fetch     | `src/server.ts` | Vercel, through the fetch export          |
 | `packages/examples/vercel/node`      | node      | `src/server.ts` | Vercel, through a captured Node server    |
 | `packages/examples/vercel/bun`       | bun       | `src/server.ts` | Vercel's Bun runtime                      |
+| `packages/examples/google/fetch`     | fetch     | `src/index.ts`  | Cloud Functions, through the Functions Framework |
+| `packages/examples/google/node`      | node      | `src/server.ts` | Cloud Run, a Node container              |
 
 Every example carries `enableVersioning({ type: URI, defaultVersion: '1' })`,
 so every route sits under `/v1` unless it says otherwise:
 
 | Route              | Answer                                       |
 | ------------------ | -------------------------------------------- |
-| `GET /v1/health`   | `{ ok: true, where: 'workers' | 'vercel' }`  |
+| `GET /v1/health`   | `{ ok: true, where: 'workers' | 'vercel' | 'docker' | 'google' }`  |
 | `GET /v1/hello?name=` | `Hello <name>!`                         |
 | `GET /v1/query?foo=bar` | `{ foo: 'bar' }`, all query parameters |
 | `GET /v2/hello`    | `{ from: 'v2' }`, the versioned controller   |
@@ -44,7 +46,15 @@ differently: the fetch Worker reads `cf-connecting-ip` and the node
 one the `cloudflare:node` socket, both with `trustProxy` off; the
 three Vercel ones trust the hop in front of them, so
 `x-forwarded-for` — a header Vercel overwrites on every request and
-does not let a client set — is the address. The Cloudflare node
+does not let a client set — is the address. The Docker one trusts
+nothing either — the image publishes its own port — so it reports the
+socket address too, and `trustProxy: true` is what hands it a client
+behind an ingress.
+Both Google ones read the last entry of `x-forwarded-for`
+(`trustProxy: 1`), the client Google's front end appended: the first
+entry is whatever the caller sent, so trusting it lets a client name
+any address it likes.
+The Cloudflare node
 example also adds `GET /v1/debug-env`, which reports that request
 binding.
 
@@ -55,13 +65,15 @@ bun install
 bun run --cwd packages/examples/cloudflare/fetch dev
 ```
 
-Swap `fetch` for `node`, or for `vercel/fetch`, `vercel/node` or
-`vercel/bun`, for the others. The two transports that listen run on
-Bun alone, without the Vercel CLI:
+Swap `fetch` for `node`, or for `vercel/fetch`, `vercel/node`,
+`vercel/bun`, `docker/bun` or `google/fetch` and `google/node`, for the
+others. The transports that
+listen run on Bun alone, without the Vercel CLI or an image:
 
 ```sh
 bun run packages/examples/vercel/node/src/server.ts
 bun run packages/examples/vercel/bun/src/standalone.ts
+bun run packages/examples/docker/bun/src/server.ts
 ```
 
 ## Cloudflare
@@ -287,4 +299,125 @@ application itself:
 
 ```sh
 bun run packages/examples/vercel/bun/src/standalone.ts
+```
+
+## Google Cloud Functions
+
+Cloud Functions has no Bun runtime: a function is built by Google's
+buildpacks from a `--runtime` in its list and takes no container image,
+so Bun on Google Cloud means Cloud Run — the Docker example above
+covers it. This folder is the Node runtime, and it keeps the fetch
+transport: the Functions Framework hands a function a Node request and
+response, so `src/index.ts` hands `fetchHandler()` to
+`getRequestListener()` from `@hono/node-server`, which turns that Node
+pair into the Web `Request` the adapter reads and back into the Node
+response.
+
+That conversion is one line because the framework's own body parsing is
+the case `getRequestListener()` already handles. `body-parser` runs
+before the function and keeps the bytes in `req.rawBody`, so the request
+stream is drained by the time the listener reads it; the listener
+rebuilds the body from `incoming.rawBody` when it is there, drops the
+hop-by-hop headers and the `content-length` the body recomputes, and
+writes the Web `Response` back through the Node one.
+
+The runtime executes a bundle, not the sources: `bun run bundle` is
+`bun build --target=node`, with the five optional peers
+`@nestjs/microservices` reaches through `import()` left external. It
+writes `dist/index.mjs` and copies `deploy.package.json` beside it as
+`dist/package.json`, whose `main` names the bundle: the Functions
+Framework resolves the entry with `require.resolve` on the directory it
+is given, and a folder without that `main` fails to load.
+
+`--source=dist` uploads that folder alone, and the upload is what makes
+the build work at all: Google's Node buildpack runs its own `npm
+install` over the sources, and the example's own `package.json` depends
+on the adapter as `workspace:*`, which npm cannot install. The uploaded
+`package.json` declares no dependencies — the bundle already carries
+Nest, Hono and the adapter — so the build only adds the Functions
+Framework the runtime starts. Pointing `--source` at the folder instead
+still works: the `.gcloudignore` here is what stops gcloud deriving the
+upload list from `.gitignore` and dropping the git-ignored `dist/`.
+
+| Setting     | Value                                                      |
+| ----------- | ---------------------------------------------------------- |
+| Runtime     | `nodejs22`, the Node line this repository develops against  |
+| Entry point | `handler`, the export `src/index.ts` carries                 |
+| Trigger     | HTTP, `--gen2`, unauthenticated                              |
+| Source      | `dist/`: the bundle and its `package.json`                    |
+
+```sh
+bun run --cwd packages/examples/google/fetch dev     # Functions Framework on :8080
+bun run --cwd packages/examples/google/fetch deploy  # bundle, then gcloud functions deploy
+```
+
+`dev` builds the bundle and serves it with the Functions Framework on
+port 8080, which is what Cloud Functions runs itself; the export and the
+`--entry-point` are the same name and move together. The deployed URL
+answers the routes above under `/v1`.
+
+On a fresh project `--allow-unauthenticated` alone can leave the gen2
+function private: its underlying Cloud Run service is what refuses the
+call, so `gcloud run services add-iam-policy-binding <name> --region
+<region> --member=allUsers --role=roles/run.invoker` — or `gcloud
+functions add-invoker-policy-binding` — is what opens it.
+
+## Google Cloud Run
+
+Cloud Run runs a container that owns its own HTTP loop, which is what
+`nodeServer()` serves through, so this folder is the same application
+on the Node transport with no bridge at all: `src/server.ts` names
+`nodeServer()` and ends in `app.listen(PORT)`, and the host is the
+only thing the Cloud Functions folder does differently.
+
+The image is built from the repository root, like the Docker one and
+for the same reason — the adapter comes from the workspace:
+
+```sh
+docker build -t ailura-hono-google-node -f packages/examples/google/node/Dockerfile .
+docker run --rm -p 8080:8080 ailura-hono-google-node
+curl localhost:8080/v1/health
+```
+
+`bun run docker:build` and `bun run docker:run` do the same from the
+folder. The build stage installs the workspace from the lockfile and
+bundles with `bun build --target=node`; the second stage copies that
+bundle alone onto `node:22-slim`, so the image carries Node and the
+bundle, and nothing else from the repository.
+
+| Setting | Value                                                           |
+| ------- | --------------------------------------------------------------- |
+| Runtime | Node, `node:22-slim`, the line this repository develops against |
+| Port    | `$PORT`, 8080 by default and the port Cloud Run injects         |
+| Trigger | HTTP, unauthenticated (`--allow-unauthenticated`)               |
+
+Cloud Run takes the port from the container, and the container takes it
+from `$PORT`. `gcloud run deploy --source` builds the image in the
+cloud, which is the route a machine without Docker can take, and it
+looks for the Dockerfile at the source root — so the Dockerfile moves
+there for the build and the repository root, which the context has to
+be, is what gets uploaded:
+
+```sh
+cp packages/examples/google/node/Dockerfile Dockerfile
+gcloud run deploy ailura-nestjs-hono-google-node \
+  --source . --region us-central1 --allow-unauthenticated
+rm Dockerfile
+```
+
+Building the image here is the other route: `docker build -t
+ailura-hono-google-node -f packages/examples/google/node/Dockerfile .`,
+then `docker tag` and `docker push` against a repository the project
+holds, then `--image` in place of `--source`.
+
+Either route needs the default service account to be allowed to build:
+in a fresh project `roles/cloudbuild.builds.builder` is not attached,
+and the deploy stops before building with `the default service account
+is missing required IAM permissions`. Grant it to the account the error
+names — `gcloud projects add-iam-policy-binding <project>
+--member=serviceAccount:<number>-compute@developer.gserviceaccount.com
+--role=roles/cloudbuild.builds.builder`.
+
+```sh
+bun run --cwd packages/examples/google/node dev  # bundle, then Node on :8080
 ```

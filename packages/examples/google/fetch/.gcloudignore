@@ -1,0 +1,4 @@
+# Without this file gcloud derives the upload list from .gitignore, which
+# drops dist/ -- the bundle the Node runtime runs.
+node_modules/
+.git/

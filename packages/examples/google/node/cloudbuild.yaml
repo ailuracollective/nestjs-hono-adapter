@@ -1,0 +1,35 @@
+# Builds the image and deploys the Cloud Run service. A Cloud Build trigger
+# points at this file with _REGION set; by hand it is the same build:
+#   gcloud builds submit --config=packages/examples/google/node/cloudbuild.yaml .
+substitutions:
+  _REGION: us-central1
+
+steps:
+  # The Dockerfile wants the repository root as its context: the adapter comes
+  # from the workspace.
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - packages/examples/google/node/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
+      - .
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - >
+        gcloud run deploy ailura-nestjs-hono-google-node
+        --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
+        --project=$PROJECT_ID --region=${_REGION} --allow-unauthenticated --quiet
+        && gcloud run services add-iam-policy-binding ailura-nestjs-hono-google-node
+        --project=$PROJECT_ID --region=${_REGION}
+        --member=allUsers --role=roles/run.invoker --quiet
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
+
+options:
+  logging: CLOUD_LOGGING_ONLY
