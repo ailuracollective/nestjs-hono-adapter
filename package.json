@@ -5,8 +5,7 @@
     "packages/examples/cloudflare/*",
     "packages/examples/docker/*",
     "packages/examples/google/*",
-    "packages/examples/vercel/*",
-    "packages/examples/deno/*"
+    "packages/examples/vercel/*"
   ],
   "type": "module",
   "scripts": {

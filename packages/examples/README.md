@@ -1,13 +1,11 @@
 # Examples
 
-Nine independent projects, one per transport and host:
+Seven independent projects, one per transport and host:
 
 | Folder                               | Transport | Entry          | Host                                     |
 | ------------------------------------ | --------- | -------------- | ---------------------------------------- |
 | `packages/examples/cloudflare/fetch` | fetch     | `src/worker.ts` | Cloudflare Workers                       |
 | `packages/examples/cloudflare/node`  | node      | `src/worker.ts` | Cloudflare Workers, on `cloudflare:node`  |
-| `packages/examples/deno/fetch`       | fetch     | `src/main.ts`  | Deno, through the fetch handler            |
-| `packages/examples/deno/node`        | node      | `src/main.ts`  | Deno, through a Node server                 |
 | `packages/examples/vercel/fetch`     | fetch     | `src/server.ts` | Vercel, through the fetch export          |
 | `packages/examples/vercel/node`      | node      | `src/server.ts` | Vercel, through a captured Node server    |
 | `packages/examples/vercel/bun`       | bun       | `src/server.ts` | Vercel's Bun runtime                      |
@@ -76,38 +74,7 @@ listen run on Bun alone, without the Vercel CLI or an image:
 bun run packages/examples/vercel/node/src/server.ts
 bun run packages/examples/vercel/bun/src/standalone.ts
 bun run packages/examples/docker/bun/src/server.ts
-deno run --allow-net --allow-env packages/examples/deno/fetch/src/main.ts
-deno run --allow-net --allow-env packages/examples/deno/node/src/main.ts
 ```
-
-## Deno
-
-Deno uses its own module resolution (`nodeModulesDir: "manual"`), so each
-folder declares its dependencies in `package.json` and imports the adapter
-through the workspace's hoisted `node_modules`. The host hands no port to
-the fetch transport, while the node transport opens its own server:
-
-```sh
-deno run --allow-net --allow-env packages/examples/deno/fetch/src/main.ts
-deno run --allow-net --allow-env packages/examples/deno/node/src/main.ts
-```
-
-Both examples set `trustProxy: false`; the fetch one reads `info.remoteAddr`
-from `Deno.serve`, and the node one reads the socket address through the
-Node compatibility layer.
-
-For Deno Deploy, the examples import `npm:@ailura/nestjs-hono-adapter`
-so that the platform uses the published package instead of the local
-workspace path. Deployment from GitHub is automated by
-`.github/workflows/deno-fetch-deploy.yml` and
-`.github/workflows/deno-node-deploy.yml`, which also create or update the
-Deno apps `nestjs-hono-fetch` and `nestjs-hono-node` on every push to
-`main`.
-
-The adapter arrives through the hoisted workspace, so a clean checkout needs
-`bun run build:core` first, the way the Vercel folders need it.
-
-`where` on `GET /v1/health` is `deno` in both folders.
 
 ## Cloudflare
 
