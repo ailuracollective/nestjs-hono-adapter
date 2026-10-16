@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 
 import { expect, test } from 'bun:test';
 
-import { checkPaths } from './vercel-ignore-build.ts';
+import { checkPaths } from './ignore-build.ts';
 
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' });
@@ -49,10 +49,10 @@ test('builds when a watched path changed', () => {
   });
 });
 
-test('skips when only an unwatched path changed', () => {
+test('skips when nothing changed in range', () => {
   withRepo((repo) => {
     const result = checkPaths({
-      base: 'HEAD^',
+      base: 'HEAD',
       cwd: repo,
       head: 'HEAD',
       paths: ['ignored.txt'],

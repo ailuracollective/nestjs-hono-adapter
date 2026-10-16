@@ -3,5 +3,5 @@
   "framework": "nestjs",
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun run vercel-build",
-  "ignoreCommand": "bun run vercel:ignore-build -- . ../../../core/src ../../../core/package.json ../../../core/tsconfig.build.json ../../../../package.json ../../../../bun.lock ../../../../tsconfig.json ../../../../bunfig.toml"
+  "ignoreCommand": "bun run ignore-build -- . ../../../core/src ../../../core/package.json ../../../core/tsconfig.build.json ../../../../package.json ../../../../bun.lock ../../../../tsconfig.json ../../../../bunfig.toml"
 }
