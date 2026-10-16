@@ -1,0 +1,42 @@
+name: Lockfile
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - 'bun.lock'
+  pull_request:
+    paths:
+      - 'bun.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lockfile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lockfile:
+    # `bun.lock` is JSON with comments, so the version is parsed rather than
+    # matched line by line. The file is pinned to the format the Cloudflare
+    # build image reads. See docs/development.md.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Check the lockfile format
+        run: |
+          bun --eval '
+            const text = await Bun.file("bun.lock").text();
+            const version = Bun.JSONC.parse(text).lockfileVersion;
+            if (version !== 1) {
+              console.error(`bun.lock is lockfileVersion ${version}; the repository pins version 1. See docs/development.md#the-lockfile-format-the-build-image-reads.`);
+              process.exit(1);
+            }
+            console.log("bun.lock is lockfileVersion 1.");
+          '
