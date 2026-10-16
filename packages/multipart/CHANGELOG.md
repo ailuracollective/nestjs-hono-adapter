@@ -1,0 +1,19 @@
+# Changelog
+
+## 0.1.0-beta (2026-10-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* a deployment that served a gateway through @ailura/nestjs-hono-adapter/ws installs @ailura/nestjs-hono-adapter-ws and imports it from there. The ws ceiling leaves the size gate with the entrypoint; the WebSocket peers stay optional and a deployment that serves no gateway still installs neither.
+
+### Bug Fixes
+
+* **multipart:** mark the island across duplicated core copies ([3488b19](https://github.com/ailuracollective/nestjs-hono-adapter/commit/3488b19045f3b8a8cd64e72357ad61cecb39c38c))
+* release the pnpm workspace build fix under a patch version ([6ea958e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/6ea958e4f8d90c38713a285672aaa5b0cdfc4c47))
+* tell a Nest file and exception apart by shape ([a10e869](https://github.com/ailuracollective/nestjs-hono-adapter/commit/a10e8694a4534e1bcb72d3818328607ea4ed1243))
+
+
+### Miscellaneous Chores
+
+* rename the packages and stop publishing from the root ([#167](https://github.com/ailuracollective/nestjs-hono-adapter/issues/167)) ([fb73527](https://github.com/ailuracollective/nestjs-hono-adapter/commit/fb735277cfb08e66cfc31ad6bc000948beca671b))
