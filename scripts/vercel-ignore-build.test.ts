@@ -49,10 +49,10 @@ test('builds when a watched path changed', () => {
   });
 });
 
-test('skips when only an unwatched path changed', () => {
+test('skips when nothing changed in range', () => {
   withRepo((repo) => {
     const result = checkPaths({
-      base: 'HEAD^',
+      base: 'HEAD',
       cwd: repo,
       head: 'HEAD',
       paths: ['ignored.txt'],

@@ -5,50 +5,34 @@ substitutions:
   _REGION: us-central1
 
 steps:
-  - name: oven/bun:1.4-slim
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        if ! bun run scripts/ignore-build.ts --server google --target node --base HEAD^ --head HEAD -- packages/examples/google/node/ packages/core/src/ packages/core/package.json packages/core/tsconfig.json packages/core/tsconfig.build.json package.json bun.lock tsconfig.json bunfig.toml; then
-          touch /workspace/.deploy-google-node
-        fi
-
   # The Dockerfile wants the repository root as its context: the adapter comes
   # from the workspace.
   - name: gcr.io/cloud-builders/docker
-    entrypoint: bash
     args:
-      - -c
-      - |
-        if [ ! -f /workspace/.deploy-google-node ]; then
-          echo 'Skipping unaffected Cloud Run deployment.'
-          exit 0
-        fi
-        docker build -f packages/examples/google/node/Dockerfile -t ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID .
+      - build
+      - -f
+      - packages/examples/google/node/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
+      - .
 
   # Before the deploy, not after: an `images:` entry pushes once every step has run.
   - name: gcr.io/cloud-builders/docker
-    entrypoint: bash
     args:
-      - -c
-      - |
-        if [ ! -f /workspace/.deploy-google-node ]; then
-          echo 'Skipping unaffected Cloud Run deployment.'
-          exit 0
-        fi
-        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
       - -c
-      - |
-        if [ ! -f /workspace/.deploy-google-node ]; then
-          echo 'Skipping unaffected Cloud Run deployment.'
-          exit 0
-        fi
-        gcloud run deploy ailura-nestjs-hono-google-node --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID --project=$PROJECT_ID --region=${_REGION} --allow-unauthenticated --quiet && gcloud run services add-iam-policy-binding ailura-nestjs-hono-google-node --project=$PROJECT_ID --region=${_REGION} --member=allUsers --role=roles/run.invoker --quiet
+      - >
+        gcloud run deploy ailura-nestjs-hono-google-node
+        --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/ailura-nestjs-hono-google-node:$BUILD_ID
+        --project=$PROJECT_ID --region=${_REGION} --allow-unauthenticated --quiet
+        && gcloud run services add-iam-policy-binding ailura-nestjs-hono-google-node
+        --project=$PROJECT_ID --region=${_REGION}
+        --member=allUsers --role=roles/run.invoker --quiet
 
 # Cloud Logging alone, so gcloud prints nothing: gcloud builds log <id> --region=<region>
 options:

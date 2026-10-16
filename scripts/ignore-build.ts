@@ -152,15 +152,11 @@ function checkPaths(options: IgnoreBuildOptions): IgnoreBuildResult {
   }
 
   try {
-    const output = execFileSync(
-      'git',
-      ['diff', '--name-only', '--no-ext-diff', base, head, '--', ...paths],
-      {
-        cwd,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    ) as string;
+    const output = execFileSync('git', ['diff', '--name-only', '--no-ext-diff', base, head], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }) as string;
     const changed = output
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -300,17 +296,20 @@ function googleTargetExitCode(
 }
 
 function printGoogleAffected(result: IgnoreBuildResult, paths: string[]): void {
+  if (!result.build) {
+    console.log('');
+    console.log(result.reason);
+    return;
+  }
+
   let changedFiles: string[] = [];
   if (result.changed.length > 0) {
     changedFiles = result.changed;
-  } else if (result.build && paths.length > 0) {
+  } else if (paths.length > 0) {
     changedFiles = paths;
   }
 
-  let affectedFiles: string[] = changedFiles;
-  if (changedFiles.length === 0 && result.build) {
-    affectedFiles = [...GOOGLE_BUILD_NAMES];
-  }
+  const affectedFiles = changedFiles.length > 0 ? changedFiles : [...GOOGLE_BUILD_NAMES];
   console.log(getAffectedGoogleBuilds(affectedFiles).join(' '));
   console.log(result.reason);
 }
