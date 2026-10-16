@@ -4,6 +4,16 @@ name: release
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/release.yml'
+      - 'release-please-config.json'
+      - '.release-please-manifest.json'
+      - 'packages/core/**'
+      - 'packages/socket-io/**'
+      - 'packages/ws/**'
+      - 'packages/multipart/**'
+      - 'packages/graphql/**'
+      - 'packages/serve-static/**'
 
 permissions: {}
 
