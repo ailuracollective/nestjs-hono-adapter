@@ -9,13 +9,17 @@ const fetchOf = (
   server: BunRuntime,
 ): Response | Promise<Response> => {
   const incoming = new RequestCarrier(remoteAddressOf(server.requestIP(request)));
-  request.signal.addEventListener(
-    'abort',
-    () => {
-      incoming.emit('close');
-    },
-    { once: true },
-  );
+  if (request.signal.aborted) {
+    incoming.emit('close');
+  } else {
+    request.signal.addEventListener(
+      'abort',
+      () => {
+        incoming.emit('close');
+      },
+      { once: true },
+    );
+  }
   return app.fetch(request, { incoming, server });
 };
 
