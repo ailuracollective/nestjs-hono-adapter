@@ -1,6 +1,6 @@
 {
   "name": "@ailura/nestjs-platform-hono-multipart",
-  "version": "0.1.0-beta",
+  "version": "0.1.0-beta.1",
   "description": "The upload island of @ailura/nestjs-hono-adapter: multer-shaped multipart parsing, in its own package.",
   "keywords": [
     "adapter",

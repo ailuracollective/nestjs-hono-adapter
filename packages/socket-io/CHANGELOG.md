@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0-beta.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/socket-io-v0.1.0-beta...socket-io-v0.1.0-beta.1) (2026-10-16)
+
+
+### Features
+
+* add LICENSE files and update package.json to include LICENSE in files ([03dc079](https://github.com/ailuracollective/nestjs-hono-adapter/commit/03dc079e33fc50910b89758790558c1fbd62f104))
+
 ## 0.1.0-beta (2026-10-16)
 
 
