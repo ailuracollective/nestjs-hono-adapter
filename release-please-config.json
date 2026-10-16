@@ -7,7 +7,8 @@
   "initial-version": "0.1.0-beta",
   "packages": {
     "packages/core": {
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "release-as": "2.0.1"
     },
     "packages/socket-io": {
       "component": "socket-io",
