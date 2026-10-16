@@ -51,6 +51,7 @@ const resolvePackages = async (): Promise<readonly Bridge[]> => {
   const known = resolution.bridges;
   if (known !== undefined) return known;
   resolution.bridges = await resolveAll();
+
   return resolution.bridges;
 };
 
