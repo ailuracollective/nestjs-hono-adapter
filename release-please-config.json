@@ -22,10 +22,7 @@
     "packages/ws": {
       "component": "ws",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true,
-      "prerelease": true,
-      "prerelease-type": "beta",
-      "versioning": "prerelease"
+      "bump-minor-pre-major": true
     },
     "packages/multipart": {
       "component": "multipart",
