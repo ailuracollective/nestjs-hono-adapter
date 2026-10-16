@@ -1,16 +1,42 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
-coverage/
+build/
 *.tsbuildinfo
-*.log
-.DS_Store
-.atl/
-odd/
-.codegraph/
+
+# Test coverage
+coverage/
+
+# Caches and temporary files
+.bun-install/
+.bun-tmp/
+.cache/
 .gh-cache/
-.wrangler/
+.codegraph/
+.atl/
+.tmp-*
+*.cache
+*.log
+
+# Environment
+.env*
+
+# Editor and OS
+.DS_Store
 .idea/
 .vscode/
-.vercel
-.env*
-.tmp-*
+
+# Platform tooling
+.vercel/
+.wrangler/
+
+# Local scratch and tooling state
+odd/
+.home/
+.turbo/
+.vite/
+
+# Benchmark and example artifacts
+results/
