@@ -1,8 +1,8 @@
 {
-  "packages/core": "2.0.0",
+  "packages/core": "3.0.0",
   "packages/socket-io": "0.2.0",
   "packages/ws": "0.2.0",
-  "packages/multipart": "0.1.0",
-  "packages/graphql": "0.1.0",
-  "packages/serve-static": "0.1.0"
+  "packages/multipart": "0.2.0",
+  "packages/graphql": "0.2.0",
+  "packages/serve-static": "0.2.0"
 }
