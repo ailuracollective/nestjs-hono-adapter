@@ -6,8 +6,8 @@ import { NestFactory } from '@nestjs/core';
 import {
   ServerAdapter,
   type NestHonoApplication,
-} from '@ailura/nestjs-hono-adapter';
-import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
+} from 'npm:@ailura/nestjs-hono-adapter';
+import { nodeServer } from 'npm:@ailura/nestjs-hono-adapter/node-server';
 import { AppModule } from './app.module.ts';
 import { registerDocs } from './docs.ts';
 
