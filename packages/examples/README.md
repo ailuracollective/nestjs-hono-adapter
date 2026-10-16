@@ -421,3 +421,78 @@ names — `gcloud projects add-iam-policy-binding <project>
 ```sh
 bun run --cwd packages/examples/google/node dev  # bundle, then Node on :8080
 ```
+
+## Google from GitHub
+
+Both folders carry a `cloudbuild.yaml` — `google/fetch/cloudbuild.yaml`
+for the function, `google/node/cloudbuild.yaml` for the service — and one
+Cloud Build trigger pointing at each deploys on every push. The steps are
+the commands above: Bun installs and bundles, then `gcloud` deploys what
+was bundled.
+
+One piece is not in the repository: the connection between GitHub and the
+project. It is authorized once, in a browser, against the GitHub app that Cloud
+Build installs on the organisation, and every trigger in the project
+reuses it.
+Until it exists `gcloud builds triggers create` only answers
+`INVALID_ARGUMENT`.
+
+```sh
+gcloud builds connections create github github --region us-central1
+```
+
+That command needs Secret Manager enabled and `roles/secretmanager.admin`
+on `service-<number>@gcp-sa-cloudbuild.iam.gserviceaccount.com`, which is
+where the OAuth token lands — without it it fails with `could not assert
+Secret Manager permissions`. It prints a browser link; authorizing turns
+the connection from `PENDING_USER_OAUTH` into `COMPLETE`, and the
+repository is linked once:
+
+```sh
+gcloud builds repositories create nestjs-hono-adapter \
+  --connection=github --region=us-central1 \
+  --remote-uri=https://github.com/<owner>/<repo>.git
+```
+
+```sh
+gcloud builds triggers create github --name=ailura-google-fetch \
+  --branch-pattern='^main$' --region us-central1 \
+  --build-config=packages/examples/google/fetch/cloudbuild.yaml \
+  --service-account=projects/<project>/serviceAccounts/<number>-compute@developer.gserviceaccount.com \
+  --repository=projects/<project>/locations/us-central1/connections/github/repositories/nestjs-hono-adapter
+
+gcloud builds triggers create github --name=ailura-google-node \
+  --branch-pattern='^main$' --region us-central1 \
+  --build-config=packages/examples/google/node/cloudbuild.yaml \
+  --service-account=projects/<project>/serviceAccounts/<number>-compute@developer.gserviceaccount.com \
+  --repository=projects/<project>/locations/us-central1/connections/github/repositories/nestjs-hono-adapter
+```
+
+A trigger over a repository connection has to name its build service
+account: without `--service-account` the API answers nothing more useful
+than `Request contains an invalid argument`, whatever else the command
+carries. It is the account the roles above belong to, and the one the
+builds run as either way.
+
+Neither build needs a `Dockerfile` at the repository root: the Cloud Run
+one passes `-f packages/examples/google/node/Dockerfile` with the root as
+its context. The image lands in the project's `cloud-run-source-deploy`
+Artifact Registry repository, which `gcloud run deploy --source` creates
+and a fresh project does not have — `gcloud artifacts repositories create
+cloud-run-source-deploy --repository-format=docker --location <region>`.
+
+The builds run as the project's default compute service account, so it
+needs what a deploy needs: `roles/run.admin`,
+`roles/cloudfunctions.developer`, `roles/iam.serviceAccountUser`,
+`roles/artifactregistry.writer` and `roles/storage.objectAdmin`, with
+`cloudresourcemanager.googleapis.com` enabled — without that API the
+function step stops at `Cloud Resource Manager API has not been used`.
+Both configs log to Cloud Logging alone, so the CLI prints nothing for a
+build it did not start: `gcloud builds log <build-id> --region <region>`.
+
+The same build runs by hand, with no trigger and no connection:
+
+```sh
+gcloud builds submit --config=packages/examples/google/fetch/cloudbuild.yaml .
+gcloud builds submit --config=packages/examples/google/node/cloudbuild.yaml .
+```
