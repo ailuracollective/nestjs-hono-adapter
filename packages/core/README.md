@@ -27,6 +27,24 @@ WebSockets are not a capability but a **compatibility bridge**: `@ailura/nestjs-
 
 A socket.io gateway is served by the Bun transport's own server where it can bind an engine, and by the Node transport's `http.Server` otherwise; the fetch transport has neither and is refused by name.
 
+## Companion packages
+
+| Package | What it does | When to install |
+| --- | --- | --- |
+| [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter) | the adapter itself | always |
+| [`@ailura/nestjs-platform-hono-multipart`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-multipart) | multipart uploads via `busboy` | upload routes |
+| [`@ailura/nestjs-platform-hono-graphql`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-graphql) | `@nestjs/apollo` `ApolloDriver` fitted to Hono | GraphQL drivers |
+| [`@ailura/nestjs-platform-hono-ws`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-ws) | `@nestjs/platform-ws` `WsAdapter` fitted to Hono | WebSocket gateways |
+| [`@ailura/nestjs-platform-hono-socket-io`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-socket-io) | `@nestjs/platform-socket.io` `IoAdapter` fitted to Hono | Socket.IO gateways |
+| [`@ailura/nestjs-platform-hono-serve-static`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-serve-static) | serve-static fitted to Hono | static assets |
+
+And inside this repository:
+
+- [docs/architecture.md](../../docs/architecture.md) — layer map and boundaries
+- [docs/compatibility.md](../../docs/compatibility.md) — the five bridges and their seam
+- [docs/deployment.md](../../docs/deployment.md) — Bun, Node and fetch hosts
+- [docs/platform-differences.md](../../docs/platform-differences.md) — parity with Express and Fastify
+
 ### Migrating to 2.x
 
 Five things break a deployment that tracked `@ailura/nestjs-hono-adapter@1.4.1`: `./ws` moved, the default transport is no longer the Node one, `HonoWsAdapter` is gone, security headers are off by default, and the package is ESM only.
