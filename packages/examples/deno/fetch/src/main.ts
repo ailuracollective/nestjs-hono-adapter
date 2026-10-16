@@ -8,11 +8,11 @@ import { apiReference } from '@scalar/nestjs-api-reference';
 import {
   ServerAdapter,
   type NestHonoApplication,
-} from 'npm:@ailura/nestjs-hono-adapter';
+} from '@ailura/nestjs-hono-adapter';
 import {
   fetchHandler,
   fetchServer,
-} from 'npm:@ailura/nestjs-hono-adapter/fetch';
+} from '@ailura/nestjs-hono-adapter/fetch';
 import { AppModule } from './app.module.ts';
 
 /** The port the example serves on. */
