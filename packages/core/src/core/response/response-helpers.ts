@@ -18,8 +18,11 @@ const FITTED = Symbol('responseHelpers');
 
 const SETTLED = Symbol('responseSettled');
 
+const STORED_ORIGINALS = Symbol('storedResponseHelperOriginals');
+
 interface Fitted {
   [FITTED]?: true;
+  [STORED_ORIGINALS]?: Partial<Record<(typeof RESPONSE_HELPERS)[number], ResponseHelper>>;
 }
 
 interface SettledCarrier {
@@ -29,19 +32,21 @@ interface SettledCarrier {
   };
 }
 
-const wrapHelper = (
-  carrier: ResponseHelperCarrier,
-  name: (typeof RESPONSE_HELPERS)[number],
-  context: NestContext,
-): void => {
-  const helper = carrier[name];
-  if (typeof helper !== 'function') return;
-  carrier[name] = (...args: never[]): Response => {
-    const response = helper.apply(context, args);
-    context.res = response;
+function makeWrapped(name: (typeof RESPONSE_HELPERS)[number]): ResponseHelper {
+  return function wrapped(this: NestContext, ...args: never[]): Response {
+    const originals = (this as NestContext & Fitted)[STORED_ORIGINALS];
+    const helper = originals === undefined ? undefined : originals[name];
+    if (typeof helper !== 'function') throw new TypeError('Response helper is not installed.');
+    const response = helper.apply(this, args);
+    this.res = response;
     return response;
   };
-};
+}
+
+const WRAPPED_HELPERS: Readonly<Record<(typeof RESPONSE_HELPERS)[number], ResponseHelper>> =
+  Object.fromEntries(RESPONSE_HELPERS.map((name) => [name, makeWrapped(name)])) as Readonly<
+    Record<(typeof RESPONSE_HELPERS)[number], ResponseHelper>
+  >;
 
 const responseDescriptor = (context: NestContext): PropertyDescriptor | undefined => {
   let holder: object | null = Reflect.getPrototypeOf(context);
@@ -80,9 +85,15 @@ const finalizeOnResponse = (context: NestContext): void => {
   const carrier = context as unknown as ResponseHelperCarrier & Fitted;
   if (carrier[FITTED] === true) return;
   carrier[FITTED] = true;
+  const originals: Partial<Record<(typeof RESPONSE_HELPERS)[number], ResponseHelper>> = {};
   for (const name of RESPONSE_HELPERS) {
-    wrapHelper(carrier, name, context);
+    const helper = carrier[name];
+    if (typeof helper === 'function') {
+      originals[name] = helper;
+      carrier[name] = WRAPPED_HELPERS[name].bind(context);
+    }
   }
+  carrier[STORED_ORIGINALS] = originals;
 };
 
 /**
