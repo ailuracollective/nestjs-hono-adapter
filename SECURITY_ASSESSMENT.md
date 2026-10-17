@@ -1,10 +1,10 @@
-# Security Assessment
+# Security assessment
 
 ## Scope
 
 This assessment covers the `@ailura/nestjs-hono-adapter` package and its published bridges (`multipart`, `graphql`, `serve-static`, `ws`, `socket-io`).
 
-## Threat Model
+## Threat model
 
 ### Actors
 
@@ -13,7 +13,7 @@ This assessment covers the `@ailura/nestjs-hono-adapter` package and its publish
 - **Contributor** — proposes code changes; subject to review and CI gates
 - **Attacker** — attempts to exploit vulnerabilities in request handling, response encoding, or bridge shims
 
-### Trust Boundaries
+### Trust boundaries
 
 1. **Wire → adapter** — the adapter decodes a Web `Request` into Nest's expected shape. Malformed headers, bodies, and paths are the attacker's surface.
 2. **adapter → Nest** — the adapter calls Nest's lifecycle and route handler. Nest owns guards, interceptors, pipes, and filters.
@@ -63,7 +63,7 @@ These are the paths where a mistake crosses a trust boundary rather than merely 
 - The adapter never executes a template or evaluates a string from the request. Views are rendered by the application's own engine.
 - The adapter never issues an outbound request. A proxy or an egress call is application code, outside this trust boundary.
 
-## Identified Risks and Mitigations
+## Identified risks and mitigations
 
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
@@ -85,8 +85,8 @@ Runtime dependencies are minimal and pinned via `bun.lock`:
 
 Peer dependencies (installed by the consumer) are tested in the compatibility matrix but not controlled by this project.
 
-## Update Cadence
+## Update cadence
 
-- Dependencies are updated when compatibility matrix tests pass on both Nest 11 and 12
-- Security advisories for direct dependencies trigger an immediate assessment
-- `bun.lock` is frozen in CI (`lockfile.yml`); any lockfile change fails CI
+- A dependency is updated when the compatibility matrix passes on both Nest 11 and 12.
+- A security advisory for a direct dependency is assessed at once.
+- `bun.lock` stays at `lockfileVersion: 1`: the `lockfile` job in `.github/workflows/lockfile.yml` fails any other version, because that is the format the Cloudflare build image reads. The file itself is reviewed like any other change.

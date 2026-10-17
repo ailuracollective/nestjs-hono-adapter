@@ -1,35 +1,31 @@
-# Dependency Management
+# Dependency management
 
-## How dependencies are selected
+## What a dependency has to satisfy
 
-This project uses [Bun](https://bun.sh/) as its package manager. Dependencies are selected by the maintainer and must:
+[Bun](https://bun.sh/) is the package manager, and the maintainer selects every dependency. One is acceptable when it is:
 
-1. Be actively maintained (regular releases, responsive security advisories)
-2. Support the runtime matrix: Bun on Node >=22.12.0 and Cloudflare Workers
-3. Be compatible with NestJS 11 and 12 (tested in the compatibility matrix)
-4. Not break the size gate (bundle ceilings in `.size-limit.json`)
+1. actively maintained — regular releases, and a responsive advisory record
+2. compatible with the runtime matrix: Node 22.12 or later, Bun 1.2 or later, and the Cloudflare Workers build image, whose Bun reads only a `lockfileVersion: 1` lockfile
+3. compatible with both Nest majors the [compatibility matrix](../packages/compatibility/README.md) runs
+4. within the size gate: a dependency that pushes a bundle past its ceiling in a `.size-limit.json` is refused unless the ceiling is explicitly raised, with the reason, in the same change
 
-## How dependencies are added
+## Adding one
 
-1. Identify the package and its latest stable version
-2. Add to the appropriate workspace package's `package.json` (not the root — the root is private)
-3. Run `bun install` to update `bun.lock`
-4. Run `bun run check` to verify lint, format, typecheck, test, build, and size
-5. Open a PR following [CONTRIBUTING.md](CONTRIBUTING.md)
+1. The package and its latest stable version are identified.
+2. The dependency lands in the workspace package that uses it — never in the root manifest, which is private and publishes nothing.
+3. `bun install` updates `bun.lock`.
+4. `bun run check` runs the whole gate: lint, format, typecheck, test, build and size.
+5. The pull request follows [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-## How dependencies are tracked
+## Where each kind lives
 
-- **Direct dependencies** are listed in each package's `package.json` under `dependencies` and `devDependencies`
-- **Exact versions** are locked in `bun.lock` — CI fails when it changes (`lockfile.yml`)
-- **Peer dependencies** are declared for packages a consumer must install (e.g., `@nestjs/common`, `hono`)
-- **Vulnerability scanning** runs in CI via GitHub Security and Snyk
+- **A direct dependency** is declared by the workspace package that imports it, under `dependencies` or `devDependencies`. The root manifest declares no dependency of its own.
+- **A peer dependency** is a version the consumer owns, so a package that only works against a particular one names it in `peerDependencies` — `hono`, `@nestjs/common` and `@nestjs/core` throughout.
+- **A resolved version** is fixed by `bun.lock`. The `lockfile` job in `.github/workflows/lockfile.yml` parses `lockfileVersion` out of it and fails anything but version 1, because that is the format the Cloudflare build image reads; the lockfile itself is reviewed like any other change.
+- **A vulnerability** is scanned by the `dependency-review` job on every pull request, which fails on a high-severity change, and by GitHub code scanning. The thresholds are in [SCA_POLICY.md](SCA_POLICY.md).
 
-## How dependencies are updated
+## Updating one
 
-- Routine updates: when compatibility matrix tests pass on both Nest 11 and 12
-- Security advisories: immediate assessment, patch release if needed
-- Major versions: evaluated for breaking changes, documented in the release notes
-
-## Size constraints
-
-Each published package has a bundle ceiling in `.size-limit.json`. A dependency that pushes a bundle over its ceiling is not accepted unless the ceiling is explicitly raised with justification.
+- A routine update waits for the compatibility matrix to pass on both Nest 11 and 12 — every `@nestjs/*` package moves together, because a mixed install is what a WebSocket, microservice or bridge case fails on.
+- A security advisory is assessed at once, and a patch release follows when the assessment calls for one.
+- A major version is read for its breaking changes before it is taken, and the migration lands with the release note that explains it.

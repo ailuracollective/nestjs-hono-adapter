@@ -26,6 +26,7 @@ A bridge that belongs to a platform Nest users write against lives in the packag
 ```
 packages/serve-static/   @nestjs/serve-static, reading through the transport
 packages/graphql/        the stock @nestjs/apollo driver answering on Hono
+packages/socket-io/      the stock @nestjs/platform-socket.io IoAdapter serving on Hono
 packages/ws/             the stock @nestjs/platform-ws WsAdapter serving on Hono
 ```
 
@@ -116,7 +117,7 @@ The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` ra
 
 ### `serve-static`
 
-Shipped as `@ailura/nestjs-platform-hono-serve-static`, which peers on `@nestjs/serve-static`. That module builds an Express router and mounts it on the adapter's HTTP server, reading files through `express.static` and `res.sendFile`. On Hono that cannot work, so the bridge swaps its loader for one that:
+Shipped as `@ailura/nestjs-platform-hono-serve-static`, which peers on `@nestjs/serve-static`. That module mounts `express.static` middleware and a render function on the Express application, reading files through `express.static` and `res.sendFile`. On Hono that cannot work, so the bridge swaps its loader for one that:
 
 - serves each directory through `transport.serveStatic()`, and
 - answers the SPA fallback with one Hono middleware that reads the index file **through the transport** and turns a miss into the same `NotFoundException` the Express loader raises.
@@ -127,7 +128,7 @@ The swap is a patch of a third-party prototype, so it happens once per process a
 
 ### `ws`
 
-Shipped as `@ailura/nestjs-platform-hono-ws`, which peers on `@nestjs/platform-ws`. Nest's own `WsAdapter` builds a `ws.Server` out of the HTTP server, which a transport serving through a Hono application does not have: a gateway there is a route. So the bridge replaces the one member that builds a server, `WsAdapter.prototype.create`, and leaves the rest of the class alone — `bindMessageHandlers()`, `bindClientDisconnect()`, `bindErrorHandler()`, `close()` and `dispose()` are the stock implementation, which is why the wire protocol, the `messageParser` option and the refusals stay `platform-ws`'s own.
+Shipped as `@ailura/nestjs-platform-hono-ws`, which peers on `@nestjs/platform-ws`. Nest's own `WsAdapter` builds a `ws.Server` out of the HTTP server, which a transport serving through a Hono application does not have: a gateway there is a route. So the bridge replaces the one member that builds a server, `WsAdapter.prototype.create`, and leaves the rest of the class alone — `bindMessageHandlers()`, `bindClientDisconnect()`, `bindErrorHandler()`, `close()` and `dispose()` are the stock implementation, which is why the wire protocol and the `messageParser` option stay `platform-ws`'s own. The refusals are the bridge's own addition: stock `platform-ws` refuses nothing, and `create()` throws a `TypeError` naming any option but `path`.
 
 ```ts
 app.useWebSocketAdapter(new WsAdapter(app)); // @nestjs/platform-ws, unchanged
@@ -139,7 +140,7 @@ A socket is bound on whichever event the helper fires first, because a helper th
 
 ### `socket-io`
 
-Shipped as `@ailura/nestjs-platform-hono-socket-io`, which peers on `@nestjs/platform-socket.io` and on `socket.io`. Nest's own `IoAdapter` builds a socket.io server out of the HTTP server, which a transport serving through `Bun.serve` does not have. So the bridge replaces the one member that builds a server, `IoAdapter.prototype.createIOServer`, and leaves the rest of the class alone — `create()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` are the stock implementation, which is why namespaces, rooms, broadcasts, acknowledgement callbacks and refusals stay `platform-socket.io`'s own.
+Shipped as `@ailura/nestjs-platform-hono-socket-io`, which peers on `@nestjs/platform-socket.io`, on `socket.io` and, optionally, on `@socket.io/bun-engine`. Nest's own `IoAdapter` builds a socket.io server out of the HTTP server, which a transport serving through `Bun.serve` does not have. So the bridge replaces the one member that builds a server, `IoAdapter.prototype.createIOServer`, and leaves the rest of the class alone — `create()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` are the stock implementation, which is why namespaces, rooms, broadcasts, acknowledgement callbacks and refusals stay `platform-socket.io`'s own.
 
 ```ts
 app.useWebSocketAdapter(new IoAdapter(app)); // @nestjs/platform-socket.io, unchanged
@@ -177,9 +178,9 @@ GraphQLModule.forRoot({
 
 There is nothing to install and nothing to configure. An application running on Express or Fastify alongside it is untouched, because every other platform falls through to the driver's own branch.
 
-What replaces `registerExpress` is the three things it does that Hono cannot use:
+What replaces the Express branch of `registerServer` is the three things it does that Hono cannot use:
 
-| `ApolloBaseDriver.registerExpress`     | On Hono                                 |
+| `ApolloDriver.registerServer`          | On Hono                                 |
 | -------------------------------------- | --------------------------------------- |
 | `httpAdapter.use(path, bodyGuard)`     | the adapter's own body reader           |
 | `expressMiddleware(server, {context})` | a Hono handler built here               |
@@ -188,7 +189,7 @@ What replaces `registerExpress` is the three things it does that Hono cannot use
 Two details the bridge had to get right, both of them the integration's behaviour rather than Hono's:
 
 - **`context` belongs to the integration, not the engine.** `@as-integrations/express5` calls it as `context({ req, res })` and hands the resolver whatever it returns. So the bridge calls it the same way, with `req` being the adapter's own request object — so a factory written for Apollo on Express reads the members it always did — and `res` being the Hono context. With no factory named, the base context carries `c`, `ctx` and `req`, so a resolver still has the request.
-- **`headers` is a real `Headers`.** The engine negotiates the answer's content type off it and reads it again when it reports a failure, so a plain object answers nothing at all.
+- **`headers` is a real header collection.** The engine negotiates the answer's content type off it and reads it again when it reports a failure, so a plain object answers nothing at all; the bridge hands it a lowercased `Map` answering `undefined`, because WHATWG `Headers` answers `null` and slips through the engine's `!== undefined` checks.
 
 A streaming answer is pulled a chunk at a time through a `ReadableStream`, so an incremental delivery starts before the operation does.
 
@@ -241,7 +242,7 @@ Nothing per request.
 - Discovery runs once per process: the specifiers are resolved and imported the first time an application starts, and every later start reads what that found. Registering runs each time and is idempotent, so a registry emptied by a test is filled again by the next application.
 - The `express` surface fit is keyed on the request's Hono context, which Hono builds per request. The request path calls `installSurface(context, writer)`, and a second call for the same request — a middleware chain fits once, not once per hop — is one `WeakSet` hit. `res.send()` builds through the adapter's own writer, so `set('etag', …)` reaches it and the shim adds no second encoding step.
 - Each bridge package resolves its peers once, from `init()`, not from module evaluation.
-- No bridge installs a middleware on the Hono chain. A bridge patches a prototype once or hands the transport a handler; none adds a hop to a request. The Express error middleware is recognised where Nest mounts it, so that bridge installs nothing; a four-argument handler mounted with `app.use(...)` is then answered on every request with `err` undefined, because Nest's middleware path has no `next(err)` and wraps a module middleware down to three declared parameters before the adapter sees it.
+- No bridge adds a hop to a request. A bridge patches a prototype once or hands the transport a handler; the one exception is `serve-static`, which mounts its directory handler and SPA fallback as Hono middleware per registration, and that middleware answers rather than forwarding. The Express error middleware is recognised where Nest mounts it, so that bridge installs nothing; a four-argument handler mounted with `app.use(...)` is then answered on every request with `err` undefined, because Nest's middleware path has no `next(err)` and wraps a module middleware down to three declared parameters before the adapter sees it.
 
 The measured bundles are in [bundle-baseline.md](bundle-baseline.md).
 
@@ -269,6 +270,6 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 `test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
-`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all four trees: the region, and the three bridge packages.
+`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all five trees: the region, and the four bridge packages.
 
-`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.
+`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.

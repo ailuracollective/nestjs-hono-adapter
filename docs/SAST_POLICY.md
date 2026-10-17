@@ -1,8 +1,8 @@
-# SAST Policy
+# SAST policy
 
-Static Application Security Testing findings are governed by the thresholds below. This policy covers OpenSSF OSPS-VM-06.01 and VM-06.02.
+Static application security testing — the analysis of source for the defects a scanner recognises without executing anything — is governed by the thresholds below. This policy covers OpenSSF OSPS-VM-06.01 and VM-06.02.
 
-## Remediation Thresholds
+## Remediation thresholds
 
 | Severity | Threshold   | Target                |
 | -------- | ----------- | --------------------- |
@@ -12,28 +12,26 @@ Static Application Security Testing findings are governed by the thresholds belo
 | Low      | Track       | Next scheduled update |
 | Info     | Track       | No action required    |
 
-## What SAST Covers
+## What the analysis covers
 
-The SAST tooling scans for:
+- injection — SQL, command and template
+- cross-site scripting
+- path traversal
+- insecure deserialization
+- hardcoded credentials
+- unsafe cryptographic use
+- prototype pollution
 
-- Injection vulnerabilities (SQL, command, template)
-- Cross-site scripting (XSS)
-- Path traversal
-- Insecure deserialization
-- Hardcoded credentials
-- Unsafe cryptographic use
-- Prototype pollution
+## How it runs
 
-## Enforcement
+The analysis is GitHub code scanning, configured on the platform rather than in a workflow file in this repository; its check reports on the `security/snyk` check of every pull request. It is deliberately not a step in `.github/workflows/`, because the findings arrive on the pull request itself.
 
-- **On every pull request**: the SAST status check runs against the full diff
-- **High and critical findings block the merge** until fixed or explicitly suppressed
-- **False positives** are suppressed with a comment referencing the CWE and the reason the path is unreachable
+A critical or high finding blocks the merge until it is fixed or its suppression is recorded.
 
-## Suppression
+## Suppressing a finding
 
-A finding may be suppressed only when:
+A finding is suppressed only when all three hold:
 
-1. The vulnerable code path is not reachable from the adapter's public interfaces
-2. The justification references the trust boundary it crosses (see `SECURITY_ASSESSMENT.md`)
-3. The suppression is reviewed on each release
+1. The vulnerable code path is unreachable from the adapter's public interfaces — [SECURITY_ASSESSMENT.md](../SECURITY_ASSESSMENT.md) names the trust boundaries and the paths that cross them.
+2. The suppression names the CWE and the reason the path is unreachable.
+3. A dependency vulnerability is recorded in [VEX.md](../VEX.md) as well, with the CVE and the reasoning.

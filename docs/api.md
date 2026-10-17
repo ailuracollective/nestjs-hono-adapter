@@ -79,16 +79,16 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 
 | Method | Signature | Description |
 | --- | --- | --- |
-| `enableCors` | `(options?: CorsOptions) => void` | Turns on CORS; no options allows every origin |
-| `useStaticAssets` | `(path: string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix |
+| `enableCors` | `(options?: CorsConfig) => void` | Turns on CORS; no options allows every origin, and a delegate answers per request |
+| `useStaticAssets` | `(path: StaticAssetsOptions \| string \| readonly string[], options?: StaticAssetsOptions) => this` | Serves the files in a directory under the prefix, in either platform's shape |
 | `setBaseViewsDir` | `(directory: string \| readonly string[]) => this` | Names the directories a view is read from |
-| `setViewEngine` | `(engine: string) => this` | Names the engine by the extension it renders, loading it on first render |
+| `setViewEngine` | `(engine: EngineConfig) => this` | Names the engine by the extension it renders, loading it on first render |
 | `setLocal` | `(key: string, value: unknown) => this` | Adds one value to every template render |
 | `set` | `(name: string, value: unknown) => this` | Honours the settings that name behaviour |
 | `enable` | `(name: string) => this` | `set(name, true)` |
 | `disable` | `(name: string) => this` | `set(name, false)` |
 
-Express's `app.get(name)` and `engine()` are absent: the first collides with the container's `get()` and the GET registrar, the second with `setViewEngine()`. Both are in [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
+Express's `app.get(name)` is absent: it collides with the container's `get()` and the GET registrar. `engine()` is the adapter's own — `app.getHttpAdapter().engine('hbs', hbs)` registers a template engine for a file extension, and a render prefers the engine registered for its extension over the one `setViewEngine()` named. `app.get(setting)` is in [platform-differences.md](platform-differences.md#what-this-adapter-does-not-implement).
 
 These are reached on the application — `app.useStaticAssets(...)`, `app.setViewEngine(...)` — the way `NestExpressApplication` is read: `NestHonoApplication` and every `INestApplication` carry them, and the adapter answers behind them. The adapter carries the same names.
 
@@ -101,6 +101,7 @@ These are reached on the application — `app.useStaticAssets(...)`, `app.setVie
 | `getType` | `() => 'hono'` | The identifier ecosystem packages branch on |
 | `isRouteOrderSensitive` | `() => boolean` | Returns `false` (Hono scores routes) |
 | `useBodyParser` | `(type?: string, rawBody?: boolean, options?) => void` | Reached by `app.useBodyParser()` |
+| `engine` | `(extension: string, engine: unknown) => this` | Registers a template engine for one file extension, the Express selector |
 
 `getHono` is declared on Nest's `HttpServer` by this package, so it is reachable off an untyped application, but the declaration covers every `HttpServer` (Express and Fastify included, which lack it). Name [`NestHonoApplication`](#nesthonoapplication) — it narrows the adapter instead of widening the contract.
 
@@ -154,7 +155,7 @@ They parse `multipart/form-data` with multer's semantics — `@UploadedFile()`�
 
 The adapter's `bodyLimit` is answered `413` under any framing: a declared `Content-Length` already over it is refused before the body is read, and a chunked body with none is counted chunk by chunk as it is read. A body that declares a length under the limit but carries more is read first and measured after, so it is refused too. A multipart body is the exception: a parser consumes it. Where `@ailura/nestjs-platform-hono-multipart` is imported, the island's `busboy` reads it, so the route's `limits` are the ceiling while it is parsed and `bodyLimit` still refuses a declared length already over it; otherwise Hono's own parser counts no ceiling.
 
-The island needs `busboy` (an optional peer) and works where Node streams do — Node and Bun; a fetch host instead parses `multipart/form-data` into `req.body` and `req.files` through Hono's parser.
+The island needs `busboy` — a required peer of the package, not of the adapter — and works where Node streams do, Node and Bun. Importing it marks the adapter, so on every transport the request path leaves a multipart body alone and a multipart route without an interceptor reads no `body` and no `files`; without the island, a fetch host parses `multipart/form-data` into `req.body` and `req.files` through Hono's own parser.
 
 ## WebSocket Adapter
 
@@ -167,9 +168,9 @@ import type { GatewayClient } from '@ailura/nestjs-platform-hono-ws';
 
 The socket `@ConnectedSocket()` receives is exported as the type `GatewayClient`, so a gateway types its parameter with it.
 
-Its `install(target)` patches `WsAdapter.prototype.create` once per process: for the adapter a gateway was created for, the gateway's `path` is registered on that adapter's Hono application instead of a `ws.Server` being built. Every other member — `bindMessageHandlers()`, `bindErrorHandler()`, `bindClientDisconnect()`, `close()`, `dispose()`, `messageParser` — is the stock class's. Only `path` is honoured; a non-zero `port`, a `namespace`, a `server` and the WebSocket server options are refused by name. See [WebSockets](deployment.md#websockets).
+Its `install(target)` patches `WsAdapter.prototype.create` once per process: for the adapter a gateway was created for, the gateway's `path` is registered on that adapter's Hono application instead of a `ws.Server` being built. Every other member is the stock class's. Only `path` is honoured; a non-zero `port`, a `namespace`, a `server` and the WebSocket server options are refused by name. See [WebSockets](deployment.md#websockets).
 
-Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for Socket.IO: an application names Nest's own `@nestjs/platform-socket.io` `IoAdapter` — `app.useWebSocketAdapter(new IoAdapter(app))` — and the bridge replaces its `createIOServer()`, so a gateway binds to the transport's own server instead of one built from it. Every other member is the stock class's, and the wire protocol, namespaces, rooms, broadcasts and acknowledgement callbacks stay `platform-socket.io`'s own. See [Socket.IO](deployment.md#socketio).
+Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for Socket.IO: an application names Nest's own `@nestjs/platform-socket.io` `IoAdapter` — `app.useWebSocketAdapter(new IoAdapter(app))` — and the bridge replaces its `createIOServer()`, so a gateway binds to the transport's own server instead of one built from it. Every other member is the stock class's, so the wire protocol, namespaces, rooms, broadcasts and acknowledgement callbacks stay `platform-socket.io`'s own. See [Socket.IO](deployment.md#socketio).
 
 ## Types
 
@@ -186,12 +187,16 @@ Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for S
 | `origin` | `boolean \| string \| RegExp \| readonly (string \| RegExp)[] \| OriginCallback` | — | Allowed origins; `false` turns CORS off |
 | `preflightContinue` | `boolean` | `false` | Forward the preflight to the route instead of answering it |
 
+`CorsConfig` is either that table's `CorsOptions` or a `CorsOptionsDelegate` — `(request: NestRequest, answer: (error: Error | null, options: CorsOptions) => void) => void`, answered once per request, as [parity.md](parity.md#enablecors--both-signatures) records.
+
 ### `ViewOptions`
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `engine` | `ViewEngine` | — | The function that renders a template's source |
 | `directory` | `string \| readonly string[]` | `cwd` | Where templates are read from |
+
+`EngineConfig` — what `setViewEngine()` takes — is a `string` or Fastify's `ViewEngineOptions`, where `root` or `templates` name the directories and `viewExt` the extension.
 
 ### `StaticAssetsOptions`
 

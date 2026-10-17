@@ -1,10 +1,10 @@
 # @ailura/nestjs-platform-hono-multipart
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-platform-hono-multipart.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-multipart) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-platform-hono-multipart.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-multipart) [![bundle size](https://img.shields.io/badge/bundle%20size-≤12kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/multipart/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-platform-hono-multipart)](https://socket.dev/npm/package/@ailura/nestjs-platform-hono-multipart) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-platform-hono-multipart.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-multipart) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-platform-hono-multipart.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-multipart) [![bundle size](https://img.shields.io/badge/bundle%20size-≤4.3kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/multipart/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-platform-hono-multipart)](https://socket.dev/npm/package/@ailura/nestjs-platform-hono-multipart) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 `multipart/form-data` uploads for [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter), parsed with multer's semantics on top of `busboy`. It follows `@nestjs/platform-fastify/multipart`, not `@nestjs/platform-express/multer`: only the interceptor function names and the option keys match Express.
 
-Import it only where an application accepts an upload; the HTTP entrypoint never loads it.
+It is a **capability**: an application imports it, and only where it accepts an upload — the HTTP entrypoint never loads it.
 
 ## Install
 
@@ -12,7 +12,7 @@ Import it only where an application accepts an upload; the HTTP entrypoint never
 bun add @ailura/nestjs-platform-hono-multipart busboy
 ```
 
-`@ailura/nestjs-hono-adapter`, `@nestjs/common` and `hono` are peers too; install the adapter and Hono alongside it.
+Peers on `@ailura/nestjs-hono-adapter` (`>=2 <3`) and `@nestjs/common`; install the adapter alongside it.
 
 ## Use
 
@@ -72,7 +72,7 @@ async ingest(@UploadedFile() file: MultipartFileStream) {
 
 `MultipartModule.register(options)` (and `registerAsync`) provides defaults every interceptor in the importing module merges over. `memoryStorage()` keeps each file in `file.buffer`; `diskStorage({ destination, filename })` writes it and sets `destination`, `filename` and `path`. Both implement multer's `_handleFile` / `_removeFile` contract, so an engine written for `@nestjs/platform-express` works here unchanged.
 
-The package needs `busboy` and works where Node streams do — the Node and Bun transports. On a fetch host the request path keeps parsing `multipart/form-data` into `req.body` and `req.files` through Hono's own parser instead.
+The package needs `busboy` and works where Node streams do — the Node and Bun transports. Importing it marks the adapter, so on every transport the request path leaves a multipart body for the interceptors: a multipart route without one reads no `body` and no `files`. An application that does not import the package keeps Hono's own parser, which lands the fields on `req.body` and the files on `req.files`.
 
 ## Documentation
 

@@ -1,26 +1,24 @@
-# VEX Statement
+# VEX statement
 
-This document records the exploitability status of known vulnerabilities in dependencies that do not affect this project, as required by OpenSSF OSPS-VM-04.02.
+This document records the exploitability status of the known vulnerabilities that do not affect this project, as OpenSSF OSPS-VM-04.02 requires.
 
 ## Scope
 
-Dependencies that are declared but do not execute in this project's runtime paths, or where the vulnerable code path is not reachable from the adapter's public interfaces.
+A dependency that is declared but never executes on a runtime path this repository reaches, and a vulnerability whose vulnerable code path is unreachable from the adapter's public interfaces.
 
 ## Statements
 
-| CVE                         | Dependency | Version | Status | Justification | Assessed |
-| --------------------------- | ---------- | ------- | ------ | ------------- | -------- |
-| _(none currently recorded)_ |            |         |        |               |          |
+| CVE               | Dependency | Version | Status | Justification | Assessed |
+| ----------------- | ---------- | ------- | ------ | ------------- | -------- |
+| _(none recorded)_ |            |         |        |               |          |
 
-## How to Update
+## Recording a statement
 
-When a vulnerability is assessed as not affecting this project:
+A vulnerability is assessed against the adapter's real execution paths — [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md) names the trust boundaries they cross — and recorded here only when the assessment says it does not affect the project:
 
-1. Add a row to the table above with the CVE, dependency, version, and justification
-2. Assess against the adapter's actual execution paths (see `SECURITY_ASSESSMENT.md` for the trust boundaries)
-3. Re-assess on each dependency update
-4. Remove the row when the vulnerability is fixed in the dependency
+1. A row is added with the CVE, the dependency, the version and the justification.
+2. The justification names the trust boundary the vulnerable path does not cross.
+3. The row is assessed again on every dependency update.
+4. The row is removed when the dependency ships the fix.
 
-## Contributing
-
-If you believe a row is incorrect or a vulnerability should be recorded, open an issue or submit a pull request updating this document.
+A statement here that a reader believes wrong is an issue or a pull request against this document.

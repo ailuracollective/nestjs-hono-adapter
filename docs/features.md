@@ -53,7 +53,7 @@ A handler marks its route with `@Render('hello')`, and the engine's extension is
 
 `redirect` is accepted but not acted on: a directory request is answered with its index whether or not the path ends in a slash. The options Hono's handler decides for itself are refused when passed, so a deployment is told at startup: `setHeaders`, `extensions`, `fallthrough: false`, `dotfiles`, `index: false`, `etag: false`, and `immutable` without a `maxAge`. An ETag is always written.
 
-`@nestjs/serve-static` is served by the same machinery through a compatibility bridge, so the refusal above applies to its `serveStaticOptions` too. See [compatibility.md](compatibility.md#what-is-refused-and-why).
+`@nestjs/serve-static` is served by the same machinery through a compatibility bridge, which refuses the same `setHeaders` hook and honours `index` and `fallthrough`, where the core refuses them; see [compatibility.md](compatibility.md#what-is-refused-and-why).
 
 ## CORS
 
@@ -85,7 +85,7 @@ It is installed as an own property rather than a method: `AbstractHttpAdapter` d
 
 ## Uploads
 
-`multipart/form-data` bodies are handled by `@ailura/nestjs-platform-hono-multipart`, which parses them with multer's semantics on top of `busboy` (an optional peer). Import it only where an application accepts an upload; the HTTP entrypoint never loads it.
+`multipart/form-data` bodies are handled by `@ailura/nestjs-platform-hono-multipart`, which parses them with multer's semantics on top of `busboy` (a required peer of that package). Import it only where an application accepts an upload; the HTTP entrypoint never loads it.
 
 ```ts
 import {
@@ -102,7 +102,7 @@ upload(@UploadedFile() file: UploadedMultipartFile) {
 
 `FileInterceptor`, `FilesInterceptor`, `FileFieldsInterceptor`, `AnyFilesInterceptor`, `NoFilesInterceptor` and `FileStreamInterceptor` mirror the platform-express names and fill `req.file` / `req.files` / `req.body`, but follow `@nestjs/platform-fastify/multipart`, not `@nestjs/platform-express/multer`: only the interceptor names and option keys match Express. The types are this package's own: `UploadedMultipartFile`, `MultipartFileStream` and `MultipartOptions` (`storage`, `limits`, `fileFilter`, `preservePath`, `defParamCharset`). `MultipartModule.register()` provides defaults; `memoryStorage()` and `diskStorage()` are shipped, and a platform-express engine works unchanged.
 
-`FileStreamInterceptor` stores nothing, the counterpart of Fastify's interceptor of the same name: the handler is handed a `MultipartFileStream` whose `stream` carries the bytes as they arrive, so a file larger than memory or disk is piped straight through.
+`FileStreamInterceptor` stores nothing, the counterpart of Fastify's interceptor of the same name: the handler is handed a `MultipartFileStream` — [the type, and the option keys, are the package's own](api.md#multipartfilestream) — so a file larger than memory or disk is piped straight through.
 
 Only what the handler reads is taken from the client, and the unread is discarded once it answers, so a client still uploading is never left hanging. The text fields must precede the file: the parts after it are read and discarded rather than parsed. The size is unknown when the handler runs, so `MaxFileSizeValidator` and `FileTypeValidator`'s magic-number check do not apply; `limits.fileSize` is enforced on the stream instead, erroring with a `PayloadTooLargeException`.
 
@@ -126,14 +126,14 @@ No configuration is needed, and the UI assets are served through `useStaticAsset
 
 A Nest module can register a route on the HTTP adapter itself, and it receives the Hono context as its Express-shaped `res`. Some modules — `@nestjs/swagger` among them — write to that object with `res.type()` and `res.send()`, which a Hono context does not carry. Without them such a route answers `500`.
 
-The adapter installs both on the Hono context prototype, once per application, in `packages/core/src/compat/express/`:
+The adapter installs both on the Hono context, once per request, in `packages/core/src/compat/express/`:
 
 - `res.type(value)` writes `Content-Type` and returns the context, as Express does for chaining.
 - `res.send(body)` answers the body through the same writer every other answer goes through, honouring a status Nest set first and falling back to `200`. A **string** goes out as `text/html`, as Express reads `res.send(html)` and as a module handing over a page means it. A type declared through `res.type()` is left alone.
 
 The string reading is the surface's, not the adapter's: the body a Nest _handler returns_ is labelled by the writer, the Fastify reading [the differences table](platform-differences.md) records. Only the path serving a module that registers a route this way follows Express here.
 
-The install is guarded on the prototype already answering `send`, so a second application in the same process, or a runtime shipping the method itself, is left alone. It is part of the translation, not a Swagger-specific shim: any module that registers a route on the adapter this way gets the same surface.
+The install is guarded on a `WeakSet` of contexts already fitted, so a middleware chain fits once rather than once per hop, and no Hono prototype is written to. It is part of the translation, not a Swagger-specific shim: any module that registers a route on the adapter this way gets the same surface.
 
 ### What it does not provide
 

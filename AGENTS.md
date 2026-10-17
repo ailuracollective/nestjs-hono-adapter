@@ -17,6 +17,7 @@ The repository ships with the standard and its gate. Link them, do not restate t
 - [.agents/organization-conventions.md](.agents/organization-conventions.md) — mandatory.
 - [.github/workflows/policy.yml](.github/workflows/policy.yml) — the gate; complete and intact.
 - [.github/workflows/ci.yml](.github/workflows/ci.yml) — CI; bun-based checks, size gate, NestJS compat matrix.
+- [.github/workflows/lockfile.yml](.github/workflows/lockfile.yml) — the lockfile format gate.
 - [.github/workflows/release.yml](.github/workflows/release.yml) — release-please, npm published through OIDC trusted publishing.
 - [.github/ISSUE_STANDARD.md](.github/ISSUE_STANDARD.md), [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/), [.github/PULL_REQUEST_TEMPLATE/](.github/PULL_REQUEST_TEMPLATE/), [.github/labels.yml](.github/labels.yml), [.github/CODEOWNERS](.github/CODEOWNERS) — the standard artifacts.
 
@@ -27,7 +28,7 @@ This file covers the whole repository. The directories an agent may edit:
 - `packages/` — the workspace packages: `core`, published as `@ailura/nestjs-hono-adapter`; the optional capability `multipart`, published as `@ailura/nestjs-platform-hono-multipart`; and the compatibility bridges `graphql`, `serve-static`, `socket-io` and `ws`, published as `@ailura/nestjs-platform-hono-{graphql,serve-static,socket-io,ws}`. It also holds `benchmarks`, the private comparison suite — one Nest application served by the Hono adapter on Bun and Node and by the official Express and Fastify platform adapters, driven by `oha` and `bombardier`. It is never published; its own build is not part of `bun run check`, which lints, formats and typechecks it. Run it by hand with `bun run bench`. It also holds `compatibility`, the private suite that proves the adapter serves an application built with each third-party Nest package it has to run alongside — the boot-and-route cases this workspace adds and the behaviour suites moved out of `packages/core/test`; it is never published either, but unlike `benchmarks` it runs under `bun run check`, and the CI compatibility matrix runs it on Nest 11 and 12.
 - `test/` — what guards the monorepo and what more than one package shares: `layers.test.ts`, `entry-points.test.ts`, `node-builtins.test.ts`, plus the shared probe and helpers (`probe.ts`, `bun-adapter.ts`, `bun-bindings.ts`). Each package carries its own behaviour tests under `packages/<name>/test/` and its own `test` script.
 - `docs/` — architecture and documentation.
-- `packages/examples/` — the runnable deployment examples, one independent project per transport and host: `cloudflare/fetch` and `cloudflare/node` run on a Worker, `vercel/fetch`, `vercel/node` and `vercel/bun` on Vercel, `docker/bun` in a container image, `google/fetch` on Cloud Functions and `google/node` on Cloud Run. Each is private, never published, and outside the size gate.
+- `packages/examples/` — the runnable deployment examples, one independent project per transport and host: `cloudflare/fetch` and `cloudflare/node` run on a Worker, `vercel/fetch`, `vercel/node` and `vercel/bun` on Vercel, `google/fetch` on Cloud Functions and `google/node` on Cloud Run. Each is private, never published, and outside the size gate.
 
 An agent must not touch `dist/`, `node_modules/`, or `bun.lock` (except via `bun install`). There is no subdirectory `AGENTS.md`; this file governs every path.
 
@@ -39,7 +40,7 @@ The core is runtime-neutral: a `Transport` serves through Bun's own server, `@ho
 
 GraphQL is deliberately **not** one of those packages: it ships as `@ailura/nestjs-platform-hono-graphql`, which patches one branch of `@nestjs/apollo`'s own `ApolloDriver`, so a deployment names the stock driver. `@nestjs/serve-static` is the same, in `@ailura/nestjs-platform-hono-serve-static`, and so are Nest's own `@nestjs/platform-ws` `WsAdapter`, in `@ailura/nestjs-platform-hono-ws`, and its `@nestjs/platform-socket.io` `IoAdapter`, in `@ailura/nestjs-platform-hono-socket-io`. All four are **compatibility bridges** rather than capabilities, and the difference is how they arrive: a capability is imported, a bridge is not. `compat/registry/discover.ts` resolves each name in `BRIDGE_PACKAGES` out of the application's own tree, so installing the package is what installs the bridge and an application writes no import of any of them. The adapter names none of the packages, and the bridge packages peer on it.
 
-The adapter's implementation is `packages/core`: `src/core/` holds the request decode, response encode, and lifecycle bridge, plus the `Server` and `Transport` ports; `src/features/` holds the optional capabilities (CORS, guards, instrumentation hooks, SSE, static assets, views); `src/compat/` holds the region's mechanism — the `Bridge` port, the registry, the peer loader, the discovery — and the one bridge that cannot be optional, Express's response surface and error middleware; `src/servers/` holds the runtime transports (`bun.ts`, `node.ts`, `fetch.ts`), reached through their subpaths — the Bun one also from `core/server/server-adapter.ts`, the composition root and the default transport. The repository root is only the private Bun workspace root: no published package, no `src/`, no exports. The layout, import rules, and bundle ceilings are in [docs/architecture.md](docs/architecture.md); the compatibility region is covered in [docs/compatibility.md](docs/compatibility.md).
+The adapter's implementation is `packages/core`: `src/core/` holds the request decode, response encode, lifecycle bridge and the `inject()` helper, plus the `Server` and `Transport` ports; `src/features/` holds the optional capabilities (CORS, guards, instrumentation hooks, SSE, static assets, views); `src/compat/` holds the region's mechanism — the `Bridge` port, the registry, the peer loader, the discovery — and the one bridge that cannot be optional, Express's response surface and error middleware; `src/servers/` holds the runtime transports (`bun.ts`, `bun-runtime.ts`, `node.ts`, `fetch.ts`, each split across its own subfolder), reached through their subpaths — the Bun one also from `core/server/server-adapter.ts`, the composition root and the default transport. The repository root is only the private Bun workspace root: no published package, no `src/`, no exports. The layout, import rules, and bundle ceilings are in [docs/architecture.md](docs/architecture.md); the compatibility region is covered in [docs/compatibility.md](docs/compatibility.md).
 
 ## Repository-specific conventions
 
@@ -51,7 +52,7 @@ The adapter's implementation is `packages/core`: `src/core/` holds the request d
 - **The compat matrix tests NestJS 11 and 12 on Bun.** Every Nest package moves together; a mixed install is what a WebSocket, microservice or bridge case would fail on.
 - **`packages/benchmarks/` is private and never published.** It is a workspace package like the others, so `bun run check` lints, formats and typechecks it; but it has no release entry — it is absent from `release-please-config.json`, from `.github/workflows/publish.yml` and from the size gate — and its own `tsc` build runs only when the suite does, by hand, with `bun run bench`.
 - **`packages/compatibility/` is private and never published.** It exists only to prove the adapter serves an application built with the third-party Nest packages it has to run alongside: the boot-and-route cases this workspace adds live in `test/cases/`, and the behaviour suites for the packages the core suite used to cover live in `test/<package>/`. It is a workspace package like the others, so `bun run check` lints, formats, typechecks and runs it; it has no release entry — absent from `release-please-config.json`, from `.github/workflows/publish.yml` and from the size gate — and the CI compatibility matrix runs it on Nest 11 and 12, where the three packages that peer `^12` alone are removed from it and their cases skip rather than fail to load.
-- **`packages/examples/` holds independent, private projects.** Each example is its own project — its own `package.json` (`private`), `tsconfig.json` and host config (`wrangler.jsonc` on Cloudflare, a `vercel.json` on each Vercel one that pins `framework`, `installCommand` and `buildCommand`, so a Git-connected project and a CLI deploy build the same thing, and a `Dockerfile` on the Docker one and on `google/node`, whose build context is the repository root) — that lives under `packages/` without becoming a published package: it has no release entry, so it is absent from `release-please-config.json`, from `.github/workflows/publish.yml` and from the size gate. It is a Bun workspace member only so its dependencies resolve from a fresh clone: a Cloudflare example aliases `packages/core/src/` through its `tsconfig.json` and `wrangler.jsonc`, while a Vercel one imports the workspace package by name and builds it with its `vercel-build` script, and the two container examples are built from the repository root, with the root `.dockerignore` — the Docker one on the Bun runtime and `google/node` on Node. `.oxlintrc.json` and `.oxfmtrc.json` exclude them all from lint and format.
+- **`packages/examples/` holds independent, private projects.** Each example is its own project — its own `package.json` (`private`), `tsconfig.json` and host config (`wrangler.jsonc` on Cloudflare, a `vercel.json` on each Vercel one that pins `framework`, `installCommand` and `buildCommand`, so a Git-connected project and a CLI deploy build the same thing, and a `Dockerfile` on `google/node`, whose build context is the repository root) — that lives under `packages/` without becoming a published package: it has no release entry, so it is absent from `release-please-config.json`, from `.github/workflows/publish.yml` and from the size gate. It is a Bun workspace member only so its dependencies resolve from a fresh clone: a Cloudflare example aliases `packages/core/src/` through its `tsconfig.json` and `wrangler.jsonc`, while a Vercel one imports the workspace package by name and builds it with its `vercel-build` script, and the container example is built from the repository root, with the root `.dockerignore`, on Node. `.oxlintrc.json` and `.oxfmtrc.json` exclude them all from lint and format.
 - **`docs/benchmarks.md` is generated.** The private benchmark suite overwrites it on every `bun run bench`, so `.oxfmtrc.json` excludes it from the formatter, the way it excludes `CHANGELOG.md`; the raw samples stay under `packages/benchmarks/results/`, which is git-ignored.
 
 ## Development and validation
@@ -79,20 +80,17 @@ bun run size          # build, then each package's size-limit
 
 ## Git and pull requests
 
-Branches are `<github-username>/<type>/<description>`, all lowercase. The type is the title type, except `breaking-change`, which is a commit marker and not a branch type. Commit messages follow Conventional Commits; the allowed types are the filenames of `.github/PULL_REQUEST_TEMPLATE/`, minus the default form.
-
-A pull request must:
-
-- Carry a title matching the template for its type.
-- Link the issue with a closing keyword (`Closes #N`); the issue must carry `status/ready`.
-- Apply exactly one `type/*` label.
-- Pass all CI checks.
+Branching, commit and pull request rules are the organisation's, and [§ Pull requests](.agents/organization-conventions.md#pull-requests) is where they live — this file links them rather than restating them. What is this repository's: the allowed types are the filenames of `.github/PULL_REQUEST_TEMPLATE/`, minus the default form, and the commands below are what a change has to pass.
 
 ## Documentation
 
 Documentation lives in `docs/` (architecture) and in the README. A change to public behavior or configuration updates the documentation in the same change. A generated changelog is not edited by hand.
 
 "Documented" means: a comment in the source for internal contracts, a page in `docs/` for architecture and layering rules, and a README section for user-facing behavior.
+
+Every package README is one document written by one hand, not one per author: the title, the badge row, one paragraph saying what the package is, a second saying how it arrives — a **capability** an application imports, or a **compatibility bridge** it installs — then `Install`, `Use`, `Options` or `What it covers` where the package has any, `Documentation` and `License`, in that order. A paragraph is one line, headings are sentence case, and the prose is third person, present tense and British English. A package that needs a section the skeleton does not carry adds it, in the same voice.
+
+Two kinds of document keep a voice of their own. The mirrors of the organisation's standard — [.agents/organization-conventions.md](.agents/organization-conventions.md), [.github/ISSUE_STANDARD.md](.github/ISSUE_STANDARD.md) and everything under `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE/` — are copied by hand from the origin, so rewriting one here only drifts it; the DCO certificate text in [DCO.md](DCO.md) is a legal text and is left verbatim. The generated [CHANGELOG.md](CHANGELOG.md) and [docs/benchmarks.md](docs/benchmarks.md) are written by their tools, never by an agent.
 
 ## Additional references
 
@@ -110,7 +108,7 @@ Documentation lives in `docs/` (architecture) and in the README. A change to pub
 
 A repository's `AGENTS.md` is **valid** when every line below holds. This is the baseline contract, not a placeholder: it is not deleted when the file is completed.
 
-- [ ] No `TODO` marker remains anywhere in the file.
+- [ ] No unresolved placeholder marker remains anywhere in the file.
 - [ ] The organisation conventions reference resolves — either `.agents/organization-conventions.md` exists, or the path it was found at is recorded in § Additional references.
 - [ ] Every file this document links to exists in this repository, at the path given.
 - [ ] Every section above says something true of this repository, and nothing still says something that was only true of the template.
@@ -120,8 +118,8 @@ A repository's `AGENTS.md` is **valid** when every line below holds. This is the
 Check them by hand:
 
 ```sh
-# 1. no unresolved placeholders
-grep -n 'TODO' AGENTS.md                                    # expect no output
+# 1. no unresolved placeholders (spelled with a wildcard so this check skips itself)
+grep -n 'TO.DO' AGENTS.md | grep -v "grep -n 'TO.DO'"       # expect no output
 
 # 2. the organisation reference resolves, from any directory
 git ls-files --full-name | grep -E '(^|/)organization-conventions\.md$'

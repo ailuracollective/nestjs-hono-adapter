@@ -1,53 +1,55 @@
-# Verifying Release Integrity and Authenticity
+# Verifying a release
 
-Every published package carries a signed npm provenance statement generated at publish time by the npm registry from the GitHub OIDC identity. This document covers OpenSSF OSPS-DO-03.01 and DO-03.02.
+Every published package carries an npm provenance statement, minted at publish time by the npm registry from the GitHub OIDC identity. This document covers OpenSSF OSPS-DO-03.01 and DO-03.02.
 
-## What Is Published
+## What is published
 
-Packages are published to npm from a release tag by `.github/workflows/publish.yml`. Each publish runs with `npm publish --provenance`, which asks the npm registry to generate an SLSA provenance statement bound to:
+`.github/workflows/publish.yml` publishes from a release tag, and each run executes `npm publish --provenance`, so the registry generates an SLSA provenance statement bound to:
 
-- the exact Git commit the release was cut from
+- the commit the release was cut from
 - the workflow file that built and published it
 - the GitHub Actions run that performed the publish
 
-## Verify the Provenance of a Package
+## Verifying a package's provenance
 
-To confirm that a published package came from this project's release pipeline:
+The provenance statement of a published version is read from the registry:
 
 ```sh
 npm view @ailura/nestjs-hono-adapter@<version> --json
 ```
 
-The output includes a `dist.attestations` field when provenance is present. To verify it against npm's transparency log:
+Provenance is present when the output carries a `dist.attestations` field. The signature itself is checked against npm's transparency log with:
 
 ```sh
 npm audit signatures
 ```
 
-Run it in a directory where `@ailura/nestjs-hono-adapter` is a dependency. A verified signature reports the package as `ok`; a missing or invalid one reports the failure reason.
+The check runs in a directory where the package is a dependency. A verified signature reports the package as `ok`; a missing or invalid one reports the reason.
 
-## Verify the Signer Identity
+## Verifying the signer
 
-The provenance statement names the expected identity. For this project it is:
+The statement names the identity that produced the release, and for this project it is:
 
 | Field       | Expected value                                                            |
 | ----------- | ------------------------------------------------------------------------- |
 | Workflow    | `.github/workflows/publish.yml` in `ailuracollective/nestjs-hono-adapter` |
-| Trigger     | `release` event of type `published`                                       |
+| Trigger     | the `release` event of type `published`                                   |
 | Environment | GitHub Actions, `ubuntu-latest`                                           |
 
-If a package claims provenance from a different workflow, a different repository, or a different trigger, it did not come from this project's pipeline and should be treated as compromised.
+A package claiming provenance from another workflow, another repository or another trigger did not come from this pipeline and is treated as compromised.
 
-## Verify the Commit
+## Verifying the commit
 
-The provenance statement records the commit the package was built from. To confirm it is in this repository:
+The statement records the commit the package was built from, and its presence in this repository is checked with:
 
 ```sh
 git log --oneline <commit-sha>
 ```
 
-A commit that does not exist in `github.com/ailuracollective/nestjs-hono-adapter` did not produce the release.
+A commit absent from `github.com/ailuracollective/nestjs-hono-adapter` produced no release here.
 
-## When to Run These Checks
+## When these checks run
 
-Run them before adopting a version in a production deployment, when installing a version that was not resolved by your lockfile, and when auditing an existing dependency for supply chain integrity.
+- before a version is adopted in production
+- whenever a version is installed outside the lockfile
+- in an audit of an existing dependency for supply chain integrity

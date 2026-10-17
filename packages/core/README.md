@@ -1,6 +1,6 @@
 # @ailura/nestjs-hono-adapter
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter) [![bundle size](https://img.shields.io/badge/bundle%20size-≤12kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/core/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-hono-adapter)](https://socket.dev/npm/package/@ailura/nestjs-hono-adapter) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-hono-adapter.svg)](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter) [![bundle size](https://img.shields.io/badge/bundle%20size-≤16.5kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/core/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-hono-adapter)](https://socket.dev/npm/package/@ailura/nestjs-hono-adapter) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 An HTTP adapter that runs a NestJS application on [Hono](https://hono.dev), with no Express or Fastify underneath. The core is runtime-neutral; a **transport** decides how it is served: `bunServer()` (Bun's own server, the default), `nodeServer()` for `@hono/node-server`, or `fetchServer()` for a host that serves a Web `Request`/`Response`.
 
@@ -14,14 +14,13 @@ An HTTP adapter that runs a NestJS application on [Hono](https://hono.dev), with
 bun add @ailura/nestjs-hono-adapter hono
 ```
 
-`@nestjs/common`, `@nestjs/core`, `hono` and `@hono/node-server` are peers, so the application decides their versions. `@hono/node-server` is optional: only the `./node-server` transport reaches it, and a Bun or fetch deployment never loads it. Use `npm install` or `pnpm add` in place of `bun add` as needed.
+`@nestjs/common`, `@nestjs/core`, `hono`, `rxjs` and `@hono/node-server` are peers, so the application decides their versions. `@hono/node-server` is optional: only the `./node-server` transport reaches it, and a Bun or fetch deployment never loads it. Use `npm install` or `pnpm add` in place of `bun add` as needed.
 
-The two optional capabilities live in their own packages, each with a single entrypoint, so importing one loads none of the others:
+The optional capability lives in a package of its own, with a single entrypoint, so importing it loads none of the others:
 
-| Package                                  | For       | Installs                                  |
-| ---------------------------------------- | --------- | ----------------------------------------- |
-| `@ailura/nestjs-platform-hono-multipart` | uploads   | `busboy`                                  |
-| `@ailura/nestjs-platform-hono-socket-io` | socket.io | `socket.io`, `@nestjs/platform-socket.io` |
+| Package                                  | For     | Installs |
+| ---------------------------------------- | ------- | -------- |
+| `@ailura/nestjs-platform-hono-multipart` | uploads | `busboy` |
 
 WebSockets are not a capability but a **compatibility bridge**: `@ailura/nestjs-platform-hono-ws` fits Nest's own `@nestjs/platform-ws` `WsAdapter` to Hono, so you install the package and write no import of it — `app.useWebSocketAdapter(new WsAdapter(app))` is the whole wiring. Socket.IO is the same, through `@ailura/nestjs-platform-hono-socket-io` and the stock `@nestjs/platform-socket.io` `IoAdapter`. See [docs/compatibility.md](../../docs/compatibility.md).
 
@@ -60,7 +59,7 @@ Only a gateway's `path` is honoured; the wire protocol is `platform-ws`'s own.
 
 The zero-configuration bootstrap now serves through `bunServer()` where it served through `@hono/node-server`; a deployment on Node names the transport explicitly ([Use](#use)).
 
-`ServerAdapterOptions.overrideGlobalObjects` left with the implicit Node default. `nodeServer()` keeps it and defaults it to `true`, the fastest path and the behavior the implicit Node transport had; the replacement of the global `Request` and `Response` is process-wide and not restored, so a deployment that wants the globals left alone asks by name: `nodeServer({ overrideGlobalObjects: false })`.
+`ServerAdapterOptions.overrideGlobalObjects` is gone and `nodeServer()` carries it, defaulting to `true`, the fastest path and the behaviour the implicit Node transport had; the replacement of the global `Request` and `Response` is process-wide and not restored, so a deployment that wants the globals left alone asks by name: `nodeServer({ overrideGlobalObjects: false })`.
 
 `secureHeaders` defaulted to `true` and now defaults to `false`; a deployment that relied on the default sets `secureHeaders: true`.
 

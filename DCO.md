@@ -10,10 +10,10 @@ I understand and agree that this project and the contribution are public and tha
 
 ## Sign-off
 
-Every commit must include a `Signed-off-by:` line in its message, certifying agreement with the DCO. Git's `-s` flag adds this automatically:
+Every commit carries a `Signed-off-by:` line, certifying agreement with the DCO. `git commit -s` adds it:
 
 ```sh
 git commit -s -m "feat: description"
 ```
 
-The `Signed-off-by:` line must use the same name and email as the commit author.
+The line carries the same name and email as the commit's author.

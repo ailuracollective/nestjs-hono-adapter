@@ -1,8 +1,8 @@
-# SCA Policy
+# SCA policy
 
-Software Composition Analysis findings — vulnerabilities and license violations in dependencies — are governed by the thresholds below. This policy covers OpenSSF OSPS-VM-05.01, VM-05.02, and VM-05.03.
+Software composition analysis — vulnerabilities and licence violations in dependencies — is governed by the thresholds below. This policy covers OpenSSF OSPS-VM-05.01, VM-05.02 and VM-05.03.
 
-## Remediation Thresholds
+## Remediation thresholds
 
 | Severity | Threshold   | Target                |
 | -------- | ----------- | --------------------- |
@@ -12,29 +12,31 @@ Software Composition Analysis findings — vulnerabilities and license violation
 | Low      | Track       | Next scheduled update |
 | Info     | Track       | No action required    |
 
-Any finding with an available fix in a direct dependency blocks the merge until resolved or explicitly suppressed.
+A finding with an available fix in a direct dependency blocks the merge until it is resolved or its suppression is recorded.
 
-## License Violations
+## Licence violations
 
-| License Type | Action |
+| Licence | Action |
 | --- | --- |
 | Copyleft (GPL, AGPL) in a published package | Block merge |
-| Unknown / unapproved | Block merge |
+| Unknown or unapproved | Block merge |
 | Permissive (MIT, BSD, Apache-2.0, ISC) | Allow |
-| Dual-licensed with copyleft | Allow if the consumer may choose the permissive option |
+| Dual-licensed with copyleft | Allow when the consumer may choose the permissive option |
 
-Approved licenses: MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, ISC, 0BSD, Unlicense.
+The approved list is MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, ISC, 0BSD and Unlicense. The published packages ship MIT.
 
-## Enforcement
+## How it runs
 
-- **On every pull request**: Snyk Code (`security/snyk`) and `actions/dependency-review-action` (`.github/workflows/security.yml`) scan for vulnerabilities and license violations
-- **Before release**: the publish pipeline verifies no high or critical findings are unresolved in direct dependencies
-- **Blocking findings** must be fixed or suppressed with a justification recorded in `VEX.md`
+Two jobs and one platform check:
 
-## Suppression
+- `dependency-review`, in `.github/workflows/security.yml`, runs `actions/dependency-review-action` on every pull request with `fail-on-severity: high`, so a new high-severity dependency blocks the merge.
+- `gitleaks`, in the same workflow, scans the history for committed credentials on every push and pull request.
+- GitHub code scanning reports dependency findings on the pull request itself; the thresholds above are what a maintainer applies to them.
 
-A finding may be suppressed only when:
+## Suppressing a finding
 
-1. The vulnerable code path is not reachable from the adapter's public interfaces (see `SECURITY_ASSESSMENT.md` for the trust boundaries)
-2. The justification is recorded in `VEX.md` with the CVE, dependency, and reasoning
-3. The suppression is reviewed on each dependency update
+A finding is suppressed only when all three hold:
+
+1. The vulnerable code path is unreachable from the adapter's public interfaces — [SECURITY_ASSESSMENT.md](../SECURITY_ASSESSMENT.md) names the trust boundaries.
+2. The suppression is recorded in [VEX.md](../VEX.md) with the CVE, the dependency and the reasoning.
+3. It is assessed again on every dependency update.

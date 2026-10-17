@@ -1,33 +1,33 @@
-# Support Policy
+# Support policy
 
-## Supported Versions
+## Supported versions
 
-| Version | Supported | Security Fixes | Bug Fixes |
+| Version | Supported | Security fixes | Bug fixes |
 | ------- | --------- | -------------- | --------- |
 | 2.x     | Yes       | Yes            | Yes       |
 | 1.x     | No        | No             | No        |
 
-Only the 2.x line receives security and maintenance updates. Upgrade to the latest 2.x release.
+Only the 2.x line receives security and maintenance updates, and an update ships in the latest 2.x release.
 
-## Types of Support
+## What support covers
 
-- **Security fixes**: Critical and high-severity vulnerabilities in the 2.x line
-- **Bug fixes**: Functional defects reported via GitHub Issues in the 2.x line
-- **Compatibility updates**: Support for new NestJS major versions (11, 12) and Hono releases
+- **Security fixes**: a critical or high-severity vulnerability in the 2.x line.
+- **Bug fixes**: a functional defect reported through [GitHub issues](https://github.com/ailuracollective/nestjs-hono-adapter/issues) in the 2.x line.
+- **Compatibility**: the Nest majors the [compatibility matrix](packages/compatibility/README.md) runs — 11 and 12 — and the Hono releases the peer range accepts.
 
-## Getting Support
+## Where to ask
 
-- **Bugs**: Open a [GitHub issue](https://github.com/ailuracollective/nestjs-hono-adapter/issues) with a minimal reproduction
-- **Security vulnerabilities**: See [SECURITY.md](SECURITY.md) — do not open public issues
-- **Questions**: Open a [GitHub discussion](https://github.com/ailuracollective/nestjs-hono-adapter/discussions)
+- **A defect** is filed as an issue with a minimal reproduction.
+- **A vulnerability** goes through [SECURITY.md](SECURITY.md); it is never a public issue.
+- **A question** is asked in [GitHub discussions](https://github.com/ailuracollective/nestjs-hono-adapter/discussions).
 
-## Out of Scope
+## Out of scope
 
-- Third-party package issues (report to the upstream maintainers)
-- Application-level bugs (bugs in the user's NestJS code, not the adapter)
-- Integration issues with unsupported NestJS versions
-- Performance issues not reproducible against the benchmark suite
+- a third-party package's own issue, reported upstream
+- an application-level bug — a defect in the consuming Nest code rather than in the adapter
+- an integration on a Nest major outside the matrix
+- a performance claim that does not reproduce against the [benchmark suite](packages/benchmarks/README.md)
 
-## End of Life
+## End of life
 
-When the 2.x line reaches end of life, this file will be updated to remove it from the supported table. Security fixes are provided for the latest minor release in the supported line. No backports to older minors.
+When the 2.x line reaches end of life, its row leaves the table above and this file records it, as [SECURITY.md](SECURITY.md) requires thirty days ahead. A fix is always published against the latest minor of a supported line; nothing is backported to an older one.

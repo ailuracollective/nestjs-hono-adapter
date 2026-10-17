@@ -1,14 +1,22 @@
 # @ailura/nestjs-platform-hono-serve-static
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-platform-hono-serve-static.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-serve-static) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-platform-hono-serve-static.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-serve-static) [![bundle size](https://img.shields.io/badge/bundle%20size-≤12kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/serve-static/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-platform-hono-serve-static)](https://socket.dev/npm/package/@ailura/nestjs-platform-hono-serve-static) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-platform-hono-serve-static.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-serve-static) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-platform-hono-serve-static.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-serve-static) [![bundle size](https://img.shields.io/badge/bundle%20size-≤1.9kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/serve-static/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-platform-hono-serve-static)](https://socket.dev/npm/package/@ailura/nestjs-platform-hono-serve-static) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 The static-asset bridge of [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter). It makes the **stock** [`@nestjs/serve-static`](https://www.npmjs.com/package/@nestjs/serve-static) module serve files on Hono, through the adapter's transport.
 
-`ServeStaticModule` builds an Express router and mounts it on the adapter's HTTP server, reading files through `express.static` and `res.sendFile`. On Hono neither exists. This package swaps that module's loader for one that serves every directory through `transport.serveStatic()`, and answers the SPA fallback with one Hono middleware that reads the index file through the same call.
+It is a **compatibility bridge**: installing the package is what installs it, and an application writes no import of it. The adapter's compatibility region resolves the package out of your own tree and registers the bridge it publishes, so the application names nothing from here.
 
-## You write no import
+`ServeStaticModule`'s Express loader mounts `express.static` middleware and a render function on the Express application, reading files through `express.static` and `res.sendFile`. On Hono neither exists. This package swaps that module's loader for one that serves every directory through `transport.serveStatic()`, and answers the SPA fallback with one Hono middleware that reads the index file through the same call.
 
-Installing the package is what installs the bridge. The adapter's compatibility region resolves the package out of your own tree and registers the bridge it publishes, so an application names nothing from here:
+## Install
+
+```sh
+bun add @ailura/nestjs-platform-hono-serve-static
+```
+
+Peers on `@nestjs/serve-static`, which it does nothing without, and on `@ailura/nestjs-hono-adapter` (`>=2 <3`); the adapter is never named in the module, only reached through it.
+
+## Use
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -25,21 +33,19 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 export class AppModule {}
 ```
 
-## Install
+The application names the stock module and imports nothing from here.
 
-```sh
-bun add @ailura/nestjs-platform-hono-serve-static
-```
+## Options
 
-Peers on `@nestjs/serve-static`; it does nothing without it.
+`rootPath` names the directory and `serveRoot` the prefix it answers under; `exclude` takes a string, a regular expression or a list of them, and `useGlobalPrefix` mounts the directory under the application's global prefix. Inside `serveStaticOptions`, `index` names the index file — `false` means `index.html` — and `fallthrough` is honoured, where the adapter's own static handler refuses it.
 
 ## `setHeaders` is refused
 
 The hook is handed an `fs.Stats` and an Express response, and no transport here builds either — a fetch host has no filesystem at all. Rather than honour the hook on Node and ignore it elsewhere, the loader throws a `TypeError` that names the option.
 
-## See also
+## Documentation
 
-[docs/compatibility.md](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/compatibility.md) — the region, the discovery, and what a bridge costs.
+[docs/compatibility.md](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/compatibility.md#serve-static) — what the bridge patches, and what it costs.
 
 ## License
 

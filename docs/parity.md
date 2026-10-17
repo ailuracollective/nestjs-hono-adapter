@@ -38,9 +38,9 @@ Express's engine name and Fastify's `FastifyViewOptions` are both read: from the
 
 Settings live on the adapter and on the application `NestFactory.create()` returns. `setLocal(key, value)` keeps locals separate from the `defaultContext`; a render merges defaults, locals and handler data in that order, and `__proto__`-like keys are own data properties. `set(name, value)` handles `view engine` (→ `setViewEngine()`) and `views` (→ `setBaseViewsDir()`; string or string array, searched in order); `enable(name)` / `disable(name)` call it with `true` / `false`; every other name is refused with a reason. `trust proxy` reads the adapter options; `env`, `etag`, `query parser` and `x-powered-by` have no behaviour.
 
-### `engine()` and `get()` — missing
+### `engine()` — implemented on the adapter; `get()` — missing
 
-`engine()` registers a template engine by extension and nothing here reads that registry. `get()` collides: Nest's `INestApplicationContext.get()` answers the DI container with `any[]`, and the adapter declares `get(target, handler)`, the GET route registrar, so `app.get(setting)` cannot be added without a `TS2430` override error and a `TS4114` implicit-override error.
+`engine()` registers a template engine by extension, and a render prefers the engine registered for that extension over the one `setViewEngine()` named; it is reached through `app.getHttpAdapter().engine(...)`, because `INestApplication` is not widened for it. `get()` collides: Nest's `INestApplicationContext.get()` answers the DI container with `any[]`, and the adapter declares `get(target, handler)`, the GET route registrar, so `app.get(setting)` cannot be added without a `TS2430` override error and a `TS4114` implicit-override error.
 
 ### `useMultipart()` — not applicable
 
@@ -58,7 +58,7 @@ Only the positional forms — `(port)`, `(port, hostname)`, `(port, callback)`, 
 
 Against `@nestjs/platform-ws`:
 
-The bridge ships no adapter: Nest's `WsAdapter` is the adapter, and the bridge replaces its `create()` so a gateway is served as a route on the Hono application instead of a `ws.Server` built from the HTTP server. Everything else is the stock class — `bindMessageHandlers()`, `bindClientDisconnect()`, `bindErrorHandler()`, `close()`, `dispose()`, `messageParser` and `setMessageParser()` — so the wire protocol, the parser and the shutdown are `platform-ws`'s own.
+The bridge ships no adapter: Nest's `WsAdapter` is the adapter, and the bridge replaces its `create()` so a gateway is served as a route on the Hono application instead of a `ws.Server` built from the HTTP server. Everything else is the stock class, so the wire protocol, the parser and the shutdown are `platform-ws`'s own — [compatibility.md](compatibility.md#ws) names the members.
 
 ### `create()` options — `path` only, the rest refused
 
@@ -74,7 +74,7 @@ Where the transport has no `createWebSocket` (`nodeServer()`, and the default tr
 
 ### `@nestjs/platform-socket.io` — implemented, in `@ailura/nestjs-platform-hono-socket-io`
 
-The bridge ships no adapter: Nest's `IoAdapter` is the adapter, and the bridge replaces its `createIOServer()` so a gateway binds to the transport's own server instead of one built from it. Everything else is the stock class — `create()`, `mapPayload()`, `bindMessageHandlers()`, `bindClientDisconnect()` and `close()` — so namespaces, rooms, broadcasts, acknowledgement callbacks and the shutdown are `platform-socket.io`'s own.
+The bridge ships no adapter: Nest's `IoAdapter` is the adapter, and the bridge replaces its `createIOServer()` so a gateway binds to the transport's own server instead of one built from it. Everything else is the stock class, so namespaces, rooms, broadcasts, acknowledgement callbacks and the shutdown are `platform-socket.io`'s own — [compatibility.md](compatibility.md#socket-io) names the members.
 
 Where the transport's server offers `useNativeHandler()` — the Bun transport's slot — a socket.io engine binds to it, and the optional `@socket.io/bun-engine` peer is where the engine comes from. A server that answers with a real `node:http` server (`nodeServer()`, on Node and on Bun) keeps the stock path, which attaches socket.io to it as it stands. A fetch host — and a `Bun.serve` deployment without that peer — is refused by name instead of failing inside socket.io. The Bun server carries one native slot, so it serves one socket.io server per application.
 
@@ -82,11 +82,11 @@ Where the transport's server offers `useNativeHandler()` — the Bun transport's
 
 `@nestjs/platform-express/multer` and `@nestjs/platform-fastify/multipart` publish `MulterModule`, `FileInterceptor`, `FilesInterceptor`, `FileFieldsInterceptor`, `AnyFilesInterceptor`, `NoFilesInterceptor`, the `diskStorage` / `memoryStorage` engines, and the streaming `FileStreamInterceptor` with its `processStream`.
 
-`@ailura/nestjs-platform-hono-multipart` (`packages/multipart/src/**`) implements that shape — interceptors, module, both storage engines, interfaces, `packages/multipart/test/multipart/` — producing the `MultipartFileStream` type, with `busboy` an optional peer of the adapter and a required one of this package, and its own ceiling in `packages/multipart/.size-limit.json`. An aborted upload cancels the parse, a non-adapter is refused, and an `undefined` file-filter or name-resolver error counts as failure.
+`@ailura/nestjs-platform-hono-multipart` (`packages/multipart/src/**`) implements that shape — interceptors, module, both storage engines, interfaces, `packages/multipart/test/multipart/` — producing the `MultipartFileStream` type, with `busboy` a required peer of this package, and its own ceiling in `packages/multipart/.size-limit.json`. An aborted upload cancels the parse, a non-adapter is refused, and an `undefined` file-filter or name-resolver error counts as failure.
 
 `processStream()` sits beside `processMultipart()` in the island's parser and feeds busboy from the Web body: the handler gets busboy's own stream, the take is marked synchronously so later parts are read but not parsed, and a file in any other field is a `400` — upstream's contract (upstream walks `req.parts()` and returns on the first file, leaving the iterator suspended). `context.req.raw` has no socket `close` to hang a drain on, so an answer that is a `StreamableFile` is drained before it goes out unless it is built from the stream the handler was handed (`StreamableFile.getStream()` makes that checkable); upstream defers that drain to `reply.raw`'s `close` instead. The discard reads rather than cancels (cancelling `request.raw.body` aborts the client), so an abort mid-upload surfaces as a read failure, not a hang.
 
-The multipart entry moved from 3800 B to 4250 B for 553 B of measured growth, recorded in [bundle-baseline.md](bundle-baseline.md) and justified in [architecture.md](architecture.md#the-bundle-budget). The graphql entry moved from 1500 B to 1900 B for 553 B of measured growth (1297 B to 1850 B), which is the subscriptions glue in [compatibility.md](compatibility.md#graphqlapollo).
+The multipart entry sits at 4300 B, raised from the 4250 B the [baseline](bundle-baseline.md) page recorded, and justified in [architecture.md](architecture.md#the-bundle-budget). The graphql entry, at 2100 B, carries the subscriptions glue in [compatibility.md](compatibility.md#graphqlapollo).
 
 ## Fastify route decorators
 
@@ -96,7 +96,7 @@ The multipart entry moved from 3800 B to 4250 B for 553 B of measured growth, re
 
 `@nestjs/graphql` ships no platform adapter of its own; its **drivers** are the platform-coupled half. `@nestjs/apollo`'s `ApolloDriver.start()` branches on `httpAdapter.getType()` and throws `No support for current HttpAdapter` for anything that is not Express or Fastify, and `@nestjs/mercurius`'s `MercuriusDriver.start()` refuses the same way.
 
-- **`ApolloDriver` — implemented, in `@ailura/nestjs-platform-hono-graphql`.** The bridge replaces that one branch on `ApolloDriver.prototype` and mounts the endpoint through `registerGraphQLRoute()`. A deployment names the stock driver and imports nothing: installing the package is what installs the bridge, because the compatibility region resolves it. Queries and mutations, both code-first and schema-first, answer on Hono.
+- **`ApolloDriver` — implemented, in `@ailura/nestjs-platform-hono-graphql`.** The bridge replaces that one branch on `ApolloDriver.prototype` and mounts the endpoint through `registerGraphQLRoute()`. A deployment names the stock driver and imports nothing: [discovery](compatibility.md#discovery) resolves the bridge out of its own tree. Queries and mutations, both code-first and schema-first, answer on Hono.
 - **GraphiQL / the Apollo landing page — implemented.** The plugin is one `@nestjs/apollo` puts into `options.plugins` before the driver registers, so the bridge hands it to the engine untouched and the page answers on a `GET` that accepts `text/html`.
 - **Subscriptions — implemented, on the stock `ws` server on Node and through the transport's own websocket helper elsewhere.** `ApolloDriver.start()` opens a `GqlSubscriptionService` that attaches a `ws` server to the HTTP server's `upgrade` event, and the Node transport's real `node:http` server emits it. `Bun.serve` is not a `node:http` server and a fetch host owns its own upgrade, so on those the bridge replaces the service's `initialize()` and mounts the upgrade on the Hono application, feeding `graphql-ws`'s core server from the helper. `graphql-ws` is an optional peer, resolved only where the upgrade is served.
 - **`MercuriusDriver` — not implemented.** Mercurius is itself a Fastify plugin, so adapting it means a Fastify-shaped façade over the Hono application. The seam it would mount through (`registerGraphQLRoute()`) and the resolver context naming (`c`, `ctx`, `req`) exist and are covered by the Apollo bridge's tests.

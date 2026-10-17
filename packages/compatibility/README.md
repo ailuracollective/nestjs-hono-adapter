@@ -6,7 +6,7 @@ A private workspace package whose only job is to prove that the adapter serves a
 
 The boot-and-route cases under [`test/cases`](./test/cases) each boot a Nest application on the adapter's Bun transport, make a request through it, and assert the route answered. That is the whole claim: the package's module graph initialises inside an application the adapter serves, and a request still round-trips. It is not a re-test of the third-party package — each package's own behaviour is its own suite's concern, and the adapter's behaviour is the one [the core suite](../../packages/core/test) already covers.
 
-The behaviour suites moved over from the core suite — `cache-manager`, `config`, `cqrs`, `event-emitter`, `jwt`, `microservices`, `schedule`, `swagger`, `terminus`, `testing`, `throttler` — go deeper than a boot: each asserts what its package does through the adapter. They live here so every third-party Nest package the adapter runs alongside is proved in one workspace.
+The behaviour suites moved over from the core suite — `cache-manager`, `config`, `cqrs`, `event-emitter`, `jwt`, `microservices`, `schedule`, `swagger`, `terminus`, `testing`, `throttler` — go deeper than a boot: each asserts what its package does through the adapter. They live here so the third-party Nest packages the adapter runs alongside are proved in one workspace.
 
 A few cases assert one step further, where the step crosses the adapter: `@nestjs/mapped-types` validates a DTO through the adapter's body decode, and `@nestjs/authentication` refuses an unauthenticated request through the adapter's request object.
 
@@ -39,7 +39,7 @@ Every package below is proved against a Nest application served by the adapter. 
 | `@nestjs/graphql` | [`packages/graphql`](../graphql/test) (bridge) |
 | `@nestjs/http-client` | [`test/cases`](./test/cases) |
 | `@nestjs/jwt` | [`test/jwt`](./test/jwt) |
-| `@nestjs/mapped-types` | [`test/mapped-types.test.ts`](./test/mapped-types.test.ts) |
+| `@nestjs/mapped-types` | [`test/cases`](./test/cases) (boot-and-route), [`test/mapped-types.test.ts`](./test/mapped-types.test.ts) |
 | `@nestjs/microservices` | [`test/microservices`](./test/microservices) |
 | `@nestjs/mongoose` | [`test/cases`](./test/cases) |
 | `@nestjs/observe` | [`test/cases`](./test/cases) |
@@ -55,7 +55,9 @@ Every package below is proved against a Nest application served by the adapter. 
 | `@nestjs/testing` | [`test/testing`](./test/testing) |
 | `@nestjs/throttler` | [`test/throttler`](./test/throttler) |
 | `@nestjs/typeorm` | [`test/cases`](./test/cases) |
-| `@nestjs/websockets` | [`packages/core/test/socket`](../core/test/socket), [`packages/ws`](../ws/test) |
+| `@nestjs/websockets` | [`packages/core/test/fetch-server`](../core/test/fetch-server) (gateway fixture), [`packages/ws`](../ws/test) (bridge) |
+
+`@nestjs/bullmq` is declared in `devDependencies` because `@nestjs/observe` loads it optionally; no case exercises it on its own, and the suite is green without it.
 
 ## Why nothing reaches for a server
 
@@ -65,9 +67,9 @@ The adapter is the HTTP layer, so no suite reaches for a broker or a database se
 - `@nestjs/mongoose` opens a lazy connection that never dials, and asserts the injected model's name.
 - `@nestjs/sequelize` resolves its models without dialling. Sequelize's SQLite dialect loads the `sqlite3` native addon on construction, and that addon has no build for Bun, so the case supplies a `dialectModule` to keep the addon out and stops short of a query. The connection is the package's own and never the adapter's; a deployment on Bun needs a Bun-compatible driver.
 - `@nestjs/bull` sets `lazyConnect`, so the queue dials Redis only when a job is added; the case never adds one.
-- `@nestjs/observe`, `@nestjs/outbox`, `@nestjs/authentication` and `@nestjs/authorization` boot on their in-memory defaults.
+- `@nestjs/outbox` and `@nestjs/authentication` boot with `allowInMemoryStorage: true`, and `@nestjs/authorization`'s policies are in-process providers; `@nestjs/observe` has no in-memory mode, so its case passes fake credentials and its agent buffers telemetry in memory rather than dialling a collector.
 - `@nestjs/microservices` binds a TCP microservice on a free localhost port, and `@nestjs/config` reads a checked-in `.env` file.
 
 ## Adding a package
 
-Add a case to `test/cases/`, or, when the package peers on one Nest major only, add it to `test/optional.test.ts` so the other line skips it instead of failing to load. When the package needs more than a boot-and-route smoke test, add a suite under `test/<package>/` built on the shared `#test/probe` harness, the way the core suites do. Declare the package in `devDependencies` with a range the matrix can move, or an exact version when only one major exists.
+Add a case to `test/cases/`, or, when the package peers on one Nest major only, add it to `test/optional.test.ts` so the other line skips it instead of failing to load. When the package needs more than a boot-and-route smoke test, add a suite under `test/<package>/` built on the shared `#test/probe` harness, the way the core suites do. Declare the package in `devDependencies`: a range when the matrix has to move it between Nest majors, and an exact pin when one version serves both.
