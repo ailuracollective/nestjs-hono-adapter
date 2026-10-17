@@ -73,7 +73,8 @@ const fitResponse = (context: NestContext, owned: ResponseWriter): void => {
   target.type = type;
   target.set = set;
   target.append = append;
-  (context as NestContext & { [HONO_HEADER_STORAGE]?: unknown })[HONO_HEADER_STORAGE] = context.header;
+  (context as NestContext & { [HONO_HEADER_STORAGE]?: unknown })[HONO_HEADER_STORAGE] =
+    context.header;
   fitExtras(context);
 };
 
