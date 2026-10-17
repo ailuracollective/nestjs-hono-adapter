@@ -40,9 +40,9 @@ Security issues in this project include:
 
 | Version | Supported |
 | ------- | --------- |
-| 1.x     | Yes       |
+| 2.x     | Yes       |
 
-Only the latest minor version receives security fixes. Upgrade to the latest release.
+Only the 2.x line receives security fixes. Upgrade to the latest 2.x release.
 
 ## License
 
