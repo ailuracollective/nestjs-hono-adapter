@@ -73,7 +73,7 @@ const fitResponse = (context: NestContext, owned: ResponseWriter): void => {
   target[STATUS] = context.status as unknown as StatusSetter;
   target.status = status;
   (context as NestContext & { [WRITER_STORAGE]?: ResponseWriter })[WRITER_STORAGE] = owned;
-  target.send = surfaceSend;
+  target.send = surfaceSend.bind(context);
   target.type = type;
   target.set = set;
   target.append = append;
