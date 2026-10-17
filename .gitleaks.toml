@@ -1,0 +1,27 @@
+# Git Leaks Configuration
+# https://github.com/gitleaks/gitleaks#configuration
+
+[extend]
+default = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API key"
+regex = '''(?i)(api[_-]?key|api[_-]?secret|api[_-]?token)['"]?\s*[:=]\s*['"][0-9a-zA-Z]{32,}['"]'''
+entropy = 3.5
+tags = ["api", "key"]
+
+[[rules]]
+id = "bun-api-key"
+description = "Bun API key"
+regex = '''(?i)(bun)_?(api|token|key|secret)['"]?\s*[:=]\s*['"][0-9a-zA-Z_\-]{20,}['"]'''
+entropy = 3.0
+tags = ["bun", "api"]
+
+[allowlist]
+description = "Allow test fixtures and documentation"
+paths = [
+  '''(testdata|fixtures|docs)/.*\.md$''',
+  '''(testdata|fixtures)/.*\.json$''',
+  '''(testdata|fixtures)/.*\.ts$'''
+]

@@ -1,0 +1,49 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'test/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'test/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@18ca90c3e83c0d8b9c457d73f2bebf69d4b2b9323 # v2.3.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@da24556b546a3b81eb5f8d2f8b2e1e57b7e6d7f9 # v4.5.0
+        with:
+          fail-on-severity: high
+          deny-packages: ''
+          deny-dependencies: ''
