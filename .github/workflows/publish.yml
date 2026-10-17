@@ -71,5 +71,19 @@ jobs:
           else
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
+      # Every published package ships the SBOM of what went into it, so a
+      # consumer can ingest it alongside every other project's SBOM instead of
+      # discovering the tree from the registry.
+      - name: Generate the SBOM
+        env:
+          DIR: ${{ steps.package.outputs.dir }}
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft "dir:$DIR/dist" -o spdx-json > "dist-sbom.spdx.json"
+      - name: Attach the SBOM to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist-sbom.spdx.json --clobber
       - name: Publish to npm
         run: npm publish "${{ steps.package.outputs.dir }}" --provenance --tag "${{ steps.dist.outputs.tag }}"

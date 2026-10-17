@@ -35,6 +35,52 @@ Code is formatted with `oxfmt` and linted with `oxlint`. Do not bypass these.
 - Architecture rules (layer boundaries) must be respected — see [docs/architecture.md](docs/architecture.md)
 - The size gate (bundle ceilings in `.size-limit.json`) must pass
 
+## Running the tests
+
+### Locally
+
+```sh
+bun test                    # the whole suite
+bun test packages/core/test # one package's behaviour suite
+bun test test/layers.test.ts # one file
+```
+
+Every test uses `bun test` directly — there is no separate test runner to configure. The suite is deterministic and needs no network access; a run that reaches the network is a bug in the test.
+
+### In CI
+
+| Workflow | What runs | When |
+| --- | --- | --- |
+| `.github/workflows/ci.yml` (`check`) | `bun run check` — lint, format, typecheck, test, build, size | Every push and PR |
+| `.github/workflows/ci.yml` (`compat`) | `bun run typecheck && bun run build && bun test` on NestJS 11 and 12 | Every PR |
+| `.github/workflows/security.yml` | gitleaks, dependency review | Every push and PR |
+
+### What the tests cover
+
+- **Behaviour** (`packages/*/test/`): each package's request decode, response encode, lifecycle bridge, and bridge shims
+- **Layers** (`test/layers.test.ts`): the five dependency rules from `docs/architecture.md` — an import across a forbidden boundary fails the build
+- **Entry points** (`test/entry-points.test.ts`): every published subpath resolves and exports what it claims
+- **Node builtins** (`test/node-builtins.test.ts`): the Bun transport does not leak a Node builtin into a non-Node bundle
+- **Compatibility** (`packages/compatibility/`): the adapter serves an application built with each third-party Nest package it runs alongside
+
+### Reading the results
+
+A failing `test` step names the file and the assertion. A failing `size` step names the entrypoint and the ceiling it exceeded. A failing `compat` job names the Nest major it ran against — the matrix comment in `ci.yml` explains which packages move with each major.
+
+## Test policy for significant changes
+
+A change is **significant** when it alters any of:
+
+- request decoding, response encoding, or the lifecycle bridge
+- a layer boundary or an import rule in `test/layers.test.ts`
+- a published entrypoint's exports
+- a compatibility bridge's shim behaviour
+- a bundle that has a size ceiling
+
+A significant change **must** add or update tests in the same pull request. A significant change without a test does not pass review.
+
+For a change that is not significant — a documentation edit, a comment, a dependency bump with no behaviour change — add a test only if the existing suite does not already cover the path the change touches.
+
 ## Review process
 
 1. A maintainer reviews the PR

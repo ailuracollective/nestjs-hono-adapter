@@ -23,5 +23,5 @@ description = "Allow test fixtures and documentation"
 paths = [
   '''(testdata|fixtures|docs)/.*\.md$''',
   '''(testdata|fixtures)/.*\.json$''',
-  '''(testdata|fixtures)/.*\.ts$'''
+  '''(testdata|fixtures)/.*\.ts$''',
 ]
