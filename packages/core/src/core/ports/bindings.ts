@@ -27,6 +27,7 @@ interface SocketAddress {
 }
 
 interface Incoming {
+  closed?: boolean;
   readonly socket: Socket;
   readonly httpVersionMajor?: number | undefined;
   readonly addListener: (event: string, listener: () => void) => unknown;

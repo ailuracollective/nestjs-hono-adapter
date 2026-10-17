@@ -9,15 +9,30 @@ const JSON_TYPE = /^application\/(?:.+\+)?json$/u;
 const mediaTypeOf = (contentType: string): string =>
   (contentType.split(';', 1)[0] ?? '').trim().toLowerCase();
 
-const mediaType = (context: NestContext): string =>
-  mediaTypeOf(context.req.header('content-type') ?? '');
+const mediaTypeCache = new WeakMap<NestContext, string>();
+
+const mediaType = (context: NestContext): string => {
+  const cached = mediaTypeCache.get(context);
+  if (cached !== undefined || mediaTypeCache.has(context)) return cached ?? '';
+  const parsed = mediaTypeOf(context.req.header('content-type') ?? '');
+  mediaTypeCache.set(context, parsed);
+  return parsed;
+};
 
 // A Web body or the framing headers Express reads; either alone misses a transport it serves.
-const declaresBody = (context: NestContext): boolean =>
-  context.req.raw.body !== null ||
-  context.req.raw.bodyUsed ||
-  context.req.header('transfer-encoding') !== undefined ||
-  context.req.header('content-length') !== undefined;
+const declaresBodyCache = new WeakMap<NestContext, boolean>();
+
+const declaresBody = (context: NestContext): boolean => {
+  const cached = declaresBodyCache.get(context);
+  if (cached !== undefined || declaresBodyCache.has(context)) return cached ?? false;
+  const value =
+    context.req.raw.body !== null ||
+    context.req.raw.bodyUsed ||
+    context.req.header('transfer-encoding') !== undefined ||
+    context.req.header('content-length') !== undefined;
+  declaresBodyCache.set(context, value);
+  return value;
+};
 
 const assertWithinLength = (context: NestContext, limit: number | undefined): void => {
   if (limit === undefined) return;
