@@ -48,14 +48,25 @@ const WRAPPED_HELPERS: Readonly<Record<(typeof RESPONSE_HELPERS)[number], Respon
     Record<(typeof RESPONSE_HELPERS)[number], ResponseHelper>
   >;
 
-const responseDescriptor = (context: NestContext): PropertyDescriptor | undefined => {
-  let holder: object | null = Reflect.getPrototypeOf(context);
+const responseDescriptorCache = new WeakMap<object, PropertyDescriptor | undefined>();
+
+const findResponseDescriptor = (prototype: object): PropertyDescriptor | undefined => {
+  let holder: object | null = prototype;
   while (holder !== null) {
     const descriptor = Object.getOwnPropertyDescriptor(holder, 'res');
     if (descriptor !== undefined) return descriptor;
     holder = Reflect.getPrototypeOf(holder);
   }
   return undefined;
+};
+
+const responseDescriptor = (context: NestContext): PropertyDescriptor | undefined => {
+  const prototype = Reflect.getPrototypeOf(context);
+  if (prototype === null) return undefined;
+  if (responseDescriptorCache.has(prototype)) return responseDescriptorCache.get(prototype);
+  const found = findResponseDescriptor(prototype);
+  responseDescriptorCache.set(prototype, found);
+  return found;
 };
 
 interface Accessors {

@@ -13,8 +13,12 @@ const addPair = (query: ParsedQuery, pair: string): void => {
 
 const parseQuery = (source: string): ParsedQuery => {
   const query: ParsedQuery = {};
-  for (const pair of withoutQuestionMark(source).split('&').slice(0, MAX_PAIRS)) {
+  const pairs = withoutQuestionMark(source).split('&');
+  let count = 0;
+  for (const pair of pairs) {
+    if (count >= MAX_PAIRS) break;
     addPair(query, pair);
+    count += 1;
   }
   return query;
 };

@@ -11,7 +11,7 @@ interface StartWaiter {
 
 const startWaiter = (): StartWaiter => {
   let settle: StartSignal = noStream;
-  // oxlint-disable-next-line promise/avoid-new
+  // oxlint-disable-next-line promise/avoid-new -- the resolver is produced through the callback form that predates Promise.withResolvers.
   const started = new Promise<void>((resolve) => {
     settle = resolve;
   });
