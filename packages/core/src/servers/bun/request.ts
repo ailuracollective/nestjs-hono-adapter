@@ -10,6 +10,7 @@ const fetchOf = (
 ): Response | Promise<Response> => {
   const incoming = new RequestCarrier(remoteAddressOf(server.requestIP(request)));
   if (request.signal.aborted) {
+    incoming.closed = true;
     incoming.emit('close');
   } else {
     request.signal.addEventListener(
