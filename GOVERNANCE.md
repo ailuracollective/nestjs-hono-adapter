@@ -18,14 +18,7 @@ Current maintainers:
 
 ### Contributors
 
-Contributors are anyone who proposes changes via pull requests. They must:
-
-- Follow the branch naming convention: `<github-username>/<type>/<description>`
-- Follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages
-- Open a pull request using the template for its type
-- Link the issue with a closing keyword (`Closes #N`); the issue must carry `status/ready`
-- Apply exactly one `type/*` label
-- Pass all CI checks
+Contributors are anyone who proposes changes via pull requests. What they must do is the organisation's rule, written once in [.agents/organization-conventions.md](.agents/organization-conventions.md#pull-requests): branching, [Conventional Commits](https://www.conventionalcommits.org/), the template for the type, a closing keyword on a `status/ready` issue, exactly one `type/*` label, and green checks. [CONTRIBUTING.md](CONTRIBUTING.md) carries the practical half — the commands and the review path.
 
 ### Elevated access
 

@@ -12,18 +12,13 @@ bun install --frozen-lockfile
 2. **Branch**: `<github-username>/<type>/<description>` (all lowercase)
 3. **Commit**: follow [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `fix:`, `chore:`)
 4. **Sign-off**: every commit must include a `Signed-off-by:` line — use `git commit -s` (see [DCO.md](DCO.md))
-5. **Open a PR** using the template for its type
-6. **Link the issue** with a closing keyword (`Closes #N`); the issue must carry `status/ready`
-7. **Apply one `type/*` label**
-8. **Pass all CI checks**
+5. **Open a PR** using the template for its type, link the issue with a closing keyword, apply exactly one `type/*` label, and let the checks pass
+
+Steps 2, 3 and 5 are the organisation's rules; they are written once in [.agents/organization-conventions.md](.agents/organization-conventions.md#pull-requests) and not repeated here.
 
 ## Code standards
 
-- **Lint**: `bun run lint`
-- **Format**: `bun run format`
-- **Typecheck**: `bun run typecheck`
-- **Test**: `bun run test`
-- **Full check**: `bun run check` (lint + format + typecheck + test + build + size)
+`bun run check` runs the whole gate — lint, format, typecheck, test, build and the size gate — and one step alone is `bun run <lint|format|format:check|typecheck|test|build|size>`. [docs/development.md](docs/development.md#development) has the environment they need.
 
 Code is formatted with `oxfmt` and linted with `oxlint`. Do not bypass these.
 
@@ -53,15 +48,12 @@ Every test uses `bun test` directly — there is no separate test runner to conf
 | --- | --- | --- |
 | `.github/workflows/ci.yml` (`check`) | `bun run check` — lint, format, typecheck, test, build, size | Every push and PR |
 | `.github/workflows/ci.yml` (`compat`) | `bun run typecheck && bun run build && bun test` on NestJS 11 and 12 | Every PR |
-| `.github/workflows/security.yml` | gitleaks, dependency review | Every push and PR |
+| `.github/workflows/security.yml` | gitleaks (secret scan) | Every push and PR |
+| `.github/workflows/security.yml` | dependency review | Every PR |
 
 ### What the tests cover
 
-- **Behaviour** (`packages/*/test/`): each package's request decode, response encode, lifecycle bridge, and bridge shims
-- **Layers** (`test/layers.test.ts`): the five dependency rules from `docs/architecture.md` — an import across a forbidden boundary fails the build
-- **Entry points** (`test/entry-points.test.ts`): every published subpath resolves and exports what it claims
-- **Node builtins** (`test/node-builtins.test.ts`): the Bun transport does not leak a Node builtin into a non-Node bundle
-- **Compatibility** (`packages/compatibility/`): the adapter serves an application built with each third-party Nest package it runs alongside
+Behaviour suites live under `packages/*/test/`, one per package, and the guards that protect the monorepo are listed with what each one holds in [docs/architecture.md](docs/architecture.md#where-the-guards-live). Beyond those, `packages/compatibility/` is the suite that proves the adapter serves an application built with each third-party Nest package it runs alongside.
 
 ### Reading the results
 
