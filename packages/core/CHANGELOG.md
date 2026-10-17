@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.2](https://github.com/ailuracollective/nestjs-hono-adapter/compare/core-v2.0.1...core-v2.0.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* release the pnpm workspace build fix under a patch version ([6ea958e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/6ea958e4f8d90c38713a285672aaa5b0cdfc4c47))
+
+
+### Performance Improvements
+
+* inline Bun remote address lookup ([#219](https://github.com/ailuracollective/nestjs-hono-adapter/issues/219)) ([db3a8ac](https://github.com/ailuracollective/nestjs-hono-adapter/commit/db3a8ac2a9f774aad9a3f6fd89c05b40b6e7ae1a))
+* micro-optimise request decoding and query parsing ([#215](https://github.com/ailuracollective/nestjs-hono-adapter/issues/215)) ([aad593a](https://github.com/ailuracollective/nestjs-hono-adapter/commit/aad593acb71699738dfde169989002727bdbda71))
+* share Express header surface method ([#218](https://github.com/ailuracollective/nestjs-hono-adapter/issues/218)) ([6226a9d](https://github.com/ailuracollective/nestjs-hono-adapter/commit/6226a9d5f8acc1cf5009db17418fcf5bddb24a17))
+* share Express send surface method ([#217](https://github.com/ailuracollective/nestjs-hono-adapter/issues/217)) ([67f4db1](https://github.com/ailuracollective/nestjs-hono-adapter/commit/67f4db19c92ceb7a94e023a4fbc98b3c161e4e49))
+* share response helper wrappers ([#216](https://github.com/ailuracollective/nestjs-hono-adapter/issues/216)) ([d08a288](https://github.com/ailuracollective/nestjs-hono-adapter/commit/d08a2884ccd7342dc45348404c1935fbb593ec5c))
+
 ## [2.0.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v1.0.0...v2.0.0) (2026-10-16)
 
 
