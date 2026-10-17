@@ -44,6 +44,10 @@ const watchDisconnect = (context: NestContext): (() => void) => {
   const report = (): void => {
     reportDisconnect(socket);
   };
+  if (incoming.closed === true) {
+    report();
+    return report;
+  }
   incoming.on('close', report);
   return report;
 };

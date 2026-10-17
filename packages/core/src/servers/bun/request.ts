@@ -11,6 +11,7 @@ const fetchOf = (
   const remote = server.requestIP(request);
   const incoming = new RequestCarrier(remote === null ? undefined : remote.address);
   if (request.signal.aborted) {
+    incoming.closed = true;
     incoming.emit('close');
   } else {
     request.signal.addEventListener(

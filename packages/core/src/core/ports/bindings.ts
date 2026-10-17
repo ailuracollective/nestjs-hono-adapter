@@ -27,6 +27,7 @@ interface SocketAddress {
 }
 
 interface Incoming {
+  readonly closed?: boolean;
   readonly socket: Socket;
   readonly httpVersionMajor?: number | undefined;
   readonly addListener: (event: string, listener: () => void) => unknown;
@@ -38,6 +39,7 @@ interface Incoming {
 }
 
 class RequestCarrier extends EventEmitter implements Incoming {
+  public closed = false;
   public readonly socket: Socket;
   public readonly httpVersionMajor = 1;
 
