@@ -1,24 +1,27 @@
 import type { NestContext } from '#adapter/core/context';
 import { ResponseWriter } from '#adapter/core/response/response-writer';
-import { fitExtras } from './surface-extras.ts';
+import { fitExtras, HONO_HEADER_STORAGE } from './surface-extras.ts';
 
 const writer = new ResponseWriter();
 
 const HTML_CONTENT_TYPE = 'text/html; charset=UTF-8';
+
+const WRITER_STORAGE = Symbol('storedResponseWriter');
 
 function type(this: NestContext, value: string): NestContext {
   this.header('content-type', value);
   return this;
 }
 
-// Express labels a string body it was not told a type for as HTML; the Nest path labels it text/plain.
-const send = (context: NestContext, owned: ResponseWriter, body: unknown): NestContext => {
-  if (typeof body === 'string' && !context.res.headers.has('content-type')) {
-    context.header('content-type', HTML_CONTENT_TYPE);
+function surfaceSend(this: NestContext, body: unknown): NestContext {
+  const owned = (this as NestContext & { [WRITER_STORAGE]?: ResponseWriter })[WRITER_STORAGE];
+  if (owned === undefined) throw new TypeError('Response writer is not installed.');
+  if (typeof body === 'string' && !this.res.headers.has('content-type')) {
+    this.header('content-type', HTML_CONTENT_TYPE);
   }
-  owned.reply(context, body, owned.statusOf(context));
-  return context;
-};
+  owned.reply(this, body, owned.statusOf(this));
+  return this;
+}
 
 const STATUS = Symbol('honoStatus');
 
@@ -69,10 +72,13 @@ const fitResponse = (context: NestContext, owned: ResponseWriter): void => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Hono types `status` with the StatusCode union; the fitted surface widens it to any number, matching Express.
   target[STATUS] = context.status as unknown as StatusSetter;
   target.status = status;
-  target.send = (body: unknown): NestContext => send(context, owned, body);
+  (context as NestContext & { [WRITER_STORAGE]?: ResponseWriter })[WRITER_STORAGE] = owned;
+  target.send = surfaceSend.bind(context);
   target.type = type;
   target.set = set;
   target.append = append;
+  (context as NestContext & { [HONO_HEADER_STORAGE]?: unknown })[HONO_HEADER_STORAGE] =
+    context.header;
   fitExtras(context);
 };
 
