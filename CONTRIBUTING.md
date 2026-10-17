@@ -20,7 +20,7 @@ Steps 2, 3 and 5 are the organisation's rules; they are written once in [.agents
 
 `bun run check` runs the whole gate — lint, format, typecheck, test, build and the size gate — and one step alone is `bun run <lint|format|format:check|typecheck|test|build|size>`. [docs/development.md](docs/development.md#development) has the environment they need.
 
-Code is formatted with `oxfmt` and linted with `oxlint`. Do not bypass these.
+Code is formatted with `oxfmt` and linted with `oxlint`. Do not bypass these. Git hooks (installed by `bun install`) run lint-staged on commit and validate Conventional Commits on the message.
 
 ## Requirements for acceptable contributions
 
