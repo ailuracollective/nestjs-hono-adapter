@@ -3,7 +3,6 @@
   "workspaces": [
     "packages/*",
     "packages/examples/cloudflare/*",
-    "packages/examples/docker/*",
     "packages/examples/google/*",
     "packages/examples/vercel/*"
   ],
