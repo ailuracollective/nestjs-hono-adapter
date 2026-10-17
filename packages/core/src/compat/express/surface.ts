@@ -1,6 +1,6 @@
 import type { NestContext } from '#adapter/core/context';
 import { ResponseWriter } from '#adapter/core/response/response-writer';
-import { fitExtras } from './surface-extras.ts';
+import { fitExtras, HONO_HEADER_STORAGE } from './surface-extras.ts';
 
 const writer = new ResponseWriter();
 
@@ -73,6 +73,7 @@ const fitResponse = (context: NestContext, owned: ResponseWriter): void => {
   target.type = type;
   target.set = set;
   target.append = append;
+  (context as NestContext & { [HONO_HEADER_STORAGE]?: unknown })[HONO_HEADER_STORAGE] = context.header;
   fitExtras(context);
 };
 
