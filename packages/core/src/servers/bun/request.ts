@@ -1,4 +1,4 @@
-import { RequestCarrier, remoteAddressOf } from '#adapter/core/ports/bindings';
+import { RequestCarrier } from '#adapter/core/ports/bindings';
 
 import type { NestHono } from '#adapter/core/context';
 import type { BunRuntime } from '#adapter/servers/bun-runtime';
@@ -8,14 +8,19 @@ const fetchOf = (
   request: Request,
   server: BunRuntime,
 ): Response | Promise<Response> => {
-  const incoming = new RequestCarrier(remoteAddressOf(server.requestIP(request)));
-  request.signal.addEventListener(
-    'abort',
-    () => {
-      incoming.emit('close');
-    },
-    { once: true },
-  );
+  const remote = server.requestIP(request);
+  const incoming = new RequestCarrier(remote === null ? undefined : remote.address);
+  if (request.signal.aborted) {
+    incoming.emit('close');
+  } else {
+    request.signal.addEventListener(
+      'abort',
+      () => {
+        incoming.emit('close');
+      },
+      { once: true },
+    );
+  }
   return app.fetch(request, { incoming, server });
 };
 
