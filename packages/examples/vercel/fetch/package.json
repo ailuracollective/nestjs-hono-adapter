@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bunx vercel dev",
     "vercel-build": "bun run --cwd ../../../.. build:core",
-    "vercel:ignore-build": "bun run ../../../../scripts/vercel-ignore-build.ts"
+    "ignore-build": "bun run ../../../../scripts/ignore-build.ts"
   },
   "dependencies": {
     "@ailura/nestjs-hono-adapter": "workspace:*",

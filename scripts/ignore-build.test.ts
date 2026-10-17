@@ -12,7 +12,7 @@ function git(cwd: string, args: string[]): string {
 }
 
 function withRepo(run: (repo: string) => void): void {
-  const repo = mkdtempSync(path.join(tmpdir(), 'vercel-ignore-build-'));
+  const repo = mkdtempSync(path.join(tmpdir(), 'ignore-build-'));
   try {
     git(repo, ['init', '-b', 'main']);
     git(repo, ['config', 'user.name', 'test']);
