@@ -90,7 +90,7 @@ const finalizeOnResponse = (context: NestContext): void => {
     const helper = carrier[name];
     if (typeof helper === 'function') {
       originals[name] = helper;
-      carrier[name] = WRAPPED_HELPERS[name];
+      carrier[name] = WRAPPED_HELPERS[name].bind(context);
     }
   }
   carrier[STORED_ORIGINALS] = originals;
