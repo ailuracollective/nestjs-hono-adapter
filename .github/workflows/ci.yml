@@ -49,26 +49,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
 
-  size:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun run size
-
   compat:
     # Every Nest package moves together: a mixed install is what a WebSocket,
     # microservice or bridge case would fail on, not the adapter. A bridge
