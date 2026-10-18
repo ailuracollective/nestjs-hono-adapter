@@ -1,0 +1,26 @@
+component_management:
+  individual_components:
+    - component_id: core
+      name: '@ailura/nestjs-hono-adapter'
+      paths:
+        - packages/core/src/**
+    - component_id: multipart
+      name: '@ailura/nestjs-platform-hono-multipart'
+      paths:
+        - packages/multipart/src/**
+    - component_id: graphql
+      name: '@ailura/nestjs-platform-hono-graphql'
+      paths:
+        - packages/graphql/src/**
+    - component_id: serve-static
+      name: '@ailura/nestjs-platform-hono-serve-static'
+      paths:
+        - packages/serve-static/src/**
+    - component_id: ws
+      name: '@ailura/nestjs-platform-hono-ws'
+      paths:
+        - packages/ws/src/**
+    - component_id: socket-io
+      name: '@ailura/nestjs-platform-hono-socket-io'
+      paths:
+        - packages/socket-io/src/**

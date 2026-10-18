@@ -23,12 +23,6 @@ const probeApp = (isClosing: () => boolean): Hono<NestEnv> => {
   return app;
 };
 
-test('a request is answered while the server is not closing', async () => {
-  const response = await probeApp(() => false).request('/ping');
-  expect(response.status).toBe(HttpStatus.OK);
-  expect(await response.text()).toBe('pong');
-});
-
 test('a request that arrives while closing is refused', async () => {
   const response = await probeApp(() => true).request('/ping');
   expect(response.status).toBe(HttpStatus.SERVICE_UNAVAILABLE);

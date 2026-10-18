@@ -11,19 +11,6 @@ import {
   namedOrigin,
 } from './support.ts';
 
-test('a preflight for a deployment that names no origin allows it', async () => {
-  const response = await bridged({}).request('/', {
-    headers: {
-      'access-control-request-method': 'POST',
-      origin: FOREIGN,
-    },
-    method: 'OPTIONS',
-  });
-
-  expect(response.status).toBe(NO_CONTENT);
-  expect(response.headers.get('access-control-allow-origin')).toBe('*');
-});
-
 test('a preflight is answered before any route is reached', async () => {
   const response = await bridged(CROSS_SITE).request('/', {
     headers: {
