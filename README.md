@@ -2,7 +2,7 @@
 
 An HTTP adapter that runs a NestJS application on [Hono](https://hono.dev), with no Express or Fastify underneath, plus its optional capabilities, each in a package of its own. The adapter is runtime-neutral: a **transport** serves it through Bun's own server by default, `@hono/node-server`, or a fetch host's Web `Request`/`Response`.
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![GitHub license](https://img.shields.io/github/license/ailuracollective/nestjs-hono-adapter.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 ## Packages
 
