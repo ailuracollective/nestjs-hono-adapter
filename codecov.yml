@@ -11,7 +11,7 @@ component_management:
     - component_id: graphql
       name: '@ailura/nestjs-platform-hono-graphql'
       paths:
-        - packages/graphql/src/**
+        - packages/graphql/dist/**
     - component_id: serve-static
       name: '@ailura/nestjs-platform-hono-serve-static'
       paths:
@@ -19,8 +19,8 @@ component_management:
     - component_id: ws
       name: '@ailura/nestjs-platform-hono-ws'
       paths:
-        - packages/ws/src/**
+        - packages/ws/dist/**
     - component_id: socket-io
       name: '@ailura/nestjs-platform-hono-socket-io'
       paths:
-        - packages/socket-io/src/**
+        - packages/socket-io/dist/**
