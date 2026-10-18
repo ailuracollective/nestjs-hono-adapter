@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { bridgeNames, discoverBridges } from '#adapter/compat/index';
+import { bridge } from '#graphql/index';
 
 import { request, startProbe } from '#test/probe';
 
@@ -20,6 +21,10 @@ const operation = (text: string): string => JSON.stringify({ query: text });
 test('the region finds the installed bridge package on its own', async () => {
   await discoverBridges();
   expect(bridgeNames()).toContain('graphql/apollo');
+});
+
+test('the bridge is exported and defined', () => {
+  expect(bridge).toBeDefined();
 });
 
 const ask = (): RequestInit => ({
