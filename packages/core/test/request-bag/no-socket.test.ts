@@ -22,36 +22,15 @@ const contextWithoutCarrier = async (): Promise<NestContext> => {
   return context;
 };
 
-test('the address is undefined rather than thrown when none arrived', async () => {
+test('the fields a socket would fill answer what is missing without one', async () => {
   const bag = toNestRequest(await contextWithoutCarrier(), {
     trustProxy: false,
   });
 
   expect(bag.ip).toBeUndefined();
-});
-
-test('the forwarded chain is empty when no socket arrived', async () => {
-  const bag = toNestRequest(await contextWithoutCarrier(), {
-    trustProxy: false,
-  });
-
   expect(bag.ips).toStrictEqual([]);
-});
-
-test('the fields that need the socket still say what is missing', async () => {
-  const bag = toNestRequest(await contextWithoutCarrier(), {
-    trustProxy: false,
-  });
-
   expect(bag.raw).toBeUndefined();
   expect(bag.socket).toBeUndefined();
-});
-
-test('a property that needs no socket still answers without one', async () => {
-  const bag = toNestRequest(await contextWithoutCarrier(), {
-    trustProxy: false,
-  });
-
   expect(bag.method).toBe('GET');
   expect(bag.path).toBe('/read');
   expect(bag.url).toBe('/read');
