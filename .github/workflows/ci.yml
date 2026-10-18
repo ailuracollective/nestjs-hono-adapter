@@ -10,6 +10,7 @@ name: CI
       - 'scripts/**'
       - 'tsconfig.json'
       - 'package.json'
+      - 'codecov.yml'
       - 'bun.lock'
   pull_request:
     paths:
@@ -19,6 +20,7 @@ name: CI
       - 'scripts/**'
       - 'tsconfig.json'
       - 'package.json'
+      - 'codecov.yml'
       - 'bun.lock'
 
 permissions:
