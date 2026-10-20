@@ -17,7 +17,7 @@ jobs:
     name: Branch name
     if: >-
       github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && !startsWith(github.event.pull_request.head.ref, 'release-please--branches--')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions: {}
     steps:
@@ -35,7 +35,7 @@ jobs:
     name: Pull request policy
     if: >-
       github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && !startsWith(github.event.pull_request.head.ref, 'release-please--branches--')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       # Stays read-only: the comment is written with `comment-token`.
@@ -61,7 +61,7 @@ jobs:
   triage:
     name: Issue triage
     if: github.event_name == 'issues'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       issues: write

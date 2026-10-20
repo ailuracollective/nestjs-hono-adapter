@@ -22,7 +22,7 @@ concurrency:
 jobs:
   detect:
     name: Detect a new release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -51,7 +51,7 @@ jobs:
     name: Run the suite against the new release
     needs: detect
     if: needs.detect.outputs.detected == 'true' || inputs.force == true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -101,7 +101,7 @@ jobs:
     # issue, and a registry that could not be read is not a compatibility
     # problem.
     if: always() && failure() && needs.canary.result == 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
