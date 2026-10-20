@@ -67,6 +67,25 @@ const nextRelease = async (): Promise<Registry> => {
   };
 };
 
+/**
+ * A tree of its own: the detection reads the package.json and the lockfile of the directory it runs
+ * in, and the compatibility matrix moves that tree to another Nest line — a tree of its own keeps
+ * the answer the same on every line.
+ */
+const tree = async (dir: string): Promise<void> => {
+  await Bun.write(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ devDependencies: { hono: '^4.13.8', '@nestjs/core': '^12.x' } }),
+  );
+  await Bun.write(
+    path.join(dir, 'bun.lock'),
+    JSON.stringify({
+      lockfileVersion: 1,
+      packages: { hono: ['hono@4.13.13'], '@nestjs/core': ['@nestjs/core@12.1.3'] },
+    }),
+  );
+};
+
 test('a release is ordered by its numbers', () => {
   expect(compare('12.2.0', '12.1.9')).toBeGreaterThan(0);
   expect(compare('12.1.3', '12.1.3')).toBe(0);
@@ -157,14 +176,19 @@ test('the detection writes the outputs and the summary the workflow reads', asyn
   const dir = mkdtempSync(path.join(tmpdir(), 'upstream-detect-'));
   const output = path.join(dir, 'output');
   const summary = path.join(dir, 'summary');
-  const release = await nextRelease();
+  const cwd = process.cwd();
   try {
+    await tree(dir);
+    process.chdir(dir);
+    const release = await nextRelease();
     await main(release, { GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary });
     const written = await Bun.file(output).text();
     expect(written).toContain('detected=true');
-    expect(written).toContain(`nest_to=${release('@nestjs/core').out}`);
+    expect(written).toContain('hono_to=4.13.14');
+    expect(written).toContain('nest_to=12.1.4');
     expect(await Bun.file(summary).text()).toContain('## Upstream releases');
   } finally {
+    process.chdir(cwd);
     rmSync(dir, { force: true, recursive: true });
   }
 });
