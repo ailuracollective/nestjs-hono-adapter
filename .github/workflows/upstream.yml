@@ -42,6 +42,9 @@ jobs:
       # version "latest" means.
       - id: detect
         name: Compare the resolved versions with the registry
+        env:
+          # A forced run installs the last release, whatever the declared range takes.
+          UPSTREAM_FORCE: ${{ inputs.force }}
         run: bun scripts/upstream/detect.ts
 
   canary:
@@ -49,7 +52,7 @@ jobs:
     needs: detect
     if: needs.detect.outputs.detected == 'true' || inputs.force == true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -57,27 +60,30 @@ jobs:
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
+      # The install and the suite write the same log: an install that fails leaves
+      # one behind, so the report still opens the issue.
       - name: Install the release
         run: |
-          bun add --exact \
+          set -o pipefail
+          { bun add --exact \
             hono@${{ needs.detect.outputs.hono_to }} \
             @nestjs/common@${{ needs.detect.outputs.nest_to }} \
             @nestjs/core@${{ needs.detect.outputs.nest_to }} \
             @nestjs/websockets@${{ needs.detect.outputs.nest_to }} \
             @nestjs/platform-ws@${{ needs.detect.outputs.nest_to }} \
-            @nestjs/platform-socket.io@${{ needs.detect.outputs.nest_to }}
-          (cd packages/compatibility && bun add --exact \
+            @nestjs/platform-socket.io@${{ needs.detect.outputs.nest_to }} \
+            && (cd packages/compatibility && bun add --exact \
             @nestjs/common@${{ needs.detect.outputs.nest_to }} \
             @nestjs/core@${{ needs.detect.outputs.nest_to }} \
             @nestjs/websockets@${{ needs.detect.outputs.nest_to }} \
             @nestjs/microservices@${{ needs.detect.outputs.nest_to }} \
-            @nestjs/testing@${{ needs.detect.outputs.nest_to }})
+            @nestjs/testing@${{ needs.detect.outputs.nest_to }}); } 2>&1 | tee -a canary.log
       # The install is incremental: it leaves the copies it nested under the
       # other major in place, so the tree is laid out once more.
       - name: Lay the tree out and run the suite
         run: |
           set -o pipefail
-          { rm -rf node_modules packages/*/node_modules packages/examples/cloudflare/*/node_modules && bun install && bun run typecheck && bun run test; } 2>&1 | tee canary.log
+          { rm -rf node_modules packages/*/node_modules packages/examples/cloudflare/*/node_modules && bun install && bun run typecheck && bun run test; } 2>&1 | tee -a canary.log
       # The log travels to the report job, which opens the issue. The job that
       # runs the upstream code holds no permission to write anything.
       - name: Upload the log
@@ -104,6 +110,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/download-artifact@v4
         with:
           name: upstream-canary

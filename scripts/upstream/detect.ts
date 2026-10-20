@@ -19,6 +19,12 @@ interface Detection {
   accepted: boolean;
 }
 
+/** How the registry is read: the version it tags as latest, and whether the read answered. */
+type Registry = (name: string) => { readonly out: string; readonly code: number };
+
+/** The environment the workflow runs the script in. */
+type Environment = Record<string, string | undefined>;
+
 const WATCHED: Watched[] = [
   { key: 'hono', name: 'hono' },
   { key: 'nest', name: '@nestjs/core' },
@@ -39,13 +45,21 @@ const compare = (left: string, right: string): number => {
 };
 
 /**
- * The last available release of a package: the version the registry tags as latest, which is the
- * one an install takes. A prerelease carries another tag, so it is never one.
+ * The registry, read through the package manager: the version it tags as latest, which is the one
+ * an install takes. A prerelease carries another tag, so it is never one.
  */
-const lastAvailable = (name: string): string => {
+const npmRegistry: Registry = (name) => {
   const result = Bun.spawnSync(['bun', 'pm', 'view', name, 'version'], { env: process.env });
-  const out = result.stdout.toString().trim();
-  if (result.exitCode !== 0) {
+  return { out: result.stdout.toString().trim(), code: result.exitCode };
+};
+
+/**
+ * The last available release of a package: the version the registry tags as latest, which is the
+ * one an install takes.
+ */
+const lastAvailable = (name: string, registry: Registry = npmRegistry): string => {
+  const { out, code } = registry(name);
+  if (code !== 0) {
     throw new Error(`The registry answered no version for ${name}.`);
   }
   return out;
@@ -69,9 +83,13 @@ const resolved = async (name: string): Promise<string> => {
   return spec.slice(spec.lastIndexOf('@') + 1);
 };
 
-const detect = async (watched: Watched, range: string): Promise<Detection> => {
+const detect = async (
+  watched: Watched,
+  range: string,
+  registry: Registry = npmRegistry,
+): Promise<Detection> => {
   const from = await resolved(watched.name);
-  const last = lastAvailable(watched.name);
+  const last = lastAvailable(watched.name, registry);
   return {
     name: watched.name,
     range,
@@ -87,17 +105,28 @@ const isDetected = (detections: Detection[]): boolean =>
   detections.some((detection) => detection.isNew && detection.accepted);
 
 /**
+ * The version the canary installs: the last release, unless the declared range does not take it. A
+ * release outside the range has to be widened first, so the canary keeps the resolved one; a forced
+ * run installs the last release whatever the range says.
+ */
+const targetOf = (detection: Detection, force: boolean): string =>
+  force || detection.accepted ? detection.last : detection.from;
+
+/**
  * The outputs the detection writes, in the form the workflow reads them. Nothing in the types ties
  * these names to the workflow's: a name that drifts is a watch that never runs.
  */
-const outputsOf = (detections: Detection[]): string[] => {
+const outputsOf = (detections: Detection[], force = false): string[] => {
   const outputs = [`detected=${isDetected(detections)}`];
   for (const detection of detections) {
     const watched = WATCHED.find((entry) => entry.name === detection.name);
     if (watched === undefined) {
       continue;
     }
-    outputs.push(`${watched.key}_from=${detection.from}`, `${watched.key}_to=${detection.last}`);
+    outputs.push(
+      `${watched.key}_from=${detection.from}`,
+      `${watched.key}_to=${targetOf(detection, force)}`,
+    );
   }
   return outputs;
 };
@@ -137,7 +166,10 @@ const write = async (file: string | undefined, content: string): Promise<void> =
   await Bun.write(file, content);
 };
 
-const main = async (): Promise<void> => {
+const main = async (
+  registry: Registry = npmRegistry,
+  environment: Environment = Bun.env,
+): Promise<void> => {
   const root = (await Bun.file('package.json').json()) as {
     devDependencies?: Record<string, string>;
   };
@@ -149,16 +181,29 @@ const main = async (): Promise<void> => {
     if (range === undefined) {
       throw new Error(`${watched.name} is not in the root devDependencies.`);
     }
-    detections.push(await detect(watched, range));
+    detections.push(await detect(watched, range, registry));
   }
 
-  await write(Bun.env.GITHUB_OUTPUT, `${outputsOf(detections).join('\n')}\n`);
-  await write(Bun.env.GITHUB_STEP_SUMMARY, summaryOf(detections));
+  // A forced run installs the last release whatever the declared range takes.
+  const force = environment.UPSTREAM_FORCE === 'true';
+  await write(environment.GITHUB_OUTPUT, `${outputsOf(detections, force).join('\n')}\n`);
+  await write(environment.GITHUB_STEP_SUMMARY, summaryOf(detections));
 };
 
 if (import.meta.main) {
   await main();
 }
 
-export { compare, detect, isDetected, lastAvailable, majorOf, outputsOf, resolved, summaryOf };
-export type { Detection, Watched };
+export {
+  compare,
+  detect,
+  isDetected,
+  lastAvailable,
+  main,
+  majorOf,
+  outputsOf,
+  resolved,
+  summaryOf,
+  targetOf,
+};
+export type { Detection, Environment, Registry, Watched };

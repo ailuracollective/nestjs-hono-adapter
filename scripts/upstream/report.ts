@@ -5,7 +5,7 @@
  * Run from the repository root: `bun scripts/upstream/report.ts`.
  */
 
-interface Moved {
+interface Watched {
   name: string;
   from: string;
   to: string;
@@ -18,12 +18,44 @@ interface Issue {
 }
 
 interface Report {
-  moved: Moved[];
+  /** Every package the canary watched, with the version it installed. */
+  watched: Watched[];
   log: string;
   runUrl: string;
 }
 
+/** How the issue tracker is read and written: the `gh` command line. */
+type Gh = (args: string[]) => string;
+
+/** The environment the workflow runs the script in. */
+type Environment = Record<string, string | undefined>;
+
 const LABELS = ['type/bug', 'status/needs-review', 'meta/dependency'];
+
+/** The file the body is written to: the issue tracker reads it from there. */
+const ISSUE_FILE = '/tmp/upstream-issue.md';
+
+/**
+ * The packages the canary installs at the root: each one follows the watched package it moves with,
+ * so the reproduction installs the versions the canary installed.
+ */
+const ROOT_PACKAGES: readonly (readonly [string, string])[] = [
+  ['hono', 'hono'],
+  ['@nestjs/common', '@nestjs/core'],
+  ['@nestjs/core', '@nestjs/core'],
+  ['@nestjs/websockets', '@nestjs/core'],
+  ['@nestjs/platform-ws', '@nestjs/core'],
+  ['@nestjs/platform-socket.io', '@nestjs/core'],
+];
+
+/** The packages the canary installs in the compatibility suite. */
+const COMPATIBILITY_PACKAGES: readonly (readonly [string, string])[] = [
+  ['@nestjs/common', '@nestjs/core'],
+  ['@nestjs/core', '@nestjs/core'],
+  ['@nestjs/websockets', '@nestjs/core'],
+  ['@nestjs/microservices', '@nestjs/core'],
+  ['@nestjs/testing', '@nestjs/core'],
+];
 
 /**
  * The log is written by the upstream code, so it is quoted as text and never as markup: a fence or
@@ -61,16 +93,61 @@ const tallyOf = (log: string): string =>
     .join('\n');
 
 /** The marker that tells one release's issue from another's. */
-const markerOf = (moved: Moved[]): string =>
+const markerOf = (moved: Watched[]): string =>
   `<!-- upstream-watch: ${moved.map((entry) => `${entry.name}@${entry.to}`).join(',')} -->`;
 
-const titleOf = (moved: Moved[]): string => {
+const titleOf = (moved: Watched[]): string => {
   const names = moved.map((entry) => `${entry.name} ${entry.to}`).join(' and ');
   return `fix: ${names} ${moved.length === 1 ? 'fails' : 'fail'} the compatibility suite`;
 };
 
+/** The packages the canary watched: the versions the workflow set. */
+const watchedFrom = (pairs: [string, string | undefined, string | undefined][]): Watched[] => {
+  const watched: Watched[] = [];
+  for (const [name, from, to] of pairs) {
+    // A missing version is a name that drifted, not a package that stayed:
+    // saying so beats reporting half of the release.
+    if (from === undefined || to === undefined) {
+      throw new Error(`The workflow did not set the versions of ${name}.`);
+    }
+    watched.push({ name, from, to });
+  }
+  return watched;
+};
+
+/** The packages the canary moved: the release under suspicion. */
+const movedFrom = (watched: Watched[]): Watched[] =>
+  watched.filter((entry) => entry.from !== entry.to);
+
+/** The version the canary installed for a watched package. */
+const installedOf = (watched: Watched[], name: string): string => {
+  const entry = watched.find((candidate) => candidate.name === name);
+  if (entry === undefined) {
+    throw new Error(`The workflow did not set the versions of ${name}.`);
+  }
+  return entry.to;
+};
+
+/** The install of a group of packages, at the versions the canary installed. */
+const installOf = (packages: readonly (readonly [string, string])[], watched: Watched[]): string =>
+  `bun add --exact ${packages
+    .map(([name, follows]) => `${name}@${installedOf(watched, follows)}`)
+    .join(' ')}`;
+
+/**
+ * The commands that reproduce the canary: its own install, the tree laid out once more and the
+ * suite. The install is the canary's, because a mixed tree is what the suite fails on.
+ */
+const reproductionOf = (watched: Watched[]): string[] => [
+  installOf(ROOT_PACKAGES, watched),
+  `(cd packages/compatibility && ${installOf(COMPATIBILITY_PACKAGES, watched)})`,
+  'rm -rf node_modules packages/*/node_modules && bun install',
+  'bun run typecheck && bun run test',
+];
+
 const buildBody = (report: Report): string => {
-  const { moved, log, runUrl } = report;
+  const { watched, log, runUrl } = report;
+  const moved = movedFrom(watched);
   const names = moved.map((entry) => `${entry.name} ${entry.to}`).join(' and ');
   const failures = failuresOf(log);
   const assertions = assertionsOf(log);
@@ -122,9 +199,7 @@ const buildBody = (report: Report): string => {
     '## Reproduction',
     '',
     '```sh',
-    `bun add --exact ${moved.map((entry) => `${entry.name}@${entry.to}`).join(' ')}`,
-    'rm -rf node_modules packages/*/node_modules && bun install',
-    'bun run typecheck && bun run test',
+    ...reproductionOf(watched),
     '```',
     '',
     markerOf(moved),
@@ -132,7 +207,8 @@ const buildBody = (report: Report): string => {
   ].join('\n');
 };
 
-const gh = (args: string[]): string => {
+/** The issue tracker, read through the GitHub CLI. */
+const ghCommand: Gh = (args) => {
   const result = Bun.spawnSync(['gh', ...args], {
     env: process.env,
   });
@@ -148,35 +224,20 @@ const read = async (name: string): Promise<string> => {
   return (await file.exists()) ? file.text() : '';
 };
 
-/** The packages the canary moved: the release under suspicion. */
-const movedFrom = (pairs: [string, string | undefined, string | undefined][]): Moved[] => {
-  const moved: Moved[] = [];
-  for (const [name, from, to] of pairs) {
-    // A missing version is a name that drifted, not a package that stayed:
-    // saying so beats reporting half of the release.
-    if (from === undefined || to === undefined) {
-      throw new Error(`The workflow did not set the versions of ${name}.`);
-    }
-    if (from !== to) {
-      moved.push({ name, from, to });
-    }
-  }
-  return moved;
-};
-
-const main = async (): Promise<void> => {
-  const moved = movedFrom([
-    ['hono', Bun.env.WATCH_HONO_FROM, Bun.env.WATCH_HONO_TO],
-    ['@nestjs/core', Bun.env.WATCH_NEST_FROM, Bun.env.WATCH_NEST_TO],
+const main = async (gh: Gh = ghCommand, environment: Environment = Bun.env): Promise<void> => {
+  const watched = watchedFrom([
+    ['hono', environment.WATCH_HONO_FROM, environment.WATCH_HONO_TO],
+    ['@nestjs/core', environment.WATCH_NEST_FROM, environment.WATCH_NEST_TO],
   ]);
+  const moved = movedFrom(watched);
   if (moved.length === 0) {
     throw new Error('No package was moved; there is nothing to report.');
   }
 
   const report: Report = {
-    moved,
+    watched,
     log: await read('canary.log'),
-    runUrl: Bun.env.RUN_URL ?? '',
+    runUrl: environment.RUN_URL ?? '',
   };
 
   // One issue per release: the marker in the body tells them apart.
@@ -197,14 +258,14 @@ const main = async (): Promise<void> => {
     ),
   );
   const title = titleOf(moved);
-  await Bun.write('/tmp/upstream-issue.md', buildBody(report));
+  await Bun.write(ISSUE_FILE, buildBody(report));
   gh([
     'issue',
     'create',
     '--title',
     title,
     '--body-file',
-    '/tmp/upstream-issue.md',
+    ISSUE_FILE,
     ...LABELS.flatMap((label) => (declared.has(label) ? ['--label', label] : [])),
   ]);
   console.log(`Opened ${title}.`);
@@ -214,5 +275,21 @@ if (import.meta.main) {
   await main();
 }
 
-export { assertionsOf, buildBody, failuresOf, markerOf, movedFrom, quote, tallyOf, titleOf };
-export type { Issue, Moved, Report };
+export {
+  assertionsOf,
+  buildBody,
+  failuresOf,
+  installedOf,
+  main,
+  markerOf,
+  movedFrom,
+  quote,
+  reproductionOf,
+  tallyOf,
+  titleOf,
+  watchedFrom,
+  COMPATIBILITY_PACKAGES,
+  ISSUE_FILE,
+  ROOT_PACKAGES,
+};
+export type { Environment, Gh, Issue, Report, Watched };
