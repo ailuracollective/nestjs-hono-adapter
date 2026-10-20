@@ -15,7 +15,7 @@ import {
   resolved,
   summaryOf,
 } from './detect.ts';
-import type { Registry } from './detect.ts';
+import type { Registry, Sources } from './detect.ts';
 
 interface Detection {
   name: string;
@@ -50,41 +50,38 @@ const registry =
   (out: string, code = 0): Registry =>
   () => ({ out, code });
 
-/**
- * The registry, answered with the version the lockfile holds and a patch more. A patch is a release
- * every declared range takes, so the answer holds whatever the tree declares: the compatibility
- * matrix moves the tree to another Nest line, and the suite runs on each of them.
- */
-const nextRelease = async (): Promise<Registry> => {
-  const held = await Promise.all(
-    ['hono', '@nestjs/core'].map(async (name) => [name, await resolved(name)] as const),
-  );
-  return (name) => {
-    const entry = held.find(([watched]) => watched === name);
-    const version = entry === undefined ? '0.0.0' : entry[1];
-    const [major = 0, minor = 0, patch = 0] = version.split('.').map(Number);
-    return { out: `${major}.${minor}.${patch + 1}`, code: 0 };
-  };
-};
+/** The registry, answered per package: each one the release the watch would install. */
+const releases =
+  (versions: Record<string, string>): Registry =>
+  (name) => ({ out: versions[name] ?? '', code: 0 });
 
 /**
- * A tree of its own: the detection reads the package.json and the lockfile of the directory it runs
- * in, and the compatibility matrix moves that tree to another Nest line — a tree of its own keeps
- * the answer the same on every line.
+ * Sources of their own: the detection reads the manifest the repository declares and the lockfile
+ * it holds, and the compatibility matrix moves both to another Nest line — sources of their own
+ * keep the answer the same on every line.
  */
-const tree = async (dir: string): Promise<void> => {
-  await Bun.write(
-    path.join(dir, 'package.json'),
-    JSON.stringify({ devDependencies: { hono: '^4.13.8', '@nestjs/core': '^12.x' } }),
-  );
-  await Bun.write(
-    path.join(dir, 'bun.lock'),
+const sources = (
+  reader: Registry,
+  ranges: Record<string, string>,
+  versions: Record<string, string>,
+): Sources => ({
+  registry: reader,
+  manifest: () => JSON.stringify({ devDependencies: ranges }),
+  lockfile: () =>
     JSON.stringify({
       lockfileVersion: 1,
-      packages: { hono: ['hono@4.13.13'], '@nestjs/core': ['@nestjs/core@12.1.3'] },
+      packages: Object.fromEntries(
+        Object.entries(versions).map(([name, version]) => [name, [`${name}@${version}`]]),
+      ),
     }),
-  );
-};
+});
+
+/** The sources the suite answers with: the Nest 12 line, and the release the watch would install. */
+const SOURCES = sources(
+  releases({ hono: '4.13.14', '@nestjs/core': '12.1.4' }),
+  { hono: '^4.13.8', '@nestjs/core': '^12.x' },
+  { hono: '4.13.13', '@nestjs/core': '12.1.3' },
+);
 
 test('a release is ordered by its numbers', () => {
   expect(compare('12.2.0', '12.1.9')).toBeGreaterThan(0);
@@ -105,15 +102,25 @@ test('the last available version is the one the registry tags as latest', () => 
 });
 
 test('the resolved version is the one the lockfile holds', async () => {
-  expect(await resolved('hono')).toMatch(/^\d+\.\d+\.\d+$/);
-  expect(await resolved('@nestjs/core')).toMatch(/^\d+\.\d+\.\d+$/);
-  expect(resolved('not-a-package')).rejects.toThrow('The lockfile holds no not-a-package.');
+  expect(await resolved('hono', SOURCES)).toBe('4.13.13');
+  expect(await resolved('@nestjs/core', SOURCES)).toBe('12.1.3');
+  expect(resolved('not-a-package', SOURCES)).rejects.toThrow(
+    'The lockfile holds no not-a-package.',
+  );
 });
 
 test('a detection carries the release and what the range says of it', async () => {
-  const found = await detect({ key: 'nest', name: '@nestjs/core' }, '^12.x', registry('12.99.0'));
+  const found = await detect(
+    { key: 'nest', name: '@nestjs/core' },
+    '^12.x',
+    sources(
+      releases({ '@nestjs/core': '12.99.0' }),
+      { '@nestjs/core': '^12.x' },
+      { '@nestjs/core': '12.1.3' },
+    ),
+  );
   expect(found.name).toBe('@nestjs/core');
-  expect(found.from).toMatch(/^\d+\.\d+\.\d+$/);
+  expect(found.from).toBe('12.1.3');
   expect(found.last).toBe('12.99.0');
   expect(found.isNew).toBe(true);
   expect(found.accepted).toBe(true);
@@ -176,25 +183,20 @@ test('the detection writes the outputs and the summary the workflow reads', asyn
   const dir = mkdtempSync(path.join(tmpdir(), 'upstream-detect-'));
   const output = path.join(dir, 'output');
   const summary = path.join(dir, 'summary');
-  const cwd = process.cwd();
   try {
-    await tree(dir);
-    process.chdir(dir);
-    const release = await nextRelease();
-    await main(release, { GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary });
+    await main(SOURCES, { GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary });
     const written = await Bun.file(output).text();
     expect(written).toContain('detected=true');
     expect(written).toContain('hono_to=4.13.14');
     expect(written).toContain('nest_to=12.1.4');
     expect(await Bun.file(summary).text()).toContain('## Upstream releases');
   } finally {
-    process.chdir(cwd);
     rmSync(dir, { force: true, recursive: true });
   }
 });
 
 test('a run without the file to write is refused', () => {
-  expect(main(registry('12.99.0'), { GITHUB_OUTPUT: '' })).rejects.toThrow(
+  expect(main(SOURCES, { GITHUB_OUTPUT: '' })).rejects.toThrow(
     'The workflow did not set the file to write.',
   );
 });

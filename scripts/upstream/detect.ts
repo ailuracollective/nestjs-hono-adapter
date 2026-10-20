@@ -25,6 +25,21 @@ type Registry = (name: string) => { readonly out: string; readonly code: number 
 /** The environment the workflow runs the script in. */
 type Environment = Record<string, string | undefined>;
 
+/**
+ * The sources the detection reads: the registry for the last available release, the manifest the
+ * repository declares and the lockfile it holds. The readers are injected, so the suite answers
+ * with sources of its own: the compatibility matrix moves the manifest and the lockfile to another
+ * Nest line, and sources of their own keep the answer the same on every line.
+ */
+interface Sources {
+  /** How the registry is read: the version it tags as latest, and whether the read answered. */
+  readonly registry: Registry;
+  /** The manifest text: the range each watched package is held in. */
+  readonly manifest: () => string | Promise<string>;
+  /** The lockfile text: the version each package is resolved at. */
+  readonly lockfile: () => string | Promise<string>;
+}
+
 const WATCHED: Watched[] = [
   { key: 'hono', name: 'hono' },
   { key: 'nest', name: '@nestjs/core' },
@@ -53,6 +68,13 @@ const npmRegistry: Registry = (name) => {
   return { out: result.stdout.toString().trim(), code: result.exitCode };
 };
 
+/** The sources the repository offers: the registry, the manifest at the root and its lockfile. */
+const npm: Sources = {
+  registry: npmRegistry,
+  manifest: () => Bun.file('package.json').text(),
+  lockfile: () => Bun.file('bun.lock').text(),
+};
+
 /**
  * The last available release of a package: the version the registry tags as latest, which is the
  * one an install takes.
@@ -69,8 +91,8 @@ const lastAvailable = (name: string, registry: Registry = npmRegistry): string =
  * The lockfile says which version the tree holds: the package.json declares a range, so it no
  * longer names one.
  */
-const resolved = async (name: string): Promise<string> => {
-  const lock = Bun.JSONC.parse(await Bun.file('bun.lock').text()) as {
+const resolved = async (name: string, sources: Sources = npm): Promise<string> => {
+  const lock = Bun.JSONC.parse(await sources.lockfile()) as {
     packages?: Record<string, unknown[]>;
   };
   const packages = lock.packages ?? {};
@@ -86,10 +108,10 @@ const resolved = async (name: string): Promise<string> => {
 const detect = async (
   watched: Watched,
   range: string,
-  registry: Registry = npmRegistry,
+  sources: Sources = npm,
 ): Promise<Detection> => {
-  const from = await resolved(watched.name);
-  const last = lastAvailable(watched.name, registry);
+  const from = await resolved(watched.name, sources);
+  const last = lastAvailable(watched.name, sources.registry);
   return {
     name: watched.name,
     range,
@@ -166,11 +188,8 @@ const write = async (file: string | undefined, content: string): Promise<void> =
   await Bun.write(file, content);
 };
 
-const main = async (
-  registry: Registry = npmRegistry,
-  environment: Environment = Bun.env,
-): Promise<void> => {
-  const root = (await Bun.file('package.json').json()) as {
+const main = async (sources: Sources = npm, environment: Environment = Bun.env): Promise<void> => {
+  const root = JSON.parse(await sources.manifest()) as {
     devDependencies?: Record<string, string>;
   };
   const devDependencies = root.devDependencies ?? {};
@@ -181,7 +200,7 @@ const main = async (
     if (range === undefined) {
       throw new Error(`${watched.name} is not in the root devDependencies.`);
     }
-    detections.push(await detect(watched, range, registry));
+    detections.push(await detect(watched, range, sources));
   }
 
   // A forced run installs the last release whatever the declared range takes.
@@ -206,4 +225,4 @@ export {
   summaryOf,
   targetOf,
 };
-export type { Detection, Environment, Registry, Watched };
+export type { Detection, Environment, Registry, Sources, Watched };
