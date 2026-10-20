@@ -14,7 +14,8 @@ class EmptyModule {}
 const createOf = (): unknown => Reflect.get(WsAdapter.prototype, 'create');
 
 test('a peer the runtime cannot resolve is served the class the bundler resolved', async () => {
-  const adapter = new ServerAdapter({ transport: nodeServer() });
+  // The global override is off: the case must leave the process's web classes alone.
+  const adapter = new ServerAdapter({ transport: nodeServer({ overrideGlobalObjects: false }) });
   const app = await NestFactory.create(EmptyModule, adapter, { logger: false });
   await app.init();
   const stock = createOf();
