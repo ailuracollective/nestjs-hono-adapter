@@ -1,4 +1,12 @@
-import { Controller, ForbiddenException, Header, HttpCode, HttpStatus, Sse } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Header,
+  HttpCode,
+  HttpStatus,
+  InternalServerErrorException,
+  Sse,
+} from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import { Observable, of, throwError } from 'rxjs';
 
@@ -50,7 +58,9 @@ class FramesController {
   public broken(): Observable<MessageEvent> {
     return new Observable((subscriber) => {
       subscriber.next({ data: 'open' });
-      subscriber.error(new Error('after the frame'));
+      // An HTTP exception, because Nest 12.2 reports any other error with the
+      // generic message: only an HTTP error carries the same text on every line.
+      subscriber.error(new InternalServerErrorException('after the frame'));
     });
   }
 

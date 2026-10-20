@@ -1,0 +1,127 @@
+name: Upstream releases
+
+'on':
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Run the suite against the last available release, detected or not
+        type: boolean
+        default: false
+  schedule:
+    # Midnight UTC, every day. GitHub reads a cron in UTC, so the schedule is
+    # the same on every day of the year.
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-releases-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Detect a new release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      detected: ${{ steps.detect.outputs.detected }}
+      hono_from: ${{ steps.detect.outputs.hono_from }}
+      hono_to: ${{ steps.detect.outputs.hono_to }}
+      nest_from: ${{ steps.detect.outputs.nest_from }}
+      nest_to: ${{ steps.detect.outputs.nest_to }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      # The registry is read directly: the packument carries every published
+      # version, so the last available one is found without asking npm which
+      # version "latest" means.
+      - id: detect
+        name: Compare the resolved versions with the registry
+        env:
+          # A forced run installs the last release, whatever the declared range takes.
+          UPSTREAM_FORCE: ${{ inputs.force }}
+        run: bun scripts/upstream/detect.ts
+
+  canary:
+    name: Run the suite against the new release
+    needs: detect
+    if: needs.detect.outputs.detected == 'true' || inputs.force == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      # The install and the suite write the same log: an install that fails leaves
+      # one behind, so the report still opens the issue.
+      - name: Install the release
+        run: |
+          set -o pipefail
+          { bun add --exact \
+            hono@${{ needs.detect.outputs.hono_to }} \
+            @nestjs/common@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/core@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/websockets@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/platform-ws@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/platform-socket.io@${{ needs.detect.outputs.nest_to }} \
+            && (cd packages/compatibility && bun add --exact \
+            @nestjs/common@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/core@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/websockets@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/microservices@${{ needs.detect.outputs.nest_to }} \
+            @nestjs/testing@${{ needs.detect.outputs.nest_to }}); } 2>&1 | tee -a canary.log
+      # The install is incremental: it leaves the copies it nested under the
+      # other major in place, so the tree is laid out once more.
+      - name: Lay the tree out and run the suite
+        run: |
+          set -o pipefail
+          { rm -rf node_modules packages/*/node_modules packages/examples/cloudflare/*/node_modules && bun install && bun run typecheck && bun run test; } 2>&1 | tee -a canary.log
+      # The log travels to the report job, which opens the issue. The job that
+      # runs the upstream code holds no permission to write anything.
+      - name: Upload the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-canary
+          path: canary.log
+          if-no-files-found: ignore
+
+  report:
+    name: Open the compatibility issue
+    needs: [detect, canary]
+    # Only a failing canary reports: a detection that ran green needs no
+    # issue, and a registry that could not be read is not a compatibility
+    # problem.
+    if: always() && failure() && needs.canary.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: upstream-canary
+      - name: Open the issue
+        env:
+          GH_TOKEN: ${{ secrets.AILURA_UPSTREAM_TOKEN }}
+          # The job holds no remote, so the repository is named explicitly.
+          GH_REPO: ${{ github.repository }}
+          WATCH_HONO_FROM: ${{ needs.detect.outputs.hono_from }}
+          WATCH_HONO_TO: ${{ needs.detect.outputs.hono_to }}
+          WATCH_NEST_FROM: ${{ needs.detect.outputs.nest_from }}
+          WATCH_NEST_TO: ${{ needs.detect.outputs.nest_to }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bun scripts/upstream/report.ts
