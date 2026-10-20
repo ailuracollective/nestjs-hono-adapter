@@ -1,6 +1,6 @@
 {
   "name": "@ailura/nestjs-platform-hono-socket-io",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The Socket.IO bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/platform-socket.io IoAdapter serving on Hono.",
   "keywords": [
     "adapter",

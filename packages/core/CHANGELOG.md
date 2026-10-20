@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.0.2...v2.1.0) (2026-10-20)
+
+
+### Features
+
+* **tests:** add comprehensive test coverage for various components ([c13a4c2](https://github.com/ailuracollective/nestjs-hono-adapter/commit/c13a4c2fcb08ed4a265c21205cddff9ce6cdc515))
+
 ## [2.0.2](https://github.com/ailuracollective/nestjs-hono-adapter/compare/core-v2.0.1...core-v2.0.2) (2026-10-17)
 
 

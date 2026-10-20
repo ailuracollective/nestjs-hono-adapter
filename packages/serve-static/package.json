@@ -1,6 +1,6 @@
 {
   "name": "@ailura/nestjs-platform-hono-serve-static",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The static-asset bridge of @ailura/nestjs-hono-adapter: @nestjs/serve-static reading through the transport, in its own package.",
   "keywords": [
     "adapter",

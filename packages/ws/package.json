@@ -1,6 +1,6 @@
 {
   "name": "@ailura/nestjs-platform-hono-ws",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The WebSocket bridge of @ailura/nestjs-hono-adapter: the stock @nestjs/platform-ws WsAdapter serving on Hono.",
   "keywords": [
     "adapter",
