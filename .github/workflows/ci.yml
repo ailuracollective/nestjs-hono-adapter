@@ -33,7 +33,7 @@ concurrency:
 jobs:
   check:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
@@ -79,7 +79,7 @@ jobs:
     # that package and its suite skips them — a Nest major they never claimed is
     # not an adapter failure. The suite runs on Bun.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     strategy:
       matrix:

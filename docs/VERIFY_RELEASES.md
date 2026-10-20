@@ -34,7 +34,7 @@ The statement names the identity that produced the release, and for this project
 | ----------- | ------------------------------------------------------------------------- |
 | Workflow    | `.github/workflows/publish.yml` in `ailuracollective/nestjs-hono-adapter` |
 | Trigger     | the `release` event of type `published`                                   |
-| Environment | GitHub Actions, `ubuntu-latest`                                           |
+| Environment | GitHub Actions, `ubuntu-26.04`                                            |
 
 A package claiming provenance from another workflow, another repository or another trigger did not come from this pipeline and is treated as compromised.
 
