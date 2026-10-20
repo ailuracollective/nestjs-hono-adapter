@@ -30,10 +30,5 @@
       "@ailura/nestjs-platform-hono-ws": ["../packages/ws/src/index.ts"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "../packages/*/src/**/*.ts",
-    "../packages/*/test/**/*.ts",
-    "../scripts/**/*.ts"
-  ]
+  "include": ["**/*.ts", "../packages/*/src/**/*.ts", "../packages/*/test/**/*.ts"]
 }

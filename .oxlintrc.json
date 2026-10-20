@@ -364,7 +364,11 @@
         "require-unicode-regexp": "off",
         "init-declarations": "off",
         "no-continue": "off",
-        "no-magic-numbers": "off"
+        "no-magic-numbers": "off",
+        "oxc/no-async-await": "off",
+        "node/no-top-level-await": "off",
+        "eslint/no-await-in-loop": "off",
+        "typescript/strict-boolean-expressions": "off"
       }
     }
   ],
