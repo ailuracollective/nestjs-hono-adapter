@@ -50,6 +50,23 @@ const registry =
   (out: string, code = 0): Registry =>
   () => ({ out, code });
 
+/**
+ * The registry, answered with the version the lockfile holds and a patch more. A patch is a release
+ * every declared range takes, so the answer holds whatever the tree declares: the compatibility
+ * matrix moves the tree to another Nest line, and the suite runs on each of them.
+ */
+const nextRelease = async (): Promise<Registry> => {
+  const held = await Promise.all(
+    ['hono', '@nestjs/core'].map(async (name) => [name, await resolved(name)] as const),
+  );
+  return (name) => {
+    const entry = held.find(([watched]) => watched === name);
+    const version = entry === undefined ? '0.0.0' : entry[1];
+    const [major = 0, minor = 0, patch = 0] = version.split('.').map(Number);
+    return { out: `${major}.${minor}.${patch + 1}`, code: 0 };
+  };
+};
+
 test('a release is ordered by its numbers', () => {
   expect(compare('12.2.0', '12.1.9')).toBeGreaterThan(0);
   expect(compare('12.1.3', '12.1.3')).toBe(0);
@@ -140,11 +157,12 @@ test('the detection writes the outputs and the summary the workflow reads', asyn
   const dir = mkdtempSync(path.join(tmpdir(), 'upstream-detect-'));
   const output = path.join(dir, 'output');
   const summary = path.join(dir, 'summary');
+  const release = await nextRelease();
   try {
-    await main(registry('12.99.0'), { GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary });
+    await main(release, { GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary });
     const written = await Bun.file(output).text();
     expect(written).toContain('detected=true');
-    expect(written).toContain('nest_to=12.99.0');
+    expect(written).toContain(`nest_to=${release('@nestjs/core').out}`);
     expect(await Bun.file(summary).text()).toContain('## Upstream releases');
   } finally {
     rmSync(dir, { force: true, recursive: true });
