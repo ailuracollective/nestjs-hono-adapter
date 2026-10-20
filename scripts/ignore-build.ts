@@ -347,7 +347,7 @@ function main(): number {
   return result.build ? 1 : 0;
 }
 
-const isMain = Reflect.get(import.meta, 'main') === true;
+const isMain = Reflect.get(import.meta, 'main');
 if (isMain) {
   processRef.exit(main());
 }

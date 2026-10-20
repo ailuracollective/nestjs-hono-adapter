@@ -85,13 +85,13 @@ jobs:
       matrix:
         include:
           - nest: '11'
-            nestGraphql: '13'
-            nestServeStatic: '5'
-            nestThirdParty: '@nestjs/cqrs@11 @nestjs/swagger@11'
+            nestGraphql: '^13.x'
+            nestServeStatic: '^5.x'
+            nestThirdParty: '@nestjs/cqrs@^11.x @nestjs/swagger@^11.x'
           - nest: '12'
-            nestGraphql: '14'
-            nestServeStatic: '12'
-            nestThirdParty: '@nestjs/cqrs@12 @nestjs/swagger@12'
+            nestGraphql: '^14.x'
+            nestServeStatic: '^12.x'
+            nestThirdParty: '@nestjs/cqrs@^12.x @nestjs/swagger@^12.x'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -106,8 +106,11 @@ jobs:
       - if: matrix.nest == '11'
         working-directory: packages/compatibility
         run: bun remove @nestjs/devtools-integration @nestjs/authentication @nestjs/authorization
-      - run: bun add --exact @nestjs/common@${{ matrix.nest }}.x @nestjs/core@${{ matrix.nest }}.x @nestjs/websockets@${{ matrix.nest }}.x @nestjs/platform-ws@${{ matrix.nest }}.x @nestjs/platform-socket.io@${{ matrix.nest }}.x @nestjs/graphql@${{ matrix.nestGraphql }} @nestjs/apollo@${{ matrix.nestGraphql }} @nestjs/serve-static@${{ matrix.nestServeStatic }}
+      - run: bun add @nestjs/common@^${{ matrix.nest }}.x @nestjs/core@^${{ matrix.nest }}.x @nestjs/websockets@^${{ matrix.nest }}.x @nestjs/platform-ws@^${{ matrix.nest }}.x @nestjs/platform-socket.io@^${{ matrix.nest }}.x @nestjs/graphql@${{ matrix.nestGraphql }} @nestjs/apollo@${{ matrix.nestGraphql }} @nestjs/serve-static@${{ matrix.nestServeStatic }}
       - working-directory: packages/compatibility
-        run: bun add --exact @nestjs/common@${{ matrix.nest }}.x @nestjs/core@${{ matrix.nest }}.x @nestjs/websockets@${{ matrix.nest }}.x @nestjs/microservices@${{ matrix.nest }}.x @nestjs/testing@${{ matrix.nest }}.x ${{ matrix.nestThirdParty }}
+        run: bun add @nestjs/common@^${{ matrix.nest }}.x @nestjs/core@^${{ matrix.nest }}.x @nestjs/websockets@^${{ matrix.nest }}.x @nestjs/microservices@^${{ matrix.nest }}.x @nestjs/testing@^${{ matrix.nest }}.x ${{ matrix.nestThirdParty }}
+      - run: bun update @nestjs/common @nestjs/core @nestjs/websockets @nestjs/platform-ws @nestjs/platform-socket.io @nestjs/graphql @nestjs/apollo @nestjs/serve-static
+      - working-directory: packages/compatibility
+        run: bun update @nestjs/common @nestjs/core @nestjs/websockets @nestjs/microservices @nestjs/testing @nestjs/cqrs @nestjs/swagger
       - run: rm -rf node_modules packages/*/node_modules packages/examples/cloudflare/*/node_modules && bun install
       - run: bun run typecheck && bun run build && bun test
