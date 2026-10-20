@@ -1,23 +1,39 @@
 import 'reflect-metadata';
 
 import { VersioningType } from '@nestjs/common';
+import { loadPackageSync } from '@nestjs/common/utils/load-package.util.js';
 import { NestFactory } from '@nestjs/core';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { upgradeWebSocket } from '@hono/cloudflare-workers';
 import { apiReference } from '@scalar/nestjs-api-reference';
 
 import {
   ServerAdapter,
+  registerBridge,
   type NestHonoApplication,
 } from '@ailura/nestjs-hono-adapter';
 import {
   fetchHandler,
   fetchServer,
+  webSocketFromHost,
 } from '@ailura/nestjs-hono-adapter/fetch';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
 import { AppModule } from './app.module.ts';
+
+// The `ws` package cannot be loaded in a Worker, and Nest's own `WsAdapter` reads it in its
+// constructor; the bridge never builds a `ws.Server`, so an empty one answers the load.
+loadPackageSync('ws', 'WsAdapter', () => ({}));
+
+// A Worker resolves no bare specifier at run time, so the region cannot find the bridge.
+registerBridge(bridge);
 
 /** The adapter the Worker serves through. */
 const adapter = new ServerAdapter({
-  transport: fetchServer(),
+  transport: fetchServer({
+    // The upgrade a Worker answers with: the platform's own helper, handed to the transport.
+    upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
+  }),
   trustProxy: false,
   rawBody: true,
   bodyLimit: 1024,
@@ -58,6 +74,8 @@ app.use(
     pageTitle: 'Ailura NestJS + Hono (Cloudflare fetch)',
   }),
 );
+
+app.useWebSocketAdapter(new WsAdapter(app));
 
 await app.init();
 

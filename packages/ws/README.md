@@ -45,6 +45,29 @@ The upgrade is served by the transport when it carries a websocket helper — `b
 
 Only `path` is honoured. A non-zero `port`, a `namespace`, a `server` and the WebSocket server options (`perMessageDeflate`, `maxPayload` and the rest) are refused when the gateway starts, naming the option it read.
 
+### On a Worker
+
+A Worker resolves no bare name at run time, so it names the bridge itself, and it seeds the package Nest's own `WsAdapter` reads, which a Worker cannot load — the bridge replaces the one member that builds a server, so no `ws.Server` is ever built there and only the name is read.
+
+```ts
+import { registerBridge } from '@ailura/nestjs-hono-adapter';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
+import { loadPackageSync } from '@nestjs/common/utils/load-package.util.js';
+
+loadPackageSync('ws', 'WsAdapter', () => ({}));
+registerBridge(bridge);
+```
+
+The upgrade itself is the platform's own helper, handed to the transport:
+
+```ts
+import { upgradeWebSocket } from '@hono/cloudflare-workers';
+
+const transport = fetchServer({
+  upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
+});
+```
+
 ## Documentation
 
 See [WebSockets](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/deployment.md#websockets) for the gateway contract, and [compatibility.md](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/docs/compatibility.md#ws) for what the bridge patches.

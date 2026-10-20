@@ -13,10 +13,10 @@
   "alias": {
     "@ailura/nestjs-hono-adapter": "../../../../packages/core/src/index.ts",
     "@ailura/nestjs-hono-adapter/fetch": "../../../../packages/core/src/servers/fetch.ts",
+    "@ailura/nestjs-platform-hono-ws": "../../../../packages/ws/src/index.ts",
     "@fastify/static": "./src/stub-optional-peers.ts",
     "@nestjs/microservices": "./src/stub-optional-peers.ts",
     "@nestjs/microservices/microservices-module.js": "./src/stub-optional-peers.ts",
-    "@nestjs/websockets/socket-module.js": "./src/stub-optional-peers.ts",
     "@nestjs/platform-express": "./src/stub-optional-peers.ts",
     "@nestjs/platform-socket.io": "./src/stub-optional-peers.ts",
     "@nats-io/transport-node": "./src/stub-optional-peers.ts",
