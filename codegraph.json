@@ -1,0 +1,10 @@
+{
+  "exclude": [".github/", "scripts/"],
+  "deprioritize": [
+    "packages/examples/",
+    "packages/benchmarks/",
+    "packages/compatibility/",
+    "packages/*/test/",
+    "test/"
+  ]
+}

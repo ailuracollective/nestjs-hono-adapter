@@ -53,6 +53,20 @@ bun update @nestjs/common @nestjs/core @nestjs/websockets @nestjs/platform-ws @n
 bun add @nestjs/common@^12.x @nestjs/core@^12.x @nestjs/websockets@^12.x @nestjs/platform-ws@^12.x @nestjs/platform-socket.io@^12.x
 ```
 
+### The code graph
+
+The repository carries a code graph: a local index of the symbols, the call paths and the blast radius of every file, built by the `codegraph` CLI and read by the agents that work on it through the codegraph MCP server. The index is local — `.codegraph/` is git-ignored — but the configuration that decides what goes into it is versioned: `codegraph.json` at the repository root, which a fresh clone reads on its first `codegraph init`.
+
+`codegraph.json` carries two lists. `exclude` names paths kept out of the index even when they are git-tracked: `.github/` and `scripts/`, which hold the workflows and the repository's own scripts — the build a push decides on and the nightly watch — and contribute no symbol to the graph. `deprioritize` names the paths that stay in the index but never outrank the source: the examples, the benchmark and compatibility suites, and the test trees. The test trees stay because they carry the map from a symbol to the test that covers it — the edges a change has to finish — while being ranked below the source, because a test fixture is never the thing a reader is looking for.
+
+```sh
+codegraph init    # build the index
+codegraph index   # rebuild it after changing codegraph.json
+codegraph status  # what the index holds
+```
+
+The MCP server resolves the project from the directory it was launched in, so an agent that queries a checkout other than that one names the project in the call — `projectPath` — or the answer comes from the other tree.
+
 ## Release
 
 Releases run through [release-please](https://github.com/googleapis/release-please). Six packages release from `packages/`: the adapter at `packages/core` (`@ailura/nestjs-hono-adapter`); the capability `@ailura/nestjs-platform-hono-multipart`; and the bridges `@ailura/nestjs-platform-hono-graphql`, `@ailura/nestjs-platform-hono-serve-static`, `@ailura/nestjs-platform-hono-socket-io` and `@ailura/nestjs-platform-hono-ws`. `release-please-config.json` declares one component per package — `packages/core`, plus `socket-io`, `ws`, `multipart`, `graphql` and `serve-static` — and `.release-please-manifest.json` records each last released version, which — once a package has shipped — is the version its `package.json` declares: release-please reads the manifest as the last release and writes the next version into `package.json`. A package that has never shipped carries the `0.0.0` sentinel instead, which is not a release to bump: release-please cuts its first version from the top-level `initial-version` (`0.1.0-beta` here) rather than from the adapter's major. On every push to `main`, release-please opens a release pull request per package with its version bump and generated changelog; merging one creates that package's tag and GitHub release. The adapter is tagged `vX.Y.Z`; every other package sets `include-component-in-tag`, so their tags are `socket-io-vX.Y.Z`, `ws-vX.Y.Z`, `multipart-vX.Y.Z`, `graphql-vX.Y.Z` and `serve-static-vX.Y.Z`. Nothing is published directly, so a release is a reviewed change, and a release pull request is exempt from the policy gates by its head ref. Merging one publishes that package to npm: the GitHub release fires `.github/workflows/publish.yml`, which resolves the package directory from the tag (`v*` → `packages/core`, `socket-io-v*` → `packages/socket-io`, `ws-v*` → `packages/ws`, `multipart-v*` → `packages/multipart`, `graphql-v*` → `packages/graphql`, `serve-static-v*` → `packages/serve-static`), checks out the tag, builds with `bun run build`, and runs `npm publish <directory> --provenance` under OIDC trusted publishing, so no npm token is stored anywhere. One order matters and no configuration enforces it: the adapter must be published before the packages that peer on it (`multipart`, `graphql` and `serve-static` require it, `socket-io` and `ws` take it as an optional peer), so publish the adapter's release first.
