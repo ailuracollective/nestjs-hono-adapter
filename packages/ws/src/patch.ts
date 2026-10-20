@@ -1,5 +1,6 @@
 import { loadPeer } from '@ailura/nestjs-hono-adapter';
 import type { BridgeTarget, Server } from '@ailura/nestjs-hono-adapter';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 import { ensureSupported, normalizePath } from './options.ts';
 import type { GatewayOptions } from './options.ts';
@@ -56,9 +57,16 @@ const fit = (prototype: WsAdapterShape): void => {
   };
 };
 
-const patchWsAdapter = async (target: BridgeTarget): Promise<void> => {
+/** The peer as the bundler resolved it, for a runtime that resolves no specifier by name. */
+const bundled = { WsAdapter };
+
+const patchWsAdapter = async (
+  target: BridgeTarget,
+  load: () => Promise<unknown> = (): Promise<unknown> => loadPeer(PEER),
+): Promise<void> => {
   remember(target);
-  const prototype = prototypeOf(await loadPeer(PEER));
+  // The peer's own resolution is the one the application holds.
+  const prototype = prototypeOf((await load()) ?? bundled);
   if (prototype === undefined || patched.has(prototype)) return;
   patched.add(prototype);
   fit(prototype);

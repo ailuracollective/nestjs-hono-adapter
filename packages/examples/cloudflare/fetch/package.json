@@ -9,10 +9,14 @@
     "preview": "env -u WRANGLER_CI_MATCH_TAG wrangler versions upload"
   },
   "dependencies": {
+    "@ailura/nestjs-platform-hono-ws": "workspace:*",
+    "@hono/cloudflare-workers": "^1.0.1",
     "@hono/node-server": "^2.1.1",
     "@nestjs/common": "^12.0.3",
     "@nestjs/core": "^12.0.3",
+    "@nestjs/platform-ws": "^12.0.3",
     "@nestjs/swagger": "12.0.2",
+    "@nestjs/websockets": "^12.0.3",
     "@scalar/nestjs-api-reference": "1.2.28",
     "hono": "^4.13.8",
     "reflect-metadata": "^0.2.2",

@@ -69,6 +69,21 @@ A gateway is declared as Nest declares one, its `path` registered on the same Ho
 
 `messageParser` is `platform-ws`'s: a parser that throws is reported and the frame dropped, and the built-in reader (reading client-controlled input) stays quiet rather than filling the log. `bindErrorHandler(server)` attaches the listeners `platform-ws` attaches — on the path's server and every socket it hands over — and the bridge calls it for every path, so a failing socket is logged rather than thrown out of the event loop. Any option but `path` is refused when the gateway starts rather than half served: a `port` would need a second HTTP listener, where every gateway is served on the HTTP adapter's own server; a `namespace` has no counterpart, the path being the whole address (upstream refuses one too, pointing at `@nestjs/platform-socket.io`); a `server` cannot be driven by this transport; and the WebSocket server options (`perMessageDeflate`, `maxPayload` and the rest) cannot be passed to a server this adapter does not build. Each refusal names the option it read. `@ConnectedSocket()` receives the socket — exported as `GatewayClient`, so a gateway can type it — with `send`, `close`, `terminate`, `readyState` and `on` / `off` / `once` / `emit`; `send` and `readyState` together are how Nest tells a native WebSocket client from a Socket.IO one, and without both a throwing handler is answered through a channel this socket lacks. `@Ack()` is not wired by `platform-ws` either; a reply travels back as whatever the handler returned.
 
+### On a Worker
+
+A Worker answers an upgrade itself, so the transport is given the platform's helper — `fetchServer({ upgradeWebSocket: webSocketFromHost(upgradeWebSocket) })`, where the helper is `@hono/cloudflare-workers`'s — and two things it cannot answer are answered by the deployment: the bridge it cannot look up, and the `ws` package it cannot load, which Nest's own `WsAdapter` reads in its constructor.
+
+```ts
+import { registerBridge } from '@ailura/nestjs-hono-adapter';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
+import { loadPackageSync } from '@nestjs/common/utils/load-package.util.js';
+
+loadPackageSync('ws', 'WsAdapter', () => ({}));
+registerBridge(bridge);
+```
+
+[compatibility.md](compatibility.md#a-runtime-that-resolves-no-specifier) has the rest, and `packages/examples/cloudflare/fetch` is a Worker that answers a gateway.
+
 ### Socket.IO
 
 Socket.IO is a protocol of its own rather than a WebSocket, and Nest serves it with its own `@nestjs/platform-socket.io` `IoAdapter`. That adapter is the adapter here too, fitted to Hono by the bridge package `@ailura/nestjs-platform-hono-socket-io`: installing it is what installs the bridge, and an application writes no import of it.

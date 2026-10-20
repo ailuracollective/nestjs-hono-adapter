@@ -3,6 +3,7 @@ import type { INestApplication, Type } from '@nestjs/common';
 
 import type { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { bunAdapter } from '#test/bun-adapter';
+import { restoreWebClasses } from '#test/probe/in-process';
 
 import { LOCALHOST, OpenGuard, RefusingGuard } from '#compat-test/testing/fixture';
 import type { Answered } from '#compat-test/testing/fixture';
@@ -33,6 +34,8 @@ const overConnection = async (adapter: ServerAdapter): Promise<Answered> => {
   const address = adapter.getHttpServer().address();
   if (address === undefined || typeof address === 'string')
     throw new TypeError('the application is not listening on a port');
+  // A Bun server installs its own lightweight web classes, and the answer has to be one of them.
+  restoreWebClasses();
   const response = await fetch(`http://${LOCALHOST}:${address.port}/ping`);
   return {
     status: response.status,

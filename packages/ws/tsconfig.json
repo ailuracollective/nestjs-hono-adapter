@@ -6,6 +6,7 @@
     "paths": {
       "#adapter/*": ["../core/src/*.ts", "../core/src/*"],
       "#test/*": ["../../test/*.ts", "../../test/*"],
+      "#ws/*": ["./src/*.ts", "./src/*"],
       "@ailura/nestjs-hono-adapter": ["../core/src/index.ts"],
       "@ailura/nestjs-platform-hono-ws": ["./src/index.ts"]
     }

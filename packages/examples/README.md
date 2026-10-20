@@ -29,6 +29,8 @@ Every example carries `enableVersioning({ type: URI, defaultVersion: '1' })`, so
 | `GET /v1/docs-json` | the OpenAPI document                        |
 | `GET /v1/reference` | the Scalar API reference                    |
 
+The Cloudflare fetch folder answers one more, over a WebSocket: `GET /ws` upgrades, and a `{"event":"ping"}` frame is answered by the gateway.
+
 CORS is on for `https://example.com` and `bodyLimit` is 1 KiB, so a larger body is refused with a 413:
 
 ```sh
@@ -101,6 +103,33 @@ The thirteen optional peers Nest and `@nestjs/swagger` name inside lazy `import(
 ### Why there is no Bun folder
 
 `workerd` has no `Bun` global, so it cannot run `Bun.serve`, which is what `bunServer()` serves through.
+
+### The WebSocket
+
+The fetch folder answers a gateway as well: `Gateway` is a `@WebSocketGateway` on `/ws`, and the Worker carries the upgrade with the platform's own helper.
+
+```ts
+transport: fetchServer({
+  upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
+}),
+```
+
+A Worker resolves no bare name at run time, so the region cannot look the bridge up and the Worker names it, and it seeds the package Nest's own `WsAdapter` reads, which a Worker cannot load:
+
+```ts
+loadPackageSync('ws', 'WsAdapter', () => ({}));
+registerBridge(bridge);
+```
+
+The bridge is imported as well as resolved, so the class it patches is the class the application holds in the same bundle. `@nestjs/websockets/socket-module.js` is **not** stubbed in this folder — the module is what binds a gateway, and the `@nestjs/platform-socket.io` import it makes lazily is stubbed instead.
+
+Ask the gateway with the `platform-ws` frame:
+
+```sh
+websocat ws://localhost:8787/ws <<< '{"event":"ping","data":"hola"}'
+```
+
+The answer is `{"data":{"pong":"pong","sent":"hola"},"event":"ping"}`.
 
 ## Vercel
 

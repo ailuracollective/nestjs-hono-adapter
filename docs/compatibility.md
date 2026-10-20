@@ -60,7 +60,7 @@ const BRIDGE_PACKAGES = [
 ];
 ```
 
-A package that is installed evaluates and publishes its bridge; one that is not resolves to nothing and is skipped. The resolution is **the application's**, not the adapter's — `peer-load.ts` looks the specifier up where the application was started, because a bridge patches a prototype and has to hold the very class the application holds. `import.meta.resolve` is asked before the CommonJS resolver, since for a package that ships two builds a `require` condition names the CommonJS one and importing it from ESM loads a _second_ copy of every class in it.
+A package that is installed evaluates and publishes its bridge; one that is not resolves to nothing and is skipped. The resolution is **the application's**, not the adapter's — `peer-load.ts` looks the specifier up where the application was started, because a bridge patches a prototype and has to hold the very class the application holds. `import.meta.resolve` is asked before the CommonJS resolver, since for a package that ships two builds a `require` condition names the CommonJS one and importing it from ESM loads a _second_ copy of every class in it. A runtime that resolves no specifier by name — a Worker — is the one place the region cannot ask, and the application names the bridge there.
 
 The contract a bridge package publishes is one name:
 
@@ -137,6 +137,10 @@ app.useWebSocketAdapter(new WsAdapter(app)); // @nestjs/platform-ws, unchanged
 The patch is written on the prototype once per process. At call time it asks which of the registered applications owns `this.httpServer`; a call that owns none — an Express or Fastify deployment in the same process — falls through to the stock path unchanged. For an application it does own, `create()` refuses anything but `path` (`port`, `namespace`, `server` and the WebSocket server options), registers the path as a route on that application through the transport's websocket helper, and hands the adapter a server of its own — `clients`, `on('connection')`, `close(callback)` — so `bindMessageHandlers()`, `bindErrorHandler()` and `close()` run against it exactly as they run against `ws.Server`. A transport with no helper (`nodeServer()`) gets no route and no server of ours: the stock path serves a real `ws.Server` on the transport's HTTP server.
 
 A socket is bound on whichever event the helper fires first, because a helper that never calls `onOpen` — `@hono/cloudflare-workers` — still delivers messages.
+
+#### A runtime that resolves no specifier
+
+A Worker resolves no bare name at run time, so the region cannot find a bridge and the application names one — `registerBridge(bridge)`, the same seam [Extending it](#extending-it) offers a consumer. The `ws` package is not loadable there either, and Nest's own `WsAdapter` reads it in its constructor, so the deployment seeds Nest's package cache with an empty one: `loadPackageSync('ws', 'WsAdapter', () => ({}))`. The bridge imports its peer as well as resolving it, so the class it patches is the class the application holds in the same bundle; the resolution still comes first where it works, because a package that ships two builds gives the application the one it holds.
 
 ### `socket-io`
 
@@ -268,7 +272,7 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 ## The guard
 
-`test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
+`test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `seedPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
 `test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all five trees: the region, and the four bridge packages.
 
