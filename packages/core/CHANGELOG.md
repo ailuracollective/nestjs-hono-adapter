@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.1.0...v2.1.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **core:** answer a malformed wildcard escape as a bad request ([#245](https://github.com/ailuracollective/nestjs-hono-adapter/issues/245)) ([75f9469](https://github.com/ailuracollective/nestjs-hono-adapter/commit/75f94691b283b0ad00d77e2a1493568e20c6ed1e))
+
 ## [2.1.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.0.2...v2.1.0) (2026-10-20)
 
 
