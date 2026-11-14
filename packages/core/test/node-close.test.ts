@@ -39,7 +39,7 @@ const serving = async (): Promise<{
   readonly app: INestApplication;
 }> => {
   const adapter = new ServerAdapter({
-    transport: nodeServer(),
+    transport: nodeServer({ overrideGlobalObjects: false }),
   });
   const app = await NestFactory.create(QuietModule, adapter, {
     logger: false,
