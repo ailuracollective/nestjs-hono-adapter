@@ -1,5 +1,5 @@
 {
-  "packages/core": "2.1.0",
+  "packages/core": "2.1.1",
   "packages/socket-io": "0.2.1",
   "packages/ws": "0.3.0",
   "packages/multipart": "0.2.1",
