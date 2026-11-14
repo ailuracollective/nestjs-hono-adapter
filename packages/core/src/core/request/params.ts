@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { routePath } from 'hono/route';
 
 import type { NestContext } from '#adapter/core/context';
@@ -51,10 +52,18 @@ const wildcardOf = (context: NestContext, params: Record<string, string>): strin
   return captureBetween(path, prefix, suffix);
 };
 
+const decodeWildcard = (wildcard: string): string => {
+  try {
+    return decodeURIComponent(wildcard);
+  } catch {
+    throw new BadRequestException('Malformed wildcard escape');
+  }
+};
+
 const paramsOf = (context: NestContext): Record<string, string> => {
   const params = context.req.param();
   const wildcard = wildcardOf(context, params);
-  if (wildcard !== undefined) params['*'] = decodeURIComponent(wildcard);
+  if (wildcard !== undefined) params['*'] = decodeWildcard(wildcard);
   return params;
 };
 

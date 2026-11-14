@@ -39,7 +39,8 @@ const serving = async (): Promise<{
   readonly app: INestApplication;
 }> => {
   const adapter = new ServerAdapter({
-    transport: nodeServer(),
+    // The swap is process-wide and never restored, so the suites that run after this one would see it.
+    transport: nodeServer({ overrideGlobalObjects: false }),
   });
   const app = await NestFactory.create(QuietModule, adapter, {
     logger: false,
