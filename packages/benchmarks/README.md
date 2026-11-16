@@ -27,6 +27,9 @@ Base scenarios use the application without Inertia; Inertia scenarios use the ap
 | `params` | base | `GET /users/:id` | route parameters |
 | `post` | base | `POST /echo` | body parsing |
 | `pipeline` | base | `GET /pipeline` | guard + interceptor + DI |
+| `pipes` | base | `GET /pipes/:id` | stock `ParseIntPipe` |
+| `middleware` | base | `GET /middleware` | scoped Nest middleware |
+| `stream` | base | `GET /stream` | fully consumed `StreamableFile` |
 | `inertia` | Inertia | `GET /inertia` | Inertia JSON page render |
 | `inertia-html` | Inertia | `GET /inertia` | Inertia first-load shell |
 | `inertia-react` | Inertia | `GET /inertia-react?created=1` | React SSR contact list with success flash |
@@ -83,6 +86,24 @@ Reports land in `packages/benchmarks/results/` as JSON samples; the metrics page
 6. **Watch the server**: CPU and RSS are polled from the target process, and only inside the measured window, so warmup and cooldown never count.
 
 Results are comparative on this machine, not absolute production numbers.
+
+### Finite profiling
+
+The finite fetch workload uses the same base module without a network client. It asserts a successful response and drains each body, warms up for 10,000 requests, and reports CPU and memory around the measured loop. Profiles include framework startup and warmup; they are not network throughput measurements. Bridge discovery still installs optional bridges present in the workspace, even when the base module has no Inertia providers.
+
+From the repository root, after `bun run bench` has built the suite:
+
+```sh
+mkdir -p packages/benchmarks/results/profiles
+node --expose-gc --cpu-prof --cpu-prof-dir=packages/benchmarks/results/profiles packages/benchmarks/dist/harness/profile.js /middleware 100000
+bun --expose-gc --cpu-prof --cpu-prof-dir=packages/benchmarks/results/profiles packages/benchmarks/dist/harness/profile.js /middleware 100000
+node --expose-gc packages/benchmarks/dist/harness/allocations.js /middleware 100000 > packages/benchmarks/results/profiles/allocations.jsonl
+node --expose-gc --trace-gc packages/benchmarks/dist/harness/profile.js /middleware 100000
+```
+
+The last JSON line of `allocations.jsonl` is a V8 allocation-sampling profile, including objects collected by both minor and major GC. Its byte counts are statistical estimates, not exact allocation counts. An optional third argument to `profile.js` writes a heap snapshot; snapshot runs are separate from CPU measurements because taking a snapshot dominates the profile. On Bun this uses `Bun.generateHeapSnapshot()`, and on Node it uses `node:v8.writeHeapSnapshot()`. Heap snapshots show survivors, not total allocation churn.
+
+`bun packages/benchmarks/dist/harness/server/native-entry.js 3000` serves native Hono on Bun for text, JSON, simple query, params and JSON POST references, with CORS enabled. It has no Nest middleware, guards, pipes or body-limit contract and is therefore a lower-bound reference, not an equivalent Nest target. The native process is stopped with SIGTERM after measurement.
 
 ## Layout
 

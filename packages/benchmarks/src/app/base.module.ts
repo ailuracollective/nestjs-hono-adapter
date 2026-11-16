@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 
 import { BenchController } from './bench.controller.ts';
 
@@ -6,4 +7,12 @@ import { BenchController } from './bench.controller.ts';
 @Module({
   controllers: [BenchController],
 })
-export class BaseModule {}
+export class BaseModule implements NestModule {
+  public configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply((_request: unknown, _response: unknown, next: () => void): void => {
+        next();
+      })
+      .forRoutes('middleware');
+  }
+}

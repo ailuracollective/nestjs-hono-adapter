@@ -22,6 +22,9 @@ const scenarios: readonly Scenario[] = [
     path: '/echo',
   },
   { app: 'base', id: 'pipeline', method: 'GET', path: '/pipeline' },
+  { app: 'base', id: 'pipes', method: 'GET', path: '/pipes/42' },
+  { app: 'base', id: 'middleware', method: 'GET', path: '/middleware' },
+  { app: 'base', id: 'stream', method: 'GET', path: '/stream' },
   {
     app: 'inertia',
     headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'bench' },

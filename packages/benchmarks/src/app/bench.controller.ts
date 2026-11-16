@@ -5,11 +5,14 @@ import {
   HttpException,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Post,
   Query,
+  StreamableFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Readable } from 'node:stream';
 
 import { BenchGuard } from './bench.guard.ts';
 import { BenchInterceptor } from './bench.interceptor.ts';
@@ -19,8 +22,8 @@ import { BenchInterceptor } from './bench.interceptor.ts';
 export class BenchController {
   /** Plaintext routing and keep-alive probe. */
   @Get('health')
-  public health(): { ok: true } {
-    return { ok: true };
+  public health(): string {
+    return 'OK';
   }
 
   /** Minimal JSON serialization benchmark route. */
@@ -69,6 +72,24 @@ export class BenchController {
   @UseInterceptors(BenchInterceptor)
   public pipeline(): { ok: true } {
     return { ok: true };
+  }
+
+  /** Parameter validation through a stock Nest pipe. */
+  @Get('pipes/:id')
+  public pipes(@Param('id', ParseIntPipe) id: number): { id: number } {
+    return { id };
+  }
+
+  /** Route behind a scoped Nest middleware. */
+  @Get('middleware')
+  public middleware(): { ok: true } {
+    return { ok: true };
+  }
+
+  /** A finite Node stream, also served by the Bun transport. */
+  @Get('stream')
+  public stream(): StreamableFile {
+    return new StreamableFile(Readable.from(['hello', ' world']));
   }
 
   /**

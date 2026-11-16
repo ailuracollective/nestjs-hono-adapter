@@ -16,5 +16,5 @@
       "@ailura/nestjs-hono-adapter/fetch": ["../core/src/servers/fetch.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"]
 }
