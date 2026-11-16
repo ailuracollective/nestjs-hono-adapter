@@ -130,7 +130,7 @@ Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nes
 - parses the `Cookie` header into `req.cookies` before the stock middleware, so `CsrfCookieInterceptor` and `CsrfGuard` work on Hono;
 - hands a `FlashStore` the Nest request on both sides of the validation filter, so a session-keyed store sees one shape.
 
-The reply and redirect patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched; the module, service and interceptor patches are fitted on the peer's prototypes once per process. The behaviour suite covers merge/prepend/deepMerge/matchOn, scroll reset and merge intent, once, history flags, error bags, validation flash and CSRF.
+The reply and redirect patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched; the module, service and interceptor patches are fitted on the peer's prototypes once per process. The behaviour suite covers merge/prepend/deepMerge/matchOn, scroll reset and merge intent, once, history flags, error bags, validation flash, CSRF, buffered and streaming SSR, and `forFeature`/`@UseInertia` scopes. The stock SSR loader and scope switcher need no bridge patch beyond the fitted surface.
 
 The application names the stock module; the only import from this package is the register entrypoint:
 

@@ -1,10 +1,11 @@
 import '#inertia/register';
 
 import { expect } from 'bun:test';
+import type { Type } from '@nestjs/common';
 import type { Probe } from '#test/probe';
 import { request, startProbe } from '#test/probe';
 
-import { inertiaModule } from './fixture.ts';
+import { inertiaModule } from './fixtures/app.ts';
 
 const INERTIA = { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' };
 const OK = 200;
@@ -51,8 +52,10 @@ const submitCsrf = async (probe: Probe, token: string): Promise<number> => {
   return response.status;
 };
 
-const probeOf = (): ReturnType<typeof startProbe> =>
-  startProbe({ mode: 'in-process', module: inertiaModule() });
+const probeFor = (module: Type<unknown>): ReturnType<typeof startProbe> =>
+  startProbe({ mode: 'in-process', module });
+
+const probeOf = (): ReturnType<typeof startProbe> => probeFor(inertiaModule());
 
 const headers = (extra: Record<string, string>): Record<string, string> => {
   const out: Record<string, string> = { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' };
@@ -108,6 +111,7 @@ export {
   headers,
   pageComponent,
   partialHeaders,
+  probeFor,
   probeOf,
   submitCsrf,
   tokenOf,

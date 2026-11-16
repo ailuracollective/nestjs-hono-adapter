@@ -44,6 +44,8 @@ The application names the stock module and imports nothing from here. An `@Inert
 - `req.inertia.render()`, `share()`, `location()`, `encryptHistory()` and `clearHistory()`.
 - Error bags, validation flash and general flash through a `FlashStore`.
 - CSRF cookies and guards, with the `Cookie` header parsed into `req.cookies` before the stock middleware runs.
+- Server-side rendering, buffered and streaming, through the stock loader; the root view receives the `head` and `body` slots.
+- Multi-app scopes through `InertiaModule.forFeature` and `@UseInertia`, each with its own version, share and shell.
 - The first-load root document, through the stock shell.
 - `@Redirect()` and `res.redirect()` after a `PUT`, `PATCH`, `DELETE` or `QUERY` request, upgraded to `303` for an Inertia visit. Both the Express `res.redirect(status, url)` and Hono `res.redirect(url, status)` shapes preserve an explicit status; only a `302` is upgraded.
 - A redirect to a URL with a fragment answers `409` with `X-Inertia-Redirect`; prefetch requests receive the redirect unchanged. Redirect responses carry `Vary: X-Inertia`.
