@@ -13,6 +13,8 @@ All four serve the **same pair** of Nest applications. `platform-express` is Nes
 
 The base scenarios run on an application that does not import Inertia, so its global interceptors and middleware cannot tax routes that never render a page. The Inertia scenarios run on an application that mounts the module and the React, Vue and Svelte SSR scopes. Both applications carry the same base controller.
 
+Express ETag generation and `X-Powered-By` are disabled. The official adapters' CORS method list and max age match Hono's defaults. Hono keeps its default options rather than parsing an explicit list on every request. Wire details such as header whitespace, `Vary` and transport keep-alive defaults may still differ.
+
 The suite follows the workspace's Nest major instead of pinning one: its `@nestjs/*` dependencies are ranges (`>=11 <13`), so the compatibility job's `bun add` moves it along with the rest of the workspace, and `bun.lock` fixes the version actually measured.
 
 ## Scenarios
@@ -99,9 +101,13 @@ node --expose-gc --cpu-prof --cpu-prof-dir=packages/benchmarks/results/profiles 
 bun --expose-gc --cpu-prof --cpu-prof-dir=packages/benchmarks/results/profiles packages/benchmarks/dist/harness/profile.js /middleware 100000
 node --expose-gc packages/benchmarks/dist/harness/allocations.js /middleware 100000 > packages/benchmarks/results/profiles/allocations.jsonl
 node --expose-gc --trace-gc packages/benchmarks/dist/harness/profile.js /middleware 100000
+node --expose-gc packages/core/test/cors/cors.bench.ts
+bun --expose-gc packages/core/test/cors/cors.bench.ts
 ```
 
 The last JSON line of `allocations.jsonl` is a V8 allocation-sampling profile, including objects collected by both minor and major GC. Its byte counts are statistical estimates, not exact allocation counts. An optional third argument to `profile.js` writes a heap snapshot; snapshot runs are separate from CPU measurements because taking a snapshot dominates the profile. On Bun this uses `Bun.generateHeapSnapshot()`, and on Node it uses `node:v8.writeHeapSnapshot()`. Heap snapshots show survivors, not total allocation churn.
+
+The CORS microbenchmark warms 10,000 requests and measures 200,000 static preflights with reused immutable request input. It isolates scheduling and response work, not network throughput. It runs directly on Bun and the measured Node 26; older Node versions may need TypeScript-stripping support.
 
 `bun packages/benchmarks/dist/harness/server/native-entry.js 3000` serves native Hono on Bun for text, JSON, simple query, params and JSON POST references, with CORS enabled. It has no Nest middleware, guards, pipes or body-limit contract and is therefore a lower-bound reference, not an equivalent Nest target. The native process is stopped with SIGTERM after measurement.
 
