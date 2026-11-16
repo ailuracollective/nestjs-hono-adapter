@@ -7,6 +7,7 @@ import { BaseModule } from '#benchmarks/app/base.module';
 import { benchmarkCors } from '#benchmarks/harness/config/index';
 
 const BAD_REQUEST = 400;
+const TEAPOT = 418;
 const MAX_AGE_SECONDS = 86_400;
 const adapter = new ServerAdapter({ transport: fetchServer() });
 const app = NestFactory.create(BaseModule, adapter, { logger: false });
@@ -25,7 +26,7 @@ test('plaintext is text rather than a second JSON scenario', async () => {
   expect(text.headers.get('content-type')).toStartWith('text/');
 });
 
-test('base scenarios serve middleware, a pipe and a drained stream', async () => {
+test('base scenarios serve middleware, a pipe, a drained stream and an explicit error', async () => {
   const middleware = await adapter.getHono().request('/middleware');
   expect(await middleware.json()).toEqual({ ok: true });
   const piped = await adapter.getHono().request('/pipes/42');
@@ -34,6 +35,8 @@ test('base scenarios serve middleware, a pipe and a drained stream', async () =>
   expect(invalid.status).toBe(BAD_REQUEST);
   const stream = await adapter.getHono().request('/stream');
   expect(await stream.text()).toBe('hello world');
+  const error = await adapter.getHono().request('/boom');
+  expect(error.status).toBe(TEAPOT);
 });
 
 test('comparison adapters match Hono CORS defaults without changing the Hono workload', () => {
