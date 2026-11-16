@@ -12,7 +12,7 @@ export type {
 export type { NestHonoApplication } from './core/server/application.ts';
 export { bridgeNames, registerBridge } from './compat/index.ts';
 export type { Bridge, BridgeAdapter, BridgeTarget } from './compat/index.ts';
-export { loadPeer } from './compat/peer-load.ts';
+export { loadPeer, registerPeer } from './compat/peer-load.ts';
 export { toHonoPath } from './core/request/path.ts';
 export { toNestRequest } from './core/request/request.ts';
 export type { InjectCookie, InjectOptions, InjectResponse } from './core/inject/types.ts';
