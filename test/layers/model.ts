@@ -12,6 +12,7 @@ type Layer =
   | 'core'
   | 'features'
   | 'graphql'
+  | 'inertia'
   | 'multipart'
   | 'serve-static'
   | 'socket-io'
@@ -25,6 +26,7 @@ const CORE_ENTRY = 'packages/core/src/index.ts';
 const ALIASES: Readonly<Record<string, string>> = {
   '#adapter/': 'packages/core/src/',
   '#graphql/': 'packages/graphql/src/',
+  '#inertia/': 'packages/inertia/src/',
   '#multipart/': 'packages/multipart/src/',
   '#serve-static/': 'packages/serve-static/src/',
   '#socket-io/': 'packages/socket-io/src/',
@@ -62,6 +64,13 @@ const BRIDGE_ENTRYPOINTS: Readonly<Record<string, string[]>> = {
     'packages/graphql/src/index.ts',
     'packages/graphql/src/apollo.ts',
     'packages/graphql/src/route.ts',
+  ],
+  inertia: [
+    'packages/inertia/src/index.ts',
+    'packages/inertia/src/bridge.ts',
+    'packages/inertia/src/install.ts',
+    'packages/inertia/src/module-patch.ts',
+    'packages/inertia/src/response.ts',
   ],
   'serve-static': ['packages/serve-static/src/index.ts', 'packages/serve-static/src/bridge.ts'],
   'socket-io': ['packages/socket-io/src/index.ts', 'packages/socket-io/src/bridge.ts'],

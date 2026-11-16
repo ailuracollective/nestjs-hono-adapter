@@ -1,0 +1,9 @@
+[
+  {
+    "name": "inertia",
+    "path": "dist/index.js",
+    "limit": 900,
+    "brotli": true,
+    "ignore": ["@dudousxd/nestjs-inertia", "@nestjs/common", "@nestjs/core", "rxjs"]
+  }
+]

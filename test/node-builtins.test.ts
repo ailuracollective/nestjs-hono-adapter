@@ -14,6 +14,7 @@ const SOURCE_ROOT = path.resolve(import.meta.dirname, '../packages/core/src');
 const BRIDGE_ROOTS = [
   path.join(SOURCE_ROOT, 'compat'),
   path.resolve(import.meta.dirname, '../packages/graphql/src'),
+  path.resolve(import.meta.dirname, '../packages/inertia/src'),
   path.resolve(import.meta.dirname, '../packages/serve-static/src'),
   path.resolve(import.meta.dirname, '../packages/socket-io/src'),
   path.resolve(import.meta.dirname, '../packages/ws/src'),

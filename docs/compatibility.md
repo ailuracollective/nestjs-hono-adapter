@@ -25,6 +25,7 @@ A bridge that belongs to a platform Nest users write against lives in the packag
 
 ```
 packages/serve-static/   @nestjs/serve-static, reading through the transport
+packages/inertia/        @dudousxd/nestjs-inertia, rendering through the adapter
 packages/graphql/        the stock @nestjs/apollo driver answering on Hono
 packages/socket-io/      the stock @nestjs/platform-socket.io IoAdapter serving on Hono
 packages/ws/             the stock @nestjs/platform-ws WsAdapter serving on Hono
@@ -54,6 +55,7 @@ So the region resolves them. `compat/registry/discover.ts` carries the list, and
 ```ts
 const BRIDGE_PACKAGES = [
   '@ailura/nestjs-platform-hono-graphql',
+  '@ailura/nestjs-platform-hono-inertia',
   '@ailura/nestjs-platform-hono-serve-static',
   '@ailura/nestjs-platform-hono-socket-io',
   '@ailura/nestjs-platform-hono-ws',
@@ -74,7 +76,7 @@ Discovery is settled by `init()` like an install is, because the bridges it turn
 
 ## The bridges
 
-One ships with the adapter and four ship with a package the adapter looks for. All five are described below.
+One ships with the adapter and five ship with a package the adapter looks for. All six are described below.
 
 ### `express`
 
@@ -153,6 +155,18 @@ app.useWebSocketAdapter(new IoAdapter(app)); // @nestjs/platform-socket.io, unch
 The patch is written on the prototype once per process. At call time it asks which of the registered applications owns `this.httpServer`; a call that owns none — an Express or Fastify deployment in the same process — falls through to the stock path unchanged, and so does a gateway that asked for a port of its own. For an application it does own, the port is zero, because the server is the transport's. A server offering `useNativeHandler()` — the Bun transport's slot, a structural port the bridge reads without importing the core — is served by a socket.io engine bound to it, and the optional `@socket.io/bun-engine` peer is where the engine comes from. Any other server is served the way socket.io has always served one, on its `http.Server`, which is the whole of the `nodeServer()` path. A transport that answers with neither — the fetch transport, or `Bun.serve` without the engine — is refused by name when the gateway starts rather than inside socket.io.
 
 The Bun transport carries one native slot, so one socket.io server per application is what it serves.
+
+### `inertia`
+
+Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nestjs-inertia` and `rxjs`. `InertiaModule` mounts its middleware only when the adapter reports `express`, so on Hono `req.inertia` was never defined and the render interceptor refused every decorated route. Its interceptors also read Express response members, and Nest's post-handler wrote an empty answer over whatever the interceptor had rendered.
+
+The bridge has three parts:
+
+- **The module patch runs at package evaluation.** `InertiaModule.prototype.configure` is replaced with one that mounts the stock `MethodSpoofMiddleware` and `InertiaMiddleware` on every route when the application's adapter reports `hono`, and defers to the stock method otherwise. It has to be in place before Nest calls `configure()`, which is why this package imports its peer statically, declares `sideEffects: true` and requires the peer rather than accepting an absent one.
+- **The response surface is fitted per request.** A Hono middleware adds the members the module reads to the request's own context: `json`, `redirect`, `statusCode` and `headersSent`. `json` and `redirect` keep Hono's own argument shapes as well, so a native Hono handler in the same application still answers.
+- **`reply()` and `redirect()` are fitted per application.** The adapter handed to `install()` gets its own members: a reply is skipped when the context is already finalized, because the interceptor rendered before Nest applied the handler's return value; a redirect upgrades a `302` to `303` on a `PUT`, `PATCH` or `DELETE` carrying `X-Inertia`, and keeps any explicit status. The patches are written on the instance, never on `ServerAdapter.prototype`.
+
+The Inertia peer is required and is imported when the package is evaluated, which is the one bridge that does its peer work at module evaluation rather than from `init()`: a bridge resolved by discovery would be installed too late. The guard beside that import refuses anything outside the Inertia 3.x line, whose internals the bridge patches, with a message naming the version found.
 
 ### `graphql/apollo`
 
@@ -245,7 +259,7 @@ Nothing per request.
 - The registry installs per Hono application, at construction. A deployment that builds one adapter pays it once.
 - Discovery runs once per process: the specifiers are resolved and imported the first time an application starts, and every later start reads what that found. Registering runs each time and is idempotent, so a registry emptied by a test is filled again by the next application.
 - The `express` surface fit is keyed on the request's Hono context, which Hono builds per request. The request path calls `installSurface(context, writer)`, and a second call for the same request — a middleware chain fits once, not once per hop — is one `WeakSet` hit. `res.send()` builds through the adapter's own writer, so `set('etag', …)` reaches it and the shim adds no second encoding step.
-- Each bridge package resolves its peers once, from `init()`, not from module evaluation.
+- Each bridge package resolves its peers once, from `init()`, not from module evaluation. The `inertia` bridge is the one exception, and pays that cost only when its package is installed: its required peer is imported so the module patch is in place before `configure()` runs.
 - No bridge adds a hop to a request. A bridge patches a prototype once or hands the transport a handler; the one exception is `serve-static`, which mounts its directory handler and SPA fallback as Hono middleware per registration, and that middleware answers rather than forwarding. The Express error middleware is recognised where Nest mounts it, so that bridge installs nothing; a four-argument handler mounted with `app.use(...)` is then answered on every request with `err` undefined, because Nest's middleware path has no `next(err)` and wraps a module middleware down to three declared parameters before the adapter sees it.
 
 The measured bundles are in [bundle-baseline.md](bundle-baseline.md).
@@ -274,6 +288,6 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 `test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeAdapter`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `seedPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
-`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all five trees: the region, and the four bridge packages.
+`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all six trees: the region, and the five bridge packages.
 
-`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.
+`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono, and that the stock `@dudousxd/nestjs-inertia` module renders on Hono.

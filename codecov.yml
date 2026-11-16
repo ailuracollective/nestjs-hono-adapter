@@ -16,6 +16,10 @@ component_management:
       name: '@ailura/nestjs-platform-hono-serve-static'
       paths:
         - packages/serve-static/src/**
+    - component_id: inertia
+      name: '@ailura/nestjs-platform-hono-inertia'
+      paths:
+        - packages/inertia/src/**
     - component_id: ws
       name: '@ailura/nestjs-platform-hono-ws'
       paths:

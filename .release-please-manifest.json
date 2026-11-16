@@ -4,5 +4,6 @@
   "packages/ws": "0.3.0",
   "packages/multipart": "0.2.1",
   "packages/graphql": "0.3.0",
-  "packages/serve-static": "0.3.0"
+  "packages/serve-static": "0.3.0",
+  "packages/inertia": "0.1.0-beta"
 }

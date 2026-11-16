@@ -15,6 +15,7 @@ const REGIONS: readonly (readonly [string, Layer])[] = [
   ['packages/core/src/features', 'features'],
   ['packages/core/src/compat', 'compat'],
   ['packages/graphql/src', 'graphql'],
+  ['packages/inertia/src', 'inertia'],
   ['packages/multipart/src', 'multipart'],
   ['packages/serve-static/src', 'serve-static'],
   ['packages/socket-io/src', 'socket-io'],

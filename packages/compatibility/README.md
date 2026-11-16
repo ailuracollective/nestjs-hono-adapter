@@ -20,7 +20,7 @@ At the repository root `bun test` picks the suite up, so `bun run check` and the
 
 ## The matrix
 
-Every package below is proved against a Nest application served by the adapter. Most are proved here, in the suite named beside them: the deeper behaviour suites moved over from `packages/core/test`, and the boot-and-route cases under [`test/cases`](./test/cases). The four bridges are proved in their own package, and `@nestjs/common` and `@nestjs/core` by the adapter's own suite.
+Every package below is proved against a Nest application served by the adapter. Most are proved here, in the suite named beside them: the deeper behaviour suites moved over from `packages/core/test`, and the boot-and-route cases under [`test/cases`](./test/cases). The five bridges are proved in their own package, and `@nestjs/common` and `@nestjs/core` by the adapter's own suite.
 
 | Nest package | Where it is proved |
 | --- | --- |
@@ -50,6 +50,7 @@ Every package below is proved against a Nest application served by the adapter. 
 | `@nestjs/schedule` | [`test/schedule`](./test/schedule) |
 | `@nestjs/sequelize` | [`test/cases`](./test/cases) |
 | `@nestjs/serve-static` | [`packages/serve-static`](../serve-static/test) (bridge) |
+| `@dudousxd/nestjs-inertia` | [`packages/inertia`](../inertia/test) (bridge) |
 | `@nestjs/swagger` | [`test/swagger`](./test/swagger) |
 | `@nestjs/terminus` | [`test/terminus`](./test/terminus) |
 | `@nestjs/testing` | [`test/testing`](./test/testing) |

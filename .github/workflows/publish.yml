@@ -45,6 +45,7 @@ jobs:
             multipart-v*) echo "dir=./packages/multipart" >> "$GITHUB_OUTPUT" ;;
             graphql-v*) echo "dir=./packages/graphql" >> "$GITHUB_OUTPUT" ;;
             serve-static-v*) echo "dir=./packages/serve-static" >> "$GITHUB_OUTPUT" ;;
+            inertia-v*) echo "dir=./packages/inertia" >> "$GITHUB_OUTPUT" ;;
             v*) echo "dir=./packages/core" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::no package is configured for tag '$TAG'"
