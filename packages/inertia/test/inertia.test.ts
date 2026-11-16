@@ -6,7 +6,7 @@ import { request, startProbe } from '#test/probe';
 
 import { inertiaModule } from './fixture.ts';
 
-const INERTIA = { 'X-Inertia': 'true' };
+const INERTIA = { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' };
 const OK = 200;
 const MOVED_PERMANENTLY = 301;
 const FOUND = 302;
@@ -17,7 +17,7 @@ const probeOf = (): ReturnType<typeof startProbe> =>
   startProbe({ mode: 'in-process', module: inertiaModule() });
 
 const headers = (extra: Record<string, string>): Record<string, string> => {
-  const out: Record<string, string> = { 'X-Inertia': 'true' };
+  const out: Record<string, string> = { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' };
   for (const [key, value] of Object.entries(extra)) out[key] = value;
   return out;
 };
@@ -131,7 +131,19 @@ test('a version mismatch answers 409 with the location', async () => {
     const versioned = headers({ 'X-Inertia-Version': 'old' });
     const response = await request(probe, '/users', { headers: versioned });
     expect(response.status).toBe(CONFLICT);
-    expect(response.headers.get('x-inertia-location')).toBe('/users');
+    expect(response.headers.get('x-inertia-location')).toMatch(/^https?:\/\/.+\/users$/u);
+    expect(response.headers.get('x-inertia-version')).toBe('v1');
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a missing version header is an empty version', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/users', { headers: { 'X-Inertia': 'true' } });
+    expect(response.status).toBe(CONFLICT);
+    expect(response.headers.get('x-inertia-version')).toBe('v1');
   } finally {
     await probe.close();
   }

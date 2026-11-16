@@ -124,7 +124,8 @@ Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nes
 - patches `InertiaModule.prototype.configure` so the stock `InertiaMiddleware` (and its method-spoof middleware) is registered on Hono;
 - fits `headersSent`, `statusCode`, `redirect` and `end` onto the raw Hono context, and makes the application's `reply()` leave a response Inertia already wrote alone;
 - upgrades a `302` after `PUT`, `PATCH`, `DELETE` or `QUERY` to `303` in the application's `redirect()`, so Nest's own `@Redirect()` agrees with Inertia;
-- patches the stock redirect interceptor on Hono so both `res.redirect(status, url)` and `res.redirect(url, status)` preserve an explicit status while a `302` becomes `303`.
+- patches the stock redirect interceptor on Hono so both `res.redirect(status, url)` and `res.redirect(url, status)` preserve an explicit status while a `302` becomes `303`;
+- answers a version mismatch with the full `X-Inertia-Location` and the server's `X-Inertia-Version`, treating a missing client header as an empty version.
 
 Both patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched.
 

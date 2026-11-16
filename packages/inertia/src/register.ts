@@ -1,12 +1,14 @@
 import {
   InertiaMiddleware,
   InertiaModule,
+  InertiaService,
   MethodSpoofMiddleware,
   RedirectInterceptor,
   VERSION,
 } from '@dudousxd/nestjs-inertia';
 
 import { patchInertiaModule } from './patch-module.ts';
+import { patchInertiaService } from './patch-service.ts';
 import { patchRedirectInterceptor } from './patch-redirect.ts';
 import { supportsInertia } from './version.ts';
 
@@ -14,5 +16,6 @@ import { supportsInertia } from './version.ts';
 // adapter's async bridge discovery settles.
 if (supportsInertia(VERSION)) {
   patchInertiaModule({ InertiaMiddleware, InertiaModule, MethodSpoofMiddleware });
+  patchInertiaService({ InertiaService });
   patchRedirectInterceptor({ RedirectInterceptor });
 }
