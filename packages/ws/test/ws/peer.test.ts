@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { Hono } from 'hono';
 
-import type { NestEnv } from '#adapter/index';
+import type { BridgeAdapter, NestEnv } from '#adapter/index';
 import { nodeServer } from '#adapter/servers/node';
 import { patchWsAdapter } from '#ws/patch';
 
@@ -16,8 +16,15 @@ test('a peer the runtime cannot resolve is served the class the bundler resolved
   const transport = nodeServer({ overrideGlobalObjects: false });
   const server = transport.createServer(hono, {});
   const stock = create();
-  await patchWsAdapter({ hono, server: () => server, transport }, (): Promise<unknown> =>
-    Promise.resolve(),
+  await patchWsAdapter(
+    {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- this bridge patches the peer class, not the adapter.
+      adapter: {} as unknown as BridgeAdapter,
+      hono,
+      server: () => server,
+      transport,
+    },
+    (): Promise<unknown> => Promise.resolve(),
   );
   expect(create()).not.toBe(stock);
 });

@@ -27,4 +27,4 @@ export {
   registerBridge,
   settleBridges,
 } from './registry/index.ts';
-export type { Bridge, BridgeTarget } from './types.ts';
+export type { Bridge, BridgeAdapter, BridgeTarget } from './types.ts';

@@ -43,7 +43,18 @@ interface Bridge {
 
 A bridge is a named install. It runs once per Hono application, so an install that patches something shared patches it once: the second adapter in a process finds the application already fitted and does nothing.
 
-`BridgeTarget` is the Hono application, its transport, and a lazy `server()` for the HTTP server underneath — the last one only so a bridge can recognise which application a call belongs to. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
+`BridgeTarget` is the application's adapter, the Hono application it serves, its transport, and a lazy `server()` for the HTTP server underneath — the last one only so a bridge can recognise which application a call belongs to. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
+
+`adapter` is the narrow `BridgeAdapter` port, the two answer members a bridge may fit:
+
+```ts
+interface BridgeAdapter {
+  reply: (response: NestContext, body: unknown, statusCode?: number) => void;
+  redirect: (response: NestContext, statusCode: number, url: string) => void;
+}
+```
+
+A bridge that has to change how an answer is written assigns the member on that instance. The assignment is the application's own, so it answers for the one application the bridge was handed: `ServerAdapter.prototype` is left alone, and so is every other Hono application in the process. A prototype patch cannot be scoped that way and cannot be version-checked per application, which is why this port exists.
 
 ## Discovery
 
@@ -272,7 +283,7 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 ## The guard
 
-`test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `seedPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
+`test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeAdapter`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `seedPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
 `test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all five trees: the region, and the four bridge packages.
 

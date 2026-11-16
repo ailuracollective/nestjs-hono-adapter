@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 
-import type { Bridge, BridgeTarget } from '#adapter/compat/index';
+import type { Bridge, BridgeAdapter, BridgeTarget } from '#adapter/compat/index';
 import type { Server } from '#adapter/core/ports/server';
 import { bunServer } from '#adapter/servers/bun';
 
@@ -30,6 +30,8 @@ const fakeBridge = (name: string): CountingBridge => {
 };
 
 const targetOver = (): BridgeTarget => ({
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the bridge only reads the target's identity.
+  adapter: {} as unknown as BridgeAdapter,
   hono: new Hono(),
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the bridge only reads the target's identity.
   server: () => ({}) as unknown as Server,

@@ -162,7 +162,7 @@ test('an install that rejects is reported, not thrown at the caller', () => {
   expect(settleBridges()).resolves.toBeUndefined();
 });
 
-test('a bridge is handed the application and the transport', () => {
+test('a bridge is handed the application, its adapter and the transport', () => {
   resetBridges();
   const bridge = fakeBridge(FAKE);
   registerBridge(bridge);
@@ -170,6 +170,7 @@ test('a bridge is handed the application and the transport', () => {
   installBridges(target);
   const [seen] = bridge.seen;
   if (seen === undefined) throw new Error('the bridge was handed nothing');
+  expect(seen.adapter).toBe(target.adapter);
   expect(seen.hono).toBe(target.hono);
   expect(seen.transport).toBe(target.transport);
 });

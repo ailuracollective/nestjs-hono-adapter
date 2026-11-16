@@ -98,7 +98,12 @@ abstract class HonoLifecycle extends RouteAdapter {
   private installPieces(hono: NestHono, options: TransportOptions): void {
     this.installSecurityHeaders(options.secureHeaders ?? false);
     this.installGuards(hono);
-    installBridges({ hono, server: () => this.getHttpServer(), transport: this.transport });
+    installBridges({
+      adapter: this,
+      hono,
+      server: () => this.getHttpServer(),
+      transport: this.transport,
+    });
   }
 
   protected constructor(options: TransportOptions) {

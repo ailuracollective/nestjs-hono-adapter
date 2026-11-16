@@ -35,10 +35,11 @@ const featureReachesBridge = (edges: readonly Edge[]): Edge[] =>
  * The edges a bridge package takes into the adapter.
  *
  * A bridge lives outside the application and registers itself through the published entrypoint, so
- * that entrypoint is the only door it has: every name it needs — `Bridge`, `BridgeTarget`,
- * `NestContext`, `Transport`, `loadPeer`, `toHonoPath`, `toNestRequest` — is exported there. A
- * `#adapter/` import would be the same bridge reaching past the door into the tree behind it, which
- * is exactly what the region forbids sideways, and what would break the moment the tree moved.
+ * that entrypoint is the only door it has: every name it needs — `Bridge`, `BridgeAdapter`,
+ * `BridgeTarget`, `NestContext`, `Transport`, `loadPeer`, `toHonoPath`, `toNestRequest` — is
+ * exported there. A `#adapter/` import would be the same bridge reaching past the door into the
+ * tree behind it, which is exactly what the region forbids sideways, and what would break the
+ * moment the tree moved.
  */
 const bridgeReachesApp = (edges: readonly Edge[]): Edge[] =>
   edges.filter(
