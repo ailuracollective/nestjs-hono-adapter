@@ -15,20 +15,29 @@ The suite follows the workspace's Nest major instead of pinning one: its `@nestj
 
 ## Scenarios
 
-| Scenario        | Route                | What it exercises                    |
-| --------------- | -------------------- | ------------------------------------ |
-| `plaintext`     | `GET /health`        | routing and keep-alive               |
-| `json`          | `GET /hello`         | JSON serialization                   |
-| `query`         | `GET /query?…`       | query parsing                        |
-| `params`        | `GET /users/:id`     | route parameters                     |
-| `post`          | `POST /echo`         | body parsing                         |
-| `pipeline`      | `GET /pipeline`      | guard + interceptor + DI             |
-| `inertia`       | `GET /inertia`       | Inertia JSON page render             |
-| `inertia-html`  | `GET /inertia`       | Inertia first-load shell             |
-| `inertia-react` | `GET /inertia-react` | React SSR through `@inertiajs/react` |
-| `inertia-vue`   | `GET /inertia-vue`   | Vue SSR through `@inertiajs/vue3`    |
-| `error`         | `GET /boom`          | exception path (418)                 |
-| `cors`          | `OPTIONS /hello`     | CORS preflight                       |
+| Scenario | Route | What it exercises |
+| --- | --- | --- |
+| `plaintext` | `GET /health` | routing and keep-alive |
+| `json` | `GET /hello` | JSON serialization |
+| `query` | `GET /query?…` | query parsing |
+| `params` | `GET /users/:id` | route parameters |
+| `post` | `POST /echo` | body parsing |
+| `pipeline` | `GET /pipeline` | guard + interceptor + DI |
+| `inertia` | `GET /inertia` | Inertia JSON page render |
+| `inertia-html` | `GET /inertia` | Inertia first-load shell |
+| `inertia-react` | `GET /inertia-react?created=1` | React SSR contact list with success flash |
+| `inertia-react-form` | `GET /inertia-react/form?error=email` | React SSR form with a validation error |
+| `inertia-react-submit` | `POST /inertia-react/form` | React form submit and redirect |
+| `inertia-vue` | `GET /inertia-vue?created=1` | Vue SSR contact list with success flash |
+| `inertia-vue-form` | `GET /inertia-vue/form?error=email` | Vue SSR form with a validation error |
+| `inertia-vue-submit` | `POST /inertia-vue/form` | Vue form submit and redirect |
+| `inertia-svelte` | `GET /inertia-svelte?created=1` | Svelte SSR contact list with success flash |
+| `inertia-svelte-form` | `GET /inertia-svelte/form?error=email` | Svelte SSR form with a validation error |
+| `inertia-svelte-submit` | `POST /inertia-svelte/form` | Svelte form submit and redirect |
+| `error` | `GET /boom` | exception path (418) |
+| `cors` | `OPTIONS /hello` | CORS preflight |
+
+The three SSR apps are the same small contacts application in React, Vue and Svelte: a list page with a success flash, a form page with a field error, and a submit route that validates and redirects back to one of them. Pages are real framework components without styles, and each form uses the adapter's `useForm` composer.
 
 ## Metrics and tools
 
@@ -37,7 +46,7 @@ The suite follows the workspace's Nest major instead of pinning one: its `@nestj
 - **Errors**: count outside 2xx/3xx (`error` route responds with 418).
 - **Resources**: the server process CPU (percent of one core, and milliseconds per request) and RSS (mean and peak), sampled with [pidusage](https://github.com/soyuka/pidusage) during the measured window only.
 - **Generators**: [oha](https://github.com/hatoo/oha) (default) and [bombardier](https://github.com/codesenberg/bombardier).
-- **`tsc`**: compiles once to plain JS so code is identical across runtimes.
+- **Compilation**: `tsc` compiles the Nest application, the harness and the React pages once to plain JS; the Vue and Svelte SSR entries are bundled with their own compilers so code is identical across runtimes.
 
 ```sh
 # oha: cargo install oha (or github.com/hatoo/oha/releases)

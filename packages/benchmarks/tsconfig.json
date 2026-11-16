@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "../..",
     "noEmit": true,
+    "jsx": "react-jsx",
     "types": ["bun", "node"],
     "paths": {
       "#adapter/*": ["../core/src/*.ts", "../core/src/*"],
@@ -15,5 +16,5 @@
       "@ailura/nestjs-hono-adapter/fetch": ["../core/src/servers/fetch.ts"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

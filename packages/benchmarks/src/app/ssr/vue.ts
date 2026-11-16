@@ -1,28 +1,30 @@
-import { createSSRApp, defineComponent, h } from 'vue';
-import type { DefineComponent, Plugin } from 'vue';
-import { renderToString } from 'vue/server-renderer';
 import { createInertiaApp } from '@inertiajs/vue3';
+import type { Component, Plugin } from 'vue';
+import { createSSRApp, h } from 'vue';
+import { renderToString } from 'vue/server-renderer';
 import type { PageObject, SsrResult } from '@dudousxd/nestjs-inertia';
 
-const PageComponent = defineComponent({
-  render: () => h('div', undefined, 'Vue SSR'),
-});
+import Form from './vue/form.vue';
+import Home from './vue/home.vue';
+
+const pages: Record<string, Component> = {
+  'Vue/Form': Form,
+  'Vue/Home': Home,
+};
 
 async function render(page: PageObject): Promise<SsrResult> {
-  // The client overloads do not model the server page object or its SSR return type.
-  // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-call
   const result: SsrResult = await createInertiaApp({
     // The client Page type declares response-only fields the server adapter does not send.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     page: page as never,
     render: renderToString,
-    resolve: () => ({ default: PageComponent }),
+    resolve: (name: string) => ({ default: pages[name] ?? Home }),
     setup: ({
       App,
       props,
       plugin,
     }: {
-      App: DefineComponent;
+      App: Component;
       props: Record<string, unknown>;
       plugin: Plugin;
     }) => {

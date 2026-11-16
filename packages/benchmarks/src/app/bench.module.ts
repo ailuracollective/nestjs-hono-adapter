@@ -13,7 +13,8 @@ const ssrRootView = (ctx: ShellRenderCtx): string => {
 };
 
 const reactBundle = path.join(import.meta.dirname, 'ssr', 'react.js');
-const vueBundle = path.join(import.meta.dirname, 'ssr', 'vue.js');
+const vueBundle = path.join(import.meta.dirname, 'ssr', 'vue.bundle.js');
+const svelteBundle = path.join(import.meta.dirname, 'ssr', 'svelte.bundle.js');
 
 /** Root Nest module for the benchmark application. */
 @Module({
@@ -31,6 +32,12 @@ const vueBundle = path.join(import.meta.dirname, 'ssr', 'vue.js');
       scope: 'vue',
       ssr: { bundlePath: vueBundle, enabled: true },
       version: 'vue-bench',
+    }),
+    InertiaModule.forFeature({
+      rootView: ssrRootView,
+      scope: 'svelte',
+      ssr: { bundlePath: svelteBundle, enabled: true },
+      version: 'svelte-bench',
     }),
   ],
 })

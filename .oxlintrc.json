@@ -79,6 +79,54 @@
   },
   "overrides": [
     {
+      "files": [
+        "packages/benchmarks/src/app/ssr/**/*.ts",
+        "packages/benchmarks/src/app/ssr/**/*.tsx",
+        "packages/benchmarks/src/app/ssr/**/*.vue",
+        "packages/benchmarks/src/app/ssr/**/*.svelte"
+      ],
+      "rules": {
+        "no-undef": "off",
+        "import/no-relative-parent-imports": "off",
+        "unicorn/filename-case": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/strict-void-return": "off"
+      }
+    },
+    {
+      "files": ["packages/benchmarks/src/app/ssr/*-shims.d.ts"],
+      "rules": {
+        "import/unambiguous": "off",
+        "unicorn/require-module-specifiers": "off"
+      }
+    },
+    {
+      "files": ["packages/benchmarks/scripts/**/*.mjs"],
+      "env": {
+        "builtin": true,
+        "node": true
+      },
+      "rules": {
+        "import/no-nodejs-modules": "off",
+        "no-await-in-loop": "off",
+        "no-magic-numbers": "off",
+        "node/no-sync": "off",
+        "node/no-top-level-await": "off",
+        "oxc/no-async-await": "off",
+        "oxc/no-rest-spread-properties": "off",
+        "sort-keys": "off",
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/strict-boolean-expressions": "off"
+      }
+    },
+    {
       "files": ["src/**/*.ts", "test/**/*.ts", "packages/*/src/**/*.ts", "packages/*/test/**/*.ts"],
       "env": {
         "builtin": true,
