@@ -15,7 +15,7 @@
   {
     "name": "inertia/register",
     "path": "dist/register.js",
-    "limit": 1250,
+    "limit": 1800,
     "brotli": true,
     "ignore": [
       "@ailura/nestjs-hono-adapter",

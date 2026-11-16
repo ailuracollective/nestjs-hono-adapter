@@ -126,11 +126,13 @@ Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nes
 - upgrades a `302` after `PUT`, `PATCH`, `DELETE` or `QUERY` to `303` in the application's `redirect()`, so Nest's own `@Redirect()` agrees with Inertia;
 - patches the stock redirect interceptor on Hono so both `res.redirect(status, url)` and `res.redirect(url, status)` preserve an explicit status while a `302` becomes `303`;
 - answers a redirect to a URL with a fragment with `409` and `X-Inertia-Redirect` (prefetch requests receive the redirect unchanged), and adds `Vary: X-Inertia` to redirect responses;
-- answers a version mismatch with the full `X-Inertia-Location` and the server's `X-Inertia-Version`, treating a missing client header as an empty version.
+- answers a version mismatch with the full `X-Inertia-Location` and the server's `X-Inertia-Version`, treating a missing client header as an empty version;
+- parses the `Cookie` header into `req.cookies` before the stock middleware, so `CsrfCookieInterceptor` and `CsrfGuard` work on Hono;
+- hands a `FlashStore` the Nest request on both sides of the validation filter, so a session-keyed store sees one shape.
 
-Both patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched.
+The reply and redirect patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched; the module, service and interceptor patches are fitted on the peer's prototypes once per process. The behaviour suite covers merge/prepend/deepMerge/matchOn, scroll reset and merge intent, once, history flags, error bags, validation flash and CSRF.
 
-The application names the stock module and imports nothing from here:
+The application names the stock module; the only import from this package is the register entrypoint:
 
 ```ts
 InertiaModule.forRoot({ version: 'v1' });

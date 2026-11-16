@@ -3,15 +3,54 @@ import '#inertia/register';
 import { expect, test } from 'bun:test';
 import { bridgeNames, ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { request, startProbe } from '#test/probe';
+import type { Probe } from '#test/probe';
 
 import { inertiaModule } from './fixture.ts';
 
 const INERTIA = { 'X-Inertia': 'true', 'X-Inertia-Version': 'v1' };
 const OK = 200;
+const CREATED = 201;
 const MOVED_PERMANENTLY = 301;
 const FOUND = 302;
 const SEE_OTHER = 303;
+const FORBIDDEN = 403;
 const CONFLICT = 409;
+
+const CSRF_SESSION = 'csrf';
+const FLASH_SESSION = 'flash';
+const VALIDATION_SESSION = 'validation';
+
+const tokenOf = (setCookie: string | null): string | undefined => {
+  if (setCookie === null) return undefined;
+  const match = /XSRF-TOKEN=(?<token>[^;]+)/u.exec(setCookie);
+  if (match === null) return undefined;
+  const { groups } = match;
+  return groups === undefined ? undefined : groups.token;
+};
+
+const csrfToken = async (probe: Probe): Promise<string> => {
+  const response = await request(probe, '/csrf', {
+    headers: { 'x-test-session': CSRF_SESSION },
+  });
+  expect(response.status).toBe(OK);
+  const cookie = response.headers.get('set-cookie');
+  expect(cookie).toContain('XSRF-TOKEN=');
+  const token = tokenOf(cookie);
+  if (token === undefined) throw new Error('The CSRF cookie did not carry a token.');
+  return token;
+};
+
+const submitCsrf = async (probe: Probe, token: string): Promise<number> => {
+  const response = await request(probe, '/csrf', {
+    headers: {
+      cookie: `XSRF-TOKEN=${token}`,
+      'x-test-session': CSRF_SESSION,
+      'x-xsrf-token': token,
+    },
+    method: 'POST',
+  });
+  return response.status;
+};
 
 const probeOf = (): ReturnType<typeof startProbe> =>
   startProbe({ mode: 'in-process', module: inertiaModule() });
@@ -85,6 +124,97 @@ test('@Inertia renders the page object without @Res', async () => {
       onceProps: { token: { prop: 'token' } },
       props: { users: [{ id: 1, name: 'Ada' }] },
     });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('the page object carries merge, scroll and history metadata', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/props', { headers: INERTIA });
+    expect(response.body).toMatchObject({
+      clearHistory: true,
+      deepMergeProps: ['deep'],
+      matchPropsOn: { merged: 'id', 'scroll.data': 'id' },
+      mergeProps: ['merged', 'scroll.data'],
+      prependProps: ['prepended'],
+      props: {
+        always: 'always',
+        deep: { nested: 1 },
+        merged: [{ id: 1 }],
+        prepended: [1],
+        scroll: { currentPage: 1, data: [{ id: 1 }], nextPage: 2 },
+      },
+      scrollProps: {
+        scroll: {
+          currentPage: 1,
+          nextPage: 2,
+          pageName: 'page',
+          reset: false,
+        },
+      },
+    });
+    expect(response.body).not.toHaveProperty('props.optional');
+  } finally {
+    await probe.close();
+  }
+});
+
+test('an optional prop resolves only when requested and always resolves on every pass', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/props', {
+      headers: headers({
+        'X-Inertia-Partial-Component': 'Props/Index',
+        'X-Inertia-Partial-Data': 'optional',
+      }),
+    });
+    expect(response.body).toMatchObject({ props: { always: 'always', optional: 'optional' } });
+    expect(response.body).not.toHaveProperty('props.merged');
+  } finally {
+    await probe.close();
+  }
+});
+
+test('a reset scroll prop is unlabeled and marked for reset', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/props', {
+      headers: headers({
+        'X-Inertia-Partial-Component': 'Props/Index',
+        'X-Inertia-Partial-Data': 'scroll',
+        'X-Inertia-Reset': 'scroll',
+      }),
+    });
+    expect(response.body).toMatchObject({ scrollProps: { scroll: { reset: true } } });
+    expect(response.body).not.toHaveProperty('mergeProps');
+  } finally {
+    await probe.close();
+  }
+});
+
+test('the merge intent prepends rather than appends', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/props', {
+      headers: headers({
+        'X-Inertia-Infinite-Scroll-Merge-Intent': 'prepend',
+        'X-Inertia-Partial-Component': 'Props/Index',
+        'X-Inertia-Partial-Data': 'scroll',
+      }),
+    });
+    expect(response.body).toMatchObject({ prependProps: ['scroll.data'] });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('encryptHistory is emitted when the action asks for it', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/encrypt', { headers: INERTIA });
+    expect(response.body).toMatchObject({ encryptHistory: true });
   } finally {
     await probe.close();
   }
@@ -251,6 +381,81 @@ test('a redirect without an Inertia request stays 302', async () => {
     const response = await request(probe, '/users/1', { method: 'DELETE' });
     expect(response.status).toBe(FOUND);
     expect(response.headers.get('location')).toBe('/users');
+  } finally {
+    await probe.close();
+  }
+});
+
+test('an error bag scopes the errors prop', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/bag', {
+      headers: headers({ 'X-Inertia-Error-Bag': 'login' }),
+    });
+    expect(response.body).toMatchObject({
+      props: { errors: { login: { email: 'Invalid' } } },
+    });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('validation errors flash and redirect back', async () => {
+  const probe = await probeOf();
+  try {
+    const post = await request(probe, '/validate', {
+      headers: headers({
+        Host: 'localhost',
+        Referer: 'http://localhost/users',
+        'X-Test-Session': VALIDATION_SESSION,
+      }),
+      method: 'POST',
+    });
+    expect(post.status).toBe(SEE_OTHER);
+    expect(post.headers.get('location')).toBe('/users');
+
+    const get = await request(probe, '/users', {
+      headers: headers({ 'X-Test-Session': VALIDATION_SESSION }),
+    });
+    expect(get.body).toMatchObject({ props: { errors: { email: 'Invalid' } } });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('general flash data survives to the next request', async () => {
+  const probe = await probeOf();
+  try {
+    const post = await request(probe, '/flash', {
+      headers: headers({ 'X-Test-Session': FLASH_SESSION }),
+      method: 'POST',
+    });
+    expect(post.status).toBe(SEE_OTHER);
+
+    const get = await request(probe, '/users', {
+      headers: headers({ 'X-Test-Session': FLASH_SESSION }),
+    });
+    expect(get.body).toMatchObject({ props: { flash: { success: 'Saved' } } });
+  } finally {
+    await probe.close();
+  }
+});
+
+test('the CSRF cookie is issued and the guard accepts the matching token', async () => {
+  const probe = await probeOf();
+  try {
+    const token = await csrfToken(probe);
+    expect(await submitCsrf(probe, token)).toBe(CREATED);
+  } finally {
+    await probe.close();
+  }
+});
+
+test('the CSRF guard refuses a missing token', async () => {
+  const probe = await probeOf();
+  try {
+    const response = await request(probe, '/csrf', { method: 'POST' });
+    expect(response.status).toBe(FORBIDDEN);
   } finally {
     await probe.close();
   }
