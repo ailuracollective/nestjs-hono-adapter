@@ -1,0 +1,60 @@
+{
+  "name": "@ailura/nestjs-platform-hono-inertia",
+  "version": "0.1.0",
+  "description": "The Inertia.js bridge of @ailura/nestjs-hono-adapter: @dudousxd/nestjs-inertia answering on Hono, in its own package.",
+  "keywords": [
+    "adapter",
+    "hono",
+    "inertia",
+    "inertiajs",
+    "nestjs"
+  ],
+  "homepage": "https://github.com/ailuracollective/nestjs-hono-adapter#readme",
+  "bugs": {
+    "url": "https://github.com/ailuracollective/nestjs-hono-adapter/issues"
+  },
+  "license": "MIT",
+  "author": "Ailura Code",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ailuracollective/nestjs-hono-adapter.git"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "imports": {
+    "#inertia/*": "./dist/*.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "rm -rf dist *.tsbuildinfo && bun run build",
+    "size": "size-limit",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@dudousxd/nestjs-inertia": "3.0.1"
+  },
+  "peerDependencies": {
+    "@ailura/nestjs-hono-adapter": ">=2 <3",
+    "@dudousxd/nestjs-inertia": ">=3 <4"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

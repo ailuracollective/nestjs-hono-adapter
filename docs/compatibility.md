@@ -25,6 +25,7 @@ A bridge that belongs to a platform Nest users write against lives in the packag
 
 ```
 packages/serve-static/   @nestjs/serve-static, reading through the transport
+packages/inertia/       @dudousxd/nestjs-inertia, fitted to the Express surface
 packages/graphql/        the stock @nestjs/apollo driver answering on Hono
 packages/socket-io/      the stock @nestjs/platform-socket.io IoAdapter serving on Hono
 packages/ws/             the stock @nestjs/platform-ws WsAdapter serving on Hono
@@ -54,6 +55,7 @@ So the region resolves them. `compat/registry/discover.ts` carries the list, and
 ```ts
 const BRIDGE_PACKAGES = [
   '@ailura/nestjs-platform-hono-graphql',
+  '@ailura/nestjs-platform-hono-inertia',
   '@ailura/nestjs-platform-hono-serve-static',
   '@ailura/nestjs-platform-hono-socket-io',
   '@ailura/nestjs-platform-hono-ws',
@@ -74,7 +76,7 @@ Discovery is settled by `init()` like an install is, because the bridges it turn
 
 ## The bridges
 
-One ships with the adapter and four ship with a package the adapter looks for. All five are described below.
+One ships with the adapter and five ship with a package the adapter looks for. All six are described below.
 
 ### `express`
 
@@ -114,6 +116,24 @@ The one case this cannot separate is a handler that calls `res.status(200)` on a
 - A **`signed` cookie is written unsigned**: signing needs an HMAC and `compat/` carries no Node builtins. A deployment that verifies signatures signs the value before calling `res.cookie`.
 
 The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` rather than in `surface.ts` only because a `compat/` file may not exceed a hundred lines; `fitResponse()` fits all of them, and the middleware `res` reads its headers through the same helper.
+
+### `inertia`
+
+Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nestjs-inertia`. That module registers its Inertia middleware only when `httpAdapter.getType() === 'express'`, and its interceptors read the Express response members `headersSent`, `statusCode` and `redirect`. On Hono neither is true. The bridge:
+
+- patches `InertiaModule.prototype.configure` so the stock `InertiaMiddleware` (and its method-spoof middleware) is registered on Hono;
+- fits `headersSent`, `statusCode`, `redirect` and `end` onto the raw Hono context, and makes the application's `reply()` leave a response Inertia already wrote alone;
+- upgrades a `302` after `PUT`, `PATCH`, `DELETE` or `QUERY` to `303` in the application's `redirect()`, so Nest's own `@Redirect()` agrees with Inertia.
+
+Both patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched.
+
+The application names the stock module and imports nothing from here:
+
+```ts
+InertiaModule.forRoot({ version: 'v1' });
+```
+
+A response Inertia writes is already finalized when Nest's post-handler runs; the `reply()` guard is what keeps the JSON and HTML bodies from being overwritten, and it is why an Inertia action does not need `@Res()`.
 
 ### `serve-static`
 
@@ -274,6 +294,6 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 `test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeAdapter`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `seedPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
-`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all five trees: the region, and the four bridge packages.
+`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all six trees: the region, and the five bridge packages.
 
-`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.
+`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that the stock `@dudousxd/nestjs-inertia` module renders a page on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.

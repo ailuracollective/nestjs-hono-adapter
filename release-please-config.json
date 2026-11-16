@@ -35,6 +35,11 @@
       "component": "serve-static",
       "include-component-in-tag": true,
       "bump-minor-pre-major": true
+    },
+    "packages/inertia": {
+      "component": "inertia",
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true
     }
   }
 }

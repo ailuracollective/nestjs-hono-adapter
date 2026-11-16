@@ -1,0 +1,14 @@
+[
+  {
+    "name": "inertia",
+    "path": "dist/index.js",
+    "limit": 1000,
+    "brotli": true,
+    "ignore": [
+      "@ailura/nestjs-hono-adapter",
+      "@dudousxd/nestjs-inertia",
+      "@nestjs/common",
+      "@nestjs/core"
+    ]
+  }
+]

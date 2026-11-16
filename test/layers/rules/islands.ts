@@ -23,7 +23,13 @@ const multipartReachesApp = (edges: readonly Edge[]): Edge[] =>
       !(edge.to === CORE_ENTRY && edge.markerOnly === true),
   );
 
-const BRIDGE_LAYERS: ReadonlySet<string> = new Set(['graphql', 'serve-static', 'socket-io', 'ws']);
+const BRIDGE_LAYERS: ReadonlySet<string> = new Set([
+  'graphql',
+  'inertia',
+  'serve-static',
+  'socket-io',
+  'ws',
+]);
 
 /** A feature may not lean on a bridge: a bridge is installed, never imported. */
 const featureReachesBridge = (edges: readonly Edge[]): Edge[] =>
