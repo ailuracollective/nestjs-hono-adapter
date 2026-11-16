@@ -43,7 +43,7 @@ interface Bridge {
 
 A bridge is a named install. It runs once per Hono application, so an install that patches something shared patches it once: the second adapter in a process finds the application already fitted and does nothing.
 
-`BridgeTarget` is the Hono application, the adapter instance serving it, its transport, and a lazy `server()` for the HTTP server underneath — the adapter so a bridge fits it per application, and the server only so a bridge can recognise which application a call belongs to. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
+`BridgeTarget` is the Hono application, the adapter instance serving it, its transport, and a lazy `server()` for the HTTP server underneath — the adapter so a bridge fits it per application, and the server only so a bridge can recognise which application a call belongs to. The adapter is handed over before its response writer is initialized: a bridge may replace `reply()` or `redirect()` during installation, but must not call either until the application has started. That is the whole of what a bridge is handed, and it is enough, because every transport reads files through `serveStatic` and nothing else. A bridge that wanted a filesystem would have to be told where to find one, which is the trap `serve-static/` used to be in.
 
 ## Discovery
 
