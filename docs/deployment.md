@@ -51,6 +51,33 @@ export default { fetch: fetchHandler(adapter.getHono()) };
 
 Static assets and WebSockets are host-specific: pass them to `fetchServer({ serveStatic, upgradeWebSocket })`; asking for one not passed throws rather than answering nothing. `upgradeWebSocket` wants a factory, because a runtime with a server attaches an upgrade listener through one; a fetch host has none, so `webSocketFromHost` fills that half from the helper the host publishes — no `install` to write, the helper going in as it comes: `fetchServer({ upgradeWebSocket: webSocketFromHost(upgradeWebSocket) })`.
 
+## Compiled executables
+
+`bun build --compile` bundles the application and everything it imports into one file, and the runtime answers a module from `/$bunfs/root/<name>` instead of the tree it was started in. Bridge discovery and `loadPeer()` ask for a specifier by name, so inside the executable both find nothing: discovery skips every bridge package, and a bridge registered by hand bails on a peer it cannot resolve. Neither failure is an error, so the application starts and answers without the bridge fitted. The deployment supplies both halves.
+
+```ts
+import { registerBridge, registerPeer } from '@ailura/nestjs-hono-adapter';
+import * as platformWs from '@nestjs/platform-ws';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
+
+registerPeer('@nestjs/platform-ws', platformWs);
+registerBridge(bridge);
+```
+
+The static import is what puts the peer in the bundle, and the namespace it answers with is what the bridge patches. `registerPeer(specifier, peer)` is consulted by `loadPeer()` ahead of `import.meta.resolve`, the application's CommonJS resolver and the specifier itself, so a declaration wins wherever the executable runs; an undeclared specifier resolves as it always did, which keeps the same build correct when it is started from a directory.
+
+Only the peers a bridge _resolves_ need declaring. One that imports its peer as well, such as `@ailura/nestjs-platform-hono-ws`, needs only `registerBridge`: the class it patches is the class the application holds in the same bundle. One that resolves without importing — `@ailura/nestjs-platform-hono-socket-io`, `@ailura/nestjs-platform-hono-serve-static` — needs the peer declared too.
+
+A capability with no bridge is different: `@nestjs/microservices` names its optional transports inside `loadPackage`, which the bundler cannot resolve at build time. Mark each one `--external` so the build succeeds, and install the transport beside the executable where it is used.
+
+```sh
+bun build src/main.ts --compile --outfile app \
+  --external @grpc/grpc-js --external @grpc/proto-loader \
+  --external kafkajs --external mqtt --external amqplib --external ioredis
+```
+
+`--bytecode` carries a format of its own. With no `--format` named it emits CommonJS, so top-level `await` is refused and a dependency that only loads as ESM has to be `--external` as well. Name `--format=esm` to keep the bundle ESM — either way the peer seam above is what a bridge reads.
+
 ## WebSockets
 
 Gateways are served by Nest's own `@nestjs/platform-ws` `WsAdapter`, fitted to Hono by the bridge package `@ailura/nestjs-platform-hono-ws`: installing it is what installs the bridge, and an application writes no import of it. An HTTP-only deployment never resolves `@nestjs/websockets`. The transport serves the upgrade when it carries a websocket helper (`hono/bun` with `bunServer()` where Bun is present, or whatever host a `fetchServer()` was given); where it carries none — `nodeServer()` and the default transport on Node — the stock `ws.Server` serves on the transport's own HTTP server, the way `platform-ws` always served one.
