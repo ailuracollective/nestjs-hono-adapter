@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono';
+import type { MiddlewareHandler, Next } from 'hono';
 
 import type { NestContext, NestEnv } from '#adapter/core/context';
 import type { TrustProxy } from '#adapter/core/request/request';
@@ -16,13 +16,15 @@ const isContinuedPreflight = (options: CorsOptions, context: NestContext): boole
 const forwardPreflight = async (
   context: NestContext,
   middleware: MiddlewareHandler<NestEnv>,
+  next: Next,
 ): Promise<void> => {
   const answer = await middleware(context, NOOP_NEXT);
-  if (answer === undefined) return;
-
-  for (const [name, value] of answer.headers) {
-    context.header(name, value);
+  if (answer !== undefined) {
+    for (const [name, value] of answer.headers) {
+      context.header(name, value);
+    }
   }
+  return next();
 };
 
 const corsBridge =
@@ -34,14 +36,18 @@ const corsBridge =
     const config = handler();
     if (config === undefined) return next();
 
-    const options = await resolveOptions(config, context, trustProxy());
-    const allowed = await resolveOrigin(options.origin, context.req.header('origin'));
+    const options =
+      typeof config === 'function' ? await resolveOptions(config, context, trustProxy()) : config;
+    const { origin } = options;
+    const allowed =
+      typeof origin === 'function'
+        ? await resolveOrigin(origin, context.req.header('origin'))
+        : (origin ?? '*');
     // The official cors package installs nothing for a falsy origin, and neither does this one.
     if (allowed === undefined || allowed === false || allowed === '') return next();
     const middleware = corsMiddleware(options, allowed);
     if (isContinuedPreflight(options, context)) {
-      await forwardPreflight(context, middleware);
-      return next();
+      return forwardPreflight(context, middleware, next);
     }
 
     return middleware(context, next);
