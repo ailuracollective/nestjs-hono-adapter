@@ -15,16 +15,20 @@ The suite follows the workspace's Nest major instead of pinning one: its `@nestj
 
 ## Scenarios
 
-| Scenario    | Route            | What it exercises        |
-| ----------- | ---------------- | ------------------------ |
-| `plaintext` | `GET /health`    | routing and keep-alive   |
-| `json`      | `GET /hello`     | JSON serialization       |
-| `query`     | `GET /query?…`   | query parsing            |
-| `params`    | `GET /users/:id` | route parameters         |
-| `post`      | `POST /echo`     | body parsing             |
-| `pipeline`  | `GET /pipeline`  | guard + interceptor + DI |
-| `error`     | `GET /boom`      | exception path (418)     |
-| `cors`      | `OPTIONS /hello` | CORS preflight           |
+| Scenario        | Route                | What it exercises                    |
+| --------------- | -------------------- | ------------------------------------ |
+| `plaintext`     | `GET /health`        | routing and keep-alive               |
+| `json`          | `GET /hello`         | JSON serialization                   |
+| `query`         | `GET /query?…`       | query parsing                        |
+| `params`        | `GET /users/:id`     | route parameters                     |
+| `post`          | `POST /echo`         | body parsing                         |
+| `pipeline`      | `GET /pipeline`      | guard + interceptor + DI             |
+| `inertia`       | `GET /inertia`       | Inertia JSON page render             |
+| `inertia-html`  | `GET /inertia`       | Inertia first-load shell             |
+| `inertia-react` | `GET /inertia-react` | React SSR through `@inertiajs/react` |
+| `inertia-vue`   | `GET /inertia-vue`   | Vue SSR through `@inertiajs/vue3`    |
+| `error`         | `GET /boom`          | exception path (418)                 |
+| `cors`          | `OPTIONS /hello`     | CORS preflight                       |
 
 ## Metrics and tools
 

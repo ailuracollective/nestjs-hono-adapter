@@ -18,6 +18,15 @@ const scenarios: readonly Scenario[] = [
     path: '/echo',
   },
   { id: 'pipeline', method: 'GET', path: '/pipeline' },
+  {
+    headers: { 'X-Inertia': 'true', 'X-Inertia-Version': 'bench' },
+    id: 'inertia',
+    method: 'GET',
+    path: '/inertia',
+  },
+  { id: 'inertia-html', method: 'GET', path: '/inertia' },
+  { id: 'inertia-react', method: 'GET', path: '/inertia-react' },
+  { id: 'inertia-vue', method: 'GET', path: '/inertia-vue' },
   { id: 'error', method: 'GET', path: '/boom' },
   {
     headers: {

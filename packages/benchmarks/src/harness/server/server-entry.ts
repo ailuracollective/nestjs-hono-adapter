@@ -1,5 +1,7 @@
 // oxlint-disable-next-line import/no-unassigned-import -- patches Reflect.
 import 'reflect-metadata';
+// oxlint-disable-next-line import/no-unassigned-import -- patches the stock Inertia module for Hono.
+import '@ailura/nestjs-platform-hono-inertia/register';
 
 import type { Target } from '#benchmarks/harness/config/index';
 import { creators } from './creators.ts';

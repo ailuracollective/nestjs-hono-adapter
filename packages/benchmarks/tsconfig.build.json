@@ -8,6 +8,8 @@
       "#benchmarks/*": ["./src/*.ts", "./src/*"],
       "@ailura/nestjs-hono-adapter": ["../core/dist/index.d.ts"],
       "@ailura/nestjs-hono-adapter/bun-server": ["../core/dist/servers/bun.d.ts"],
+      "@ailura/nestjs-platform-hono-inertia": ["../inertia/dist/index.d.ts"],
+      "@ailura/nestjs-platform-hono-inertia/register": ["../inertia/dist/register.d.ts"],
       "@ailura/nestjs-hono-adapter/node-server": ["../core/dist/servers/node.d.ts"],
       "@ailura/nestjs-hono-adapter/fetch": ["../core/dist/servers/fetch.d.ts"]
     }

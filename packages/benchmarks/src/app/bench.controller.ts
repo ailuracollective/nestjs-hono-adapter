@@ -11,6 +11,8 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 
+import { Inertia, UseInertia } from '@dudousxd/nestjs-inertia';
+
 import { BenchGuard } from './bench.guard.ts';
 import { BenchInterceptor } from './bench.interceptor.ts';
 
@@ -69,6 +71,32 @@ export class BenchController {
   @UseInterceptors(BenchInterceptor)
   public pipeline(): { ok: true } {
     return { ok: true };
+  }
+
+  /** Inertia page render, both the XHR JSON path and the first-load HTML shell. */
+  @Get('inertia')
+  @Inertia('Bench/Index')
+  public inertia(): { items: { id: number; name: string }[]; message: string } {
+    return {
+      items: [{ id: 1, name: 'benchmark' }],
+      message: 'Hello Inertia!',
+    };
+  }
+
+  /** Inertia React SSR page. */
+  @Get('inertia-react')
+  @UseInertia('react')
+  @Inertia('React/Index')
+  public inertiaReact(): { message: string } {
+    return { message: 'Hello React!' };
+  }
+
+  /** Inertia Vue SSR page. */
+  @Get('inertia-vue')
+  @UseInertia('vue')
+  @Inertia('Vue/Index')
+  public inertiaVue(): { message: string } {
+    return { message: 'Hello Vue!' };
   }
 
   /**
