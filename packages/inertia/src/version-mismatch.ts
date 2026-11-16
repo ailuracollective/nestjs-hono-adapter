@@ -1,7 +1,8 @@
-import { fullUrl, isHonoResponse } from './service-shape.ts';
-import type { InertiaServiceShape, ServicePeer } from './service-shape.ts';
+import { isHonoResponse } from './service-types.ts';
+import type { InertiaServiceShape, ServicePeer } from './service-types.ts';
+import { fullUrl } from './service-url.ts';
 
-const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.service');
+const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.version-mismatch');
 
 const CONFLICT = 409;
 
@@ -9,7 +10,7 @@ const CONFLICT = 409;
  * The stock service answers a version mismatch with a relative `X-Inertia-Location` and no
  * `X-Inertia-Version`. Fit the control response the protocol specifies on Hono.
  */
-const patchInertiaService = (peer: ServicePeer): void => {
+const patchVersionMismatch = (peer: ServicePeer): void => {
   const prototype: unknown = Reflect.get(peer.InertiaService, 'prototype');
   if (typeof prototype !== 'object' || prototype === null) return;
   if (Reflect.get(prototype, PATCHED) === true) return;
@@ -45,4 +46,4 @@ const patchInertiaService = (peer: ServicePeer): void => {
   );
 };
 
-export { patchInertiaService };
+export { patchVersionMismatch };

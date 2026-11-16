@@ -2,7 +2,8 @@ import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
-import { headerOf, isHono, methodOf, patchHonoRedirect } from './redirect-shape.ts';
+import { headerOf, isHono, methodOf } from './redirect-inspect.ts';
+import { patchHonoRedirect } from './redirect-surface.ts';
 
 const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.redirect');
 

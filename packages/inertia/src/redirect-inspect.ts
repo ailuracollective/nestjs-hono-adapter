@@ -1,6 +1,3 @@
-const FOUND = 302;
-const SEE_OTHER = 303;
-
 interface RedirectResponse {
   readonly finalized: boolean;
   statusCode: number;
@@ -35,19 +32,5 @@ const methodOf = (req: unknown): string => {
 const isHono = (res: unknown): res is RedirectResponse =>
   typeof res === 'object' && res !== null && typeof Reflect.get(res, 'finalized') === 'boolean';
 
-const patchHonoRedirect = (res: RedirectResponse): void => {
-  const original: unknown = Reflect.get(res, 'redirect');
-  if (typeof original !== 'function') return;
-  Reflect.set(res, 'redirect', (statusOrUrl: number | string, url?: string | number): unknown => {
-    if (typeof statusOrUrl === 'number') {
-      const status = statusOrUrl === FOUND ? SEE_OTHER : statusOrUrl;
-      return Reflect.apply(original, res, [status, url]);
-    }
-    let status = SEE_OTHER;
-    if (typeof url === 'number') status = url === FOUND ? SEE_OTHER : url;
-    return Reflect.apply(original, res, [statusOrUrl, status]);
-  });
-};
-
-export { headerOf, isHono, methodOf, patchHonoRedirect };
+export { headerOf, isHono, methodOf };
 export type { RedirectResponse };

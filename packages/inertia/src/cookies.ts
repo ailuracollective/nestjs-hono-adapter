@@ -52,7 +52,7 @@ const cookieHeader = (req: RequestShape): string | undefined => {
  * The CSRF guard reads `req.cookies`, which Express's cookie parser populates. Hono has no such
  * middleware, so parse the cookie header before the stock Inertia middleware runs.
  */
-const patchInertiaMiddleware = (peer: MiddlewarePeer): void => {
+const patchCookies = (peer: MiddlewarePeer): void => {
   const prototype: unknown = Reflect.get(peer.InertiaMiddleware, 'prototype');
   if (typeof prototype !== 'object' || prototype === null) return;
   if (Reflect.get(prototype, PATCHED) === true) return;
@@ -71,4 +71,4 @@ const patchInertiaMiddleware = (peer: MiddlewarePeer): void => {
   );
 };
 
-export { patchInertiaMiddleware };
+export { patchCookies };

@@ -1,6 +1,6 @@
 import type { ArgumentsHost, Type } from '@nestjs/common';
 
-import { isWriter, run, runScoped, writeOf } from './validation-scope.ts';
+import { isWriter, run, runScoped, writeOf } from './validation-store.ts';
 
 const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.validation');
 

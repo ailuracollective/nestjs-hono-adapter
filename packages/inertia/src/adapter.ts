@@ -2,7 +2,7 @@ import type { BridgeAdapter, NestContext } from '@ailura/nestjs-hono-adapter';
 
 import { absoluteUrl, fragmentResponse, isInertia, isPrefetch, varyOn } from './redirect-target.ts';
 
-const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.server');
+const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.adapter');
 
 const SAFE_METHODS = new Set(['PUT', 'PATCH', 'DELETE', 'QUERY']);
 const FOUND = 302;
@@ -18,7 +18,7 @@ const isInertiaUnsafe = (response: NestContext): boolean =>
  * Nest's post-handler must not overwrite a response Inertia already wrote, and a `302` after a safe
  * method must become a `303` for `@Redirect()`. The patch is per application, not per class.
  */
-const patchServerAdapter = (adapter: BridgeAdapter): void => {
+const patchAdapter = (adapter: BridgeAdapter): void => {
   if (Reflect.get(adapter, PATCHED) === true) return;
   Reflect.set(adapter, PATCHED, true);
 
@@ -50,4 +50,4 @@ const patchServerAdapter = (adapter: BridgeAdapter): void => {
   }
 };
 
-export { patchServerAdapter };
+export { patchAdapter };
