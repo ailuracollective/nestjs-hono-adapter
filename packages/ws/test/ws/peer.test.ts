@@ -16,7 +16,8 @@ test('a peer the runtime cannot resolve is served the class the bundler resolved
   const transport = nodeServer({ overrideGlobalObjects: false });
   const server = transport.createServer(hono, {});
   const stock = create();
-  await patchWsAdapter({ hono, server: () => server, transport }, (): Promise<unknown> =>
+  const adapter = { redirect: (): void => undefined, reply: (): void => undefined };
+  await patchWsAdapter({ adapter, hono, server: () => server, transport }, (): Promise<unknown> =>
     Promise.resolve(),
   );
   expect(create()).not.toBe(stock);

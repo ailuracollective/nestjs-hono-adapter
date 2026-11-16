@@ -29,7 +29,15 @@ const fakeBridge = (name: string): CountingBridge => {
   };
 };
 
+const noop = (): void => {
+  /* The bridge only reads the target's identity. */
+};
+
 const targetOver = (): BridgeTarget => ({
+  adapter: {
+    redirect: noop,
+    reply: noop,
+  },
   hono: new Hono(),
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the bridge only reads the target's identity.
   server: () => ({}) as unknown as Server,

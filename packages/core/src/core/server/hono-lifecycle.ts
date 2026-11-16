@@ -98,7 +98,16 @@ abstract class HonoLifecycle extends RouteAdapter {
   private installPieces(hono: NestHono, options: TransportOptions): void {
     this.installSecurityHeaders(options.secureHeaders ?? false);
     this.installGuards(hono);
-    installBridges({ hono, server: () => this.getHttpServer(), transport: this.transport });
+    // The instance is a ServerAdapter; the constructor is the one place the base type cannot say so.
+    // The response writer is initialized after this constructor returns, so a bridge may fit
+    // reply/redirect here but must not call them yet.
+    const adapter = this as unknown as Parameters<typeof installBridges>[0]['adapter'];
+    installBridges({
+      adapter,
+      hono,
+      server: () => this.getHttpServer(),
+      transport: this.transport,
+    });
   }
 
   protected constructor(options: TransportOptions) {
