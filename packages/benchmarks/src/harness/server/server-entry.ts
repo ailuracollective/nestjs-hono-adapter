@@ -8,6 +8,7 @@ import type { Type } from '@nestjs/common';
 import { BaseModule } from '#benchmarks/app/base.module';
 import { BenchModule } from '#benchmarks/app/bench.module';
 import type { App, Target } from '#benchmarks/harness/config/index';
+import { benchmarkCors } from '#benchmarks/harness/config/index';
 import { creators } from './creators.ts';
 
 /** Start offset of user arguments in process.argv. */
@@ -49,7 +50,7 @@ const readModule = (): Type<unknown> => (readApp() === 'base' ? BaseModule : Ben
 /** Main bootstrap function for the standalone server runner. */
 const main = async (): Promise<void> => {
   const app = await creators[readTarget()](readModule());
-  app.enableCors({ origin: '*' });
+  app.enableCors(benchmarkCors(readTarget()));
   app.useLogger(false);
   await app.listen(readPort(), '127.0.0.1');
   process.stdout.write('BENCH_READY\n');

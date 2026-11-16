@@ -4,8 +4,10 @@ import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { fetchServer } from '@ailura/nestjs-hono-adapter/fetch';
 
 import { BaseModule } from '#benchmarks/app/base.module';
+import { benchmarkCors } from '#benchmarks/harness/config/index';
 
 const BAD_REQUEST = 400;
+const MAX_AGE_SECONDS = 86_400;
 const adapter = new ServerAdapter({ transport: fetchServer() });
 const app = NestFactory.create(BaseModule, adapter, { logger: false });
 beforeAll(async () => {
@@ -32,4 +34,15 @@ test('base scenarios serve middleware, a pipe and a drained stream', async () =>
   expect(invalid.status).toBe(BAD_REQUEST);
   const stream = await adapter.getHono().request('/stream');
   expect(await stream.text()).toBe('hello world');
+});
+
+test('comparison adapters match Hono CORS defaults without changing the Hono workload', () => {
+  expect(benchmarkCors('bun')).toEqual({ origin: '*' });
+  expect(benchmarkCors('node')).toEqual({ origin: '*' });
+  expect(benchmarkCors('fastify')).toEqual({
+    maxAge: MAX_AGE_SECONDS,
+    methods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'],
+    origin: '*',
+  });
+  expect(benchmarkCors('express')).toEqual(benchmarkCors('fastify'));
 });

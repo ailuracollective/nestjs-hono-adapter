@@ -20,7 +20,10 @@ const nodeApplication = async (module: Type<unknown>): Promise<INestApplication>
 /** Boots a Nest application on the official Express adapter. */
 const expressApplication = async (module: Type<unknown>): Promise<INestApplication> => {
   const { ExpressAdapter } = await import('@nestjs/platform-express');
-  return NestFactory.create(module, new ExpressAdapter());
+  const adapter = new ExpressAdapter();
+  adapter.set('etag', false);
+  adapter.set('x-powered-by', false);
+  return NestFactory.create(module, adapter);
 };
 
 /** Boots a Nest application on the official Fastify adapter. */
