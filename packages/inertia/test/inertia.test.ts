@@ -1,3 +1,5 @@
+import '#inertia/register';
+
 import { expect, test } from 'bun:test';
 import { bridgeNames, ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { request, startProbe } from '#test/probe';

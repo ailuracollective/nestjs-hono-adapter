@@ -56,3 +56,4 @@ const patchRedirectInterceptor = (peer: RedirectPeer): void => {
 };
 
 export { patchRedirectInterceptor };
+export type { RedirectPeer };

@@ -1,10 +1,10 @@
 # @ailura/nestjs-platform-hono-inertia
 
-[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-platform-hono-inertia.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-inertia) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-platform-hono-inertia.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-inertia) [![bundle size](https://img.shields.io/badge/bundle%20size-≤1.4kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/inertia/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-platform-hono-inertia)](https://socket.dev/npm/package/@ailura/nestjs-platform-hono-inertia) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![codecov](https://codecov.io/gh/ailuracollective/nestjs-hono-adapter/branch/main/graph/badge.svg?component=inertia)](https://codecov.io/gh/ailuracollective/nestjs-hono-adapter) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
+[![CI](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ailuracollective/nestjs-hono-adapter/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@ailura/nestjs-platform-hono-inertia.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-inertia) [![npm downloads](https://img.shields.io/npm/dm/@ailura/nestjs-platform-hono-inertia.svg)](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-inertia) [![bundle size](https://img.shields.io/badge/bundle%20size-≤1kb-brightgreen)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/packages/inertia/.size-limit.json) [![Socket Badge](https://badge.socket.dev/npm/package/@ailura/nestjs-platform-hono-inertia)](https://socket.dev/npm/package/@ailura/nestjs-platform-hono-inertia) [![Snyk security](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter/badge.svg?targetFile=package.json)](https://snyk.io/test/github/ailuracollective/nestjs-hono-adapter?targetFile=package.json) [![codecov](https://codecov.io/gh/ailuracollective/nestjs-hono-adapter/branch/main/graph/badge.svg?component=inertia)](https://codecov.io/gh/ailuracollective/nestjs-hono-adapter) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ailuracollective/nestjs-hono-adapter/blob/main/LICENSE)
 
 The Inertia.js bridge of [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter). It makes the **stock** [`@dudousxd/nestjs-inertia`](https://www.npmjs.com/package/@dudousxd/nestjs-inertia) module answer on Hono.
 
-It is a **compatibility bridge**: installing the package is what installs it, and an application writes no import of it. The adapter's compatibility region resolves the package out of your own tree and registers the bridge it publishes, so the application names nothing from here.
+It is a **compatibility bridge**: installing the package is what installs the bridge itself. The module patch is applied by the `@ailura/nestjs-platform-hono-inertia/register` entrypoint, which the application imports before it is created; the adapter's compatibility region resolves the package and fits the response side without an import.
 
 `InertiaModule` registers its middleware only when `httpAdapter.getType() === 'express'`, and its interceptors read the Express response members `headersSent`, `statusCode` and `redirect`. On Hono neither is true. This package registers the stock middleware, fits those members onto the Hono context, keeps Nest's post-handler from overwriting a page Inertia already wrote, and upgrades a `302` after `PUT`, `PATCH`, `DELETE` or `QUERY` to `303` so `@Redirect()` agrees with Inertia.
 
@@ -13,6 +13,14 @@ It is a **compatibility bridge**: installing the package is what installs it, an
 ```sh
 bun add @ailura/nestjs-platform-hono-inertia
 ```
+
+The module patch is applied by the register entrypoint, which must be imported before the Nest application is created:
+
+```ts
+import '@ailura/nestjs-platform-hono-inertia/register';
+```
+
+The package is still discovered by installing it; the register entrypoint is the one explicit import, because `InertiaModule.configure()` runs before the adapter's asynchronous bridge discovery settles.
 
 Peers on `@dudousxd/nestjs-inertia` and on `@ailura/nestjs-hono-adapter` (`>=2 <3`); the adapter is never named in the module, only reached through it. The bridge supports the 3.x line of the Inertia module and refuses another major with a message that names the version it found.
 

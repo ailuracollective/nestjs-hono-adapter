@@ -31,7 +31,7 @@ packages/socket-io/      the stock @nestjs/platform-socket.io IoAdapter serving 
 packages/ws/             the stock @nestjs/platform-ws WsAdapter serving on Hono
 ```
 
-None of them is named in an application's code. Installing the package is what installs the bridge — see [Discovery](#discovery).
+None of them is named in an application's code, except the Inertia bridge's `./register` entrypoint, which the application imports before it is created. Installing the package is what installs the bridge — see [Discovery](#discovery).
 
 ## What a bridge is
 
@@ -133,6 +133,8 @@ The application names the stock module and imports nothing from here:
 ```ts
 InertiaModule.forRoot({ version: 'v1' });
 ```
+
+The module registers its middleware only for `getType() === 'express'`, and its `configure()` runs before the adapter's asynchronous bridge discovery settles. The application therefore imports `@ailura/nestjs-platform-hono-inertia/register` before creating the Nest application; installing the package still installs the bridge itself. An upstream change that treats any non-Fastify adapter as Express would remove the register entrypoint.
 
 A response Inertia writes is already finalized when Nest's post-handler runs; the `reply()` guard is what keeps the JSON and HTML bodies from being overwritten, and it is why an Inertia action does not need `@Res()`.
 
@@ -297,4 +299,4 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 `test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all six trees: the region, and the five bridge packages.
 
-`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that the stock `@dudousxd/nestjs-inertia` module renders a page on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.
+`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that the stock `@dudousxd/nestjs-inertia` module renders a page on Hono after the `./register` import, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.
