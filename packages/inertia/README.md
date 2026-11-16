@@ -14,7 +14,7 @@ It is a **compatibility bridge**: installing the package is what installs it, an
 bun add @ailura/nestjs-platform-hono-inertia
 ```
 
-Peers on `@dudousxd/nestjs-inertia` and on `@ailura/nestjs-hono-adapter` (`>=2 <3`); the adapter is never named in the module, only reached through it.
+Peers on `@dudousxd/nestjs-inertia` and on `@ailura/nestjs-hono-adapter` (`>=2 <3`); the adapter is never named in the module, only reached through it. The bridge supports the 3.x line of the Inertia module and refuses another major with a message that names the version it found.
 
 ## Use
 
