@@ -63,6 +63,23 @@ class InertiaController {
   public plain(): { ok: boolean } {
     return { ok: true };
   }
+
+  @Get('/fragment')
+  @Redirect('/users#section')
+  public fragment(): void {
+    /* The decorator answers the redirect. */
+  }
+
+  @Delete('/users-fragment/:id')
+  @Redirect('/users#section')
+  public removeFragment(): void {
+    /* The decorator answers the redirect. */
+  }
+
+  @Delete('/users-fragment-res/:id')
+  public removeFragmentRes(@Res() res: { redirect: (url: string) => void }): void {
+    res.redirect('/users#section');
+  }
 }
 
 /**

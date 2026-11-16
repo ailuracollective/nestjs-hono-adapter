@@ -1,5 +1,7 @@
 import type { BridgeTarget, NestContext } from '@ailura/nestjs-hono-adapter';
 
+import { absoluteUrl, fragmentResponse, isInertia, isPrefetch, varyOn } from './redirect-target.ts';
+
 const FITTED = Symbol.for('ailura.nestjs-hono-inertia.surface');
 const STATUS = Symbol.for('ailura.nestjs-hono-inertia.status');
 
@@ -18,6 +20,10 @@ const fitRedirect = (context: NestContext): void => {
     let status = FOUND;
     if (typeof statusOrUrl === 'number') status = statusOrUrl;
     else if (typeof url === 'number') status = url;
+    varyOn(context);
+    if (isInertia(context) && !isPrefetch(context) && location.includes('#')) {
+      return fragmentResponse(context, absoluteUrl(context, location));
+    }
     // The Hono helper narrows the status to `StatusCode`; Inertia passes the status it was given.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const response = honoRedirect(location, status as Parameters<typeof honoRedirect>[1]);

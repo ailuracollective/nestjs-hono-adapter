@@ -1,5 +1,7 @@
 import type { BridgeAdapter, NestContext } from '@ailura/nestjs-hono-adapter';
 
+import { absoluteUrl, fragmentResponse, isInertia, isPrefetch, varyOn } from './redirect-target.ts';
+
 const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.server');
 
 const SAFE_METHODS = new Set(['PUT', 'PATCH', 'DELETE', 'QUERY']);
@@ -36,6 +38,11 @@ const patchServerAdapter = (adapter: BridgeAdapter): void => {
       'redirect',
       function redirect(this: BridgeAdapter, ...args: RedirectArgs): void {
         const [response, statusCode, url] = args;
+        varyOn(response);
+        if (isInertia(response) && !isPrefetch(response) && url.includes('#')) {
+          fragmentResponse(response, absoluteUrl(response, url));
+          return;
+        }
         const next = statusCode === FOUND && isInertiaUnsafe(response) ? SEE_OTHER : statusCode;
         Reflect.apply(originalRedirect, this, [response, next, url]);
       },

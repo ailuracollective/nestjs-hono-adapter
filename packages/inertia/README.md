@@ -44,6 +44,7 @@ The application names the stock module and imports nothing from here. An `@Inert
 - `req.inertia.render()`, `share()`, `location()`, `encryptHistory()` and `clearHistory()`.
 - The first-load root document, through the stock shell.
 - `@Redirect()` and `res.redirect()` after a `PUT`, `PATCH`, `DELETE` or `QUERY` request, upgraded to `303` for an Inertia visit. Both the Express `res.redirect(status, url)` and Hono `res.redirect(url, status)` shapes preserve an explicit status; only a `302` is upgraded.
+- A redirect to a URL with a fragment answers `409` with `X-Inertia-Redirect`; prefetch requests receive the redirect unchanged. Redirect responses carry `Vary: X-Inertia`.
 - `X-Inertia-Version` mismatch, answered as `409` with the full `X-Inertia-Location` and the server's `X-Inertia-Version`; a missing client header is treated as an empty version.
 
 Server-side rendering and the stock module's own options are untouched: the bridge changes the transport, not the Inertia protocol.
