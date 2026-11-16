@@ -60,7 +60,7 @@ const BRIDGE_PACKAGES = [
 ];
 ```
 
-A package that is installed evaluates and publishes its bridge; one that is not resolves to nothing and is skipped. The resolution is **the application's**, not the adapter's — `peer-load.ts` looks the specifier up where the application was started, because a bridge patches a prototype and has to hold the very class the application holds. `import.meta.resolve` is asked before the CommonJS resolver, since for a package that ships two builds a `require` condition names the CommonJS one and importing it from ESM loads a _second_ copy of every class in it. A runtime that resolves no specifier by name — a Worker — is the one place the region cannot ask, and the application names the bridge there.
+A package that is installed evaluates and publishes its bridge; one that is not resolves to nothing and is skipped. The resolution is **the application's**, not the adapter's — `peer-load.ts` looks the specifier up where the application was started, because a bridge patches a prototype and has to hold the very class the application holds. `import.meta.resolve` is asked before the CommonJS resolver, since for a package that ships two builds a `require` condition names the CommonJS one and importing it from ESM loads a _second_ copy of every class in it. A runtime that resolves no specifier by name — a Worker, or a `bun build --compile` executable, which is nothing but a bundle — is the one place the region cannot ask, and the application names the bridge there.
 
 The contract a bridge package publishes is one name:
 
@@ -235,6 +235,8 @@ registerBridge({
 Registering the bridge that is already registered is a no-op; registering a _different_ one under a taken name is refused with a warning, so a consumer and the adapter cannot disagree about what `serve-static` means. An install that throws is logged and skipped rather than taking the application down with it.
 
 `bridgeNames()` reports what is registered, which is what a deployment reaches for when a bridge is not behaving.
+
+`registerPeer` is the same seam for a peer a bridge resolves: `registerPeer(specifier, peer)` says what the name means, and `loadPeer` takes it ahead of any resolution. It exists for the runtimes that answer no specifier — a Worker, or a compiled executable — and costs nothing where the runtime answers. A bridge that imports its peer as well as resolving it needs only `registerBridge`; `ws` does, `socket-io` and `serve-static` do not.
 
 A bridge **package** gets the same treatment without the import: publish `bridge` and add the package's name to `BRIDGE_PACKAGES`, and the region installs it.
 
