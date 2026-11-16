@@ -2,6 +2,9 @@ import { Controller, Delete, Get, Module, Redirect, Req, Res } from '@nestjs/com
 import type { Type } from '@nestjs/common';
 import { Inertia, InertiaModule } from '@dudousxd/nestjs-inertia';
 
+const MOVED_PERMANENTLY = 301;
+const FOUND = 302;
+
 @Controller()
 class InertiaController {
   @Get('/users')
@@ -23,6 +26,32 @@ class InertiaController {
   @Delete('/users-res/:id')
   public removeRes(@Res() res: { redirect: (url: string) => void }): void {
     res.redirect('/users');
+  }
+
+  @Delete('/users-decorator-301/:id')
+  @Redirect('/users', MOVED_PERMANENTLY)
+  public removeDecorator301(): void {
+    /* The decorator answers the redirect. */
+  }
+
+  @Delete('/users-express-301/:id')
+  public removeExpress301(@Res() res: { redirect: (status: number, url: string) => void }): void {
+    res.redirect(MOVED_PERMANENTLY, '/users');
+  }
+
+  @Delete('/users-hono-301/:id')
+  public removeHono301(@Res() res: { redirect: (url: string, status: number) => void }): void {
+    res.redirect('/users', MOVED_PERMANENTLY);
+  }
+
+  @Delete('/users-express-302/:id')
+  public removeExpress302(@Res() res: { redirect: (status: number, url: string) => void }): void {
+    res.redirect(FOUND, '/users');
+  }
+
+  @Delete('/users-hono-302/:id')
+  public removeHono302(@Res() res: { redirect: (url: string, status: number) => void }): void {
+    res.redirect('/users', FOUND);
   }
 
   @Get('/location')

@@ -282,10 +282,8 @@
       "peerDependencies": {
         "@ailura/nestjs-hono-adapter": ">=2 <3",
         "@dudousxd/nestjs-inertia": ">=3 <4",
+        "rxjs": ">=7 <8",
       },
-      "optionalPeers": [
-        "@dudousxd/nestjs-inertia",
-      ],
     },
     "packages/multipart": {
       "name": "@ailura/nestjs-platform-hono-multipart",

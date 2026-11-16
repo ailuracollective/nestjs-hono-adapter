@@ -6,6 +6,7 @@ import { inertiaModule } from './fixture.ts';
 
 const INERTIA = { 'X-Inertia': 'true' };
 const OK = 200;
+const MOVED_PERMANENTLY = 301;
 const FOUND = 302;
 const SEE_OTHER = 303;
 const CONFLICT = 409;
@@ -24,6 +25,23 @@ const partialHeaders = (data: string): Record<string, string> =>
     'X-Inertia-Partial-Component': 'Users/Index',
     'X-Inertia-Partial-Data': data,
   });
+
+const deleteStatus = async (
+  path: string,
+  extraHeaders?: Record<string, string>,
+): Promise<number> => {
+  const probe = await probeOf();
+  try {
+    const init: RequestInit =
+      extraHeaders === undefined
+        ? { method: 'DELETE' }
+        : { headers: extraHeaders, method: 'DELETE' };
+    const response = await request(probe, path, init);
+    return response.status;
+  } finally {
+    await probe.close();
+  }
+};
 
 const pageComponent = (text: string): unknown => {
   const pageJson =
@@ -128,15 +146,23 @@ test('@Redirect default 302 becomes 303 for an Inertia DELETE', async () => {
   }
 });
 
-test('res.redirect becomes 303 for an Inertia DELETE', async () => {
-  const probe = await probeOf();
-  try {
-    const response = await request(probe, '/users-res/1', { headers: INERTIA, method: 'DELETE' });
-    expect(response.status).toBe(SEE_OTHER);
-    expect(response.headers.get('location')).toBe('/users');
-  } finally {
-    await probe.close();
-  }
+test.each([
+  ['/users-res/1', SEE_OTHER],
+  ['/users-express-301/1', MOVED_PERMANENTLY],
+  ['/users-hono-301/1', MOVED_PERMANENTLY],
+  ['/users-express-302/1', SEE_OTHER],
+  ['/users-hono-302/1', SEE_OTHER],
+  ['/users-decorator-301/1', MOVED_PERMANENTLY],
+] as const)('%s answers %i for an Inertia DELETE', async (path, status) => {
+  expect(await deleteStatus(path, INERTIA)).toBe(status);
+});
+
+test('res.redirect without an Inertia request keeps its status', async () => {
+  expect(await deleteStatus('/users-res/1')).toBe(FOUND);
+});
+
+test('a Hono-style explicit status without Inertia is preserved', async () => {
+  expect(await deleteStatus('/users-hono-301/1')).toBe(MOVED_PERMANENTLY);
 });
 
 test('a plain route is unaffected by the reply guard', async () => {
