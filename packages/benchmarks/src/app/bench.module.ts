@@ -5,6 +5,7 @@ import { InertiaModule } from '@dudousxd/nestjs-inertia';
 import type { ShellRenderCtx } from '@dudousxd/nestjs-inertia';
 
 import { BenchController } from './bench.controller.ts';
+import { InertiaController } from './inertia.controller.ts';
 
 const ssrRootView = (ctx: ShellRenderCtx): string => {
   const head = ctx.ssr === null ? '' : ctx.ssr.head.join('');
@@ -16,9 +17,9 @@ const reactBundle = path.join(import.meta.dirname, 'ssr', 'react.js');
 const vueBundle = path.join(import.meta.dirname, 'ssr', 'vue.bundle.js');
 const svelteBundle = path.join(import.meta.dirname, 'ssr', 'svelte.bundle.js');
 
-/** Root Nest module for the benchmark application. */
+/** Root Nest module for the Inertia scenarios: mounts the module and its SSR scopes. */
 @Module({
-  controllers: [BenchController],
+  controllers: [BenchController, InertiaController],
   imports: [
     InertiaModule.forRoot({ version: 'bench' }),
     InertiaModule.forFeature({

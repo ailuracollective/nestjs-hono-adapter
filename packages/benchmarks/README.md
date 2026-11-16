@@ -9,33 +9,37 @@ A private, never-published comparison of the NestJS HTTP adapters:
 | `express` | `@nestjs/platform-express`                     | Node    |
 | `fastify` | `@nestjs/platform-fastify`                     | Node    |
 
-All four serve the **same** Nest application. `platform-express` is Nest's default, and `platform-fastify` is the fast baseline. Measured on both Bun and Node.
+All four serve the **same pair** of Nest applications. `platform-express` is Nest's default, and `platform-fastify` is the fast baseline. Measured on both Bun and Node.
+
+The base scenarios run on an application that does not import Inertia, so its global interceptors and middleware cannot tax routes that never render a page. The Inertia scenarios run on an application that mounts the module and the React, Vue and Svelte SSR scopes. Both applications carry the same base controller.
 
 The suite follows the workspace's Nest major instead of pinning one: its `@nestjs/*` dependencies are ranges (`>=11 <13`), so the compatibility job's `bun add` moves it along with the rest of the workspace, and `bun.lock` fixes the version actually measured.
 
 ## Scenarios
 
-| Scenario | Route | What it exercises |
-| --- | --- | --- |
-| `plaintext` | `GET /health` | routing and keep-alive |
-| `json` | `GET /hello` | JSON serialization |
-| `query` | `GET /query?…` | query parsing |
-| `params` | `GET /users/:id` | route parameters |
-| `post` | `POST /echo` | body parsing |
-| `pipeline` | `GET /pipeline` | guard + interceptor + DI |
-| `inertia` | `GET /inertia` | Inertia JSON page render |
-| `inertia-html` | `GET /inertia` | Inertia first-load shell |
-| `inertia-react` | `GET /inertia-react?created=1` | React SSR contact list with success flash |
-| `inertia-react-form` | `GET /inertia-react/form?error=email` | React SSR form with a validation error |
-| `inertia-react-submit` | `POST /inertia-react/form` | React form submit and redirect |
-| `inertia-vue` | `GET /inertia-vue?created=1` | Vue SSR contact list with success flash |
-| `inertia-vue-form` | `GET /inertia-vue/form?error=email` | Vue SSR form with a validation error |
-| `inertia-vue-submit` | `POST /inertia-vue/form` | Vue form submit and redirect |
-| `inertia-svelte` | `GET /inertia-svelte?created=1` | Svelte SSR contact list with success flash |
-| `inertia-svelte-form` | `GET /inertia-svelte/form?error=email` | Svelte SSR form with a validation error |
-| `inertia-svelte-submit` | `POST /inertia-svelte/form` | Svelte form submit and redirect |
-| `error` | `GET /boom` | exception path (418) |
-| `cors` | `OPTIONS /hello` | CORS preflight |
+Base scenarios use the application without Inertia; Inertia scenarios use the application that mounts it.
+
+| Scenario | App | Route | What it exercises |
+| --- | --- | --- | --- |
+| `plaintext` | base | `GET /health` | routing and keep-alive |
+| `json` | base | `GET /hello` | JSON serialization |
+| `query` | base | `GET /query?…` | query parsing |
+| `params` | base | `GET /users/:id` | route parameters |
+| `post` | base | `POST /echo` | body parsing |
+| `pipeline` | base | `GET /pipeline` | guard + interceptor + DI |
+| `inertia` | Inertia | `GET /inertia` | Inertia JSON page render |
+| `inertia-html` | Inertia | `GET /inertia` | Inertia first-load shell |
+| `inertia-react` | Inertia | `GET /inertia-react?created=1` | React SSR contact list with success flash |
+| `inertia-react-form` | Inertia | `GET /inertia-react/form?error=email` | React SSR form with a validation error |
+| `inertia-react-submit` | Inertia | `POST /inertia-react/form` | React form submit and redirect |
+| `inertia-vue` | Inertia | `GET /inertia-vue?created=1` | Vue SSR contact list with success flash |
+| `inertia-vue-form` | Inertia | `GET /inertia-vue/form?error=email` | Vue SSR form with a validation error |
+| `inertia-vue-submit` | Inertia | `POST /inertia-vue/form` | Vue form submit and redirect |
+| `inertia-svelte` | Inertia | `GET /inertia-svelte?created=1` | Svelte SSR contact list with success flash |
+| `inertia-svelte-form` | Inertia | `GET /inertia-svelte/form?error=email` | Svelte SSR form with a validation error |
+| `inertia-svelte-submit` | Inertia | `POST /inertia-svelte/form` | Svelte form submit and redirect |
+| `error` | base | `GET /boom` | exception path (418) |
+| `cors` | base | `OPTIONS /hello` | CORS preflight |
 
 The three SSR apps are the same small contacts application in React, Vue and Svelte: a list page with a success flash, a form page with a field error, and a submit route that validates and redirects back to one of them. Pages are real framework components without styles, and each form uses the adapter's `useForm` composer.
 

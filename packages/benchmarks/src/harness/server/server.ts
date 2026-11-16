@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { execa } from 'execa';
 
-import type { Target } from '#benchmarks/harness/config/index';
+import type { App, Target } from '#benchmarks/harness/config/index';
 import { findFreePort, waitForHealth } from './health.ts';
 
 /** Absolute path to the server-entry.js worker script. */
@@ -11,6 +11,8 @@ const serverEntry = path.join(import.meta.dir, 'server-entry.js');
 
 /** Active child process metadata. */
 interface Running {
+  /** Application variant the server booted. */
+  readonly app: App;
   /** The spawned server process. */
   readonly child: ChildProcess;
   /** Resolves once the server process exits. */
@@ -21,16 +23,17 @@ interface Running {
   readonly port: number;
 }
 
-/** Spawns a server process for the target and waits until healthy. */
-const start = async (target: Target): Promise<Running> => {
+/** Spawns a server process for the target and application, and waits until healthy. */
+const start = async (target: Target, app: App): Promise<Running> => {
   const port = await findFreePort();
   const runtime = target === 'bun' ? 'bun' : 'node';
-  const process = execa(runtime, [serverEntry, target, String(port)], {
+  const process = execa(runtime, [serverEntry, target, String(port), app], {
     reject: false,
     stdio: ['ignore', 'inherit', 'inherit'],
   });
   await waitForHealth(port);
   return {
+    app,
     child: process.nodeChildProcess,
     exited: process,
     pid: process.pid,

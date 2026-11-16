@@ -2,32 +2,39 @@
 
 import { setTimeout as delay } from 'node:timers/promises';
 
-import type { Options, Sample, Scenario, Target } from '#benchmarks/harness/config/index';
+import type { App, Options, Sample, Scenario, Target } from '#benchmarks/harness/config/index';
+import type { Running } from '#benchmarks/harness/server/server';
 import { start, stop } from '#benchmarks/harness/server/server';
 import { collect, sweepFor } from './sweep.ts';
 
 /** Cooldown in milliseconds between consecutive target executions. */
 const SETTLE_MS = 500;
 
-/** Starts target server, executes measurements, and terminates it. */
+/** Returns the application variants the selected scenarios need, in stable order. */
+const appsFor = (selected: readonly Scenario[]): readonly App[] => {
+  const apps: App[] = [];
+  for (const scenario of selected) {
+    if (!apps.includes(scenario.app)) apps.push(scenario.app);
+  }
+  return apps;
+};
+
+/** Starts every server the target needs, executes measurements, and terminates them. */
 const runTarget = async (
   target: Target,
   options: Options,
   selected: readonly Scenario[],
 ): Promise<Sample[]> => {
-  const running = await start(target);
+  const running = new Map<App, Running>();
   try {
-    return await collect(
-      sweepFor({
-        options,
-        pid: running.pid,
-        port: running.port,
-        selected,
-        target,
-      }),
-    );
+    for (const app of appsFor(selected)) {
+      running.set(app, await start(target, app));
+    }
+    return await collect(sweepFor({ options, selected, servers: running, target }));
   } finally {
-    await stop(running);
+    for (const server of running.values()) {
+      await stop(server);
+    }
   }
 };
 
