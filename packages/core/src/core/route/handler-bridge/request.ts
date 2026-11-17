@@ -1,5 +1,5 @@
 import type { NestContext } from '#adapter/core/context';
-import { mediaType } from '#adapter/core/request/body/guards';
+import { BODYLESS_METHODS, declaresBody, mediaType } from '#adapter/core/request/body/guards';
 import { readBody } from '#adapter/core/request/body/index';
 import type { ParsedBody } from '#adapter/core/request/body/index';
 import { toNestRequest } from '#adapter/core/request/request';
@@ -47,7 +47,11 @@ const prepareRequest = async (
   const request = toNestRequest(context, requestOptions(options));
   installSurface(context, options.writer());
   finalizeOnResponse(context);
-  if (!options.bodyParsingEnabled()) {
+  // A bodyless GET/HEAD never reads a body; skip the read, its promise and its tick.
+  if (
+    !options.bodyParsingEnabled() ||
+    (BODYLESS_METHODS.has(context.req.method) && !declaresBody(context))
+  ) {
     return request;
   }
   if (carriesBody(context, request, middleware)) {

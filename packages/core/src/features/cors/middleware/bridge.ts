@@ -4,7 +4,7 @@ import type { NestContext, NestEnv } from '#adapter/core/context';
 import type { TrustProxy } from '#adapter/core/request/request';
 import { resolveOptions } from '#adapter/features/cors/options';
 import { resolveOrigin } from '#adapter/features/cors/origins';
-import type { CorsConfig, CorsOptions } from '#adapter/features/cors/types';
+import type { AllowedOrigins, CorsConfig, CorsOptions } from '#adapter/features/cors/types';
 
 import { corsMiddleware } from './translate.ts';
 
@@ -27,12 +27,33 @@ const forwardPreflight = async (
   return next();
 };
 
-const corsBridge =
-  (
-    handler: () => CorsConfig | undefined,
-    trustProxy: () => TrustProxy,
-  ): MiddlewareHandler<NestEnv> =>
-  async (context, next) => {
+interface FittedCors {
+  readonly allowed: AllowedOrigins;
+  readonly middleware: MiddlewareHandler<NestEnv>;
+  readonly options: CorsOptions;
+}
+
+const corsBridge = (
+  handler: () => CorsConfig | undefined,
+  trustProxy: () => TrustProxy,
+): MiddlewareHandler<NestEnv> => {
+  // Hono's cors middleware precomputes its header strings, so one built for a configuration
+  // answers every request that repeats it.
+  let cache: FittedCors | undefined = undefined;
+  const middlewareFor = (
+    options: CorsOptions,
+    allowed: AllowedOrigins,
+  ): MiddlewareHandler<NestEnv> => {
+    if (cache !== undefined) {
+      const repeated = cache.options === options && cache.allowed === allowed;
+      if (repeated) return cache.middleware;
+    }
+    const middleware = corsMiddleware(options, allowed);
+    cache = { allowed, middleware, options };
+    return middleware;
+  };
+
+  return async (context, next) => {
     const config = handler();
     if (config === undefined) return next();
 
@@ -45,12 +66,13 @@ const corsBridge =
         : (origin ?? '*');
     // The official cors package installs nothing for a falsy origin, and neither does this one.
     if (allowed === undefined || allowed === false || allowed === '') return next();
-    const middleware = corsMiddleware(options, allowed);
+    const middleware = middlewareFor(options, allowed);
     if (isContinuedPreflight(options, context)) {
       return forwardPreflight(context, middleware, next);
     }
 
     return middleware(context, next);
   };
+};
 
 export { corsBridge };

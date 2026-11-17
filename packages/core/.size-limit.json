@@ -2,7 +2,7 @@
   {
     "name": "index",
     "path": "dist/index.js",
-    "limit": 16600,
+    "limit": 16800,
     "brotli": true,
     "ignore": [
       "hono",
@@ -45,7 +45,7 @@
   {
     "name": "node-server",
     "path": "dist/servers/node.js",
-    "limit": 560,
+    "limit": 750,
     "brotli": true,
     "ignore": [
       "hono",

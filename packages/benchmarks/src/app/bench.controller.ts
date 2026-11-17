@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import {
   Body,
   Controller,
@@ -86,10 +87,10 @@ export class BenchController {
     return { ok: true };
   }
 
-  /** A finite Node stream, also served by the Bun transport. */
+  /** A finite Node stream of bytes, also served by the Bun transport. */
   @Get('stream')
   public stream(): StreamableFile {
-    return new StreamableFile(Readable.from(['hello', ' world']));
+    return new StreamableFile(Readable.from([Buffer.from('hello world')], { objectMode: false }));
   }
 
   /**

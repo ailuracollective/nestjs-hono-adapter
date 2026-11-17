@@ -77,4 +77,5 @@ export {
   declaresBody,
   mediaType,
   mediaTypeOf,
+  nativeHttp1,
 };

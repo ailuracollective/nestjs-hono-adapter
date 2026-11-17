@@ -12,6 +12,7 @@ import type { Server } from '#adapter/core/ports/server';
 import type { ServerOptions, StaticOptions, Transport } from '#adapter/core/ports/transport';
 
 import { asServer } from './listen.ts';
+import { nativeFetch } from './native-response.ts';
 
 type AdaptorOptions = Parameters<typeof createAdaptorServer>[0];
 
@@ -30,7 +31,7 @@ const createNodeServer = (
   transport: NodeServerOptions,
 ): Server => {
   const adaptor: Record<string, unknown> = {
-    fetch: app.fetch,
+    fetch: nativeFetch(app),
     overrideGlobalObjects: transport.overrideGlobalObjects ?? true,
   };
   if (transport.autoCleanupIncoming !== undefined)
