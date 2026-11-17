@@ -28,6 +28,7 @@ interface RouteSpec {
   readonly interceptor: StreamInterceptor;
   readonly middleware: boolean;
   readonly options: BridgeOptions;
+  readonly readsParams: boolean;
 }
 
 const settle = async (
@@ -50,7 +51,7 @@ const routeRunner =
   (spec: RouteSpec): HonoRouteHandler =>
   async (context, next) => {
     const request = await prepareRequest(context, spec.options, spec.middleware);
-    void request.params;
+    if (spec.readsParams) void request.params;
     const view = spec.middleware ? middlewareView(context) : undefined;
     const awaited = spec.middleware ? whenResponseSettled(context) : undefined;
     const started = spec.interceptor(context, () => spec.options.pendingStatus(context));
@@ -65,11 +66,20 @@ const routeRunner =
     return context.res;
   };
 
-const createRouteHandler = (
-  handler: NestHandler,
-  options: BridgeOptions,
-  interceptor: StreamInterceptor,
-): HonoRouteHandler => routeRunner({ handler, interceptor, middleware: false, options });
+interface RouteHandlerSpec {
+  readonly handler: NestHandler;
+  readonly interceptor: StreamInterceptor;
+  readonly readsParams: boolean;
+}
+
+const createRouteHandler = (spec: RouteHandlerSpec, options: BridgeOptions): HonoRouteHandler =>
+  routeRunner({
+    handler: spec.handler,
+    interceptor: spec.interceptor,
+    middleware: false,
+    options,
+    readsParams: spec.readsParams,
+  });
 
 // Express hands a middleware mounted at a sub-path a request whose `url`/`path` start after the
 // mount, and puts the mount on `baseUrl`; the mount is restored when the middleware calls `next`.
@@ -102,6 +112,9 @@ const createMiddlewareHandler = (
     interceptor,
     middleware: true,
     options,
+    // Middleware resolves `params` on demand: the common `*` mount only carries the wildcard,
+    // and forcing it decodes the whole path for every middleware on every request.
+    readsParams: false,
   });
 
 const runNestHandler = async (

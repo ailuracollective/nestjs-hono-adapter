@@ -136,6 +136,8 @@ RouteAdapter  (core/route/route-adapter.ts)  extends AbstractHttpAdapter
 
 `core/request/request.ts` turns a Hono request into the object Nest reads; `core/response/response.ts` turns a value Nest returned into a Web `Response`. They share only the type `NestContext`. `node:stream` is used by the response half (the `StreamableFile`) and by the request half, for the body stream a middleware reads. The request half still reads `context.env.incoming` to fill in `raw`, `socket` and `ip`, so it depends on the transport bindings: the Node path gets the Node `IncomingMessage` and its real socket; the Bun path synthesizes the carrier and socket, which reports the address Bun gives back.
 
+The body-presence gate uses framing headers on a native HTTP/1 carrier rather than probing the Web body: on the Node transport that getter would materialise a native `Request` even for an empty GET. Consumed bodies remain detectable, and fetch hosts, synthetic carriers and HTTP/2 retain the Web-body check because framing headers alone cannot describe their payloads.
+
 Every capability reaches the bridge through a seam, installed as an argument, not imported — `handler-bridge.ts` does not know event streams exist. The event stream surface (the writable Nest pipes frames into, with `write`, `setHeader`, `getHeaders`) is installed on the first read of `raw`, not on every request: that read distinguishes an event stream, and Nest makes it only on its SSE path, so an ordinary route keeps Hono's context API on the `@Res()` object.
 
 ## Errors

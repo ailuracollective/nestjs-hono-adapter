@@ -51,31 +51,36 @@ function expressHeader(
   return this;
 }
 
-// The Express response members beyond `send`/`type`/`set` (see `docs/compatibility.md`).
+const EXTRAS = {
+  clearCookie(this: NestContext, name: string, options?: CookieOptions): NestContext {
+    writeCookie(this, { name, options: clearedOptions(options), value: '' });
+    return this;
+  },
+  cookie(
+    this: NestContext,
+    ...args: [name: string, value: unknown, options?: CookieOptions]
+  ): NestContext {
+    const [name, value, options] = args;
+    writeCookie(this, { name, options, value });
+    return this;
+  },
+  getHeader(this: NestContext, name: string): string | readonly string[] | undefined {
+    return headerValue(this, name);
+  },
+  header: expressHeader,
+  removeHeader(this: NestContext, name: string): NestContext {
+    this.res.headers.delete(name);
+    return this;
+  },
+  setHeader(this: NestContext, name: string, value: string | readonly string[]): NestContext {
+    setHeaderValue(this, name, value);
+    return this;
+  },
+};
+
+// Shared methods keep request state on the receiver, never on Hono's prototype.
 const fitExtras = (context: NestContext): void => {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fitted surface layers the Express response dialect onto the Hono context.
-  const target = context as unknown as Record<string, unknown>;
-  // Express's `res.header` is an alias of `res.set`, so it takes an object too; Hono's own `header`
-  // — which the adapter calls with its append option — is the one underneath.
-  target.header = expressHeader;
-  target.setHeader = (name: string, value: string | readonly string[]): NestContext => {
-    setHeaderValue(context, name, value);
-    return context;
-  };
-  target.getHeader = (name: string): string | readonly string[] | undefined =>
-    headerValue(context, name);
-  target.removeHeader = (name: string): NestContext => {
-    context.res.headers.delete(name);
-    return context;
-  };
-  target.cookie = (name: string, value: unknown, options?: CookieOptions): NestContext => {
-    writeCookie(context, { name, options, value });
-    return context;
-  };
-  target.clearCookie = (name: string, options?: CookieOptions): NestContext => {
-    writeCookie(context, { name, options: clearedOptions(options), value: '' });
-    return context;
-  };
+  Object.assign(context, EXTRAS);
 };
 
 export { HONO_HEADER_STORAGE, fitExtras, headerValue, setHeaderValue };

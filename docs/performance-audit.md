@@ -2,15 +2,15 @@
 
 ## Scope and isolation
 
-The adapter translates Nest requests and replies to Hono without replacing Nest's execution pipeline. The audit assumes one server process, keep-alive HTTP/1.1 traffic and 50 concurrent connections, not a multi-worker production deployment.
+The adapter translates Nest requests and replies to Hono without replacing Nest's execution pipeline. The initial audit assumes one server process, keep-alive HTTP/1.1 traffic and 50 concurrent connections; the Node follow-up uses 100 connections. Neither represents a multi-worker production deployment.
 
-The starting point is `dc62cca`, the published head of Inertia PR #253. `origin/main` is `7f203e0`; PR #256 concerns peer declarations. The primary checkout contains overlapping, uncommitted performance and Inertia work, which is neither copied nor changed. This audit lives on `siddharthagf/perf/audit-http-hot-path` in the separate `nestjs-hono-perf-audit` worktree. It is based on the Inertia branch, not directly on main.
+The starting point is the published head of Inertia PR #253, off the then-current `main`; PR #256 concerns peer declarations. The primary checkout contains overlapping, uncommitted performance and Inertia work, which is neither copied nor changed. This audit lives on `siddharthagf/perf/audit-http-hot-path` in the separate `nestjs-hono-perf-audit` worktree. It is based on the Inertia branch, not directly on main.
 
 The request path inspected is transport bindings → Hono front steps/CORS/security → request bag and body reader → middleware/route bridge → Nest handler → response writer/builders → Hono response → transport. The review also follows the Express response proxy, deferred middleware continuations, optional bridge discovery, SSE commitment/disconnect handling, query/parameter decoding and binary/stream conversion.
 
 No production dependencies, public exports, bundle ceilings, transport defaults or prototype-wide patches are added. The seven response helper bindings remain: extracted helpers must retain their context, and invoking one must finalise a middleware response.
 
-**Retained:** the static CORS scheduling change only. **Discarded:** the shared response-settlement descriptor. The official Nest 11 CI recipe has a separate dependency-alignment problem; its unmodified execution is not reported as green.
+**Retained:** the static CORS scheduling change, followed by the native HTTP/1 body-presence gate and shared Express response extras described below. **Discarded:** the shared response-settlement descriptor. The official Nest 11 CI recipe has a separate dependency-alignment problem; its unmodified execution is not reported as green.
 
 ## Environment and method
 
@@ -25,7 +25,7 @@ No production dependencies, public exports, bundle ceilings, transport defaults 
 
 The original `plaintext` fixture returns JSON. The audit corrects it to `OK` and adds finite streaming, a real `ParseIntPipe` and scoped Nest middleware before establishing the comparison baseline. Old published plaintext numbers are therefore not directly comparable.
 
-An actual header probe also finds unequal initial control settings: Express generates weak ETags and `X-Powered-By`, while Fastify advertises three CORS methods against Hono's seven and omits Hono's max age. Commit `0283a58` disables those Express additions and aligns the official adapters' CORS method/max-age settings. JSON bodies, absent ETags and CORS policy are asserted over HTTP on all four targets. The final broad comparison is rerun after this correction; earlier control results are exploratory, not used as an equivalent ranking.
+An actual header probe also finds unequal initial control settings: Express generates weak ETags and `X-Powered-By`, while Fastify advertises three CORS methods against Hono's seven and omits Hono's max age. The final benchmark alignment disables those Express additions and aligns the official adapters' CORS method/max-age settings. JSON bodies, absent ETags and CORS policy are asserted over HTTP on all four targets. The final broad comparison is rerun after this correction; earlier control results are exploratory, not used as an equivalent ranking.
 
 The Hono options stay `{ origin: '*' }`: their default method list and max age already have the desired values. Supplying an explicit list would add per-request list parsing and invalidate its earlier before/after workload. Residual wire differences such as header whitespace/case, empty preflight content length, `Vary` and transport keep-alive defaults are documented rather than hidden with extra response middleware. This is an application-level comparison, not an isolated routing-instruction benchmark.
 
@@ -119,6 +119,36 @@ After updating the snapshot with the final comparison-setting fixtures, the repe
 
 Recommendation: the CI owner adds the benchmark's Nest packages to the same-major matrix update, then reruns the normal isolated CI job. This audit does not change `.github/` or claim the unmodified Nest 11 CI recipe is green. The repository's full definition of done remains pending that correction.
 
+### 6. Native HTTP/1 body presence and response extras
+
+The published benchmark report on `main` still describes the 14 October workload, before subsequent HTTP compatibility changes. Repeating that historical frozen tree and current main with the same current tools, 100 connections, a 3-second warmup and three 5-second samples gives Hono/Node JSON medians of 10,921 and 7,499 req/s. Express with its original defaults remains near 9,644 and 9,733 req/s. The inversion therefore predates the Inertia branch; the two frozen trees also differ in Hono, Node adapter and Nest patch versions, so this is not a source-only bisect.
+
+One concrete cause is the GET/HEAD body-presence probe. Reading `context.req.raw.body` makes `@hono/node-server` materialise a native `Request` and abort controller even for an empty GET. An isolated omission of that getter on main reaches 9,400 req/s; additionally omitting the Express response surface reaches 10,466. Those diagnostic bypasses are not retained: a real GET payload and an Express-shaped response must still work.
+
+The production correction checks framing headers and consumed-body state first. Only a native HTTP/1 carrier, identified by both the incoming HTTP version and the outgoing response binding, can omit the Web-body getter. Fetch hosts, synthetic carriers and HTTP/2 retain it. Tests exercise GET/HEAD without materialisation, declared and consumed bodies, unframed Web bodies, and retained 413/415 validation. The extra Express header and cookie methods are shared functions using their receiver's state, rather than fresh closures; all members remain installed on each context, and no shared Hono prototype is changed. The response-helper bindings and deferred continuation coordination remain intact.
+
+A fresh before/after comparison of this audit worktree uses the same 100-connection, 3-second-warmup, three-by-5-second settings, with the normalised Express settings unchanged. This baseline includes the installed Inertia bridge and is distinct from both main and the primary checkout's pending Inertia optimisations.
+
+| Node scenario | Req/s before → after | Change | CPU ms/request before → after | p99 ms before → after |
+| --- | --: | --: | --: | --: |
+| JSON | 6,841 → 8,617 | +26.0% | 0.1782 → 0.1360 | 27.506 → 18.568 |
+| POST | 7,147 → 6,969 | −2.5% | 0.1638 → 0.1668 | 25.189 → 25.134 |
+| Streaming | 4,069 → 4,460 | +9.6% | 0.2922 → 0.2589 | 35.095 → 36.993 |
+
+JSON CPU cost falls by 23.6%. POST shows no improvement and streaming p99 is slightly worse; neither is hidden behind the JSON gain. Express JSON also varies from 10,670 to 10,162 req/s between batches, reinforcing the shared-host caveat. The fix does not restore an overall Node advantage over Express.
+
+The completed follow-up also measures all four targets, with medians in requests per second:
+
+| Scenario  | Hono/Bun | Hono/Node | Express/Node | Fastify/Node |
+| --------- | -------: | --------: | -----------: | -----------: |
+| JSON      |   13,041 |     8,617 |       10,162 |       12,891 |
+| POST      |   10,587 |     6,969 |        8,520 |       10,263 |
+| Streaming |    8,142 |     4,460 |        8,331 |        7,682 |
+
+All 18 baseline and 36 completed follow-up samples record zero HTTP errors, and source hashes remain unchanged during the completed measurement. An earlier follow-up is interrupted by the executor's time limit and is excluded. Raw samples, comparison JSON and source fingerprints remain under `packages/benchmarks/results/node-fix-before-OT4PjtTF/` and `node-fix-after-wuiYF7YQ/`; generated benchmark documentation is not overwritten. The full Nest 12 check passes 808 tests and every bundle gate without raising a ceiling.
+
+An independent temporary checkout with exactly the same changed source and regression tests also passes typecheck, build and all supported tests on Nest 11.2.10: 804 pass, four expected Nest-12-only skips and zero failures. Its benchmark Nest packages are explicitly aligned to 11 as well; unlike the earlier nested snapshot, it does not inherit optional peers from the primary checkout. This establishes local compatibility, not that the unmodified CI dependency-alignment recipe has been repaired. The primary checkout's staged Inertia work and both working checkouts' production dependency files remain untouched.
+
 ## Opportunities not implemented
 
 - **Cross-request body/query caching:** rejected. Results are mutable and belong to a request; sharing them risks data crossing requests. Body parsing is already memoised on the context, and the request bag lazily caches query, headers and URL parts.
@@ -195,8 +225,11 @@ Artifacts distinguish the phases: `before/network.json` is the original broad sc
 | Nest 11.2.10 typecheck/build after benchmark-major alignment | Pass |
 | Nest 11 compatible tests | 791 pass, 0 fail; four Nest-12-only cases excluded |
 | Unmodified Nest 11 CI recipe | Fails dependency alignment; not declared complete |
+| Follow-up Nest 12 `bun run check` | 808 pass, 0 fail; lint, format, types, build and size pass |
+| Follow-up Nest 11.2.10 checkout | 804 pass, 4 skips, 0 fail; typecheck, build and size pass |
+| Follow-up benchmark samples | 54 samples, zero HTTP errors; source hashes unchanged |
 
-The Nest 11 snapshot is the committed production source at `0415e76`, with the final benchmark source/tests, including `0283a58`, unpacked into the ignored hidden `results/audit/.nest11` directory. Dependency changes and its lockfile remain only inside that validation copy. Logs preserve the initial failure, the extra benchmark alignment and the passing compatible runs.
+The Nest 11 snapshot takes the committed production source and unpacks the final benchmark source and tests into the ignored hidden `results/audit/.nest11` directory. Dependency changes and its lockfile remain only inside that validation copy. Logs preserve the initial failure, the extra benchmark alignment and the passing compatible runs.
 
 ```sh
 # In a fresh, independently installed copy configured for Nest 11:
@@ -209,17 +242,12 @@ bun test --path-ignore-patterns '**/optional.test.ts'
 
 ### Review
 
-The implementation commit is `0415e76`; `514b7ec` adds the benchmark fixtures/profilers, `19df26d` adds settlement regression coverage, and `0283a58` aligns comparison settings. None is pushed and no PR is opened.
-
-```sh
-git log --oneline dc62cca..HEAD
-git diff dc62cca..HEAD -- packages/core
-git show 0415e76
-```
+The branch carries the implementation in `packages/core`, the benchmark fixtures and profilers, the settlement regression coverage and the comparison-setting alignment. Nothing is pushed and no pull request is opened.
 
 ### Changed files and remaining checks
 
-- `packages/core/src/features/cors/middleware/bridge.ts` is the only changed production file.
+- `packages/core/src/features/cors/middleware/bridge.ts` is the only changed file of the CORS change.
+- The follow-up changes `packages/core/src/core/request/body/guards.ts` and `packages/core/src/compat/express/surface-extras.ts`, with `packages/core/test/bodies/body-presence.test.ts` and `packages/core/test/express-surface/surface-extras.test.ts` as their regression coverage.
 - `packages/core/test/cors/` and `packages/core/test/response/` hold regression cases and the two finite microbenchmarks.
 - `packages/benchmarks/src/app/`, `src/harness/`, `test/base.test.ts` and its typecheck configuration hold workloads, profilers and comparison controls.
 - This report, the generated benchmark report and the benchmark README record methodology, measurements and commands.

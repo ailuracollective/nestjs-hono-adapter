@@ -9,18 +9,21 @@ const isCallable = (value: unknown): value is (...args: unknown[]) => unknown =>
 const proxyHandler = (
   context: NestContext,
   overrides: Map<string, unknown>,
-  readers: Record<string, unknown>,
+  readersOf: () => Record<string, unknown>,
 ): ProxyHandler<Record<string, unknown>> => ({
   get(target, property): unknown {
     if (typeof property !== 'string') return Reflect.get(target, property);
     if (property === HIDDEN) return undefined;
     if (overrides.has(property)) return overrides.get(property);
+    // A fitted member wins, so a request that only reads it builds no readers at all.
+    if (Object.hasOwn(target, property)) return Reflect.get(target, property);
+    const readers = readersOf();
     if (Object.hasOwn(readers, property)) return readers[property];
     const value = Reflect.get(target, property);
     if (!isCallable(value)) return value;
     // Hono keeps its members as instance fields already bound to the context; only a prototype
     // method needs binding, or `this` would be the proxy and lose the private fields.
-    return Object.hasOwn(target, property) ? value : value.bind(context);
+    return value.bind(context);
   },
   has(target, property): boolean {
     if (typeof property !== 'string') return Reflect.has(target, property);

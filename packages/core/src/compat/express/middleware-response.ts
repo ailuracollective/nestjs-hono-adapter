@@ -63,7 +63,6 @@ const headerReaders = (
 // `cookies` reads a present `res.set` as a real `ServerResponse`, so the proxy hides it.
 const middlewareResponse = (context: NestContext): MiddlewareResponse => {
   const overrides = new Map<string, unknown>();
-  const locals: Record<string, unknown> = {};
   const state: { proxy: NestContext } = { proxy: context };
   const writeHead = (status?: number): NestContext => {
     if (typeof status === 'number') {
@@ -72,7 +71,12 @@ const middlewareResponse = (context: NestContext): MiddlewareResponse => {
     }
     return state.proxy;
   };
-  const handler = proxyHandler(context, overrides, headerReaders(context, locals, writeHead));
+  // Built on first read: a middleware that only touches the request (method spoofing) never pays
+  // for the sixteen response members, and one that reads a fitted member skips them too.
+  let readers: Record<string, unknown> | undefined = undefined;
+  const readersOf = (): Record<string, unknown> =>
+    (readers ??= headerReaders(context, {}, writeHead));
+  const handler = proxyHandler(context, overrides, readersOf);
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the proxy layers Express response semantics onto the Hono context.
   const target = context as unknown as Record<string, unknown>;
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler keeps the context's shape, so the proxy answers as a NestContext.

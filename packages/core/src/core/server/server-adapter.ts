@@ -209,7 +209,11 @@ class ServerAdapter extends HonoLifecycle {
 
   protected override register(method: string, path: string, handler: NestHandler): void {
     const honoPath = toHonoPath(path);
-    const honoHandler = createRouteHandler(handler, this.bridgeOptions, this.interceptor);
+    const readsParams = honoPath.includes(':') || honoPath.includes('*');
+    const honoHandler = createRouteHandler(
+      { handler, interceptor: this.interceptor, readsParams },
+      this.bridgeOptions,
+    );
     if (method === ALL_METHOD) {
       this.hono.all(honoPath, honoHandler);
       return;

@@ -8,7 +8,7 @@ import type { NestContext } from '#adapter/core/context';
 import type { Incoming, Socket } from '#adapter/core/ports/bindings';
 import { mediaTypeOf } from '#adapter/core/request/body/guards';
 import { tuneableSocket } from '#adapter/core/server/socket';
-import { forwardedOf, incomingOf, urlPartsOf } from './bag-state.ts';
+import { forwardedOf, incomingOf, searchOf, urlPartsOf } from './bag-state.ts';
 import type { BagState } from './bag-state.ts';
 import { addressOf } from './forwarded.ts';
 import type { RequestOptions } from './forwarded.ts';
@@ -107,8 +107,11 @@ class RequestBag implements NestRequest {
   }
 
   public get(name: string): string | undefined {
-    // Hono builds the cached record from `Headers`, which lowercases every name already.
-    return this.headers[name.toLowerCase()];
+    // A record a caller already materialised (and may have mutated) wins; otherwise read the one
+    // header from Hono instead of building the whole record for a single lookup.
+    const { headers } = this.state;
+    if (headers !== undefined) return headers[name.toLowerCase()];
+    return this.state.context.req.header(name);
   }
 
   public header(name: string): string | undefined {
@@ -189,7 +192,7 @@ class RequestBag implements NestRequest {
 
   public get query(): ParsedQuery {
     const { state } = this;
-    state.query ??= parseQuery(urlPartsOf(state).search);
+    state.query ??= parseQuery(searchOf(state.context));
     return state.query;
   }
 

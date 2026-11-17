@@ -1,6 +1,7 @@
 import { PayloadTooLargeException } from '@nestjs/common';
 
 import type { NestContext } from '#adapter/core/context';
+import type { Bindings } from '#adapter/core/ports/bindings';
 
 const BODYLESS_METHODS = new Set(['GET', 'HEAD']);
 
@@ -19,19 +20,22 @@ const mediaType = (context: NestContext): string => {
   return parsed;
 };
 
-// A Web body or the framing headers Express reads; either alone misses a transport it serves.
-const declaresBodyCache = new WeakMap<NestContext, boolean>();
+// HTTP/1 framing is authoritative on a native carrier; reading the Web body defeats Node's lazy Request.
+const nativeHttp1 = (bindings: Bindings | undefined): boolean => {
+  if (bindings === undefined) return false;
+  if (bindings.outgoing === undefined || bindings.incoming === undefined) return false;
+  return bindings.incoming.httpVersionMajor === 1;
+};
 
+// A Web body or the framing headers Express reads; either alone misses a transport it serves.
 const declaresBody = (context: NestContext): boolean => {
-  const cached = declaresBodyCache.get(context);
-  if (cached !== undefined || declaresBodyCache.has(context)) return cached ?? false;
-  const value =
-    context.req.raw.body !== null ||
-    context.req.raw.bodyUsed ||
+  const { raw } = context.req;
+  return (
     context.req.header('transfer-encoding') !== undefined ||
-    context.req.header('content-length') !== undefined;
-  declaresBodyCache.set(context, value);
-  return value;
+    context.req.header('content-length') !== undefined ||
+    raw.bodyUsed ||
+    (!nativeHttp1(context.env) && raw.body !== null)
+  );
 };
 
 const assertWithinLength = (context: NestContext, limit: number | undefined): void => {

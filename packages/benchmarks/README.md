@@ -78,6 +78,24 @@ bun dist/harness/run.js --connections=50 --runs=5
 
 Reports land in `packages/benchmarks/results/` as JSON samples; the metrics page is written to `docs/benchmarks.md` at the repository root, ready to commit. The page is generated, so `.oxfmtrc.json` excludes it from the formatter, the way it excludes `CHANGELOG.md`.
 
+## Profile
+
+Bun's CPU profiler attributes the server's CPU time, which is what a scenario is bound by at 100 connections. Profile one target directly instead of the whole suite:
+
+```sh
+cd packages/benchmarks
+bun --cpu-prof --cpu-prof-md --cpu-prof-dir=/tmp/prof \
+  dist/harness/server/server-entry.js bun 3100 base &
+bunx oha -z 15s -c 100 http://127.0.0.1:3100/health
+kill %1   # the profile is written when the process exits
+```
+
+`--cpu-prof-md` writes a markdown profile beside the `.cpuprofile`, which is enough for a first pass; open the `.cpuprofile` in Chrome DevTools or Speedscope for the call tree. The base app serves `plaintext`, `json`, `post` and `error`; the Inertia app, which takes `inertia` as its third argument, serves the rest.
+
+Two things skew a profile: the profiler itself costs about 10–20% of throughput, so read shares rather than absolute requests per second, and about half of the CPU at 100 connections on loopback is kernel time, so a change that removes JavaScript work shows up smaller than the profile suggests. Verify every change with an A/B run, not with the profile alone.
+
+The compiled tree resolves `#adapter/*` through the nearest `tsconfig.json`, which is `packages/core/tsconfig.json` and maps to `packages/core/src/`. A profile therefore shows the adapter sources, not `packages/core/dist/`, and a stale build mixes the two. Run `bun run build:core` before profiling or benchmarking.
+
 ## Methodology
 
 1. **Warm up, then discard**: `--warmup` seconds before measurement.
