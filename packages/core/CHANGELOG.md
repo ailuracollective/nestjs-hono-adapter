@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.1.1...v2.2.0) (2026-11-17)
+
+
+### Features
+
+* **core:** expose the adapter on BridgeTarget ([#250](https://github.com/ailuracollective/nestjs-hono-adapter/issues/250)) ([7f203e0](https://github.com/ailuracollective/nestjs-hono-adapter/commit/7f203e0ab98a03f0340a3741e3d6de44d90642b2))
+* **inertia:** add the Hono compatibility bridge ([#253](https://github.com/ailuracollective/nestjs-hono-adapter/issues/253)) ([a711e1c](https://github.com/ailuracollective/nestjs-hono-adapter/commit/a711e1c0fc45c04b7c68a36f2c03f61c642eaeeb))
+
 ## [2.1.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.1.0...v2.1.1) (2026-11-14)
 
 
