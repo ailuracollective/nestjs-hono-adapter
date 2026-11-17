@@ -4,11 +4,17 @@ name: publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. inertia-v0.2.0)'
+        required: true
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: publish-${{ github.event.release.tag_name }}
+  group: publish-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -23,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -37,7 +43,7 @@ jobs:
       - name: Resolve the released package
         id: package
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           case "$TAG" in
             socket-io-v*) echo "dir=./packages/socket-io" >> "$GITHUB_OUTPUT" ;;
@@ -89,4 +95,4 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$TAG" dist-sbom.spdx.json --clobber
       - name: Publish to npm
-        run: npm publish "${{ steps.package.outputs.dir }}" --provenance --tag "${{ steps.dist.outputs.tag }}"
+        run: npm publish "${{ steps.package.outputs.dir }}" --provenance --access public --tag "${{ steps.dist.outputs.tag }}"
