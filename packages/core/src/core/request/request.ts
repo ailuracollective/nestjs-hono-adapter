@@ -107,11 +107,9 @@ class RequestBag implements NestRequest {
   }
 
   public get(name: string): string | undefined {
-    // A record a caller already materialised (and may have mutated) wins; otherwise read the one
-    // header from Hono instead of building the whole record for a single lookup.
-    const { headers } = this.state;
-    if (headers !== undefined) return headers[name.toLowerCase()];
-    return this.state.context.req.header(name);
+    // Keep a single read consistent with the materialised record: Hono's `req.header(name)` joins
+    // duplicate values, while the record keeps the last one, so both paths must use the record.
+    return this.headers[name.toLowerCase()];
   }
 
   public header(name: string): string | undefined {
