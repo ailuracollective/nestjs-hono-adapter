@@ -51,11 +51,17 @@ const patchLeanMiddleware = (peer: InertiaPeer): void => {
   if (Reflect.get(prototype, PATCHED) === true) return;
   Reflect.set(prototype, PATCHED, true);
 
+  const originalUse: unknown = Reflect.get(prototype, 'use');
   Reflect.set(
     prototype,
     'use',
     function use(this: MiddlewareInstance, ...args: [NestRequest, NestContext, () => void]): void {
       const [req, res, next] = args;
+      // Only replace the stock middleware on Hono; Express keeps its post-send guard.
+      if (typeof (res as { finalized?: unknown }).finalized !== 'boolean') {
+        if (typeof originalUse === 'function') Reflect.apply(originalUse, this, args);
+        return;
+      }
       const shape = req as NestRequest & RequestShape;
       shape.cookies ??= parseCookies(cookieHeader(shape));
       defineLazyInertia(req, () => {

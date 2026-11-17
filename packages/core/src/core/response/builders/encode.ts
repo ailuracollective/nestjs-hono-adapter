@@ -59,6 +59,9 @@ const toFileResponse = (
 ): Response => {
   applyFileHeaders(file, headers);
   const stream = file.getStream();
+  stream.on('error', (error) => {
+    stream.destroy(error);
+  });
   // Object mode has no bytes to pipe, so the native path would have nothing to write.
   if (direct && !stream.readableObjectMode) {
     // The native transport answers with these raw headers, where the Web path defaults a stream.

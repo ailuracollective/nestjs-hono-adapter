@@ -50,10 +50,10 @@ const urlPartsOf = (state: BagState): UrlParts => {
 // The query string alone, without the `URL` parse the rest of the parts need.
 const searchOf = (context: NestContext): string => {
   const { url } = context.req;
-  const start = url.indexOf('?');
-  if (start === MISSING) return '';
-  const hash = url.indexOf('#', start);
-  return hash === MISSING ? url.slice(start) : url.slice(start, hash);
+  const question = url.indexOf('?');
+  const hash = url.indexOf('#');
+  if (question === MISSING || (hash !== MISSING && hash < question)) return '';
+  return hash === MISSING ? url.slice(question) : url.slice(question, hash);
 };
 
 const forwardedOf = (state: BagState): Forwarded => {

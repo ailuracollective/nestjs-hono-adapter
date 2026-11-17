@@ -1,6 +1,7 @@
 interface InertiaRequestShape {
   readonly method: string;
   readonly originalUrl: string;
+  readonly protocol: string;
   header: (name: string) => string | undefined;
 }
 

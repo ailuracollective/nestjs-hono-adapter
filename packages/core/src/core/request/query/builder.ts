@@ -12,7 +12,8 @@ const takePair = (query: ParsedQuery, source: string, start: number): number => 
   const separator = source.indexOf('&', start);
   const end = separator === MISSING ? source.length : separator;
   if (end > start) {
-    const equals = source.indexOf('=', start);
+    const equalsInSegment = source.slice(start, end).indexOf('=');
+    const equals = equalsInSegment === MISSING ? MISSING : start + equalsInSegment;
     const valued = equals !== MISSING && equals < end;
     addPair(
       query,

@@ -7,7 +7,7 @@ const firstHeader = (value: string | undefined): string | undefined => {
 };
 
 const fullUrl = (req: InertiaRequestShape): string => {
-  const proto = firstHeader(req.header('x-forwarded-proto')) ?? 'http';
+  const proto = firstHeader(req.header('x-forwarded-proto')) ?? req.protocol;
   const host = firstHeader(req.header('host')) ?? 'localhost';
   return new URL(req.originalUrl, `${proto}://${host}`).toString();
 };

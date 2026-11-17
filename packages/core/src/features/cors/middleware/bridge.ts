@@ -45,7 +45,8 @@ const corsBridge = (
     allowed: AllowedOrigins,
   ): MiddlewareHandler<NestEnv> => {
     if (cache !== undefined) {
-      const repeated = cache.options === options && cache.allowed === allowed;
+      const repeated =
+        cache.allowed === allowed && JSON.stringify(cache.options) === JSON.stringify(options);
       if (repeated) return cache.middleware;
     }
     const middleware = corsMiddleware(options, allowed);

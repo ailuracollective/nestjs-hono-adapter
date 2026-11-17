@@ -3,6 +3,10 @@ import type { BridgeTarget, NestContext } from '@ailura/nestjs-hono-adapter';
 import { absoluteUrl, fragmentResponse, isInertia, isPrefetch, varyOn } from './redirect-target.ts';
 import { MOUNTED } from './symbols.ts';
 
+const NO_CONTENT = 204;
+const RESET_CONTENT = 205;
+const NOT_MODIFIED = 304;
+
 const FITTED = Symbol.for('ailura.nestjs-hono-inertia.surface');
 const STATUS = Symbol.for('ailura.nestjs-hono-inertia.status');
 const HONO_REDIRECT = Symbol.for('ailura.nestjs-hono-inertia.redirect');
@@ -27,7 +31,11 @@ function readStatusCode(this: NestContext): number {
 function writeStatusCode(this: NestContext, code: number): void {
   Reflect.set(this, STATUS, code);
   if (this.finalized) {
-    this.res = new Response(this.res.body, { headers: this.res.headers, status: code });
+    const body =
+      code === NO_CONTENT || code === RESET_CONTENT || code === NOT_MODIFIED
+        ? undefined
+        : this.res.body;
+    this.res = new Response(body, { headers: this.res.headers, status: code });
   }
 }
 
@@ -77,9 +85,8 @@ const fit = (context: NestContext): void => {
 };
 
 /**
- * The Inertia interceptors read Express members off the raw context; fit them before the route. The
- * middleware is installed for every Hono app the bridge reaches, but only an app that mounted the
- * Inertia module sets the marker, so other apps pay one symbol lookup per request.
+ * The Inertia interceptors read Express members off the raw context; fit them before the route.
+ * Other apps pay one symbol lookup per request because the module marker is unset.
  */
 const fitSurface = (target: BridgeTarget): void => {
   target.hono.use('*', (context, next) => {

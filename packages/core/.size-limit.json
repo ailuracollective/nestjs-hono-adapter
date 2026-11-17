@@ -45,7 +45,7 @@
   {
     "name": "node-server",
     "path": "dist/servers/node.js",
-    "limit": 750,
+    "limit": 850,
     "brotli": true,
     "ignore": [
       "hono",

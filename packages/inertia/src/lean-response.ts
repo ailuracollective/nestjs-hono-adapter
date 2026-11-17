@@ -30,25 +30,29 @@ interface InertiaResponse {
   readonly statusCode: number;
 }
 
-const textOf = (chunk: unknown): string => {
-  if (typeof chunk === 'string') return chunk;
-  return chunk instanceof Uint8Array ? new TextDecoder().decode(chunk) : String(chunk);
-};
 // Hono answers with a buffered response, so the stream collects its chunks and sends them once.
+const toBytes = (chunk: unknown): Uint8Array => {
+  if (typeof chunk === 'string') return new TextEncoder().encode(chunk);
+  if (chunk instanceof Uint8Array) return chunk;
+  return new TextEncoder().encode(String(chunk));
+};
 const streamOf = (fitted: FittedResponse): StreamSink => {
-  const chunks: string[] = [];
+  const chunks: Uint8Array[] = [];
   return {
     end(chunk?: unknown): void {
-      if (chunk !== undefined) chunks.push(textOf(chunk));
-      fitted.send(chunks.join(''));
+      if (chunk !== undefined) chunks.push(toBytes(chunk));
+      const decoder = new TextDecoder();
+      let text = '';
+      for (const part of chunks) text += decoder.decode(part, { stream: true });
+      text += decoder.decode();
+      fitted.send(text);
     },
     write(chunk: unknown): boolean {
-      chunks.push(textOf(chunk));
+      chunks.push(toBytes(chunk));
       return true;
     },
   };
 };
-
 const adaptResponse = (context: NestContext): InertiaResponse => {
   // The bridge's surface fit adds these members before the route runs (see surface.ts).
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fitted context carries the Express response members.
@@ -75,12 +79,8 @@ const adaptResponse = (context: NestContext): InertiaResponse => {
       return sink;
     },
     json(body: unknown, serialized?: string): void {
-      if (serialized === undefined) {
-        fitted.json(body);
-        return;
-      }
       fitted.setHeader('Content-Type', 'application/json');
-      fitted.send(serialized);
+      fitted.send(serialized ?? JSON.stringify(body));
     },
     raw: context,
     setHeader(name: string, value: string): InertiaResponse {
