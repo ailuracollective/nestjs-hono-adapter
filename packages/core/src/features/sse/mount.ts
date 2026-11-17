@@ -7,34 +7,37 @@ import { RAW_STATE, startWaiter } from './state.ts';
 import type { SseHolder } from './state.ts';
 import { installSurface, watchDisconnect } from './surface.ts';
 
+// Hoisted so a request allocates no getter and no descriptor: the getter reads only `this`.
+const RAW_DESCRIPTOR: PropertyDescriptor = {
+  configurable: true,
+  get: function get(this: NestContext): SseResponse {
+    const holder = this as unknown as SseHolder;
+    const state = holder[RAW_STATE];
+    if (state === undefined) {
+      throw new TypeError(
+        'An event stream was asked for on a response this adapter did not mount one on.',
+      );
+    }
+    if (state.opened === undefined) {
+      const report = watchDisconnect(this);
+      state.opened = new SseResponse(state.status, {
+        onCommit: (answer): void => {
+          this.res = answer;
+        },
+        onDisconnect: report,
+        signal: state.waiter.settle,
+      });
+      installSurface(this, state.opened);
+    }
+    return state.opened;
+  },
+};
+
 const installRawGetter = (context: NestContext): void => {
   if (Object.hasOwn(context, 'raw')) {
     return;
   }
-  Object.defineProperty(context, 'raw', {
-    configurable: true,
-    get(this: NestContext): SseResponse {
-      const holder = this as unknown as SseHolder;
-      const state = holder[RAW_STATE];
-      if (state === undefined) {
-        throw new TypeError(
-          'An event stream was asked for on a response this adapter did not mount one on.',
-        );
-      }
-      if (state.opened === undefined) {
-        const report = watchDisconnect(this);
-        state.opened = new SseResponse(state.status, {
-          onCommit: (answer): void => {
-            this.res = answer;
-          },
-          onDisconnect: report,
-          signal: state.waiter.settle,
-        });
-        installSurface(this, state.opened);
-      }
-      return state.opened;
-    },
-  });
+  Object.defineProperty(context, 'raw', RAW_DESCRIPTOR);
 };
 
 const mountSse = (context: NestContext, status: () => number | undefined): Promise<unknown> => {

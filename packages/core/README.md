@@ -33,6 +33,7 @@ A socket.io gateway is served by the Bun transport's own server where it can bin
 | [`@ailura/nestjs-hono-adapter`](https://www.npmjs.com/package/@ailura/nestjs-hono-adapter) | the adapter itself | always |
 | [`@ailura/nestjs-platform-hono-multipart`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-multipart) | multipart uploads via `busboy` | upload routes |
 | [`@ailura/nestjs-platform-hono-graphql`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-graphql) | `@nestjs/apollo` `ApolloDriver` fitted to Hono | GraphQL drivers |
+| [`@ailura/nestjs-platform-hono-inertia`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-inertia) | `@dudousxd/nestjs-inertia` fitted to Hono | Inertia.js pages |
 | [`@ailura/nestjs-platform-hono-ws`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-ws) | `@nestjs/platform-ws` `WsAdapter` fitted to Hono | WebSocket gateways |
 | [`@ailura/nestjs-platform-hono-socket-io`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-socket-io) | `@nestjs/platform-socket.io` `IoAdapter` fitted to Hono | Socket.IO gateways |
 | [`@ailura/nestjs-platform-hono-serve-static`](https://www.npmjs.com/package/@ailura/nestjs-platform-hono-serve-static) | serve-static fitted to Hono | static assets |

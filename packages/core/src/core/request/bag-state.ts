@@ -4,6 +4,8 @@ import { forwardedValues } from './forwarded.ts';
 import type { Forwarded, RequestOptions } from './forwarded.ts';
 import type { ParsedQuery } from './query/index.ts';
 
+const MISSING = -1;
+
 interface UrlParts {
   readonly hostname: string;
   readonly pathname: string;
@@ -45,6 +47,15 @@ const urlPartsOf = (state: BagState): UrlParts => {
   return parts;
 };
 
+// The query string alone, without the `URL` parse the rest of the parts need.
+const searchOf = (context: NestContext): string => {
+  const { url } = context.req;
+  const question = url.indexOf('?');
+  const hash = url.indexOf('#');
+  if (question === MISSING || (hash !== MISSING && hash < question)) return '';
+  return hash === MISSING ? url.slice(question) : url.slice(question, hash);
+};
+
 const forwardedOf = (state: BagState): Forwarded => {
   const held = state.forwarded;
   if (held !== undefined) return held;
@@ -61,5 +72,5 @@ const incomingOf = (state: BagState): Incoming | undefined => {
   return incoming;
 };
 
-export { forwardedOf, incomingOf, urlPartsOf };
+export { forwardedOf, incomingOf, searchOf, urlPartsOf };
 export type { BagState, UrlParts };

@@ -137,6 +137,46 @@ describe('fitExtras members', () => {
   });
 });
 
+test('shares methods between contexts', () => {
+  const first = makeContext();
+  const second = makeContext();
+  fitExtras(asContext(first));
+  fitExtras(asContext(second));
+  for (const name of [
+    'header',
+    'setHeader',
+    'getHeader',
+    'removeHeader',
+    'cookie',
+    'clearCookie',
+  ] as const) {
+    expect(surfaceOf(first)[name]).toBe(surfaceOf(second)[name]);
+  }
+});
+
+test('shared methods keep headers isolated between contexts', () => {
+  const first = makeContext();
+  const second = makeContext();
+  fitExtras(asContext(first));
+  fitExtras(asContext(second));
+  surfaceOf(first).setHeader('x-owner', 'first');
+  surfaceOf(second).setHeader('x-owner', 'second');
+  surfaceOf(first).removeHeader('x-owner');
+  expect(surfaceOf(first).getHeader('x-owner')).toBeUndefined();
+  expect(surfaceOf(second).getHeader('x-owner')).toBe('second');
+});
+
+test('shared methods keep cookies isolated between contexts', () => {
+  const first = makeContext();
+  const second = makeContext();
+  fitExtras(asContext(first));
+  fitExtras(asContext(second));
+  surfaceOf(first).cookie('owner', 'first');
+  surfaceOf(second).cookie('owner', 'second');
+  expect(first.res.headers.get('set-cookie')).toContain('owner=first');
+  expect(second.res.headers.get('set-cookie')).toContain('owner=second');
+});
+
 describe('fitExtras behaviour', () => {
   test('cookie method writes a Set-Cookie header', () => {
     const ctx = makeContext();

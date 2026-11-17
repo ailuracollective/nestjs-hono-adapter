@@ -25,12 +25,13 @@ A bridge that belongs to a platform Nest users write against lives in the packag
 
 ```
 packages/serve-static/   @nestjs/serve-static, reading through the transport
+packages/inertia/       @dudousxd/nestjs-inertia, fitted to the Express surface
 packages/graphql/        the stock @nestjs/apollo driver answering on Hono
 packages/socket-io/      the stock @nestjs/platform-socket.io IoAdapter serving on Hono
 packages/ws/             the stock @nestjs/platform-ws WsAdapter serving on Hono
 ```
 
-None of them is named in an application's code. Installing the package is what installs the bridge — see [Discovery](#discovery).
+None of them is named in an application's code, except the Inertia bridge's `./register` entrypoint, which the application imports before it is created. Installing the package is what installs the bridge — see [Discovery](#discovery).
 
 ## What a bridge is
 
@@ -54,6 +55,7 @@ So the region resolves them. `compat/registry/discover.ts` carries the list, and
 ```ts
 const BRIDGE_PACKAGES = [
   '@ailura/nestjs-platform-hono-graphql',
+  '@ailura/nestjs-platform-hono-inertia',
   '@ailura/nestjs-platform-hono-serve-static',
   '@ailura/nestjs-platform-hono-socket-io',
   '@ailura/nestjs-platform-hono-ws',
@@ -74,7 +76,7 @@ Discovery is settled by `init()` like an install is, because the bridges it turn
 
 ## The bridges
 
-One ships with the adapter and four ship with a package the adapter looks for. All five are described below.
+One ships with the adapter and five ship with a package the adapter looks for. All six are described below.
 
 ### `express`
 
@@ -113,7 +115,33 @@ The one case this cannot separate is a handler that calls `res.status(200)` on a
 - `cookie(name, value, options)` writes `Set-Cookie` in **Express's attribute order** (`Max-Age`, `Domain`, `Path` — defaulting to `/`, as the `cookie` package does —, `Expires`, `HttpOnly`, `Secure`, `SameSite`) for a name that must be an HTTP token (alphanumerics and ``!#$%&'*+-.^_`|~``); anything else is the `TypeError` `cookie` raises. `clearCookie` writes the same set with an `Expires` in the past.
 - A **`signed` cookie is written unsigned**: signing needs an HMAC and `compat/` carries no Node builtins. A deployment that verifies signatures signs the value before calling `res.cookie`.
 
-The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` rather than in `surface.ts` only because a `compat/` file may not exceed a hundred lines; `fitResponse()` fits all of them, and the middleware `res` reads its headers through the same helper.
+The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` rather than in `surface.ts` only because a `compat/` file may not exceed a hundred lines; `fitResponse()` fits all of them, and the middleware `res` reads its headers through the same helper. The extra methods are shared between contexts and read state from their receiver, avoiding per-request closures without changing Hono's prototype or sharing response state.
+
+### `inertia`
+
+Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nestjs-inertia`. That module registers its Inertia middleware only when `httpAdapter.getType() === 'express'`, and its interceptors read the Express response members `headersSent`, `statusCode` and `redirect`. On Hono neither is true. The bridge:
+
+- patches `InertiaModule.prototype.configure` so `InertiaMiddleware` is registered on Hono, with the method-spoof middleware only when that option is on;
+- replaces the middleware's Express body with a lean one: it defines the lazy Inertia service over the fitted context and reads one `Cookie` header, and it drops the stock `suppressPostSendWrites` patch because `reply()` already refuses a second write;
+- fits `headersSent`, `statusCode`, `redirect` and `end` onto the raw Hono context, and makes the application's `reply()` leave a response Inertia already wrote alone;
+- upgrades a `302` after `PUT`, `PATCH`, `DELETE` or `QUERY` to `303` in the application's `redirect()`, so Nest's own `@Redirect()` agrees with Inertia;
+- patches the stock redirect interceptor on Hono so both `res.redirect(status, url)` and `res.redirect(url, status)` preserve an explicit status while a `302` becomes `303`;
+- answers a redirect to a URL with a fragment with `409` and `X-Inertia-Redirect` (prefetch requests receive the redirect unchanged), and adds `Vary: X-Inertia` to redirect responses;
+- answers a version mismatch with the full `X-Inertia-Location` and the server's `X-Inertia-Version`, treating a missing client header as an empty version;
+- parses the `Cookie` header into `req.cookies` before the Inertia service is created, so `CsrfCookieInterceptor` and `CsrfGuard` work on Hono;
+- hands a `FlashStore` the Nest request on both sides of the validation filter, so a session-keyed store sees one shape.
+
+The reply and redirect patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched; the module, service and interceptor patches are fitted on the peer's prototypes once per process. The behaviour suite covers merge/prepend/deepMerge/matchOn, scroll reset and merge intent, once, history flags, error bags, validation flash, CSRF, buffered and streaming SSR, and `forFeature`/`@UseInertia` scopes. The stock SSR loader and scope switcher need no bridge patch beyond the fitted surface.
+
+The application names the stock module; the only import from this package is the register entrypoint:
+
+```ts
+InertiaModule.forRoot({ version: 'v1' });
+```
+
+The module registers its middleware only for `getType() === 'express'`, and its `configure()` runs before the adapter's asynchronous bridge discovery settles. The application therefore imports `@ailura/nestjs-platform-hono-inertia/register` before creating the Nest application; installing the package still installs the bridge itself. An upstream change that treats any non-Fastify adapter as Express would remove the register entrypoint.
+
+A response Inertia writes is already finalized when Nest's post-handler runs; the `reply()` guard is what keeps the JSON and HTML bodies from being overwritten, and it is why an Inertia action does not need `@Res()`.
 
 ### `serve-static`
 
@@ -274,6 +302,6 @@ Those stay with their feature, because the dependency runs the other way. `featu
 
 `test/layers.test.ts` holds rule 5: `core/` reaches `compat/` only from the two composition roots and through the one request seam that fits the Express surface. It holds a sixth rule too: a bridge **package** reaches the adapter only through the published entrypoint. Every name a bridge needs — `Bridge`, `BridgeAdapter`, `BridgeTarget`, `Server`, `Transport`, `WebSocketSupport`, `NestContext`, `loadPeer`, `seedPeer`, `toHonoPath`, `toNestRequest` — is exported there, so a `#adapter/` import would be the same bridge reaching past the door into the tree behind it.
 
-`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all five trees: the region, and the four bridge packages.
+`test/node-builtins.test.ts` holds that no bridge names a Node builtin, and that none of them reaches a filesystem API. It walks all six trees: the region, and the five bridge packages.
 
-`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.
+`packages/<bridge>/test/` holds that the package answers on its own — that the stock `@nestjs/apollo` driver queries on Hono with no import in the application, that the stock `@dudousxd/nestjs-inertia` module renders a page on Hono after the `./register` import, that `@nestjs/serve-static` serves a file through the transport, that the stock `@nestjs/platform-socket.io` `IoAdapter` binds a gateway on Hono, and that the stock `@nestjs/platform-ws` `WsAdapter` answers a gateway on Hono.

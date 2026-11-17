@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import { defaultContentType, setDisposition } from '#adapter/core/response/headers';
 
 import { BINARY_CONTENT_TYPE, TEXT_CONTENT_TYPE } from './content.ts';
+import { NODE_STREAM } from './native-stream.ts';
 
 interface StreamableFileLike {
   getHeaders: () => {
@@ -11,6 +12,13 @@ interface StreamableFileLike {
     length?: number | undefined;
   };
   getStream: () => Readable;
+}
+
+interface ResponseParts {
+  /** Set for a transport that writes the source stream itself and never reads the Web body. */
+  readonly direct?: boolean | undefined;
+  readonly headers: Headers;
+  readonly status: number;
 }
 
 const isStreamableFile = (value: unknown): value is StreamableFileLike =>
@@ -34,7 +42,7 @@ const toTextResponse = (
   return new Response(String(body), { headers, status });
 };
 
-const toFileResponse = (file: StreamableFileLike, status: number, headers: Headers): Response => {
+const applyFileHeaders = (file: StreamableFileLike, headers: Headers): void => {
   const { type, disposition, length } = file.getHeaders();
   if (type !== undefined && type !== '') headers.set('content-type', type);
   if (disposition !== undefined) {
@@ -43,10 +51,26 @@ const toFileResponse = (file: StreamableFileLike, status: number, headers: Heade
     }
   }
   if (length !== undefined) headers.set('content-length', String(length));
-  return new Response(toBodyStream(file.getStream()), {
-    headers,
-    status,
+};
+
+const toFileResponse = (
+  file: StreamableFileLike,
+  { direct = false, headers, status }: ResponseParts,
+): Response => {
+  applyFileHeaders(file, headers);
+  const stream = file.getStream();
+  stream.on('error', (error) => {
+    stream.destroy(error);
   });
+  // Object mode has no bytes to pipe, so the native path would have nothing to write.
+  if (direct && !stream.readableObjectMode) {
+    // The native transport answers with these raw headers, where the Web path defaults a stream.
+    defaultContentType(headers, TEXT_CONTENT_TYPE);
+    const response = new Response(undefined, { headers, status });
+    Reflect.set(response, NODE_STREAM, stream);
+    return response;
+  }
+  return new Response(toBodyStream(stream), { headers, status });
 };
 
 const toBinaryResponse = (
@@ -59,4 +83,4 @@ const toBinaryResponse = (
 };
 
 export { isStreamableFile, toBinaryResponse, toBodyStream, toFileResponse, toTextResponse };
-export type { StreamableFileLike };
+export type { ResponseParts, StreamableFileLike };

@@ -45,9 +45,10 @@ const headerLines = (meta: RunMeta): string[] => [
     `warmup ${meta.warmupSeconds}s, ${meta.runs} runs, medians reported.`,
   ...toolLine(meta.tools),
   '',
-  'All targets serve the same Nest application; only the HTTP adapter ' +
-    'and runtime change. Results from one machine are comparative, ' +
-    'not absolute.',
+  'All targets serve the same pair of Nest applications: a base app without ' +
+    'Inertia, and an Inertia app with the React, Vue and Svelte SSR scopes. ' +
+    'Only the HTTP adapter and runtime change. Results from one machine are ' +
+    'comparative, not absolute.',
   '',
   'Regenerate from the repository root with `bun run bench`.',
   '',

@@ -1,11 +1,16 @@
 /** One HTTP server implementation target under test. */
 type Target = 'bun' | 'node' | 'express' | 'fastify';
 
+/** One application variant a scenario runs against. */
+type App = 'base' | 'inertia';
+
 /** A load generator tool the harness can drive. */
 type Tool = 'oha' | 'bombardier';
 
 /** One request pattern every target answers identically. */
 interface Scenario {
+  /** Application variant that serves the scenario. */
+  readonly app: App;
   /** Unique scenario identifier. */
   readonly id: string;
   /** HTTP request method. */
@@ -62,4 +67,4 @@ interface Options {
   readonly warmupSeconds: number;
 }
 
-export type { Options, RunMeta, Scenario, Target, Tool };
+export type { App, Options, RunMeta, Scenario, Target, Tool };

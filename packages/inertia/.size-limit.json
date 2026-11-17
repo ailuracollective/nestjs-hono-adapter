@@ -1,0 +1,28 @@
+[
+  {
+    "name": "inertia",
+    "path": "dist/index.js",
+    "limit": 1075,
+    "brotli": true,
+    "ignore": [
+      "@ailura/nestjs-hono-adapter",
+      "@dudousxd/nestjs-inertia",
+      "@nestjs/common",
+      "@nestjs/core",
+      "rxjs"
+    ]
+  },
+  {
+    "name": "inertia/register",
+    "path": "dist/register.js",
+    "limit": 2210,
+    "brotli": true,
+    "ignore": [
+      "@ailura/nestjs-hono-adapter",
+      "@dudousxd/nestjs-inertia",
+      "@nestjs/common",
+      "@nestjs/core",
+      "rxjs"
+    ]
+  }
+]

@@ -1,3 +1,5 @@
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface.js';
+
 import type { Target, Tool } from './env.types.ts';
 
 /** All HTTP server implementation targets under test. */
@@ -21,9 +23,19 @@ const DEFAULT_WARMUP = 3;
 /** Default count of measured runs per scenario. */
 const DEFAULT_RUNS = 3;
 
+const CORS_MAX_AGE = 86_400;
+const CORS_METHODS = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'];
+
+/** Match Hono's defaults without adding explicit-list parsing work to its request path. */
+const benchmarkCors = (target: Target): CorsOptions =>
+  target === 'bun' || target === 'node'
+    ? { origin: '*' }
+    : { maxAge: CORS_MAX_AGE, methods: CORS_METHODS, origin: '*' };
+
 export {
   ALL_TARGETS,
   ALL_TOOLS,
+  benchmarkCors,
   DEFAULT_CONNECTIONS,
   DEFAULT_DURATION,
   DEFAULT_RUNS,

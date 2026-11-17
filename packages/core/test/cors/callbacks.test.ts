@@ -9,11 +9,11 @@ test('an origin callback decides for each request', async () => {
       respond(undefined, origin === ALLOWED);
     },
   };
-
-  const allowed = await bridged(decided).request('/', {
+  const app = bridged(decided);
+  const allowed = await app.request('/', {
     headers: { origin: ALLOWED },
   });
-  const foreign = await bridged(decided).request('/', {
+  const foreign = await app.request('/', {
     headers: { origin: FOREIGN },
   });
 
@@ -55,4 +55,54 @@ test('the options a delegate answers are the ones applied', async () => {
   });
 
   expect(response.headers.get('access-control-allow-credentials')).toBe('true');
+});
+
+test('asynchronous delegates and origin callbacks are both awaited', async () => {
+  const app = bridged((_request, answer) => {
+    queueMicrotask(() => {
+      // oxlint-disable-next-line unicorn/no-null -- Nest's CORS delegate reports success with null.
+      answer(null, {
+        origin: (origin, respond) => {
+          queueMicrotask(() => {
+            respond(undefined, origin === ALLOWED);
+          });
+        },
+      });
+    });
+  });
+  const response = await app.request('/', { headers: { origin: ALLOWED } });
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
+});
+
+test('an asynchronous delegate failure still reaches the error handler', async () => {
+  const app = bridged((_request, answer) => {
+    queueMicrotask(() => {
+      answer(new TypeError('failed options'), {});
+    });
+  });
+  const response = await app.request('/', { headers: { origin: ALLOWED } });
+  expect(response.status).toBe(SERVER_ERROR);
+});
+
+test('static options are read again rather than cached across requests', async () => {
+  const options = { origin: ALLOWED };
+  const app = bridged(options);
+  const first = await app.request('/', { headers: { origin: ALLOWED } });
+  Object.assign(options, { origin: FOREIGN });
+  const second = await app.request('/', { headers: { origin: FOREIGN } });
+  expect(first.headers.get('access-control-allow-origin')).toBe(ALLOWED);
+  expect(second.headers.get('access-control-allow-origin')).toBe(FOREIGN);
+});
+
+test('an origin getter is evaluated once per request', async () => {
+  let reads = 0;
+  const options = {
+    get origin(): string {
+      reads += 1;
+      return ALLOWED;
+    },
+  };
+  const response = await bridged(options).request('/', { headers: { origin: ALLOWED } });
+  expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED);
+  expect(reads).toBe(1);
 });

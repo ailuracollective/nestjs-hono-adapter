@@ -56,6 +56,7 @@ Every package below is proved against a Nest application served by the adapter. 
 | `@nestjs/throttler` | [`test/throttler`](./test/throttler) |
 | `@nestjs/typeorm` | [`test/cases`](./test/cases) |
 | `@nestjs/websockets` | [`packages/core/test/fetch-server`](../core/test/fetch-server) (gateway fixture), [`packages/ws`](../ws/test) (bridge) |
+| `@dudousxd/nestjs-inertia` | [`packages/inertia`](../inertia/test) (bridge) |
 
 `@nestjs/bullmq` is declared in `devDependencies` because `@nestjs/observe` loads it optionally; no case exercises it on its own, and the suite is green without it.
 

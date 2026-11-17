@@ -3,11 +3,13 @@
   "compilerOptions": {
     "rootDir": "..",
     "noEmit": true,
+    "jsx": "react-jsx",
     "types": ["node", "bun"],
     "paths": {
       "#adapter/*": ["../packages/core/src/*.ts", "../packages/core/src/*"],
       "#adapter-test/*": ["../packages/core/test/*.ts", "../packages/core/test/*"],
       "#graphql/*": ["../packages/graphql/src/*.ts", "../packages/graphql/src/*"],
+      "#inertia/*": ["../packages/inertia/src/*.ts", "../packages/inertia/src/*"],
       "#multipart/*": ["../packages/multipart/src/*.ts", "../packages/multipart/src/*"],
       "#multipart-test/*": ["../packages/multipart/test/*.ts", "../packages/multipart/test/*"],
       "#serve-static/*": ["../packages/serve-static/src/*.ts", "../packages/serve-static/src/*"],
@@ -24,6 +26,8 @@
       "@ailura/nestjs-hono-adapter/bun-server": ["../packages/core/src/servers/bun.ts"],
       "@ailura/nestjs-hono-adapter/node-server": ["../packages/core/src/servers/node.ts"],
       "@ailura/nestjs-hono-adapter/fetch": ["../packages/core/src/servers/fetch.ts"],
+      "@ailura/nestjs-platform-hono-inertia": ["../packages/inertia/src/index.ts"],
+      "@ailura/nestjs-platform-hono-inertia/register": ["../packages/inertia/src/register.ts"],
       "@ailura/nestjs-platform-hono-multipart": ["../packages/multipart/src/index.ts"],
       "@ailura/nestjs-platform-hono-serve-static": ["../packages/serve-static/src/index.ts"],
       "@ailura/nestjs-platform-hono-socket-io": ["../packages/socket-io/src/index.ts"],

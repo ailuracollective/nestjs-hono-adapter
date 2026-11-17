@@ -126,6 +126,7 @@ test('the walk reads an import out of every layer', async () => {
     'core',
     'features',
     'graphql',
+    'inertia',
     'multipart',
     'serve-static',
     'socket-io',

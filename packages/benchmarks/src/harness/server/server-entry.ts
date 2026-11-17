@@ -1,21 +1,28 @@
 // oxlint-disable-next-line import/no-unassigned-import -- patches Reflect.
 import 'reflect-metadata';
+// oxlint-disable-next-line import/no-unassigned-import -- patches the stock Inertia module for Hono.
+import '@ailura/nestjs-platform-hono-inertia/register';
 
-import type { Target } from '#benchmarks/harness/config/index';
+import type { Type } from '@nestjs/common';
+
+import { BaseModule } from '#benchmarks/app/base.module';
+import { BenchModule } from '#benchmarks/app/bench.module';
+import type { App, Target } from '#benchmarks/harness/config/index';
+import { benchmarkCors } from '#benchmarks/harness/config/index';
 import { creators } from './creators.ts';
 
 /** Start offset of user arguments in process.argv. */
 const ARGV_START = 2;
 
-/** Target argument extracted from CLI invocation. */
-const targetArg = process.argv[ARGV_START];
-
-/** Port argument extracted from CLI invocation. */
-const portArg = process.argv[ARGV_START + 1];
+/** Target, port and application arguments extracted from the CLI invocation. */
+const [targetArg, portArg, appArg] = process.argv.slice(ARGV_START);
 
 /** Checks if a string corresponds to a known server creator. */
 const isTarget = (value: string | undefined): value is Target =>
   value !== undefined && value in creators;
+
+/** Checks if a string corresponds to a known application variant. */
+const isApp = (value: string | undefined): value is App => value === 'base' || value === 'inertia';
 
 /** Validates and retrieves the target parameter. */
 const readTarget = (): Target => {
@@ -34,10 +41,16 @@ const readPort = (): number => {
   return port;
 };
 
+/** Validates and retrieves the application variant, defaulting to Inertia. */
+const readApp = (): App => (isApp(appArg) ? appArg : 'inertia');
+
+/** Chooses the Nest module for the requested application variant. */
+const readModule = (): Type<unknown> => (readApp() === 'base' ? BaseModule : BenchModule);
+
 /** Main bootstrap function for the standalone server runner. */
 const main = async (): Promise<void> => {
-  const app = await creators[readTarget()]();
-  app.enableCors({ origin: '*' });
+  const app = await creators[readTarget()](readModule());
+  app.enableCors(benchmarkCors(readTarget()));
   app.useLogger(false);
   await app.listen(readPort(), '127.0.0.1');
   process.stdout.write('BENCH_READY\n');

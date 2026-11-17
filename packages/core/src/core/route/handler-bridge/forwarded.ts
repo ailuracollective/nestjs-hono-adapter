@@ -21,11 +21,16 @@ const reportsFailure = (value: unknown): boolean => value !== undefined && value
 const forwardFrom = (continuation: Next, responseSettled?: Promise<void>): Forwarded => {
   let started: Promise<void> | undefined = undefined;
   let failure: unknown = undefined;
-  const called = Promise.withResolvers<undefined>();
+  // Only a deferred `next` needs the signal, so a route that never waits on one allocates nothing.
+  let called: ReturnType<typeof Promise.withResolvers<undefined>> | undefined = undefined;
+  const callSignal = (): ReturnType<typeof Promise.withResolvers<undefined>> =>
+    (called ??= Promise.withResolvers<undefined>());
   return {
     next: (error?: unknown): Promise<void> => {
-      // oxlint-disable-next-line unicorn/no-useless-undefined -- the resolver of a `void` promise needs its (ignored) argument once the type parameter is `undefined`.
-      called.resolve(undefined);
+      if (responseSettled !== undefined) {
+        // oxlint-disable-next-line unicorn/no-useless-undefined -- the resolver of a `void` promise needs its (ignored) argument once the type parameter is `undefined`.
+        callSignal().resolve(undefined);
+      }
       if (reportsFailure(error)) {
         failure ??= error;
         return Promise.resolve();
@@ -35,7 +40,7 @@ const forwardFrom = (continuation: Next, responseSettled?: Promise<void>): Forwa
     },
     settled: async (): Promise<void> => {
       if (started === undefined && responseSettled !== undefined) {
-        await Promise.race([called.promise, responseSettled]);
+        await Promise.race([callSignal().promise, responseSettled]);
       }
       await started;
       if (reportsFailure(failure)) throw failure;
