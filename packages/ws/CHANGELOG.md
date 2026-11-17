@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/ws-v0.3.0...ws-v0.4.0) (2026-11-17)
+
+
+### Features
+
+* **core:** expose the adapter on BridgeTarget ([#250](https://github.com/ailuracollective/nestjs-hono-adapter/issues/250)) ([7f203e0](https://github.com/ailuracollective/nestjs-hono-adapter/commit/7f203e0ab98a03f0340a3741e3d6de44d90642b2))
+* **ws:** a Nest gateway answers on a Cloudflare Worker ([#228](https://github.com/ailuracollective/nestjs-hono-adapter/issues/228)) ([dd12b0a](https://github.com/ailuracollective/nestjs-hono-adapter/commit/dd12b0ab9a6c976e7b97bc8b80ab5acac1f0cfa3))
+
+
+### Bug Fixes
+
+* align companion peer dependencies with core 2.x ([#206](https://github.com/ailuracollective/nestjs-hono-adapter/issues/206)) ([bb64a39](https://github.com/ailuracollective/nestjs-hono-adapter/commit/bb64a3911d54f46ac8a9cb257281e72c4eba88d0))
+* release the pnpm workspace build fix under a patch version ([6ea958e](https://github.com/ailuracollective/nestjs-hono-adapter/commit/6ea958e4f8d90c38713a285672aaa5b0cdfc4c47))
+
 ## [0.3.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/ws-v0.2.0...ws-v0.3.0) (2026-10-20)
 
 
