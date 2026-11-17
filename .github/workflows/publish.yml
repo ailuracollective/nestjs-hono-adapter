@@ -92,7 +92,7 @@ jobs:
       - name: Attach the SBOM to the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: gh release upload "$TAG" dist-sbom.spdx.json --clobber
       - name: Publish to npm
         run: npm publish "${{ steps.package.outputs.dir }}" --provenance --access public --tag "${{ steps.dist.outputs.tag }}"
