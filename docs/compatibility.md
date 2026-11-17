@@ -115,19 +115,20 @@ The one case this cannot separate is a handler that calls `res.status(200)` on a
 - `cookie(name, value, options)` writes `Set-Cookie` in **Express's attribute order** (`Max-Age`, `Domain`, `Path` — defaulting to `/`, as the `cookie` package does —, `Expires`, `HttpOnly`, `Secure`, `SameSite`) for a name that must be an HTTP token (alphanumerics and ``!#$%&'*+-.^_`|~``); anything else is the `TypeError` `cookie` raises. `clearCookie` writes the same set with an `Expires` in the past.
 - A **`signed` cookie is written unsigned**: signing needs an HMAC and `compat/` carries no Node builtins. A deployment that verifies signatures signs the value before calling `res.cookie`.
 
-The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` rather than in `surface.ts` only because a `compat/` file may not exceed a hundred lines; `fitResponse()` fits all of them, and the middleware `res` reads its headers through the same helper.
+The members live in `surface-extras.ts` and the cookie writer in `cookies.ts` rather than in `surface.ts` only because a `compat/` file may not exceed a hundred lines; `fitResponse()` fits all of them, and the middleware `res` reads its headers through the same helper. The extra methods are shared between contexts and read state from their receiver, avoiding per-request closures without changing Hono's prototype or sharing response state.
 
 ### `inertia`
 
 Shipped as `@ailura/nestjs-platform-hono-inertia`, which peers on `@dudousxd/nestjs-inertia`. That module registers its Inertia middleware only when `httpAdapter.getType() === 'express'`, and its interceptors read the Express response members `headersSent`, `statusCode` and `redirect`. On Hono neither is true. The bridge:
 
-- patches `InertiaModule.prototype.configure` so the stock `InertiaMiddleware` (and its method-spoof middleware) is registered on Hono;
+- patches `InertiaModule.prototype.configure` so `InertiaMiddleware` is registered on Hono, with the method-spoof middleware only when that option is on;
+- replaces the middleware's Express body with a lean one: it defines the lazy Inertia service over the fitted context and reads one `Cookie` header, and it drops the stock `suppressPostSendWrites` patch because `reply()` already refuses a second write;
 - fits `headersSent`, `statusCode`, `redirect` and `end` onto the raw Hono context, and makes the application's `reply()` leave a response Inertia already wrote alone;
 - upgrades a `302` after `PUT`, `PATCH`, `DELETE` or `QUERY` to `303` in the application's `redirect()`, so Nest's own `@Redirect()` agrees with Inertia;
 - patches the stock redirect interceptor on Hono so both `res.redirect(status, url)` and `res.redirect(url, status)` preserve an explicit status while a `302` becomes `303`;
 - answers a redirect to a URL with a fragment with `409` and `X-Inertia-Redirect` (prefetch requests receive the redirect unchanged), and adds `Vary: X-Inertia` to redirect responses;
 - answers a version mismatch with the full `X-Inertia-Location` and the server's `X-Inertia-Version`, treating a missing client header as an empty version;
-- parses the `Cookie` header into `req.cookies` before the stock middleware, so `CsrfCookieInterceptor` and `CsrfGuard` work on Hono;
+- parses the `Cookie` header into `req.cookies` before the Inertia service is created, so `CsrfCookieInterceptor` and `CsrfGuard` work on Hono;
 - hands a `FlashStore` the Nest request on both sides of the validation filter, so a session-keyed store sees one shape.
 
 The reply and redirect patches are fitted on the application's adapter instance, not its prototype, so a second Hono application in the same process is untouched; the module, service and interceptor patches are fitted on the peer's prototypes once per process. The behaviour suite covers merge/prepend/deepMerge/matchOn, scroll reset and merge intent, once, history flags, error bags, validation flash, CSRF, buffered and streaming SSR, and `forFeature`/`@UseInertia` scopes. The stock SSR loader and scope switcher need no bridge patch beyond the fitted surface.

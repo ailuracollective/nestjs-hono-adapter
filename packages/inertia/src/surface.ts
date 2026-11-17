@@ -1,6 +1,7 @@
 import type { BridgeTarget, NestContext } from '@ailura/nestjs-hono-adapter';
 
 import { absoluteUrl, fragmentResponse, isInertia, isPrefetch, varyOn } from './redirect-target.ts';
+import { MOUNTED } from './symbols.ts';
 
 const FITTED = Symbol.for('ailura.nestjs-hono-inertia.surface');
 const STATUS = Symbol.for('ailura.nestjs-hono-inertia.status');
@@ -56,17 +57,21 @@ const fit = (context: NestContext): void => {
   });
   fitRedirect(context);
   Reflect.set(context, 'end', (): void => {
-    context.res = new Response(undefined, {
-      headers: context.res.headers,
-      status: statusOf(context) ?? OK,
-    });
+    // `send` resolves the writer's pending status, which `res.status()` sets; a fresh `Response`
+    // built here would read this file's own status symbol instead.
+    const send: unknown = Reflect.get(context, 'send');
+    if (typeof send === 'function') Reflect.apply(send, context, [undefined]);
   });
 };
 
-/** The Inertia interceptors read Express members off the raw context; fit them before the route. */
+/**
+ * The Inertia interceptors read Express members off the raw context; fit them before the route. The
+ * middleware is installed for every Hono app the bridge reaches, but only an app that mounted the
+ * Inertia module sets the marker, so other apps pay one symbol lookup per request.
+ */
 const fitSurface = (target: BridgeTarget): void => {
   target.hono.use('*', (context, next) => {
-    fit(context);
+    if (Reflect.get(target.adapter, MOUNTED) === true) fit(context);
     return next();
   });
 };

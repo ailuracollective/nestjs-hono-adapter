@@ -8,7 +8,7 @@ import {
   VERSION,
 } from '@dudousxd/nestjs-inertia';
 
-import { patchCookies } from './cookies.ts';
+import { patchLeanMiddleware } from './lean-middleware.ts';
 import { patchInertiaModule } from './module.ts';
 import { patchRedirectInterceptor } from './redirect-interceptor.ts';
 import { patchValidationFilter } from './validation-filter.ts';
@@ -18,7 +18,7 @@ import { supportsInertia } from './version.ts';
 // Import this before creating the Nest application: `InertiaModule.configure()` runs before the
 // adapter's async bridge discovery settles.
 if (supportsInertia(VERSION)) {
-  patchCookies({ InertiaMiddleware });
+  patchLeanMiddleware({ InertiaMiddleware, InertiaService });
   patchInertiaModule({ InertiaMiddleware, InertiaModule, MethodSpoofMiddleware });
   patchVersionMismatch({ InertiaService });
   patchRedirectInterceptor({ RedirectInterceptor });

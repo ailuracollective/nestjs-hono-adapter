@@ -1,14 +1,7 @@
-import type { Type } from '@nestjs/common';
-
-const PATCHED = Symbol.for('ailura.nestjs-hono-inertia.middleware');
-
 interface RequestShape {
+  readonly get?: (name: string) => string | undefined;
   readonly headers?: Record<string, string | string[] | undefined>;
   cookies?: Record<string, string>;
-}
-
-interface MiddlewarePeer {
-  readonly InertiaMiddleware: Type<unknown>;
 }
 
 const MISSING = -1;
@@ -39,7 +32,9 @@ const parseCookies = (header: string | undefined): Record<string, string> => {
   return out;
 };
 
+// A single header read, not the whole record: the CSRF guard only wants `Cookie`.
 const cookieHeader = (req: RequestShape): string | undefined => {
+  if (typeof req.get === 'function') return req.get('cookie');
   const { headers } = req;
   if (headers === undefined) return undefined;
   const { Cookie, cookie } = headers;
@@ -48,27 +43,5 @@ const cookieHeader = (req: RequestShape): string | undefined => {
   return value;
 };
 
-/**
- * The CSRF guard reads `req.cookies`, which Express's cookie parser populates. Hono has no such
- * middleware, so parse the cookie header before the stock Inertia middleware runs.
- */
-const patchCookies = (peer: MiddlewarePeer): void => {
-  const prototype: unknown = Reflect.get(peer.InertiaMiddleware, 'prototype');
-  if (typeof prototype !== 'object' || prototype === null) return;
-  if (Reflect.get(prototype, PATCHED) === true) return;
-  Reflect.set(prototype, PATCHED, true);
-
-  const original: unknown = Reflect.get(prototype, 'use');
-  if (typeof original !== 'function') return;
-  Reflect.set(
-    prototype,
-    'use',
-    function use(this: unknown, ...args: [RequestShape, unknown, () => void]): void {
-      const [req] = args;
-      req.cookies ??= parseCookies(cookieHeader(req));
-      Reflect.apply(original, this, args);
-    },
-  );
-};
-
-export { patchCookies };
+export { cookieHeader, parseCookies };
+export type { RequestShape };
