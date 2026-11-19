@@ -184,7 +184,12 @@ class RequestBag implements NestRequest {
   public get path(): string {
     const { state } = this;
     const written = state.requestUrl;
-    if (written !== undefined) return new URL(written, 'http://adapter.invalid').pathname;
+    if (written !== undefined) {
+      const relative = this.relative(written);
+      // A leading // is a path in a Connect request target, not a URL authority.
+      if (relative.startsWith('/')) return relative.split(/[?#]/, 1)[0] ?? '/';
+      return new URL(relative, 'http://adapter.invalid').pathname;
+    }
     return this.relative(urlPartsOf(state).pathname);
   }
 
@@ -199,7 +204,7 @@ class RequestBag implements NestRequest {
 
   public get query(): ParsedQuery {
     const { state } = this;
-    state.query ??= parseQuery(searchOf(state.requestUrl ?? state.context.req.url));
+    state.query ??= parseQuery(searchOf(this.url));
     return state.query;
   }
 
@@ -296,14 +301,19 @@ class RequestBag implements NestRequest {
 
   public get url(): string {
     const { state } = this;
-    if (state.requestUrl !== undefined) return state.requestUrl;
+    if (state.requestUrl !== undefined) return this.relative(state.requestUrl);
     const parts = urlPartsOf(state);
     return this.relative((parts.route ??= `${parts.pathname}${parts.search}`));
   }
 
   public set url(value: string) {
-    this.state.requestUrl = value;
-    this.state.query = undefined;
+    const { state } = this;
+    const mount = state.mount;
+    // Store the full path so a subsequent next() or mountAt() can rebase the view.
+    state.requestUrl = mount !== undefined && mount !== '' && value.startsWith('/')
+      ? `${mount}${value}`
+      : value;
+    state.query = undefined;
   }
 
   public mountAt(prefix?: string): void {
