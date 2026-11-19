@@ -16,8 +16,12 @@
     "skipLibCheck": true,
     "paths": {
       "#adapter/*": ["../../../../packages/core/src/*.ts", "../../../../packages/core/src/*"],
+      "@ailura/examples-shared": ["../../shared/src/index.ts"],
+      "@ailura/examples-shared/dev": ["../../shared/src/inertia/dev.ts"],
       "@ailura/nestjs-hono-adapter": ["../../../../packages/core/src/index.ts"],
       "@ailura/nestjs-hono-adapter/fetch": ["../../../../packages/core/src/servers/fetch.ts"],
+      "@ailura/nestjs-platform-hono-inertia": ["../../../../packages/inertia/src/index.ts"],
+      "@ailura/nestjs-platform-hono-inertia/register": ["../../../../packages/inertia/src/register.ts"],
       "@ailura/nestjs-platform-hono-ws": ["../../../../packages/ws/src/index.ts"]
     }
   },
