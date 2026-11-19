@@ -60,6 +60,32 @@ test('Connect middleware can rewrite url and originalUrl', async () => {
   expect(bag.query.raw).toBe('1');
 });
 
+
+test('written double-slash request targets retain their path', async () => {
+  const { context } = await contextOver('/read');
+  const bag = toNestRequest(context, { trustProxy: false });
+  bag.url = '//assets/app.js?raw=1';
+  expect(bag.url).toBe('//assets/app.js?raw=1');
+  expect(bag.path).toBe('//assets/app.js');
+  expect(bag.query.raw).toBe('1');
+});
+
+test('mounted rewrites restore the full URL after next clears the mount', async () => {
+  const { context } = await contextOver('/read');
+  const bag = toNestRequest(context, { trustProxy: false });
+  bag.mountAt('/api');
+  bag.url = '/read?raw=1';
+  expect(bag.url).toBe('/read?raw=1');
+  expect(bag.path).toBe('/read');
+  expect(bag.query.raw).toBe('1');
+  bag.mountAt();
+  expect(bag.url).toBe('/api/read?raw=1');
+  expect(bag.path).toBe('/api/read');
+  bag.mountAt('/api');
+  expect(bag.url).toBe('/read?raw=1');
+  expect(bag.path).toBe('/read');
+});
+
 test('a property read twice is built once', async () => {
   const { context, reached } = await contextOver('/read');
   const bag = toNestRequest(context, { trustProxy: false });
