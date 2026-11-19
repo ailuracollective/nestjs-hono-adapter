@@ -187,7 +187,7 @@ class RequestBag implements NestRequest {
     if (written !== undefined) {
       const relative = this.relative(written);
       // A leading // is a path in a Connect request target, not a URL authority.
-      if (relative.startsWith('/')) return relative.split(/[?#]/, 1)[0] ?? '/';
+      if (relative.startsWith('/')) return relative.split(/[?#]/u, 1)[0] ?? '/';
       return new URL(relative, 'http://adapter.invalid').pathname;
     }
     return this.relative(urlPartsOf(state).pathname);
@@ -308,7 +308,7 @@ class RequestBag implements NestRequest {
 
   public set url(value: string) {
     const { state } = this;
-    const mount = state.mount;
+    const { mount } = state;
     // Store the full path so a subsequent next() or mountAt() can rebase the view.
     state.requestUrl = mount !== undefined && mount !== '' && value.startsWith('/')
       ? `${mount}${value}`
