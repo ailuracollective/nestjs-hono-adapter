@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/inertia-v0.2.0...inertia-v0.2.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* support Express-compatible response streaming ([#266](https://github.com/ailuracollective/nestjs-hono-adapter/issues/266)) ([768b05c](https://github.com/ailuracollective/nestjs-hono-adapter/commit/768b05c9e6bcadf02b5a3d679a898d82123c4440))
+
 ## [0.2.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/inertia-v0.1.0...inertia-v0.2.0) (2026-11-17)
 
 
