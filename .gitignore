@@ -40,3 +40,4 @@ odd/
 
 # Benchmark and example artifacts
 results/
+.vercel
