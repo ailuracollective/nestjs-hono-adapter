@@ -310,10 +310,11 @@ class RequestBag implements NestRequest {
     const { state } = this;
     const { mount } = state;
     // Store the full path so a subsequent next() or mountAt() can rebase the view.
-    state.requestUrl =
-      mount !== undefined && mount !== '' && value.startsWith('/')
-        ? `${mount}${value}`
-        : value;
+    if (mount !== undefined && mount !== '' && value.startsWith('/')) {
+      state.requestUrl = `${mount}${value}`;
+    } else {
+      state.requestUrl = value;
+    }
     state.query = undefined;
   }
 
