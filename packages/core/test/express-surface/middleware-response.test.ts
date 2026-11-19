@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { FITTED_END } from '#adapter/index';
 import { middlewareResponse } from '#adapter/compat/express/middleware-response';
 import type { NestContext } from '#adapter/core/context';
 
@@ -14,6 +15,7 @@ interface ProxySurface {
   addListener: (event: string, listener: () => void) => unknown;
   appendHeader: (name: string, value: string) => void;
   end: (body?: unknown) => void;
+  finished: boolean;
   getHeader: (name: string) => string;
   hasHeader: (name: string) => boolean;
   headersSent: boolean;
@@ -106,6 +108,12 @@ describe('middlewareResponse events', () => {
     expect(surfaceOf(ctx).headersSent).toBeDefined();
   });
 
+  test('proxy reports finished as a boolean', () => {
+    const ctx = makeContext();
+    // `on-finished` destroys a stream it piped when this is not a boolean.
+    expect(surfaceOf(ctx).finished).toBe(false);
+  });
+
   test('proxy has statusCode getter', () => {
     const ctx = makeContext();
     expect(surfaceOf(ctx).statusCode).toBeDefined();
@@ -177,5 +185,33 @@ describe('middlewareResponse header behaviour', () => {
     const ctx = makeContext();
     surfaceOf(ctx).appendHeader('x-multi', 'value');
     expect(ctx.res.headers.get('x-multi')).toBe('value');
+  });
+});
+
+describe('middlewareResponse end', () => {
+  test('a bridge-fitted end is hidden from the middleware', () => {
+    const ctx = makeContext();
+    let fittedCalls = 0;
+    const fitted = (): void => {
+      fittedCalls += 1;
+    };
+    Reflect.set(fitted, FITTED_END, true);
+    Reflect.set(ctx, 'end', fitted);
+    const surface = surfaceOf(ctx);
+    expect(surface.end).not.toBe(fitted);
+    surface.end('body');
+    expect(fittedCalls).toBe(0);
+  });
+
+  test('a middleware end override is visible to the next view', () => {
+    const ctx = makeContext();
+    const first = surfaceOf(ctx);
+    const seen: string[] = [];
+    first.end = (body?: unknown): void => {
+      seen.push(String(body));
+    };
+    const second = surfaceOf(ctx);
+    second.end('next');
+    expect(seen).toStrictEqual(['next']);
   });
 });
