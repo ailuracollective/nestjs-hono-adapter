@@ -10,7 +10,7 @@ export type {
   WebSocketSupport,
 } from './core/ports/transport.ts';
 export type { NestHonoApplication } from './core/server/application.ts';
-export { bridgeNames, registerBridge } from './compat/index.ts';
+export { bridgeNames, FITTED_END, registerBridge } from './compat/index.ts';
 export type { Bridge, BridgeAdapter, BridgeTarget } from './compat/index.ts';
 export { loadPeer } from './compat/peer-load.ts';
 export { toHonoPath } from './core/request/path.ts';
