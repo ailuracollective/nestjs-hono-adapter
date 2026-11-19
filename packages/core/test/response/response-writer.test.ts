@@ -66,6 +66,16 @@ describe('ResponseWriter status', () => {
     writer.reply(asContext(ctx), 'created');
     expect(writer.statusOf(asContext(ctx))).toBe(CREATED);
   });
+
+  test('reply ignores a response the handler already finalized', () => {
+    const writer = new ResponseWriter();
+    const ctx = makeContext();
+    writer.reply(asContext(ctx), 'first');
+    const written = ctx.res;
+    ctx.finalized = true;
+    writer.reply(asContext(ctx), 'second');
+    expect(ctx.res).toBe(written);
+  });
 });
 
 describe('ResponseWriter replies', () => {
