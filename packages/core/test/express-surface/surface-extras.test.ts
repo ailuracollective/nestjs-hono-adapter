@@ -78,6 +78,13 @@ describe('setHeaderValue', () => {
     expect(ctx.res.headers.get('x-custom')).toBe('value');
   });
 
+  test('coerces a number the way Node does', () => {
+    const ctx = makeContext();
+    const length = 42;
+    setHeaderValue(asContext(ctx), 'content-length', length);
+    expect(ctx.res.headers.get('content-length')).toBe(String(length));
+  });
+
   test('replaces existing header with string value', () => {
     const ctx = makeContext();
     ctx.header('x-custom', 'old');
