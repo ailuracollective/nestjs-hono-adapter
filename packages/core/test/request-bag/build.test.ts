@@ -70,6 +70,7 @@ test('written double-slash request targets retain their path', async () => {
   expect(bag.query.raw).toBe('1');
 });
 
+// oxlint-disable-next-line max-statements -- exercise mount transitions and every observable request URL view together.
 test('mounted rewrites restore the full URL after next clears the mount', async () => {
   const { context } = await contextOver('/read');
   const bag = toNestRequest(context, { trustProxy: false });
