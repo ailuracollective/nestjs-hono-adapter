@@ -322,7 +322,11 @@ class RequestBag implements NestRequest {
   private relative(full: string): string {
     const { mount } = this.state;
     // Only a real mount prefix is stripped, and only at a segment boundary.
-    if (mount === undefined || mount === '' || (full !== mount && !full.startsWith(`${mount}/`) && !full.startsWith(`${mount}?`)))
+    if (
+      mount === undefined ||
+      mount === '' ||
+      (full !== mount && !full.startsWith(`${mount}/`) && !full.startsWith(`${mount}?`))
+    )
       return full;
 
     const rest = full.slice(mount.length);
