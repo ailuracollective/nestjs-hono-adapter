@@ -50,6 +50,7 @@ class ResponseWriter {
   }
 
   public redirect(response: NestContext, statusCode: number, url: string): void {
+    if (response.finalized) return;
     response.header('Location', url);
     response.res = buildResponse(response, undefined, statusCode);
   }
@@ -71,6 +72,9 @@ class ResponseWriter {
   }
 
   private answer(response: NestContext, body: unknown, status: number): void {
+    // Nest's post-handler reply must not clear a page the handler already wrote, the way Express
+    // ignores a write once the headers are sent.
+    if (response.finalized) return;
     const tag = this.tagOf(response, body, status);
     if (tag === undefined) {
       response.res = buildResponse(response, body, status);
