@@ -1,11 +1,5 @@
-import {
-  ArgumentsHost,
-  Catch,
-  HttpStatus,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
-import type { ExceptionFilter } from '@nestjs/common';
+import { Catch, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 
 /** The error the example filter catches. */

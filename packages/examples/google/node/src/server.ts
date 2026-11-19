@@ -1,15 +1,14 @@
 import 'reflect-metadata';
+// Import before creating the app: it patches the stock Inertia module for Hono.
+import '@ailura/nestjs-platform-hono-inertia/register';
 
-import { VersioningType } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-
-import {
-  ServerAdapter,
-  type NestHonoApplication,
-} from '@ailura/nestjs-hono-adapter';
+import { createApp } from '@ailura/examples-shared';
+import { SharedAppModule } from '@ailura/examples-shared/app';
+import { setupExamplesVite } from '@ailura/examples-shared/dev';
+import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
-import { AppModule } from './app.module.ts';
-import { registerDocs } from './docs.ts';
+
+process.env.INERTIA_HOST = 'google';
 
 /** The port the revision listens on: Cloud Run names it in $PORT. */
 const PORT = Number(process.env.PORT ?? 8080);
@@ -25,20 +24,7 @@ const adapter = new ServerAdapter({
 });
 
 /** The Nest application. */
-const app = await NestFactory.create<NestHonoApplication>(AppModule, adapter, {
-  logger: ['error', 'warn'],
-});
+const app = await createApp(adapter, SharedAppModule);
 
-app.enableCors({
-  origin: ['https://example.com'],
-  credentials: true,
-});
-
-app.enableVersioning({
-  type: VersioningType.URI,
-  defaultVersion: '1',
-});
-
-registerDocs(app, adapter);
-
+await setupExamplesVite(app);
 await app.listen(PORT);

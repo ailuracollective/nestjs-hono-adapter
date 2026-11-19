@@ -8,19 +8,20 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Inertia } from '@dudousxd/nestjs-inertia';
 import { interval, map, take } from 'rxjs';
 import type { Observable } from 'rxjs';
 
 import { TeapotError } from './boom.filter.ts';
 import { TokenGuard } from './token.guard.ts';
 
-/** The example controller served by the Vercel Function. */
+/** The demo controller every example serves. */
 @Controller()
 export class AppController {
   /** Answers a health probe. */
   @Get('health')
   public health(): { ok: boolean; where: string } {
-    return { ok: true, where: 'vercel' };
+    return { ok: true, where: process.env.INERTIA_HOST ?? 'hono' };
   }
 
   /** Greets the name in the query, or the world. */
@@ -71,6 +72,13 @@ export class AppController {
   @Get('boom')
   public boom(): never {
     throw new TeapotError('this one is on purpose');
+  }
+
+  /** Renders the Inertia page; an `X-Inertia` visit receives the same props as protocol JSON. */
+  @Get('inertia')
+  @Inertia('Todo')
+  public inertia(): { message: string } {
+    return { message: 'Hello from Inertia!' };
   }
 
   /** Reports the byte count of the raw body. */
