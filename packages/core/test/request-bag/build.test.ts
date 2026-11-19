@@ -47,6 +47,45 @@ test('the translation builds nothing the route does not read', async () => {
   expect(reached.incoming).toBe(0);
 });
 
+test('Connect middleware can rewrite url and originalUrl', async () => {
+  const { context } = await contextOver('/read?name=ada');
+  const bag = toNestRequest(context, { trustProxy: false });
+  bag.originalUrl = '/mounted/read?name=ada';
+  // Writing originalUrl, as a mount or logger does, does not move `url`.
+  expect(bag.url).toBe('/read?name=ada');
+  bag.url = '/health?raw=1';
+  expect(bag.originalUrl).toBe('/mounted/read?name=ada');
+  expect(bag.url).toBe('/health?raw=1');
+  expect(bag.path).toBe('/health');
+  expect(bag.query.raw).toBe('1');
+});
+
+test('written double-slash request targets retain their path', async () => {
+  const { context } = await contextOver('/read');
+  const bag = toNestRequest(context, { trustProxy: false });
+  bag.url = '//assets/app.js?raw=1';
+  expect(bag.url).toBe('//assets/app.js?raw=1');
+  expect(bag.path).toBe('//assets/app.js');
+  expect(bag.query.raw).toBe('1');
+});
+
+// oxlint-disable-next-line max-statements -- exercise mount transitions and every observable request URL view together.
+test('mounted rewrites restore the full URL after next clears the mount', async () => {
+  const { context } = await contextOver('/read');
+  const bag = toNestRequest(context, { trustProxy: false });
+  bag.mountAt('/api');
+  bag.url = '/read?raw=1';
+  expect(bag.url).toBe('/read?raw=1');
+  expect(bag.path).toBe('/read');
+  expect(bag.query.raw).toBe('1');
+  bag.mountAt();
+  expect(bag.url).toBe('/api/read?raw=1');
+  expect(bag.path).toBe('/api/read');
+  bag.mountAt('/api');
+  expect(bag.url).toBe('/read?raw=1');
+  expect(bag.path).toBe('/read');
+});
+
 test('a property read twice is built once', async () => {
   const { context, reached } = await contextOver('/read');
   const bag = toNestRequest(context, { trustProxy: false });
