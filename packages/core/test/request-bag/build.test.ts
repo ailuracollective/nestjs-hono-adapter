@@ -60,7 +60,6 @@ test('Connect middleware can rewrite url and originalUrl', async () => {
   expect(bag.query.raw).toBe('1');
 });
 
-
 test('written double-slash request targets retain their path', async () => {
   const { context } = await contextOver('/read');
   const bag = toNestRequest(context, { trustProxy: false });
