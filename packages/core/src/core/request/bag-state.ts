@@ -25,10 +25,12 @@ interface BagState {
   ip: string | undefined;
   method: string | undefined;
   mount: string | undefined;
+  originalUrl: string | undefined;
   params: Record<string, string> | undefined;
   paramsAt: number | undefined;
   protocol: string | undefined;
   query: ParsedQuery | undefined;
+  requestUrl: string | undefined;
   url: UrlParts | undefined;
 }
 
@@ -48,8 +50,7 @@ const urlPartsOf = (state: BagState): UrlParts => {
 };
 
 // The query string alone, without the `URL` parse the rest of the parts need.
-const searchOf = (context: NestContext): string => {
-  const { url } = context.req;
+const searchOf = (url: string): string => {
   const question = url.indexOf('?');
   const hash = url.indexOf('#');
   if (question === MISSING || (hash !== MISSING && hash < question)) return '';
