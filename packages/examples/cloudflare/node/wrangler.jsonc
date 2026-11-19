@@ -9,12 +9,21 @@
     "enable_request_signal"
   ],
   "define": {
-    "import.meta.url": "\"file:///worker.js\""
+    "import.meta.url": "\"file:///worker.js\"",
+    "process.env.INERTIA_HOST": "\"workers\"",
+    "process.env.INERTIA_SHELL": "\"shim\"",
+    "process.env.NODE_ENV": "\"production\""
   },
   "alias": {
+    "@ailura/examples-shared": "../../shared/src/index.ts",
+    "@ailura/examples-shared/dev": "../../shared/src/inertia/dev.ts",
     "@ailura/nestjs-hono-adapter": "../../../../packages/core/src/index.ts",
     "@ailura/nestjs-hono-adapter/node-server": "../../../../packages/core/src/servers/node.ts",
+    "@ailura/nestjs-platform-hono-inertia": "../../../../packages/inertia/src/index.ts",
+    "@ailura/nestjs-platform-hono-inertia/register": "../../../../packages/inertia/src/register.ts",
     "@fastify/static": "./src/stub-optional-peers.ts",
+    "fs": "./src/fs-shim.ts",
+    "fs/promises": "./src/fs-shim.ts",
     "@nestjs/microservices": "./src/stub-optional-peers.ts",
     "@nestjs/microservices/microservices-module.js": "./src/stub-optional-peers.ts",
     "@nestjs/websockets/socket-module.js": "./src/stub-optional-peers.ts",

@@ -7,7 +7,7 @@ import type {
 } from '@ailura/nestjs-hono-adapter';
 
 /** The title the document and the reference page carry. */
-const TITLE = 'Ailura NestJS + Hono (Cloud Functions)';
+const TITLE = 'Ailura NestJS + Hono';
 
 /** Serves the OpenAPI document and the reference page. */
 const registerDocs = (

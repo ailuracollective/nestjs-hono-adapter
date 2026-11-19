@@ -4,7 +4,8 @@
     "packages/*",
     "packages/examples/cloudflare/*",
     "packages/examples/google/*",
-    "packages/examples/vercel/*"
+    "packages/examples/vercel/*",
+    "packages/examples/shared"
   ],
   "type": "module",
   "scripts": {
