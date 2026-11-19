@@ -47,6 +47,19 @@ test('the translation builds nothing the route does not read', async () => {
   expect(reached.incoming).toBe(0);
 });
 
+test('Connect middleware can rewrite url and originalUrl', async () => {
+  const { context } = await contextOver('/read?name=ada');
+  const bag = toNestRequest(context, { trustProxy: false });
+  bag.originalUrl = '/mounted/read?name=ada';
+  // Writing originalUrl, as a mount or logger does, does not move `url`.
+  expect(bag.url).toBe('/read?name=ada');
+  bag.url = '/health?raw=1';
+  expect(bag.originalUrl).toBe('/mounted/read?name=ada');
+  expect(bag.url).toBe('/health?raw=1');
+  expect(bag.path).toBe('/health');
+  expect(bag.query.raw).toBe('1');
+});
+
 test('a property read twice is built once', async () => {
   const { context, reached } = await contextOver('/read');
   const bag = toNestRequest(context, { trustProxy: false });
