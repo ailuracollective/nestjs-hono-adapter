@@ -1,3 +1,4 @@
+import { FITTED_END } from '@ailura/nestjs-hono-adapter';
 import type { BridgeTarget, NestContext } from '@ailura/nestjs-hono-adapter';
 
 import { absoluteUrl, fragmentResponse, isInertia, isPrefetch, varyOn } from './redirect-target.ts';
@@ -61,11 +62,14 @@ function redirect(
   return response;
 }
 
-function end(this: NestContext): void {
-  // `send` resolves the writer's pending status; a fresh Response would read this file's symbol.
+function end(this: NestContext, body?: unknown): void {
+  // `send` resolves the writer's pending status; a callback is `end`'s completion, not a body.
   const send: unknown = Reflect.get(this, 'send');
-  if (typeof send === 'function') Reflect.apply(send, this, [undefined]);
+  if (typeof send === 'function') {
+    Reflect.apply(send, this, [typeof body === 'function' ? undefined : body]);
+  }
 }
+Reflect.set(end, FITTED_END, true);
 
 const HEADERS_SENT: PropertyDescriptor = { configurable: true, get: headersSent };
 const STATUS_CODE: PropertyDescriptor = {
@@ -84,10 +88,8 @@ const fit = (context: NestContext): void => {
   Reflect.set(context, 'end', end);
 };
 
-/**
- * The Inertia interceptors read Express members off the raw context; fit them before the route.
- * Other apps pay one symbol lookup per request because the module marker is unset.
- */
+// The Inertia interceptors read Express members off the raw context; fit them before the route.
+// Other apps pay one symbol lookup per request because the module marker is unset.
 const fitSurface = (target: BridgeTarget): void => {
   target.hono.use('*', (context, next) => {
     if (Reflect.get(target.adapter, MOUNTED) === true) fit(context);

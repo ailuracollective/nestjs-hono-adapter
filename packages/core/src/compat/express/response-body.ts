@@ -64,4 +64,10 @@ const attach = (context: NestContext, request: ListenRequest): unknown => {
   return listen(lifecycle, request);
 };
 
-export { attach, bytesOf, writeBody };
+const attachTo =
+  (context: NestContext, method: LifecycleMethod) =>
+  (event: string, listener: () => void): unknown =>
+    attach(context, { event, listener, method });
+
+export { attach, attachTo, bytesOf, writeBody };
+export type { LifecycleMethod };

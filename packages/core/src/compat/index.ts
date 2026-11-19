@@ -18,7 +18,7 @@ function resetBridges(): void {
 }
 
 export { resetBridges };
-export { expressErrorMiddleware } from './express/index.ts';
+export { expressErrorMiddleware, FITTED_END } from './express/index.ts';
 export {
   BRIDGE_PACKAGES,
   bridgeNames,

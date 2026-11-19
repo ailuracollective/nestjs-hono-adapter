@@ -11,5 +11,6 @@ const expressBridge: Bridge = {
 };
 
 export { expressErrorMiddleware } from './middleware-run.ts';
+export { FITTED_END } from './proxy-handler.ts';
 export { installSurface } from './surface-fit.ts';
 export { expressBridge };

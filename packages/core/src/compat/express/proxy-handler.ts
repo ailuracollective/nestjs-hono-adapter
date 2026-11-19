@@ -3,8 +3,14 @@ import { writer } from './surface.ts';
 
 const HIDDEN = 'set';
 
+// A bridge marks the `end` it fits, so middleware still reads the surface's reader instead.
+const FITTED_END = Symbol.for('ailura.nestjs-hono-adapter.fittedEnd');
+
 const isCallable = (value: unknown): value is (...args: unknown[]) => unknown =>
   typeof value === 'function';
+
+const isFittedEnd = (value: unknown): boolean =>
+  typeof value === 'function' && Reflect.get(value, FITTED_END) === true;
 
 const proxyHandler = (
   context: NestContext,
@@ -15,8 +21,11 @@ const proxyHandler = (
     if (typeof property !== 'string') return Reflect.get(target, property);
     if (property === HIDDEN) return undefined;
     if (overrides.has(property)) return overrides.get(property);
+    // A bridge fits `end` to settle its own response; a middleware still reads the surface's
+    // reader, which collects what `write` left and answers with it.
+    const fitted = property === 'end' && isFittedEnd(Reflect.get(target, property));
     // A fitted member wins, so a request that only reads it builds no readers at all.
-    if (Object.hasOwn(target, property)) return Reflect.get(target, property);
+    if (!fitted && Object.hasOwn(target, property)) return Reflect.get(target, property);
     const readers = readersOf();
     if (Object.hasOwn(readers, property)) return readers[property];
     const value = Reflect.get(target, property);
@@ -45,4 +54,4 @@ const proxyHandler = (
   },
 });
 
-export { HIDDEN, isCallable, proxyHandler };
+export { FITTED_END, HIDDEN, isCallable, proxyHandler };

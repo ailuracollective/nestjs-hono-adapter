@@ -23,10 +23,10 @@ const headerValue = (
 const setHeaderValue = (
   context: NestContext,
   name: string,
-  value: string | readonly string[],
+  value: number | string | readonly string[],
 ): void => {
-  if (typeof value === 'string') {
-    context.header(name, value);
+  if (typeof value !== 'object') {
+    context.header(name, String(value));
     return;
   }
   context.res.headers.delete(name);
@@ -72,7 +72,11 @@ const EXTRAS = {
     this.res.headers.delete(name);
     return this;
   },
-  setHeader(this: NestContext, name: string, value: string | readonly string[]): NestContext {
+  setHeader(
+    this: NestContext,
+    name: string,
+    value: number | string | readonly string[],
+  ): NestContext {
     setHeaderValue(this, name, value);
     return this;
   },

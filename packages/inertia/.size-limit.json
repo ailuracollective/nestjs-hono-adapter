@@ -2,7 +2,7 @@
   {
     "name": "inertia",
     "path": "dist/index.js",
-    "limit": 1075,
+    "limit": 1150,
     "brotli": true,
     "ignore": [
       "@ailura/nestjs-hono-adapter",
