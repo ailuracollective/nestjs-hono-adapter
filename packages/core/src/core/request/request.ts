@@ -74,10 +74,12 @@ class RequestBag implements NestRequest {
       method: undefined,
       mount: undefined,
       options,
+      originalUrl: undefined,
       params: undefined,
       paramsAt: undefined,
       protocol: undefined,
       query: undefined,
+      requestUrl: undefined,
       url: undefined,
     };
     this.body = undefined;
@@ -157,8 +159,12 @@ class RequestBag implements NestRequest {
 
   public get originalUrl(): string {
     const parts = urlPartsOf(this.state);
-    parts.route ??= `${parts.pathname}${parts.search}`;
-    return parts.route;
+    return this.state.originalUrl ?? (parts.route ??= `${parts.pathname}${parts.search}`);
+  }
+
+  // Connect middleware (e.g. Vite's bridge) mutates these fields as it strips mount prefixes.
+  public set originalUrl(value: string) {
+    this.state.originalUrl = value;
   }
 
   public get baseUrl(): string {
@@ -176,7 +182,10 @@ class RequestBag implements NestRequest {
   }
 
   public get path(): string {
-    return this.relative(urlPartsOf(this.state).pathname);
+    const { state } = this;
+    const written = state.requestUrl;
+    if (written !== undefined) return new URL(written, 'http://adapter.invalid').pathname;
+    return this.relative(urlPartsOf(state).pathname);
   }
 
   public get protocol(): string {
@@ -190,7 +199,7 @@ class RequestBag implements NestRequest {
 
   public get query(): ParsedQuery {
     const { state } = this;
-    state.query ??= parseQuery(searchOf(state.context));
+    state.query ??= parseQuery(searchOf(state.requestUrl ?? state.context.req.url));
     return state.query;
   }
 
@@ -286,7 +295,15 @@ class RequestBag implements NestRequest {
   }
 
   public get url(): string {
-    return this.relative(this.originalUrl);
+    const { state } = this;
+    if (state.requestUrl !== undefined) return state.requestUrl;
+    const parts = urlPartsOf(state);
+    return this.relative((parts.route ??= `${parts.pathname}${parts.search}`));
+  }
+
+  public set url(value: string) {
+    this.state.requestUrl = value;
+    this.state.query = undefined;
   }
 
   public mountAt(prefix?: string): void {
