@@ -8,19 +8,20 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Inertia } from '@dudousxd/nestjs-inertia';
 import { interval, map, take } from 'rxjs';
 import type { Observable } from 'rxjs';
 
 import { TeapotError } from './boom.filter.ts';
 import { TokenGuard } from './token.guard.ts';
 
-/** The example controller served by the node Worker. */
+/** The demo controller every example serves. */
 @Controller()
 export class AppController {
   /** Answers a health probe. */
   @Get('health')
   public health(): { ok: boolean; where: string } {
-    return { ok: true, where: 'workers' };
+    return { ok: true, where: process.env.INERTIA_HOST ?? 'hono' };
   }
 
   /** Greets the name in the query, or the world. */
@@ -52,18 +53,12 @@ export class AppController {
     );
   }
 
-  /** Throws the error the example filter catches. */
-  @Get('boom')
-  public boom(): never {
-    throw new TeapotError('this one is on purpose');
-  }
-
-  /** Reports the byte count of the raw body. */
-  @Post('raw')
-  public raw(@Req() request: { rawBody?: Uint8Array }): {
-    bytes: number;
+  /** Reports the client address the adapter read. */
+  @Get('whoami')
+  public whoami(@Req() request: { ip?: string }): {
+    ip: string | null;
   } {
-    return { bytes: request.rawBody?.length ?? 0 };
+    return { ip: request.ip ?? null };
   }
 
   /** Guards the route with the example API token. */
@@ -73,15 +68,24 @@ export class AppController {
     return { secret: 'only with x-api-token: let-me-in' };
   }
 
-  /** Reports the client address and the path it arrived on. */
-  @Get('whoami')
-  public whoami(@Req() request: { ip?: string }): {
-    ip: string | null;
-    via: string;
+  /** Throws the error the example filter catches. */
+  @Get('boom')
+  public boom(): never {
+    throw new TeapotError('this one is on purpose');
+  }
+
+  /** Renders the Inertia page; an `X-Inertia` visit receives the same props as protocol JSON. */
+  @Get('inertia')
+  @Inertia('Todo')
+  public inertia(): { message: string } {
+    return { message: 'Hello from Inertia!' };
+  }
+
+  /** Reports the byte count of the raw body. */
+  @Post('raw')
+  public raw(@Req() request: { rawBody?: Uint8Array }): {
+    bytes: number;
   } {
-    return {
-      ip: request.ip ?? null,
-      via: 'cloudflare:node socket',
-    };
+    return { bytes: request.rawBody?.length ?? 0 };
   }
 }
