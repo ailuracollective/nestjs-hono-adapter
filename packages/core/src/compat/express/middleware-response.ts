@@ -1,5 +1,5 @@
 import type { NestContext } from '#adapter/core/context';
-import { attach, bytesOf, writeBody } from './response-body.ts';
+import { attachTo, bytesOf, writeBody } from './response-body.ts';
 import { headerValue, setHeaderValue } from './surface-extras.ts';
 import { isCallable, proxyHandler } from './proxy-handler.ts';
 import { writer } from './surface.ts';
@@ -9,6 +9,7 @@ interface MiddlewareResponse {
   readonly proxy: NestContext;
 }
 
+// Shortcut: `write` buffers until `end`, so a piped stream is held in memory.
 const headerReaders = (
   context: NestContext,
   locals: Record<string, unknown>,
@@ -17,16 +18,17 @@ const headerReaders = (
   const chunks: Uint8Array[] = [];
   let ended = false;
   return {
-    addListener: (event: string, listener: () => void): unknown =>
-      attach(context, { event, listener, method: 'addListener' }),
+    addListener: attachTo(context, 'addListener'),
     appendHeader: (name: string, value: string): void => {
       context.header(name, value, { append: true });
     },
     end: (body?: unknown): void => {
       if (ended) return;
       ended = true;
-      if (body !== undefined) chunks.push(bytesOf(body));
-      writeBody(context, chunks);
+      writeBody(context, body === undefined ? chunks : [...chunks, bytesOf(body)]);
+    },
+    get finished(): boolean {
+      return ended || context.finalized;
     },
     getHeader: (name: string): string | readonly string[] | undefined => headerValue(context, name),
     hasHeader: (name: string): boolean => context.res.headers.has(name),
@@ -34,18 +36,14 @@ const headerReaders = (
       return context.finalized;
     },
     locals,
-    off: (event: string, listener: () => void): unknown =>
-      attach(context, { event, listener, method: 'off' }),
-    on: (event: string, listener: () => void): unknown =>
-      attach(context, { event, listener, method: 'on' }),
-    once: (event: string, listener: () => void): unknown =>
-      attach(context, { event, listener, method: 'once' }),
+    off: attachTo(context, 'off'),
+    on: attachTo(context, 'on'),
+    once: attachTo(context, 'once'),
     removeHeader: (name: string): void => {
       context.res.headers.delete(name);
     },
-    removeListener: (event: string, listener: () => void): unknown =>
-      attach(context, { event, listener, method: 'removeListener' }),
-    setHeader: (name: string, value: string | readonly string[]): void => {
+    removeListener: attachTo(context, 'removeListener'),
+    setHeader: (name: string, value: number | string | readonly string[]): void => {
       setHeaderValue(context, name, value);
     },
     get statusCode(): number {
@@ -72,10 +70,16 @@ const middlewareResponse = (context: NestContext): MiddlewareResponse => {
     return state.proxy;
   };
   // Built on first read: a middleware that only touches the request (method spoofing) never pays
-  // for the sixteen response members, and one that reads a fitted member skips them too.
+  // for the sixteen response members, and one that reads a fitted member skips them too. A stream
+  // piping into the surface calls `emit`; the transport owns the real listeners.
   let readers: Record<string, unknown> | undefined = undefined;
   const readersOf = (): Record<string, unknown> =>
-    (readers ??= headerReaders(context, {}, writeHead));
+    (readers ??= Object.assign(headerReaders(context, {}, writeHead), {
+      emit: (event: string, ...args: unknown[]): boolean => {
+        const { outgoing } = context.env;
+        return outgoing === undefined ? false : outgoing.emit(event, ...args);
+      },
+    }));
   const handler = proxyHandler(context, overrides, readersOf);
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the proxy layers Express response semantics onto the Hono context.
   const target = context as unknown as Record<string, unknown>;
