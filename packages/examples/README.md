@@ -1,6 +1,6 @@
 # Examples
 
-Seven independent projects, one per transport and host:
+Seven host projects over one private demo package. `shared/` holds the Nest demo (controllers, filter, guard and docs), the Inertia client and root view, the Vite config and the root-view helpers; each host folder keeps its own `package.json`, host config and transport entry, plus the platform pieces only it needs. `shared/` is a Bun workspace member, private, and never published or deployed.
 
 | Folder                               | Transport | Entry          | Host                                     |
 | ------------------------------------ | --------- | -------------- | ---------------------------------------- |
@@ -25,6 +25,7 @@ Every example carries `enableVersioning({ type: URI, defaultVersion: '1' })`, so
 | `GET /v1/stream`   | three SSE frames, 100 ms apart              |
 | `GET /v1/boom`     | 418, answered by the filter                  |
 | `GET /v1/private`  | 401 without the token                         |
+| `GET /v1/inertia`  | the Inertia page, HTML on a first load and protocol JSON with `X-Inertia: true` |
 | `GET /v1/whoami`   | the client address                            |
 | `GET /v1/docs-json` | the OpenAPI document                        |
 | `GET /v1/reference` | the Scalar API reference                    |
@@ -55,6 +56,26 @@ bun run packages/examples/vercel/node/src/server.ts
 bun run packages/examples/vercel/bun/src/standalone.ts
 bun run --cwd packages/examples/google/node dev
 ```
+
+## Inertia and Vite
+
+Every example carries the same Inertia integration, the one `@dudousxd/nestjs-inertia` documents:
+
+- `shared/inertia/root.html` is the root view, `shared/inertia/app.tsx` the client entry and `shared/inertia/pages/Todo.tsx` the page — a todo list kept in `localStorage`, so the server holds no state.
+- `shared/vite.config.ts` runs `nestInertia({ entry: 'inertia/app.tsx', react: true, root: '.' })`.
+- `shared/src/app/app.module.ts` names the stock `InertiaModule.forRoot({ rootView })`, with `shared/inertia/root.html` as the root view in development; the only import from the bridge is `@ailura/nestjs-platform-hono-inertia/register` in each host entry, before the application is created. Cloudflare keeps its own copy of the app because wrangler's bundle initialises the shared `@Inertia` decorator out of order.
+- `shared/src/inertia/dev.ts` calls `setupInertiaVite(app, { mode, root, publicDir, outDir })` in development, where Vite's Connect middleware serves HMR. This is what the branch's Connect middleware fix makes work on Hono. Each host entry calls `setupExamplesVite(app)`.
+- `bun run --cwd packages/examples/shared build` runs `vite build` into `shared/dist/inertia/client` and the inline generator, then `tsc` for the app. Every host build chains it after `build:core` and the Inertia bridge build.
+
+`GET /v1/inertia` answers the first-load document to a browser and the page object as JSON to an Inertia visit:
+
+```sh
+curl -i localhost:3000/v1/inertia -H 'X-Inertia: true'
+```
+
+A Worker has no filesystem, but it keeps the same `rootView` path: the inline build writes `shared/src/inertia.generated.ts`, `src/fs-shim.ts` answers the module's `fs` read of `root.html` from it (wrangler aliases `fs` and `fs/promises`), and `version: 'v1'` keeps the module from reading `package.json` for a fallback. The application is built on the first request rather than at module scope, because a Worker forbids random values in the global scope and the stock file renderer draws its placeholders with `crypto.randomBytes`. Their `dev` script builds the client first and serves it inline, so a Worker has no Vite HMR.
+
+A serverless Function ships only the modules it imports, and a Worker has no filesystem at all, so the shared build inlines the client: `scripts/inline-inertia.ts` turns `shared/inertia/root.html` and the Vite output into `shared/src/inertia.generated.ts`, which `shared/src/inertia/options.ts` consumes. The Vercel and Google entries write that shell under the host's temp directory and pass its path; Cloudflare's `fs` shim answers the renderer's read from the module. `rootView` is still a string path in every case (`VERCEL_ENV`, `INERTIA_DEPLOYED`, `K_SERVICE` or `NODE_ENV` selects it). The stock `@vite` path, with the dev server and the manifest, stays for development and for a server that owns its filesystem. The Google examples are deployed to Cloud Functions and Cloud Run, never to Vercel.
 
 ## Cloudflare
 
@@ -183,7 +204,7 @@ Every folder carries a `vercel.json`, so a Git-connected project builds exactly 
 Each project selects its own build through an `ignoreCommand` (a setting Vercel reads from `vercel.json` as well as from the dashboard), so no commit can deploy an example whose inputs did not change:
 
 ```json
-"ignoreCommand": "bun run ignore-build -- . ../../../core/src ../../../core/package.json ../../../core/tsconfig.build.json ../../../../package.json ../../../../bun.lock ../../../../tsconfig.json ../../../../bunfig.toml"
+"ignoreCommand": "bun run ignore-build -- . ../../../core ../../../inertia ../../shared ../../../../package.json ../../../../bun.lock ../../../../tsconfig.json ../../../../bunfig.toml"
 
 The command calls the repository script `scripts/ignore-build.ts`,
 registered as `ignore-build` in the root `package.json` and in each
@@ -194,9 +215,9 @@ and on any Git error; it exits `0` only when nothing changed. The same
 command runs by hand with `bun run ignore-build -- <paths...>`.
 ```
 
-The paths are relative to the project Root Directory and name what the build reads: the project's own directory, the adapter's source and the files its build reads, plus the root manifest, lockfile, shared TypeScript settings and Bun install settings. In Vercel's mode any change in the range builds — the paths guard an empty argument list rather than filter the diff — so a change to another example, a test or the documentation builds all three, and only the [Google triggers](#skip-unaffected-builds) filter by path. Git errors and missing history make the command exit non-zero, so an uncertain check builds rather than silently skips. With this in place the native Skip deployment toggle above stays Disabled.
+The paths are relative to the project Root Directory and name what the build reads: the project's own directory, the adapter, Inertia and shared example package directories, plus the root manifest, lockfile, shared TypeScript settings and Bun install settings. In Vercel's mode any change in the range builds — the paths guard an empty argument list rather than filter the diff — so a change to another example, a test or the documentation builds all three, and only the [Google triggers](#skip-unaffected-builds) filter by path. Git errors and missing history make the command exit non-zero, so an uncertain check builds rather than silently skips. With this in place the native Skip deployment toggle above stays Disabled.
 
-`vercel.json` takes precedence over the dashboard, so importing the repository once per folder — Root Directory `packages/examples/vercel/<name>` — is the whole setup: Vercel then builds a preview for every pull request and production for `main`, with no GitHub workflow. Two project settings decide whether that works: **Include source files outside of the Root Directory in the Build Step** is on by default and the build needs it (`packages/core`, the root `bun.lock` and the hoisted `node_modules` all live outside the Root Directory), while native **Skip deployment** in the Root Directory section must stay Disabled, because the `ignoreCommand` in each `vercel.json` decides whether to build. A change to `packages/core/src` or to a shared build/deployment input then affects all three examples, but documentation, tests, benchmarks and unrelated workspace packages do not.
+`vercel.json` takes precedence over the dashboard, so importing the repository once per folder — Root Directory `packages/examples/vercel/<name>` — is the whole setup: Vercel then builds a preview for every pull request and production for `main`, with no GitHub workflow. Two project settings decide whether that works: **Include source files outside of the Root Directory in the Build Step** is on by default and the build needs it (`packages/core`, `packages/examples/shared`, the root `bun.lock` and the hoisted `node_modules` all live outside the Root Directory), while native **Skip deployment** in the Root Directory section must stay Disabled, because the `ignoreCommand` in each `vercel.json` decides whether to build. A change to `packages/core/src` or to a shared build/deployment input then affects all three examples, but documentation, tests, benchmarks and unrelated workspace packages do not.
 
 ### The listen call
 
@@ -337,7 +358,7 @@ gcloud builds triggers create github --name=ailura-google-fetch \
   --branch-pattern='^main$' --region us-central1 \
   --build-config=packages/examples/google/fetch/cloudbuild.yaml \
   --service-account=projects/<project>/serviceAccounts/<number>-compute@developer.gserviceaccount.com \
-  --included-files='packages/examples/google/fetch/**,packages/core/src/**,packages/core/package.json,packages/core/tsconfig.json,packages/core/tsconfig.build.json,package.json,bun.lock,tsconfig.json,bunfig.toml' \
+  --included-files='packages/examples/google/fetch/**,packages/examples/shared/**,packages/core/src/**,packages/core/package.json,packages/core/tsconfig.json,packages/core/tsconfig.build.json,package.json,bun.lock,tsconfig.json,bunfig.toml' \
   --ignored-files='packages/core/test/**,packages/core/docs/**,packages/core/**/*.md' \
   --repository=projects/<project>/locations/us-central1/connections/github/repositories/nestjs-hono-adapter
 ```
@@ -349,7 +370,7 @@ gcloud builds triggers create github --name=ailura-google-node \
   --branch-pattern='^main$' --region us-central1 \
   --build-config=packages/examples/google/node/cloudbuild.yaml \
   --service-account=projects/<project>/serviceAccounts/<number>-compute@developer.gserviceaccount.com \
-  --included-files='packages/examples/google/node/**,packages/core/src/**,packages/core/package.json,packages/core/tsconfig.json,packages/core/tsconfig.build.json,package.json,bun.lock,tsconfig.json,bunfig.toml' \
+  --included-files='packages/examples/google/node/**,packages/examples/shared/**,packages/core/src/**,packages/core/package.json,packages/core/tsconfig.json,packages/core/tsconfig.build.json,package.json,bun.lock,tsconfig.json,bunfig.toml' \
   --ignored-files='packages/core/test/**,packages/core/docs/**,packages/core/**/*.md' \
   --repository=projects/<project>/locations/us-central1/connections/github/repositories/nestjs-hono-adapter
 ```
@@ -358,6 +379,7 @@ Path ownership:
 
 - `packages/examples/google/fetch/**` affects the Cloud Functions deployment only.
 - `packages/examples/google/node/**` affects the Cloud Run deployment only.
+- `packages/examples/shared/**` affects both deployments, because both build the shared demo.
 - `packages/core/src/**`, `packages/core/package.json`, and the core TypeScript build configuration affect both deployments because both consume the adapter.
 - Other files under `packages/core/` (tests, documentation, benchmarks, and other non-runtime material) do not affect either deployment.
 - Root `package.json`, `bun.lock`, `tsconfig.json`, and `bunfig.toml` affect both deployments.
