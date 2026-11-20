@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.2.1](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.2.0...v2.2.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* preserve Connect middleware request URL rewrites ([#263](https://github.com/ailuracollective/nestjs-hono-adapter/issues/263)) ([c530c26](https://github.com/ailuracollective/nestjs-hono-adapter/commit/c530c2605711339abce007646a31dc9aef8f3b21))
+* preserve finalized responses against subsequent writes ([#264](https://github.com/ailuracollective/nestjs-hono-adapter/issues/264)) ([dd05658](https://github.com/ailuracollective/nestjs-hono-adapter/commit/dd0565835995b16487393fc0c8a26e1c1f7cabc1))
+* support Express-compatible response streaming ([#266](https://github.com/ailuracollective/nestjs-hono-adapter/issues/266)) ([768b05c](https://github.com/ailuracollective/nestjs-hono-adapter/commit/768b05c9e6bcadf02b5a3d679a898d82123c4440))
+
 ## [2.2.0](https://github.com/ailuracollective/nestjs-hono-adapter/compare/v2.1.1...v2.2.0) (2026-11-17)
 
 
