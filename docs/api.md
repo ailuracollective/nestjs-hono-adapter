@@ -223,8 +223,8 @@ Shipped the same way as `@ailura/nestjs-platform-hono-socket-io`, a bridge for S
 | Property | Type | Description |
 | --- | --- | --- |
 | `method` | `string` | HTTP method |
-| `url` | `string` | The full URL |
-| `originalUrl` | `string` | Path plus query string |
+| `url` | `string` | The path plus query string; writable, as Connect rewrites it |
+| `originalUrl` | `string` | The request's path plus query string; writable |
 | `path` | `string` | The pathname |
 | `hostname` | `string` | The hostname |
 | `protocol` | `string` | `'http'` or `'https'` |

@@ -1,15 +1,18 @@
 import 'reflect-metadata';
+// Import before creating the app: it patches the stock Inertia module for Hono.
+import '@ailura/nestjs-platform-hono-inertia/register';
 
-import { VersioningType } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+// The NestJS preset picks its entrypoint by matching this specifier; the app is created by the
+// shared package, so the import is type-only and disappears before the Function runs.
+import type { NestApplication } from '@nestjs/core';
 
-import {
-  ServerAdapter,
-  type NestHonoApplication,
-} from '@ailura/nestjs-hono-adapter';
+import { createApp } from '@ailura/examples-shared';
+import { SharedAppModule } from '@ailura/examples-shared/app';
+import { setupExamplesVite } from '@ailura/examples-shared/dev';
+import { ServerAdapter } from '@ailura/nestjs-hono-adapter';
 import { nodeServer } from '@ailura/nestjs-hono-adapter/node-server';
-import { AppModule } from './app.module.ts';
-import { registerDocs } from './docs.ts';
+
+process.env.INERTIA_HOST = 'vercel';
 
 /** The port the server listens on: Vercel routes into it, it opens none. */
 const PORT = Number(process.env.PORT ?? 3000);
@@ -25,23 +28,9 @@ const adapter = new ServerAdapter({
 });
 
 /** The Nest application. */
-const app = await NestFactory.create<NestHonoApplication>(AppModule, adapter, {
-  logger: ['error', 'warn'],
-});
+const app = await createApp(adapter, SharedAppModule);
 
-app.enableCors({
-  origin: ['https://example.com'],
-  credentials: true,
-});
-
-app.enableVersioning({
-  type: VersioningType.URI,
-  defaultVersion: '1',
-});
-
-registerDocs(app, adapter);
-
-await app.init();
+await setupExamplesVite(app);
 
 /** Vercel captures the `http.Server` this opens — the listen call is what it detects — and re-listens on a port it proxies to, so the promise it never settles is left pending. */
 void app.listen(PORT);

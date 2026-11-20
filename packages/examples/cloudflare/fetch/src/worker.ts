@@ -1,88 +1,67 @@
 import 'reflect-metadata';
+// Import before creating the app: it patches the stock Inertia module for Hono.
+import '@ailura/nestjs-platform-hono-inertia/register';
 
-import { VersioningType } from '@nestjs/common';
 import { loadPackageSync } from '@nestjs/common/utils/load-package.util.js';
-import { NestFactory } from '@nestjs/core';
 import { WsAdapter } from '@nestjs/platform-ws';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { upgradeWebSocket } from '@hono/cloudflare-workers';
-import { apiReference } from '@scalar/nestjs-api-reference';
 
+import { createApp } from '@ailura/examples-shared';
 import {
   ServerAdapter,
   registerBridge,
-  type NestHonoApplication,
 } from '@ailura/nestjs-hono-adapter';
 import {
   fetchHandler,
   fetchServer,
   webSocketFromHost,
 } from '@ailura/nestjs-hono-adapter/fetch';
-import { bridge } from '@ailura/nestjs-platform-hono-ws';
+import { bridge as inertiaBridge } from '@ailura/nestjs-platform-hono-inertia';
+import { bridge as wsBridge } from '@ailura/nestjs-platform-hono-ws';
 import { AppModule } from './app.module.ts';
 
 // The `ws` package cannot be loaded in a Worker, and Nest's own `WsAdapter` reads it in its
 // constructor; the bridge never builds a `ws.Server`, so an empty one answers the load.
 loadPackageSync('ws', 'WsAdapter', () => ({}));
 
-// A Worker resolves no bare specifier at run time, so the region cannot find the bridge.
-registerBridge(bridge);
+// A Worker resolves no bare specifier at run time, so the region cannot find the bridges.
+registerBridge(inertiaBridge);
+registerBridge(wsBridge);
 
-/** The adapter the Worker serves through. */
-const adapter = new ServerAdapter({
-  transport: fetchServer({
-    // The upgrade a Worker answers with: the platform's own helper, handed to the transport.
-    upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
-  }),
-  trustProxy: false,
-  rawBody: true,
-  bodyLimit: 1024,
-});
+/** The fetch handler the Worker serves through, built on the first request. */
+const start = async (): Promise<ReturnType<typeof fetchHandler>> => {
+  /** The adapter the Worker serves through. */
+  const adapter = new ServerAdapter({
+    transport: fetchServer({
+      // The upgrade a Worker answers with: the platform's own helper, handed to the transport.
+      upgradeWebSocket: webSocketFromHost(upgradeWebSocket),
+    }),
+    trustProxy: false,
+    rawBody: true,
+    bodyLimit: 1024,
+  });
 
-/** The Nest application. */
-const app = await NestFactory.create<NestHonoApplication>(
-  AppModule,
-  adapter,
-  { logger: ['error', 'warn'] },
-);
+  /** The Nest application. */
+  const app = await createApp(adapter, AppModule);
 
-app.enableCors({
-  origin: ['https://example.com'],
-  credentials: true,
-});
+  app.useWebSocketAdapter(new WsAdapter(app));
 
-app.enableVersioning({
-  type: VersioningType.URI,
-  defaultVersion: '1',
-});
+  await app.init();
 
-/** The OpenAPI document the docs routes serve. */
-const document = SwaggerModule.createDocument(
-  app,
-  new DocumentBuilder()
-    .setTitle('Ailura NestJS + Hono (Cloudflare fetch)')
-    .setVersion('1.0')
-    .build(),
-);
+  return fetchHandler(adapter.getHono(), {
+    clientAddress: (request) =>
+      request.headers.get('cf-connecting-ip') ?? undefined,
+  });
+};
 
-adapter.getHono().get('/v1/docs-json', (context) => context.json(document));
-
-app.use(
-  '/v1/reference',
-  apiReference({
-    content: document,
-    pageTitle: 'Ailura NestJS + Hono (Cloudflare fetch)',
-  }),
-);
-
-app.useWebSocketAdapter(new WsAdapter(app));
-
-await app.init();
+// Built inside the handler: a Worker forbids random values in the global scope, and the Inertia
+// file renderer draws its placeholders with `crypto.randomBytes`.
+let serving: Promise<ReturnType<typeof fetchHandler>> | undefined;
 
 /** Serves the Hono application over the Worker fetch handler. */
 export default {
-  fetch: fetchHandler(adapter.getHono(), {
-    clientAddress: (request) =>
-      request.headers.get('cf-connecting-ip') ?? undefined,
-  }),
+  fetch(request: Request): Promise<Response> {
+    serving ??= start();
+    return serving.then((serve) => serve(request));
+  },
 };

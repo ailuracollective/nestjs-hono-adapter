@@ -8,12 +8,15 @@ WORKDIR /repo
 COPY . .
 RUN bun install --frozen-lockfile \
   && bun run build:core \
+  && bun run --filter @ailura/nestjs-platform-hono-inertia build \
+  && bun run --cwd packages/examples/shared build \
   && bun run --cwd packages/examples/google/node bundle
 
 # Ship the bundle alone, on the Node runtime the transport needs.
 FROM node:22-slim AS run
 WORKDIR /app
 ENV NODE_ENV=production \
+    INERTIA_DEPLOYED=1 \
     PORT=8080
 COPY --from=build /repo/packages/examples/google/node/dist/server.mjs ./server.mjs
 EXPOSE 8080
