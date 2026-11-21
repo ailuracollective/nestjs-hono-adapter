@@ -13,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   pull-request-policy:
     name: Pull request policy
     if: >-
