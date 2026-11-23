@@ -33,6 +33,32 @@ adapter.getHono().use('*', async (context, next) => {
 });
 ```
 
+## Compiled executables
+
+`bun build --compile` writes the bundle into one executable, and a bare specifier resolves nothing from inside it: the application is not a directory on disk, it is `/$bunfs/root/<name>`. Three things follow.
+
+Nest's optional peers are reached by `import()` calls the application never enters — `kafkajs`, `mqtt`, `amqp-connection-manager`, `@nats-io/transport-node`, `@fastify/static` — and the bundler refuses to leave them unresolved, so they are named external. The executable never loads one, because the branch that would is never taken.
+
+The compatibility region cannot discover a bridge there, because discovery is a resolution: the application names the bridge it installed, with `registerBridge`. A bridge that resolves a peer of its own reads it through `loadPeer`, which answers nothing inside an executable — `socket-io` and `serve-static` do — and the application declares it with `registerPeer`. A bridge that imports its peer as well as resolving it, `ws`, needs only the first.
+
+```ts
+import { registerBridge } from '@ailura/nestjs-hono-adapter';
+import { bridge } from '@ailura/nestjs-platform-hono-ws';
+
+registerBridge(bridge);
+```
+
+`--bytecode` implies `--format=cjs`, and a CommonJS bundle has no top-level `await`: a bootstrap that awaits `app.listen()` is built with `--format=esm`.
+
+```sh
+bun build src/main.ts --compile --bytecode --format=esm \
+  --external kafkajs --external mqtt --external amqp-connection-manager \
+  --external @nats-io/transport-node --external @fastify/static \
+  --outfile app
+```
+
+What the application reads from disk it still reads from disk: a static directory, a root view or an SSR bundle is resolved against the working directory, so ship it beside the executable.
+
 ## Fetch hosts
 
 A host serving a Web `Request` and expecting a Web `Response` — Cloudflare Workers, Vercel Functions, Deno — gives the application no port, so the fetch transport takes none; Nest still initializes and the host exports the handler:
